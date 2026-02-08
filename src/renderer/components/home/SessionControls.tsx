@@ -84,7 +84,7 @@ export function SessionControls({ glowPulse }: SessionControlsProps) {
       </AnimatePresence>
 
       {/* Main controls — centered */}
-      <div className="flex items-center justify-center gap-3">
+      <div className="flex items-center justify-center gap-6">
         <div className="relative">
           {glowPulse && (
             <div className="absolute -inset-2 rounded-[20px] animate-glow-pulse pointer-events-none" />

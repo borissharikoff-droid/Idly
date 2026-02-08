@@ -17,7 +17,7 @@ interface BottomNavProps {
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   return (
     <div className="shrink-0 flex justify-center pb-3 pt-1">
-      <nav className="flex items-center gap-1 rounded-full bg-[#1a1a2e] border border-white/[0.07] px-1.5 py-1.5">
+      <nav className="flex items-center gap-4 rounded-full bg-[#1a1a2e] border border-white/[0.07] px-2.5 py-1.5">
         {tabs.map((tab) => {
           const active = activeTab === tab.id
           return (
