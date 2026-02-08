@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { AnimatePresence } from 'framer-motion'
 import { AuthGate } from './components/auth/AuthGate'
 import { useProfileSync } from './hooks/useProfileSync'
@@ -16,18 +16,20 @@ import { UpdateBanner } from './components/UpdateBanner'
 
 export type TabId = 'home' | 'skills' | 'stats' | 'profile' | 'friends' | 'settings'
 
+// Module-level flag — survives ALL React remounts, only resets on full app restart
+let _streakDoneThisSession = false
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>('home')
   const [showStreak, setShowStreak] = useState(false)
   const [streakCount, setStreakCount] = useState(0)
-  const streakChecked = useRef(false)
   useProfileSync()
   useKeyboardShortcuts()
 
-  // Check streak once on app startup, using SQLite to track "shown today"
+  // Check streak once on app startup
   useEffect(() => {
-    if (streakChecked.current) return
-    streakChecked.current = true
+    if (_streakDoneThisSession) return
+    _streakDoneThisSession = true // set IMMEDIATELY before any async work
     const api = window.electronAPI
     if (!api?.db?.getStreak || !api?.db?.getLocalStat || !api?.db?.setLocalStat) return
     const today = new Date().toLocaleDateString('sv-SE') // YYYY-MM-DD local
