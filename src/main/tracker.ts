@@ -7,16 +7,16 @@ import log from './logger'
 // ── Persistent PowerShell window detector ──
 
 let detectorProcess: ChildProcess | null = null
-let latestWinInfo: { appName: string; title: string; keys: number } | null = null
+let latestWinInfo: { appName: string; title: string; keys: number; idleMs: number } | null = null
 let stdoutBuffer = ''
 let detectorRestartTimeout: NodeJS.Timeout | null = null
 let detectorRestartCount = 0
 
 /**
  * A single persistent PowerShell process that:
- * 1) Loads Win32 APIs once via Add-Type (GetForegroundWindow, GetWindowThreadProcessId, GetWindowText, GetAsyncKeyState)
- * 2) Loops every ~1.5s, outputs "WIN:ProcessName|WindowTitle|KeystrokeCount"
- * 3) Keystroke count uses GetAsyncKeyState — polls all printable key codes and counts those pressed since last check
+ * 1) Loads Win32 APIs (GetForegroundWindow, GetWindowText, GetAsyncKeyState, GetLastInputInfo)
+ * 2) Loops every ~1.5s, outputs "WIN:ProcessName|WindowTitle|KeystrokeCount|IdleMs"
+ * 3) IdleMs = time since last input (mouse or keyboard) for real AFK detection
  */
 const DETECTOR_SCRIPT = `
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -35,6 +35,15 @@ public class WinApi {
     public static extern int GetWindowTextLength(IntPtr hWnd);
     [DllImport("user32.dll")]
     public static extern short GetAsyncKeyState(int vKey);
+    [DllImport("user32.dll")]
+    public static extern uint GetTickCount();
+    [DllImport("user32.dll")]
+    public static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
+    [StructLayout(LayoutKind.Sequential)]
+    public struct LASTINPUTINFO {
+        public uint cbSize;
+        public uint dwTime;
+    }
     public static string GetTitle(IntPtr hWnd) {
         int len = GetWindowTextLength(hWnd);
         if (len <= 0) return "";
@@ -50,11 +59,19 @@ public class WinApi {
         }
         return count;
     }
+    public static int GetIdleMs() {
+        LASTINPUTINFO lii = new LASTINPUTINFO();
+        lii.cbSize = (uint)Marshal.SizeOf(typeof(LASTINPUTINFO));
+        if (!GetLastInputInfo(ref lii)) return 0;
+        uint now = GetTickCount();
+        return (int)(now - lii.dwTime);
+    }
 }
 "@
 while ($true) {
     try {
         $keys = [WinApi]::CountKeyPresses()
+        $idleMs = [WinApi]::GetIdleMs()
         $hwnd = [WinApi]::GetForegroundWindow()
         $pid2 = [uint32]0
         [void][WinApi]::GetWindowThreadProcessId($hwnd, [ref]$pid2)
@@ -63,23 +80,23 @@ while ($true) {
             if ($proc) {
                 $pname = $proc.ProcessName
                 if ($pname -eq 'explorer') {
-                    [Console]::Out.WriteLine("WIN:Idle||" + $keys)
+                    [Console]::Out.WriteLine("WIN:Idle||" + $keys + "|" + $idleMs)
                     [Console]::Out.Flush()
                 } else {
                     $title = [WinApi]::GetTitle($hwnd)
-                    [Console]::Out.WriteLine("WIN:" + $pname + "|" + $title + "|" + $keys)
+                    [Console]::Out.WriteLine("WIN:" + $pname + "|" + $title + "|" + $keys + "|" + $idleMs)
                     [Console]::Out.Flush()
                 }
             } else {
-                [Console]::Out.WriteLine("WIN:Idle||" + $keys)
+                [Console]::Out.WriteLine("WIN:Idle||" + $keys + "|" + $idleMs)
                 [Console]::Out.Flush()
             }
         } else {
-            [Console]::Out.WriteLine("WIN:Idle||" + $keys)
+            [Console]::Out.WriteLine("WIN:Idle||" + $keys + "|" + $idleMs)
             [Console]::Out.Flush()
         }
     } catch {
-        [Console]::Out.WriteLine("WIN:Idle||0")
+        [Console]::Out.WriteLine("WIN:Idle||0|0")
         [Console]::Out.Flush()
     }
     Start-Sleep -Milliseconds 1500
@@ -96,20 +113,12 @@ function parseLine(line: string): void {
     log.info('[tracker] First window data received')
   }
   const payload = trimmed.slice(4)
-  const firstSep = payload.indexOf('|')
-  if (firstSep < 0) return
-  const appName = payload.slice(0, firstSep).trim() || 'Idle'
-  const rest = payload.slice(firstSep + 1)
-  const lastSep = rest.lastIndexOf('|')
-  let title: string
-  let keys = 0
-  if (lastSep >= 0) {
-    title = rest.slice(0, lastSep).trim()
-    keys = parseInt(rest.slice(lastSep + 1), 10) || 0
-  } else {
-    title = rest.trim()
-  }
-  latestWinInfo = { appName, title, keys }
+  const parts = payload.split('|')
+  const appName = (parts[0] ?? '').trim() || 'Idle'
+  const title = (parts[1] ?? '').trim()
+  const keys = parseInt(parts[2], 10) || 0
+  const idleMs = parseInt(parts[3], 10) || 0
+  latestWinInfo = { appName, title, keys, idleMs }
 }
 
 let detectorScriptPath: string | null = null
@@ -231,8 +240,7 @@ let currentSegmentActivity: ActivitySnapshot | null = null
 let currentSegmentKeystrokes = 0
 let totalSessionKeystrokes = 0
 
-// ── AFK / Idle detection ──
-let idleConsecutivePolls = 0
+// ── AFK / Idle detection (uses GetLastInputInfo: mouse + keyboard) ──
 let isIdle = false
 let afkThresholdMs = 3 * 60 * 1000 // default 3 minutes
 const POLL_INTERVAL_MS = 2000
@@ -322,18 +330,12 @@ function poll(): void {
     totalSessionKeystrokes += keys
     currentSegmentKeystrokes += keys
 
-    // AFK detection: track consecutive polls with 0 keystrokes
-    if (keys === 0) {
-      idleConsecutivePolls++
-      const idleMs = idleConsecutivePolls * POLL_INTERVAL_MS
-      if (idleMs >= afkThresholdMs && !isIdle) {
-        emitIdle(true)
-      }
-    } else {
-      if (isIdle) {
-        emitIdle(false)
-      }
-      idleConsecutivePolls = 0
+    // AFK detection: real idle = no mouse/keyboard (GetLastInputInfo from detector)
+    const idleMs = latestWinInfo.idleMs ?? 0
+    if (idleMs >= afkThresholdMs && !isIdle) {
+      emitIdle(true)
+    } else if (idleMs < afkThresholdMs && isIdle) {
+      emitIdle(false)
     }
 
     const category = categorize(rawName, windowTitle)
@@ -363,7 +365,6 @@ export function getTrackerApi() {
       currentSegmentActivity = null
       currentSegmentKeystrokes = 0
       totalSessionKeystrokes = 0
-      idleConsecutivePolls = 0
       isIdle = false
       latestWinInfo = null
       detectorRestartCount = 0
@@ -378,7 +379,6 @@ export function getTrackerApi() {
       }
       isPaused = false
       isIdle = false
-      idleConsecutivePolls = 0
       pushCurrentSegment(Date.now())
       currentSegmentActivity = null
       stopWindowDetector()
@@ -391,7 +391,6 @@ export function getTrackerApi() {
     },
     resume() {
       isPaused = false
-      idleConsecutivePolls = 0
       isIdle = false
     },
     getCurrentActivity(): ActivitySnapshot | null {
