@@ -74,6 +74,15 @@ input, textarea {
   animation: levelGlow 1.5s ease-in-out infinite;
 }
 
+@keyframes xp-popup-glow {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(0, 255, 136, 0.5), 0 0 20px rgba(0, 255, 136, 0.3); }
+  50% { box-shadow: 0 0 0 3px rgba(0, 255, 136, 0.8), 0 0 28px rgba(0, 255, 136, 0.5); }
+}
+
+.animate-xp-popup-glow {
+  animation: xp-popup-glow 1s ease-in-out infinite;
+}
+
 /* ── GPU-friendly glow animations (no blur, no textShadow repaints) ── */
 
 @keyframes glow-pulse-neon {

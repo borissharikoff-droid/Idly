@@ -1,4 +1,7 @@
 import { spawn, type ChildProcess } from 'child_process'
+import fs from 'fs'
+import path from 'path'
+import os from 'os'
 import log from './logger'
 
 // ── Persistent PowerShell window detector ──
@@ -6,6 +9,8 @@ import log from './logger'
 let detectorProcess: ChildProcess | null = null
 let latestWinInfo: { appName: string; title: string; keys: number } | null = null
 let stdoutBuffer = ''
+let detectorRestartTimeout: NodeJS.Timeout | null = null
+let detectorRestartCount = 0
 
 /**
  * A single persistent PowerShell process that:
@@ -81,11 +86,16 @@ while ($true) {
 }
 `.replace(/\r?\n/g, '\n').trim()
 
+let hasReceivedWinLine = false
+
 function parseLine(line: string): void {
   const trimmed = line.trim()
   if (!trimmed.startsWith('WIN:')) return
+  if (!hasReceivedWinLine) {
+    hasReceivedWinLine = true
+    log.info('[tracker] First window data received')
+  }
   const payload = trimmed.slice(4)
-  // Format: ProcessName|WindowTitle|KeyCount
   const firstSep = payload.indexOf('|')
   if (firstSep < 0) return
   const appName = payload.slice(0, firstSep).trim() || 'Idle'
@@ -102,18 +112,27 @@ function parseLine(line: string): void {
   latestWinInfo = { appName, title, keys }
 }
 
+let detectorScriptPath: string | null = null
+
 function startWindowDetector(): void {
   if (process.platform !== 'win32') return
   if (detectorProcess) return
   log.info('[tracker] Starting persistent window detector')
+  hasReceivedWinLine = false
 
-  const buf = Buffer.from(DETECTOR_SCRIPT, 'utf16le')
-  const encoded = buf.toString('base64')
+  try {
+    const tmpDir = os.tmpdir()
+    detectorScriptPath = path.join(tmpDir, `grinder-window-detector-${process.pid}.ps1`)
+    fs.writeFileSync(detectorScriptPath, '\uFEFF' + DETECTOR_SCRIPT, { encoding: 'utf8' })
+  } catch (e) {
+    log.error('[tracker] Failed to write detector script', e)
+    return
+  }
 
   detectorProcess = spawn(
     'powershell',
-    ['-NoProfile', '-NoLogo', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', encoded],
-    { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true, env: { ...process.env, PYTHONIOENCODING: 'utf-8' } }
+    ['-NoProfile', '-NoLogo', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', detectorScriptPath],
+    { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true, cwd: process.cwd(), env: process.env }
   )
 
   detectorProcess.stdout?.on('data', (chunk: Buffer) => {
@@ -130,25 +149,54 @@ function startWindowDetector(): void {
     if (msg) log.warn('[tracker:stderr]', msg)
   })
 
-  detectorProcess.on('exit', (code) => {
-    log.info('[tracker] Detector process exited with code', code)
+  detectorProcess.on('exit', (code, signal) => {
+    log.info('[tracker] Detector process exited', { code, signal })
     detectorProcess = null
     stdoutBuffer = ''
+    if (detectorScriptPath) {
+      try { fs.unlinkSync(detectorScriptPath) } catch { /* ignore */ }
+      detectorScriptPath = null
+    }
   })
 
   detectorProcess.on('error', (err) => {
     log.error('[tracker] Detector process error:', err)
     detectorProcess = null
+    if (detectorScriptPath) {
+      try { fs.unlinkSync(detectorScriptPath) } catch { /* ignore */ }
+      detectorScriptPath = null
+    }
   })
+
+  if (detectorRestartTimeout) {
+    clearTimeout(detectorRestartTimeout)
+    detectorRestartTimeout = null
+  }
+  detectorRestartTimeout = setTimeout(() => {
+    detectorRestartTimeout = null
+    if (hasReceivedWinLine || detectorRestartCount > 0) return
+    log.warn('[tracker] No window data after 10s, restarting detector once')
+    detectorRestartCount++
+    stopWindowDetector()
+    startWindowDetector()
+  }, 10_000)
 }
 
 function stopWindowDetector(): void {
+  if (detectorRestartTimeout) {
+    clearTimeout(detectorRestartTimeout)
+    detectorRestartTimeout = null
+  }
   if (detectorProcess) {
     try {
       detectorProcess.kill()
     } catch { /* ignore */ }
     detectorProcess = null
     stdoutBuffer = ''
+  }
+  if (detectorScriptPath) {
+    try { fs.unlinkSync(detectorScriptPath) } catch { /* ignore */ }
+    detectorScriptPath = null
   }
 }
 
@@ -318,6 +366,7 @@ export function getTrackerApi() {
       idleConsecutivePolls = 0
       isIdle = false
       latestWinInfo = null
+      detectorRestartCount = 0
       startWindowDetector()
       pollInterval = setInterval(poll, POLL_INTERVAL_MS)
       setTimeout(poll, 2500)
