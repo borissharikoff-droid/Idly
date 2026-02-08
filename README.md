@@ -40,6 +40,10 @@ Windows productivity tracker with a session timer, activity monitoring, AI-power
 
    This compiles the main/preload processes, starts the Vite dev server, and launches Electron. The app loads from `http://localhost:5173`.
 
+   **Live reload:** While the dev server is running, any change you make in the project folder (save a file) is reflected immediately in the Electron window and in the browser at `http://localhost:5173`. No need to restart or push — just save and see the update.
+
+   **Browser only:** To work only in the browser (no Electron), run `npm run dev` and open `http://localhost:5173`. Same live reload on save.
+
 5. **Build for production**
 
    ```bash
