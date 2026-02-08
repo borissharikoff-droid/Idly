@@ -36,6 +36,13 @@ export const goalSchema = z.object({
   start_date: z.string().min(1).max(32),
 })
 
+export const updateGoalSchema = z.object({
+  id: z.string().min(1).max(128),
+  target_seconds: z.number().int().positive(),
+  target_category: z.string().max(64).nullable(),
+  period: z.enum(['daily', 'weekly', 'custom']),
+})
+
 export const goalProgressSchema = z.object({
   target_category: z.string().max(64).nullable(),
   period: z.string().min(1).max(32),

@@ -356,6 +356,7 @@ declare global {
         getAllGoals: () => Promise<{ id: string; type: string; target_seconds: number; target_category: string | null; period: string; start_date: string; completed_at: number | null }[]>
         createGoal: (goal: { id: string; type: string; target_seconds: number; target_category: string | null; period: string; start_date: string }) => Promise<void>
         completeGoal: (id: string) => Promise<void>
+        updateGoal: (goal: { id: string; target_seconds: number; target_category: string | null; period: string }) => Promise<void>
         deleteGoal: (id: string) => Promise<void>
         getGoalProgress: (goal: { target_category: string | null; period: string; start_date: string }) => Promise<number>
         // Trends

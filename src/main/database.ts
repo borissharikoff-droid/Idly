@@ -328,6 +328,11 @@ export function getDatabaseApi() {
     completeGoal(id: string) {
       database.prepare('UPDATE goals SET completed_at = ? WHERE id = ?').run(Date.now(), id)
     },
+    updateGoal(goal: { id: string; target_seconds: number; target_category: string | null; period: string }) {
+      database.prepare(
+        'UPDATE goals SET target_seconds = ?, target_category = ?, period = ?, type = ? WHERE id = ?'
+      ).run(goal.target_seconds, goal.target_category, goal.period, goal.target_category ? 'category' : 'total', goal.id)
+    },
     deleteGoal(id: string) {
       database.prepare('DELETE FROM goals WHERE id = ?').run(id)
     },

@@ -9,6 +9,7 @@ import {
   saveSessionSchema,
   saveActivitiesSchema,
   goalSchema,
+  updateGoalSchema,
   goalProgressSchema,
   stringId,
   optionalSinceMs,
@@ -124,6 +125,9 @@ export function registerIpcHandlers() {
   })
   ipcMain.handle('db:completeGoal', (_, id: unknown) => {
     return db.completeGoal(stringId.parse(id))
+  })
+  ipcMain.handle('db:updateGoal', (_, goal: unknown) => {
+    return db.updateGoal(updateGoalSchema.parse(goal))
   })
   ipcMain.handle('db:deleteGoal', (_, id: unknown) => {
     return db.deleteGoal(stringId.parse(id))

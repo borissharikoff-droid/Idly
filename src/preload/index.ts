@@ -50,6 +50,7 @@ const api = {
     getAllGoals: () => ipcRenderer.invoke('db:getAllGoals'),
     createGoal: (goal: { id: string; type: string; target_seconds: number; target_category: string | null; period: string; start_date: string }) => ipcRenderer.invoke('db:createGoal', goal),
     completeGoal: (id: string) => ipcRenderer.invoke('db:completeGoal', id),
+    updateGoal: (goal: { id: string; target_seconds: number; target_category: string | null; period: string }) => ipcRenderer.invoke('db:updateGoal', goal),
     deleteGoal: (id: string) => ipcRenderer.invoke('db:deleteGoal', id),
     getGoalProgress: (goal: { target_category: string | null; period: string; start_date: string }) => ipcRenderer.invoke('db:getGoalProgress', goal),
     // Trends
