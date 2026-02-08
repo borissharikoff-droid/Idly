@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
 import { levelFromTotalXP, xpProgressInLevel, getStreakMultiplier } from '../../lib/xp'
@@ -62,10 +61,7 @@ export function ProfileBar({ onNavigateProfile }: ProfileBarProps) {
   if (!supabase || !user) return null
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+    <div
       className="flex items-center gap-3 px-4 py-3 border-b border-white/5"
     >
       {/* Avatar — click goes to Profile */}
@@ -169,6 +165,6 @@ export function ProfileBar({ onNavigateProfile }: ProfileBarProps) {
           <line x1="21" y1="12" x2="9" y2="12" />
         </svg>
       </button>
-    </motion.div>
+    </div>
   )
 }

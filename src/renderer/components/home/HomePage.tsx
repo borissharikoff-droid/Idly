@@ -66,21 +66,21 @@ export function HomePage({ onNavigateProfile }: HomePageProps) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+      transition={{ duration: 0.25, ease: 'easeOut' }}
       className="flex flex-col h-full"
     >
       <ProfileBar onNavigateProfile={onNavigateProfile} />
-      <div className="flex-1 flex flex-col items-center justify-center p-4 gap-3">
+      <div className="flex-1 flex flex-col items-center justify-center p-4 gap-4">
         {/* Motivation / Welcome banner */}
         <div className="flex justify-center w-full px-4">
           <AnimatePresence mode="wait">
             {showWelcome && status === 'idle' ? (
               <motion.div
                 key="welcome"
-                initial={{ opacity: 0, y: 16, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -20, scale: 0.94, filter: 'blur(4px)' }}
-                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                initial={false}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0, y: -16, scale: 0.96 }}
+                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                 className="w-full flex justify-center"
               >
                 <WelcomeBanner onDismiss={handleDismissWelcome} />
@@ -88,9 +88,9 @@ export function HomePage({ onNavigateProfile }: HomePageProps) {
             ) : (
               <motion.div
                 key="motivation"
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.45, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.35, ease: 'easeOut' }}
                 className="w-full flex justify-center"
               >
                 <MotivationBanner isRunning={status !== 'idle'} />
@@ -99,7 +99,7 @@ export function HomePage({ onNavigateProfile }: HomePageProps) {
           </AnimatePresence>
         </div>
 
-        {/* Timer + Controls — centered */}
+        {/* Timer + Controls */}
         <div className="flex flex-col items-center gap-5">
           <Timer />
           <SessionControls glowPulse={showWelcome && status === 'idle'} />
@@ -109,13 +109,12 @@ export function HomePage({ onNavigateProfile }: HomePageProps) {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 8 }}
-                transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
               >
                 <CurrentActivity />
               </motion.div>
             )}
           </AnimatePresence>
-          {/* Goal progress below timer */}
           <GoalWidget />
         </div>
       </div>
