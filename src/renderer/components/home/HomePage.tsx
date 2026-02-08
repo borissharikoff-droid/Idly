@@ -8,6 +8,8 @@ import { SessionComplete } from './SessionComplete'
 import { MotivationBanner } from './MotivationBanner'
 import { WelcomeBanner } from './WelcomeBanner'
 import { GoalWidget } from './GoalWidget'
+import { XPPopup } from './XPPopup'
+import { LevelUpModal } from './LevelUpModal'
 import { useSessionStore } from '../../stores/sessionStore'
 import { usePresenceSync } from '../../hooks/useProfileSync'
 import { categoryToSkillId, getSkillById } from '../../lib/skills'
@@ -17,7 +19,7 @@ interface HomePageProps {
 }
 
 export function HomePage({ onNavigateProfile }: HomePageProps) {
-  const { showComplete, setCurrentActivity, status, currentActivity } = useSessionStore()
+  const { showComplete, setCurrentActivity, status, currentActivity, liveXP, pendingLevelUp } = useSessionStore()
   const [showWelcome, setShowWelcome] = useState(false)
 
   // Check if user is new (never started a grind)
@@ -47,9 +49,9 @@ export function HomePage({ onNavigateProfile }: HomePageProps) {
   // Sync "Leveling X" so friends see skill being leveled
   const presenceLabel = currentActivity && status === 'running'
     ? (() => {
-        const skill = getSkillById(categoryToSkillId(currentActivity.category))
-        return skill ? `Leveling ${skill.name}` : null
-      })()
+      const skill = getSkillById(categoryToSkillId(currentActivity.category))
+      return skill ? `Leveling ${skill.name}` : null
+    })()
     : null
   usePresenceSync(presenceLabel, status === 'running')
 
@@ -110,8 +112,19 @@ export function HomePage({ onNavigateProfile }: HomePageProps) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 8 }}
                 transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                className="flex flex-col items-center gap-1"
               >
                 <CurrentActivity />
+                {/* Live XP counter */}
+                {liveXP > 0 && (
+                  <motion.span
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="text-cyber-neon text-xs font-mono"
+                  >
+                    +{liveXP} XP this session
+                  </motion.span>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
@@ -121,6 +134,12 @@ export function HomePage({ onNavigateProfile }: HomePageProps) {
       <AnimatePresence>
         {showComplete && <SessionComplete />}
       </AnimatePresence>
+
+      {/* XP Popups during session */}
+      {status !== 'idle' && <XPPopup />}
+
+      {/* Level-up modal */}
+      {pendingLevelUp && <LevelUpModal />}
     </motion.div>
   )
 }

@@ -2,6 +2,10 @@ import { describe, it, expect } from 'vitest'
 import {
   levelFromTotalXP,
   xpProgressInLevel,
+  xpRequiredForLevel,
+  totalXPForLevel,
+  getTitleForLevel,
+  getRewardsInRange,
   getStreakMultiplier,
   computeSessionXP,
   checkNewAchievements,
@@ -10,13 +14,49 @@ import {
   getAchievementById,
 } from '../renderer/lib/xp'
 
+describe('xpRequiredForLevel', () => {
+  it('returns 50 for levels 1-10', () => {
+    expect(xpRequiredForLevel(1)).toBe(50)
+    expect(xpRequiredForLevel(10)).toBe(50)
+  })
+
+  it('returns 100 for levels 11-25', () => {
+    expect(xpRequiredForLevel(11)).toBe(100)
+    expect(xpRequiredForLevel(25)).toBe(100)
+  })
+
+  it('returns 200 for levels 26-50', () => {
+    expect(xpRequiredForLevel(26)).toBe(200)
+    expect(xpRequiredForLevel(50)).toBe(200)
+  })
+
+  it('returns 400 for levels 51+', () => {
+    expect(xpRequiredForLevel(51)).toBe(400)
+    expect(xpRequiredForLevel(100)).toBe(400)
+  })
+})
+
+describe('totalXPForLevel', () => {
+  it('returns 0 for level 1', () => {
+    expect(totalXPForLevel(1)).toBe(0)
+  })
+
+  it('returns 50 for level 2', () => {
+    expect(totalXPForLevel(2)).toBe(50)
+  })
+
+  it('returns 500 for level 11 (10 levels * 50 XP)', () => {
+    expect(totalXPForLevel(11)).toBe(500)
+  })
+})
+
 describe('levelFromTotalXP', () => {
   it('returns level 1 for 0 XP', () => {
     expect(levelFromTotalXP(0)).toBe(1)
   })
 
-  it('returns level 2 for 100 XP', () => {
-    expect(levelFromTotalXP(100)).toBe(2)
+  it('returns level 2 for 50 XP (with progressive curve)', () => {
+    expect(levelFromTotalXP(50)).toBe(2)
   })
 
   it('returns level 1 for negative XP', () => {
@@ -26,19 +66,65 @@ describe('levelFromTotalXP', () => {
   it('increases level with XP', () => {
     expect(levelFromTotalXP(500)).toBeGreaterThan(levelFromTotalXP(100))
   })
+
+  it('returns level 11 for 500 XP', () => {
+    expect(levelFromTotalXP(500)).toBe(11)
+  })
 })
 
 describe('xpProgressInLevel', () => {
-  it('returns current=0, needed=100 for 0 XP', () => {
+  it('returns current=0, needed=50 for 0 XP (level 1)', () => {
     const { current, needed } = xpProgressInLevel(0)
+    expect(current).toBe(0)
+    expect(needed).toBe(50)
+  })
+
+  it('returns current=25, needed=50 for 25 XP (mid level 1)', () => {
+    const { current, needed } = xpProgressInLevel(25)
+    expect(current).toBe(25)
+    expect(needed).toBe(50)
+  })
+
+  it('returns current=0, needed=100 for 500 XP (start of level 11)', () => {
+    const { current, needed } = xpProgressInLevel(500)
     expect(current).toBe(0)
     expect(needed).toBe(100)
   })
+})
 
-  it('returns current=50, needed=100 for 50 XP', () => {
-    const { current, needed } = xpProgressInLevel(50)
-    expect(current).toBe(50)
-    expect(needed).toBe(100)
+describe('getTitleForLevel', () => {
+  it('returns Newbie for level 1', () => {
+    expect(getTitleForLevel(1)).toBe('Newbie')
+  })
+
+  it('returns Rookie for level 5', () => {
+    expect(getTitleForLevel(5)).toBe('Rookie')
+  })
+
+  it('returns Grinder for level 10', () => {
+    expect(getTitleForLevel(10)).toBe('Grinder')
+  })
+
+  it('returns Grinder for level 12 (between 10 and 15)', () => {
+    expect(getTitleForLevel(12)).toBe('Grinder')
+  })
+
+  it('returns Transcendent for level 99', () => {
+    expect(getTitleForLevel(99)).toBe('Transcendent')
+  })
+})
+
+describe('getRewardsInRange', () => {
+  it('returns rewards between levels', () => {
+    const rewards = getRewardsInRange(1, 10)
+    expect(rewards.length).toBe(2) // level 5 and 10
+    expect(rewards.some(r => r.title === 'Rookie')).toBe(true)
+    expect(rewards.some(r => r.title === 'Grinder')).toBe(true)
+  })
+
+  it('returns empty for no rewards in range', () => {
+    const rewards = getRewardsInRange(1, 3)
+    expect(rewards.length).toBe(0)
   })
 })
 

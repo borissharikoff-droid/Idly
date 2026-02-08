@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
-import { levelFromTotalXP, xpProgressInLevel, getStreakMultiplier } from '../../lib/xp'
+import { levelFromTotalXP, xpProgressInLevel, getStreakMultiplier, getTitleForLevel } from '../../lib/xp'
 import { detectPersona } from '../../lib/persona'
 import { FRAMES, BADGES, getEquippedFrame, getEquippedBadges } from '../../lib/cosmetics'
 
@@ -77,9 +77,8 @@ export function ProfileBar({ onNavigateProfile }: ProfileBarProps) {
           />
         )}
         <div
-          className={`relative w-10 h-10 rounded-full bg-discord-card flex items-center justify-center text-xl hover:scale-105 transition-transform ${
-            activeFrame ? 'border-2' : 'border border-white/10'
-          }`}
+          className={`relative w-10 h-10 rounded-full bg-discord-card flex items-center justify-center text-xl hover:scale-105 transition-transform ${activeFrame ? 'border-2' : 'border border-white/10'
+            }`}
           style={activeFrame ? { borderColor: activeFrame.color } : undefined}
         >
           {avatar}
@@ -97,6 +96,7 @@ export function ProfileBar({ onNavigateProfile }: ProfileBarProps) {
             onMouseLeave={() => setShowXPTooltip(false)}
           >
             <span className="text-cyber-neon font-mono text-xs cursor-default">Lv.{level}</span>
+            <span className="text-gray-400 text-[10px] font-medium">{getTitleForLevel(level)}</span>
             {showXPTooltip && (
               <div className="absolute top-full left-0 mt-1 px-2 py-1 rounded-lg bg-discord-card border border-white/10 text-[10px] text-gray-300 font-mono whitespace-nowrap z-20 shadow-lg">
                 {current}/{needed} XP to Lv.{level + 1} · Total: {totalXP} XP

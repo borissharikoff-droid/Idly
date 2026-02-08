@@ -5,7 +5,7 @@ import { computeAndSaveSkillXPElectron, computeAndSaveSkillXPBrowser } from '../
 import { processAchievementsElectron } from '../services/achievementService'
 import { syncSkillsToSupabase, syncSessionToSupabase } from '../services/supabaseSync'
 import { useAlertStore } from './alertStore'
-import { getAchievementById } from '../lib/xp'
+import { getAchievementById, levelFromTotalXP, getRewardsInRange, LevelReward } from '../lib/xp'
 
 type SessionStatus = 'idle' | 'running' | 'paused'
 
@@ -40,6 +40,16 @@ interface SessionStore {
   streakMultiplier: number
   /** Total XP earned this session (with multiplier applied) */
   sessionXPEarned: number
+  /** Live XP accumulated this session (for real-time display) */
+  liveXP: number
+  /** Queue of floating +XP popups */
+  xpPopups: { id: string; amount: number }[]
+  /** Level at start of session (for level-up detection) */
+  levelBefore: number
+  /** Pending level-up info to show modal */
+  pendingLevelUp: { level: number; rewards: LevelReward[] } | null
+  /** All rewards unlocked during this session */
+  sessionRewards: LevelReward[]
   tick: () => void
   start: () => void
   stop: () => void
@@ -49,13 +59,16 @@ interface SessionStore {
   setShowComplete: (v: boolean) => void
   setLastSessionSummary: (s: { durationFormatted: string } | null) => void
   dismissComplete: () => void
+  dismissLevelUp: () => void
   checkStreakOnMount: () => Promise<number>
 }
 
 let tickInterval: ReturnType<typeof setInterval> | null = null
+let xpTickInterval: ReturnType<typeof setInterval> | null = null
 let checkpointInterval: ReturnType<typeof setInterval> | null = null
 let pausedAccumulated = 0 // ms accumulated while paused
 let pauseStartedAt = 0    // timestamp when current pause started
+let lastXpTickTime = 0    // timestamp of last XP tick
 
 // ── AFK auto-pause listener setup ──
 let afkUnsubscribe: (() => void) | null = null
@@ -71,7 +84,7 @@ function startCheckpointSaving() {
         startTime: sessionStartTime,
         elapsedSeconds,
         pausedAccumulated,
-      }).catch(() => {})
+      }).catch(() => { })
     }
   }, 30_000) // every 30 seconds
 }
@@ -138,6 +151,101 @@ function sendStreakNotification(api: NonNullable<Window['electronAPI']>): void {
   })
 }
 
+// ── Real-Time XP Tick Constants ──
+// XP per minute by category (same as computeSessionXP but for ticks)
+const CATEGORY_XP_RATE: Record<string, number> = {
+  coding: 2,
+  design: 1.5,
+  creative: 1.2,
+  learning: 1.2,
+  music: 0.5,
+  games: 0.3,
+  social: 0.5,
+  browsing: 0.8,
+  other: 0.5,
+}
+
+const XP_TICK_INTERVAL_MS = 30_000 // 30 seconds
+
+// ── XP Tick Functions ──
+function startXpTicking() {
+  stopXpTicking()
+  lastXpTickTime = Date.now()
+
+  xpTickInterval = setInterval(async () => {
+    const { status, currentActivity, elapsedSeconds, sessionStartTime } = useSessionStore.getState()
+    if (status !== 'running' || !sessionStartTime) return
+
+    // Skip XP ticks for sessions under 1 minute
+    if (elapsedSeconds < 60) return
+
+    const now = Date.now()
+    const tickDurationMs = now - lastXpTickTime
+    lastXpTickTime = now
+
+    // Calculate XP for this tick
+    const category = currentActivity?.category || 'other'
+    const rate = CATEGORY_XP_RATE[category] ?? 0.5
+    const xpEarned = Math.round((tickDurationMs / 60_000) * rate)
+
+    if (xpEarned <= 0) return
+
+    // Get current total XP to check for level up
+    const api = window.electronAPI
+    let prevTotalXP = 0
+    if (api?.db?.getLocalStat) {
+      const xpStr = await api.db.getLocalStat('total_xp')
+      prevTotalXP = parseInt(xpStr || '0', 10)
+    }
+    const prevLevel = levelFromTotalXP(prevTotalXP)
+
+    // Update live XP in store
+    const { liveXP, sessionRewards } = useSessionStore.getState()
+    const newLiveXP = liveXP + xpEarned
+    const newTotalXP = prevTotalXP + xpEarned
+    const newLevel = levelFromTotalXP(newTotalXP)
+
+    // Save incremental XP to DB
+    if (api?.db?.setLocalStat) {
+      await api.db.setLocalStat('total_xp', String(newTotalXP))
+    }
+
+    // Add popup
+    const popupId = crypto.randomUUID()
+    const newPopup = { id: popupId, amount: xpEarned }
+
+    // Check for level up
+    if (newLevel > prevLevel) {
+      const rewards = getRewardsInRange(prevLevel, newLevel)
+      useSessionStore.setState({
+        liveXP: newLiveXP,
+        xpPopups: [...useSessionStore.getState().xpPopups, newPopup],
+        pendingLevelUp: { level: newLevel, rewards },
+        sessionRewards: [...sessionRewards, ...rewards],
+      })
+    } else {
+      useSessionStore.setState({
+        liveXP: newLiveXP,
+        xpPopups: [...useSessionStore.getState().xpPopups, newPopup],
+      })
+    }
+
+    // Auto-remove popup after 2 seconds
+    setTimeout(() => {
+      useSessionStore.setState({
+        xpPopups: useSessionStore.getState().xpPopups.filter(p => p.id !== popupId),
+      })
+    }, 2000)
+  }, XP_TICK_INTERVAL_MS)
+}
+
+function stopXpTicking() {
+  if (xpTickInterval) {
+    clearInterval(xpTickInterval)
+    xpTickInterval = null
+  }
+}
+
 export const useSessionStore = create<SessionStore>((set, get) => ({
   status: 'idle',
   elapsedSeconds: 0,
@@ -151,6 +259,11 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   isAfkPaused: false,
   streakMultiplier: 1.0,
   sessionXPEarned: 0,
+  liveXP: 0,
+  xpPopups: [],
+  levelBefore: 1,
+  pendingLevelUp: null,
+  sessionRewards: [],
 
   tick() {
     const { sessionStartTime } = get()
@@ -159,25 +272,36 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     set({ elapsedSeconds: Math.max(0, elapsed) })
   },
 
-  start() {
+  async start() {
     const sessionId = crypto.randomUUID()
     const sessionStartTime = Date.now()
     pausedAccumulated = 0
     pauseStartedAt = 0
-    set({ status: 'running', elapsedSeconds: 0, sessionId, sessionStartTime, isAfkPaused: false })
-    if (typeof window !== 'undefined' && window.electronAPI) {
-      window.electronAPI.tracker.start()
+
+    // Get current level for level-up detection
+    let levelBefore = 1
+    const api = typeof window !== 'undefined' ? window.electronAPI : null
+    if (api?.db?.getLocalStat) {
+      const xpStr = await api.db.getLocalStat('total_xp')
+      const totalXP = parseInt(xpStr || '0', 10)
+      levelBefore = levelFromTotalXP(totalXP)
+    }
+
+    set({ status: 'running', elapsedSeconds: 0, sessionId, sessionStartTime, isAfkPaused: false, liveXP: 0, xpPopups: [], levelBefore, pendingLevelUp: null, sessionRewards: [] })
+    if (api) {
+      api.tracker.start()
       // Apply AFK threshold from settings
       const savedAfk = localStorage.getItem('grinder_afk_timeout_min')
       const afkMin = savedAfk ? parseInt(savedAfk, 10) : 3
-      if (window.electronAPI.tracker.setAfkThreshold) {
-        window.electronAPI.tracker.setAfkThreshold(afkMin * 60 * 1000)
+      if (api.tracker.setAfkThreshold) {
+        api.tracker.setAfkThreshold(afkMin * 60 * 1000)
       }
     }
     setupAfkListener()
     playSessionStartSound()
     tickInterval = setInterval(() => get().tick(), 1000)
     startCheckpointSaving()
+    startXpTicking()
   },
 
   async stop() {
@@ -191,6 +315,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       pauseStartedAt = 0
     }
     stopCheckpointSaving()
+    stopXpTicking()
     playSessionStopSound()
     const { sessionId, sessionStartTime, elapsedSeconds } = get()
     set({ status: 'idle' })
@@ -198,7 +323,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const endTime = Date.now()
 
     // Clear checkpoint since session is ending normally
-    api?.db?.clearCheckpoint?.().catch(() => {})
+    api?.db?.clearCheckpoint?.().catch(() => { })
 
     if (api && sessionId && sessionStartTime) {
       // ── Electron mode ──
@@ -212,7 +337,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       set({ skillXPGains })
 
       // Sync skills to Supabase (fire-and-forget)
-      syncSkillsToSupabase(api).catch(() => {})
+      syncSkillsToSupabase(api).catch(() => { })
 
       // Achievements & XP
       const result = await processAchievementsElectron(api, sessionId)
@@ -243,7 +368,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
     // Sync session summary to Supabase (fire-and-forget, both modes)
     if (sessionId && sessionStartTime) {
-      syncSessionToSupabase(sessionStartTime, endTime, elapsedSeconds).catch(() => {})
+      syncSessionToSupabase(sessionStartTime, endTime, elapsedSeconds).catch(() => { })
     }
 
     const durationFormatted = formatDuration(get().elapsedSeconds)
@@ -269,6 +394,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       clearInterval(tickInterval)
       tickInterval = null
     }
+    stopXpTicking()
     if (typeof window !== 'undefined' && window.electronAPI) {
       window.electronAPI.tracker.pause()
     }
@@ -286,6 +412,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     }
     playResumeSound()
     tickInterval = setInterval(() => get().tick(), 1000)
+    startXpTicking()
   },
 
   setCurrentActivity(a) {
@@ -301,7 +428,11 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   },
 
   dismissComplete() {
-    set({ showComplete: false, lastSessionSummary: null, newAchievements: [], skillXPGains: [], streakMultiplier: 1.0, sessionXPEarned: 0 })
+    set({ showComplete: false, lastSessionSummary: null, newAchievements: [], skillXPGains: [], streakMultiplier: 1.0, sessionXPEarned: 0, liveXP: 0, xpPopups: [], levelBefore: 1, pendingLevelUp: null, sessionRewards: [] })
+  },
+
+  dismissLevelUp() {
+    set({ pendingLevelUp: null })
   },
 
   async checkStreakOnMount(): Promise<number> {

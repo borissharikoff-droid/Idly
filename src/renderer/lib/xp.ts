@@ -1,12 +1,88 @@
-const XP_PER_LEVEL = 100
+// ── Progressive Leveling Curve ──
+// Levels 1-10: 50 XP each (500 XP total to reach Lv.11)
+// Levels 11-25: 100 XP each
+// Levels 26-50: 200 XP each
+// Levels 51+: 400 XP each
+
+/** XP required to advance from this level to the next */
+export function xpRequiredForLevel(level: number): number {
+  if (level <= 10) return 50
+  if (level <= 25) return 100
+  if (level <= 50) return 200
+  return 400
+}
+
+/** Cumulative XP required to reach this level (XP at start of level) */
+export function totalXPForLevel(level: number): number {
+  if (level <= 1) return 0
+  let total = 0
+  for (let lv = 1; lv < level; lv++) {
+    total += xpRequiredForLevel(lv)
+  }
+  return total
+}
 
 export function levelFromTotalXP(totalXP: number): number {
-  return Math.max(1, 1 + Math.floor(totalXP / XP_PER_LEVEL))
+  if (totalXP < 0) return 1
+  let level = 1
+  let xpRemaining = totalXP
+  while (xpRemaining >= xpRequiredForLevel(level)) {
+    xpRemaining -= xpRequiredForLevel(level)
+    level++
+  }
+  return level
 }
 
 export function xpProgressInLevel(totalXP: number): { current: number; needed: number } {
-  const current = totalXP % XP_PER_LEVEL
-  return { current, needed: XP_PER_LEVEL }
+  const level = levelFromTotalXP(totalXP)
+  const xpAtLevelStart = totalXPForLevel(level)
+  const current = totalXP - xpAtLevelStart
+  const needed = xpRequiredForLevel(level)
+  return { current, needed }
+}
+
+// ── Level Rewards: Titles + Cosmetics ──
+export interface LevelReward {
+  level: number
+  title?: string
+  avatar?: string
+  frameId?: string
+  badgeId?: string
+}
+
+export const LEVEL_REWARDS: LevelReward[] = [
+  { level: 1, title: 'Newbie' },
+  { level: 5, title: 'Rookie', avatar: '🎯' },
+  { level: 10, title: 'Grinder' },
+  { level: 15, title: 'Dedicated' },
+  { level: 20, title: 'Veteran', avatar: '🏆' },
+  { level: 25, title: 'Expert' },
+  { level: 30, title: 'Master' },
+  { level: 40, title: 'Grandmaster' },
+  { level: 50, title: 'Legend', avatar: '🌠' },
+  { level: 75, title: 'Mythic' },
+  { level: 99, title: 'Transcendent' },
+]
+
+/** Get the title for a given level (highest title at or below this level) */
+export function getTitleForLevel(level: number): string {
+  let title = 'Newbie'
+  for (const reward of LEVEL_REWARDS) {
+    if (reward.level <= level && reward.title) {
+      title = reward.title
+    }
+  }
+  return title
+}
+
+/** Get rewards unlocked at exactly this level */
+export function getRewardsForLevel(level: number): LevelReward | undefined {
+  return LEVEL_REWARDS.find(r => r.level === level)
+}
+
+/** Get all rewards unlocked between fromLevel (exclusive) and toLevel (inclusive) */
+export function getRewardsInRange(fromLevel: number, toLevel: number): LevelReward[] {
+  return LEVEL_REWARDS.filter(r => r.level > fromLevel && r.level <= toLevel)
 }
 
 /** Returns streak-based XP multiplier */
