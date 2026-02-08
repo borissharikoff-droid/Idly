@@ -14,7 +14,7 @@ type FriendView = 'list' | 'profile' | 'compare'
 
 export function FriendsPage() {
   const { user } = useAuthStore()
-  const { friends, pendingRequests, loading, refresh, acceptRequest, rejectRequest } = useFriends()
+  const { friends, pendingRequests, loading, error, refresh, acceptRequest, rejectRequest } = useFriends()
   const [selected, setSelected] = useState<FriendProfileType | null>(null)
   const [view, setView] = useState<FriendView>('list')
   const [showLeaderboard, setShowLeaderboard] = useState(false)
@@ -65,6 +65,16 @@ export function FriendsPage() {
 
           {showLeaderboard ? (
             <Leaderboard />
+          ) : error ? (
+            <div className="rounded-xl bg-discord-card/80 border border-red-500/30 p-4 text-center">
+              <p className="text-red-400 text-sm mb-2">{error}</p>
+              <button
+                onClick={() => refresh()}
+                className="text-xs px-3 py-1.5 rounded-lg bg-cyber-neon/20 text-cyber-neon border border-cyber-neon/40 hover:bg-cyber-neon/30 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
           ) : loading ? (
             <p className="text-gray-500 text-sm py-4">Loading...</p>
           ) : (
