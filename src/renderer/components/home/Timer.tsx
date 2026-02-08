@@ -33,9 +33,21 @@ export function Timer() {
           </p>
         )}
         {isAfkPaused && (
-          <span className="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full bg-yellow-400/20 text-yellow-400 border border-yellow-400/30">
-            AFK
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full bg-yellow-400/20 text-yellow-400 border border-yellow-400/30">
+              AFK
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                useSessionStore.getState().resume()
+                useSessionStore.setState({ isAfkPaused: false })
+              }}
+              className="text-[10px] font-mono text-cyber-neon hover:underline"
+            >
+              Продолжить
+            </button>
+          </div>
         )}
       </div>
     </div>

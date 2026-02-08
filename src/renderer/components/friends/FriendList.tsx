@@ -48,9 +48,9 @@ export function FriendList({ friends, onSelectFriend }: FriendListProps) {
         return (
           <motion.button
             key={f.id}
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.04 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.15 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => onSelectFriend(f)}
             className={`w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${

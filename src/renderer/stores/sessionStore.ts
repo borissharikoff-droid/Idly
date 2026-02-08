@@ -104,6 +104,8 @@ function setupAfkListener() {
   const api = typeof window !== 'undefined' ? window.electronAPI : null
   if (!api?.tracker?.onIdleChange) return
   afkUnsubscribe = api.tracker.onIdleChange((idle: boolean) => {
+    const afkEnabled = typeof localStorage !== 'undefined' && localStorage.getItem('grinder_afk_enabled') !== 'false'
+    if (!afkEnabled) return
     const { status } = useSessionStore.getState()
     if (idle && status === 'running') {
       useSessionStore.getState().pause()

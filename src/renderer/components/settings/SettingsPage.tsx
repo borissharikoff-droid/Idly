@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
+import { useSessionStore } from '../../stores/sessionStore'
 import { getSoundSettings, setSoundVolume, setSoundMuted, playClickSound } from '../../lib/sounds'
 
 export function SettingsPage() {
@@ -15,6 +16,7 @@ export function SettingsPage() {
   const [soundVolume, setSoundVolumeState] = useState(0.5)
   const [shortcutsEnabled, setShortcutsEnabled] = useState(true)
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
+  const [afkEnabled, setAfkEnabled] = useState(true)
   const [afkTimeout, setAfkTimeout] = useState(3) // minutes
 
   // Notification toggles (smart notifications)
@@ -30,6 +32,7 @@ export function SettingsPage() {
     setSoundVolumeState(sound.volume)
     setShortcutsEnabled(localStorage.getItem('grinder_shortcuts_enabled') !== 'false')
     setNotificationsEnabled(localStorage.getItem('grinder_notifications_enabled') !== 'false')
+    setAfkEnabled(localStorage.getItem('grinder_afk_enabled') !== 'false')
     const savedAfk = localStorage.getItem('grinder_afk_timeout_min')
     if (savedAfk) setAfkTimeout(parseInt(savedAfk, 10) || 3)
 
@@ -73,6 +76,15 @@ export function SettingsPage() {
     localStorage.setItem('grinder_notifications_enabled', String(enabled))
     // Sync to DB so main process can read it without executeJavaScript
     window.electronAPI?.db?.setLocalStat('grinder_notifications_enabled', String(enabled))
+  }
+
+  const handleAfkEnabled = (enabled: boolean) => {
+    setAfkEnabled(enabled)
+    localStorage.setItem('grinder_afk_enabled', String(enabled))
+    if (!enabled) {
+      useSessionStore.getState().resume()
+      useSessionStore.setState({ isAfkPaused: false })
+    }
   }
 
   const handleAfkTimeout = (min: number) => {
@@ -164,7 +176,14 @@ export function SettingsPage() {
       {/* AFK Detection */}
       <div className="rounded-xl bg-discord-card/80 border border-white/10 p-4 space-y-3">
         <p className="text-xs uppercase tracking-wider text-gray-400 font-mono">[ afk detection ]</p>
-        <p className="text-xs text-gray-500">Auto-pause session when no input detected.</p>
+        <p className="text-xs text-gray-500">Auto-pause session when no input detected. AFK turns off automatically when you move the mouse or use the keyboard.</p>
+        <ToggleRow
+          label="Enable AFK pause"
+          sublabel="Pause grind when idle"
+          enabled={afkEnabled}
+          onChange={handleAfkEnabled}
+        />
+        {afkEnabled && (
         <div className="flex items-center gap-3">
           <span className="text-xs text-gray-400 w-20">AFK timeout</span>
           <input
@@ -180,6 +199,7 @@ export function SettingsPage() {
             {afkTimeout} min
           </span>
         </div>
+        )}
       </div>
 
       {/* Smart Notifications */}
