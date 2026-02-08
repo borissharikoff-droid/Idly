@@ -69,17 +69,26 @@ export function GoalWidget() {
   const handleDelete = useCallback(async (id: string) => {
     const api = window.electronAPI
     if (!api?.db?.deleteGoal) return
-    await api.db.deleteGoal(id)
-    setEditingId(null)
-    loadGoals()
+    try {
+      await api.db.deleteGoal(id)
+      setEditingId(null)
+      // Small delay to ensure DB write commits before read
+      setTimeout(loadGoals, 100)
+    } catch (err) {
+      console.error('Failed to delete goal:', err)
+    }
   }, [loadGoals])
 
   const handleUpdate = useCallback(async (goal: { id: string; target_seconds: number; target_category: string | null; period: string }) => {
     const api = window.electronAPI
     if (!api?.db?.updateGoal) return
-    await api.db.updateGoal(goal)
-    setEditingId(null)
-    loadGoals()
+    try {
+      await api.db.updateGoal(goal)
+      setEditingId(null)
+      setTimeout(loadGoals, 100)
+    } catch (err) {
+      console.error('Failed to update goal:', err)
+    }
   }, [loadGoals])
 
   useEffect(() => {
@@ -173,11 +182,10 @@ function GoalCard({ goal, onEdit }: { goal: GoalWithProgress; onEdit: () => void
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
       transition={{ ...smooth, duration: 0.4 }}
-      className={`group w-full rounded-xl px-3.5 py-2.5 border transition-colors duration-300 cursor-pointer ${
-        isComplete
+      className={`group w-full rounded-xl px-3.5 py-2.5 border transition-colors duration-300 cursor-pointer ${isComplete
           ? 'bg-cyber-neon/10 border-cyber-neon/30'
           : 'bg-discord-card/50 border-white/5 hover:border-white/10'
-      }`}
+        }`}
       onClick={onEdit}
     >
       <div className="flex items-center justify-between mb-1.5">
@@ -263,11 +271,10 @@ function GoalEditor({
             key={p}
             whileTap={{ scale: 0.95 }}
             onClick={() => setPeriod(p)}
-            className={`flex-1 text-xs py-1.5 rounded-lg font-medium transition-all duration-200 ${
-              period === p
+            className={`flex-1 text-xs py-1.5 rounded-lg font-medium transition-all duration-200 ${period === p
                 ? 'bg-cyber-neon/20 text-cyber-neon border border-cyber-neon/30 shadow-[0_0_8px_rgba(0,255,136,0.1)]'
                 : 'bg-discord-darker text-gray-400 border border-white/5 hover:border-white/10'
-            }`}
+              }`}
           >
             {p === 'daily' ? 'Daily' : 'Weekly'}
           </motion.button>
@@ -352,11 +359,10 @@ function GoalEditor({
             whileTap={{ scale: 0.96 }}
             onClick={handleSave}
             disabled={!hasChanges}
-            className={`flex-1 text-xs py-1.5 rounded-lg border font-semibold transition-all duration-200 ${
-              hasChanges
+            className={`flex-1 text-xs py-1.5 rounded-lg border font-semibold transition-all duration-200 ${hasChanges
                 ? 'bg-cyber-neon/20 text-cyber-neon border-cyber-neon/30 hover:bg-cyber-neon/30'
                 : 'bg-discord-darker text-gray-500 border-white/5 cursor-default'
-            }`}
+              }`}
           >
             Save
           </motion.button>
@@ -396,11 +402,10 @@ function GoalCreator({ onCreated, onCancel }: { onCreated: () => void; onCancel:
             key={p}
             whileTap={{ scale: 0.95 }}
             onClick={() => setPeriod(p)}
-            className={`flex-1 text-xs py-1.5 rounded-lg font-medium transition-all duration-200 ${
-              period === p
+            className={`flex-1 text-xs py-1.5 rounded-lg font-medium transition-all duration-200 ${period === p
                 ? 'bg-cyber-neon/20 text-cyber-neon border border-cyber-neon/30 shadow-[0_0_8px_rgba(0,255,136,0.1)]'
                 : 'bg-discord-darker text-gray-400 border border-white/5 hover:border-white/10'
-            }`}
+              }`}
           >
             {p === 'daily' ? 'Daily' : 'Weekly'}
           </motion.button>

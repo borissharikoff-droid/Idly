@@ -176,8 +176,8 @@ function startXpTicking() {
     const { status, currentActivity, elapsedSeconds, sessionStartTime } = useSessionStore.getState()
     if (status !== 'running' || !sessionStartTime) return
 
-    // Skip XP ticks for sessions under 1 minute
-    if (elapsedSeconds < 60) return
+    // Skip XP ticks for very short sessions (under 10s)
+    if (elapsedSeconds < 10) return
 
     const now = Date.now()
     const tickDurationMs = now - lastXpTickTime
@@ -406,7 +406,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       pausedAccumulated += Date.now() - pauseStartedAt
       pauseStartedAt = 0
     }
-    set({ status: 'running' })
+    set({ status: 'running', isAfkPaused: false })
     if (typeof window !== 'undefined' && window.electronAPI) {
       window.electronAPI.tracker.resume()
     }

@@ -43,18 +43,38 @@ export default function App() {
   useEffect(() => {
     if (_streakDoneThisSession) return
     _streakDoneThisSession = true // set IMMEDIATELY before any async work
-    const api = window.electronAPI
-    if (!api?.db?.getStreak || !api?.db?.getLocalStat || !api?.db?.setLocalStat) return
-    const today = new Date().toLocaleDateString('sv-SE') // YYYY-MM-DD local
-    api.db.getLocalStat('streak_shown_date').then(async (savedDate) => {
-      if (savedDate === today) return
-      const streak = await api.db.getStreak()
-      if (streak >= 2) {
-        await api.db.setLocalStat('streak_shown_date', today)
-        setStreakCount(streak)
-        setShowStreak(true)
+
+    const checkStreak = async () => {
+      const api = window.electronAPI
+      if (!api?.db?.getStreak || !api?.db?.getLocalStat || !api?.db?.setLocalStat) return
+
+      const today = new Date().toLocaleDateString('sv-SE') // YYYY-MM-DD local
+
+      // Check browser storage first (redundancy)
+      const browserStoredDate = localStorage.getItem('streak_shown_date')
+      if (browserStoredDate === today) return
+
+      try {
+        const savedDate = await api.db.getLocalStat('streak_shown_date')
+        if (savedDate === today) {
+          // Sync browser storage if missing
+          localStorage.setItem('streak_shown_date', today)
+          return
+        }
+
+        const streak = await api.db.getStreak()
+        if (streak >= 2) {
+          await api.db.setLocalStat('streak_shown_date', today)
+          localStorage.setItem('streak_shown_date', today) // Update browser storage too
+          setStreakCount(streak)
+          setShowStreak(true)
+        }
+      } catch (e) {
+        console.error('Failed to check streak:', e)
       }
-    }).catch(() => { })
+    }
+
+    checkStreak()
   }, [])
 
   const handleNavigateProfile = useCallback(() => setActiveTab('profile'), [])
