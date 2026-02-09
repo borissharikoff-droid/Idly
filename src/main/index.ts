@@ -75,7 +75,7 @@ function createWindow() {
     maxWidth: 600,
     icon: getIconPath(),
     webPreferences: {
-      preload: path.join(__dirname, '../../preload/preload/index.js'),
+      preload: path.join(__dirname, '../../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
     },

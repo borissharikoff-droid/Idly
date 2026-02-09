@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "electron:dev": "npm run build:electron && concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "build:electron": "tsc -p tsconfig.main.json && tsc -p tsconfig.preload.json",
-    "electron:build": "npm run build && electron-builder --config electron-builder.yml",
+    "clean:release": "node -e \"try{require('fs').rmSync('release/win-unpacked',{recursive:true,force:true});console.log('Cleaned release/win-unpacked')}catch(e){console.warn('Clean skipped:',e.message)}\"",
+    "electron:build": "npm run build && npm run clean:release && electron-builder --config electron-builder.yml",
     "test": "vitest run",
     "test:watch": "vitest",
     "push": "git push"

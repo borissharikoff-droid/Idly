@@ -5,7 +5,18 @@ export function CurrentActivity() {
   const currentActivity = useSessionStore((s) => s.currentActivity)
   const sessionSkillXP = useSessionStore((s) => s.sessionSkillXP)
   const status = useSessionStore((s) => s.status)
-  const isBrowser = typeof window === 'undefined' || !window.electronAPI
+  const api = typeof window !== 'undefined' ? (window as unknown as { electronAPI?: { _preloadError?: boolean; _message?: string } }).electronAPI : undefined
+  const isPreloadError = api && '_preloadError' in api && api._preloadError
+  const isBrowser = typeof window === 'undefined' || !api || (!('tracker' in api) && !isPreloadError)
+
+  if (isPreloadError && api) {
+    return (
+      <div className="w-full max-w-xs rounded-xl px-4 py-3 border border-amber-500/30 bg-amber-950/30">
+        <p className="text-amber-400 text-sm font-medium">Ошибка загрузки</p>
+        <p className="text-gray-400 text-xs mt-1 break-words">{(api as { _message?: string })._message || 'Preload failed'}</p>
+      </div>
+    )
+  }
 
   if (isBrowser) {
     return (
