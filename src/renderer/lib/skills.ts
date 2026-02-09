@@ -58,6 +58,12 @@ export function getSkillById(skillId: string): SkillDef | undefined {
   return SKILLS.find((s) => s.id === skillId)
 }
 
+export function getSkillByName(name: string): SkillDef | undefined {
+  if (!name || typeof name !== 'string') return undefined
+  const n = name.trim()
+  return SKILLS.find((s) => s.name.toLowerCase() === n.toLowerCase())
+}
+
 /** Level (1–99) from total XP. */
 export function skillLevelFromXP(xp: number): number {
   if (xp <= 0) return 1

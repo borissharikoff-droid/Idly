@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
 import type { FriendProfile as FriendProfileType } from '../../hooks/useFriends'
 import { FRAMES, BADGES } from '../../lib/cosmetics'
-import { getSkillById } from '../../lib/skills'
+import { getSkillById, getSkillByName } from '../../lib/skills'
 import { ACHIEVEMENTS, xpProgressInLevel } from '../../lib/xp'
 
 interface FriendProfileProps {
@@ -141,12 +141,15 @@ export function FriendProfile({ profile, onBack, onCompare }: FriendProfileProps
             <div className="flex flex-col gap-0.5 mb-1.5">
               <div className="flex items-center gap-1.5">
                 {profile.is_online ? (
-                  isLeveling ? (
-                    <span className="text-[11px] text-cyber-neon font-medium flex items-center gap-1">
-                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-cyber-neon animate-pulse" />
-                      Leveling {levelingSkill}
-                    </span>
-                  ) : activityLabel ? (
+                  isLeveling ? (() => {
+                    const skill = getSkillByName(levelingSkill ?? '')
+                    return (
+                      <span className="text-[11px] text-cyber-neon font-medium flex items-center gap-1.5">
+                        {skill?.icon && <span className="text-sm">{skill.icon}</span>}
+                        Leveling {levelingSkill}
+                      </span>
+                    )
+                  })() : activityLabel ? (
                     <span className="text-[11px] text-blue-400">{activityLabel}</span>
                   ) : (
                     <span className="text-[11px] text-cyber-neon">Online</span>

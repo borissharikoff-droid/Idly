@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import type { FriendProfile } from '../../hooks/useFriends'
-import { getSkillById, MAX_TOTAL_SKILL_LEVEL } from '../../lib/skills'
+import { getSkillById, getSkillByName, MAX_TOTAL_SKILL_LEVEL } from '../../lib/skills'
 import { FRAMES, BADGES } from '../../lib/cosmetics'
 
 interface FriendListProps {
@@ -104,11 +104,15 @@ export function FriendList({ friends, onSelectFriend }: FriendListProps) {
               <div className="flex flex-col gap-0.5">
                 <div className="flex items-center gap-1.5">
                   {f.is_online ? (
-                    isLeveling ? (
-                      <span className="text-[11px] text-gray-400 font-medium">
-                        Leveling {levelingSkill}
-                      </span>
-                    ) : activityLabel ? (
+                    isLeveling ? (() => {
+                      const skill = getSkillByName(levelingSkill ?? '')
+                      return (
+                        <span className="text-[11px] text-gray-400 font-medium flex items-center gap-1.5">
+                          {skill?.icon && <span className="text-sm">{skill.icon}</span>}
+                          Leveling {levelingSkill}
+                        </span>
+                      )
+                    })() : activityLabel ? (
                       <span className="text-[11px] text-blue-400 truncate">{activityLabel}</span>
                     ) : (
                       <span className="text-[11px] text-gray-400">Online</span>
