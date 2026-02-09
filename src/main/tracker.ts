@@ -76,17 +76,22 @@ while ($true) {
         $pid2 = [uint32]0
         [void][WinApi]::GetWindowThreadProcessId($hwnd, [ref]$pid2)
         if ($pid2 -gt 0) {
+            $pname = $null
             $proc = Get-Process -Id $pid2 -ErrorAction SilentlyContinue
-            if ($proc) {
-                $pname = $proc.ProcessName
-                if ($pname -eq 'explorer') {
-                    [Console]::Out.WriteLine("WIN:Idle||" + $keys + "|" + $idleMs)
-                    [Console]::Out.Flush()
-                } else {
-                    $title = [WinApi]::GetTitle($hwnd)
-                    [Console]::Out.WriteLine("WIN:" + $pname + "|" + $title + "|" + $keys + "|" + $idleMs)
-                    [Console]::Out.Flush()
-                }
+            if ($proc) { $pname = $proc.ProcessName }
+            if (-not $pname) {
+                try {
+                    $cim = Get-CimInstance Win32_Process -Filter ("ProcessId = " + $pid2) -ErrorAction SilentlyContinue
+                    if ($cim -and $cim.Name) { $pname = [System.IO.Path]::GetFileNameWithoutExtension($cim.Name) }
+                } catch { }
+            }
+            if ($pname -eq 'explorer') {
+                [Console]::Out.WriteLine("WIN:Idle||" + $keys + "|" + $idleMs)
+                [Console]::Out.Flush()
+            } elseif ($pname) {
+                $title = ([WinApi]::GetTitle($hwnd)) -replace '\|', '&#124;'
+                [Console]::Out.WriteLine("WIN:" + $pname + "|" + $title + "|" + $keys + "|" + $idleMs)
+                [Console]::Out.Flush()
             } else {
                 [Console]::Out.WriteLine("WIN:Idle||" + $keys + "|" + $idleMs)
                 [Console]::Out.Flush()
@@ -114,10 +119,11 @@ function parseLine(line: string): void {
   }
   const payload = trimmed.slice(4)
   const parts = payload.split('|')
+  if (parts.length < 4) return
   const appName = (parts[0] ?? '').trim() || 'Idle'
-  const title = (parts[1] ?? '').trim()
-  const keys = parseInt(parts[2], 10) || 0
-  const idleMs = parseInt(parts[3], 10) || 0
+  const keys = parseInt(parts[parts.length - 2], 10) || 0
+  const idleMs = parseInt(parts[parts.length - 1], 10) || 0
+  const title = parts.slice(1, -2).join('|').replace(/&#124;/g, '|').trim()
   latestWinInfo = { appName, title, keys, idleMs }
 }
 
@@ -254,19 +260,19 @@ function emitIdle(idle: boolean) {
   idleListeners.forEach(cb => cb(idle))
 }
 
-const MUSIC_TITLE = /youtube\s*music|music\.youtube|яндекс\s*музык|music\.yandex|music\.yandex\.ru|yandex\s*music/i
+const MUSIC_TITLE = /youtube\s*music|music\.youtube|яндекс\s*музык|music\.yandex|music\.yandex\.ru|yandex\s*music|spotify|soundcloud|deezer|apple\s*music|amazon\s*music|vk\s*music|vkmusic| — spotify| - spotify/i
 const LEARNING_TITLE = /подкаст|podcast|лекци|lecture|курс|course|udemy|stepik|edx|coursera|обучение|learning|теория/i
 
 /** Returns one or more categories (e.g. music + learning for podcast on music site). */
 function categorizeMultiple(appName: string, windowTitle: string): ActivityCategory[] {
-  const lowerApp = appName.toLowerCase()
+  const lowerApp = appName.toLowerCase().replace(/\.(exe|app)$/i, '')
   const lowerTitle = windowTitle.toLowerCase()
   if (/^(code|cursor|intellij|webstorm|pycharm|idea|devenv|rider)$/i.test(lowerApp) || /visual studio/i.test(lowerApp)) return ['coding']
   if (/\.(tsx?|jsx?|py|rs|go|cpp|cs|java)\b/i.test(lowerTitle)) return ['coding']
   if (/^(figma|photoshop|sketch|canva|illustrator|xd|invision|zeplin|affinity|gimp|krita)$/i.test(lowerApp) || /figma|design|mockup/i.test(lowerTitle)) return ['design']
   if (/^(ableton|fl studio|reaper|logic|audacity|premiere|davinci|resolve|obs|blender|afterfx|vegas|cinema4d)$/i.test(lowerApp) || /premiere|davinci|blender|after effects/i.test(lowerTitle)) return ['creative']
   if (/^(notion|obsidian|anki|sumatrapdf|acrobat|acrord32|foxit|foxitreader|kindle|evernote|onenote)$/i.test(lowerApp) || /\.pdf\b|notion|obsidian|anki/i.test(lowerTitle)) return ['learning']
-  if (/^(spotify|music|soundcloud|itunes|tidal|yandexmusic)$/i.test(lowerApp) || /youtube.*music|spotify|soundcloud/i.test(lowerTitle)) return ['music']
+  if (/^(spotify|music|soundcloud|itunes|tidal|yandexmusic|deezer|wmplayer|vkmusic)$/i.test(lowerApp) || MUSIC_TITLE.test(lowerTitle)) return ['music']
   if (/^(steam|epicgameslauncher|valorant|leagueclient|dota2|minecraft|fortniteclient|gta|csgo|cs2|overwatch|battle\.net|javaw)$/i.test(lowerApp) || /game|play|steam/i.test(lowerTitle)) return ['games']
   if (/^(telegram|discord|slack|whatsapp|teams)$/i.test(lowerApp)) return ['social']
   if (/^(chrome|firefox|msedge|brave|opera|vivaldi|arc|yandex)$/i.test(lowerApp)) {
@@ -289,6 +295,9 @@ function getAppDisplayName(appName: string): string {
     firefox: 'Firefox',
     brave: 'Brave',
     spotify: 'Spotify',
+    deezer: 'Deezer',
+    wmplayer: 'Windows Media Player',
+    vkmusic: 'VK Music',
     telegram: 'Telegram',
     discord: 'Discord',
     explorer: 'Explorer',

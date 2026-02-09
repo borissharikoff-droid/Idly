@@ -1,7 +1,10 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSessionStore } from '../../stores/sessionStore'
 import { getSkillById } from '../../lib/skills'
-import { playSessionCompleteSound } from '../../lib/sounds'
+import { playSessionCompleteSound, playClickSound } from '../../lib/sounds'
+import { getSkillQuote } from '../../lib/levelUpQuotes'
+import { getSkillMilestoneReward } from '../../lib/xp'
+import { PixelConfetti } from './PixelConfetti'
 import { useEffect } from 'react'
 
 export function SkillLevelUpModal() {
@@ -19,6 +22,14 @@ export function SkillLevelUpModal() {
   const skill = getSkillById(skillId)
   if (!skill) return null
 
+  const quote = getSkillQuote(skillId)
+  const milestoneLoot = getSkillMilestoneReward(skillId, level)
+
+  const handleContinue = () => {
+    playClickSound()
+    dismissSkillLevelUp()
+  }
+
   return (
     <AnimatePresence>
       <motion.div
@@ -27,15 +38,16 @@ export function SkillLevelUpModal() {
         exit={{ opacity: 0 }}
         transition={{ duration: 0.25 }}
         className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
-        onClick={dismissSkillLevelUp}
+        onClick={handleContinue}
       >
+        <PixelConfetti originX={0.5} originY={0.45} accentColor={skill.color} duration={2.2} />
         <motion.div
           initial={{ scale: 0.85, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
           transition={{ type: 'spring', damping: 22, stiffness: 280 }}
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-[260px] rounded-2xl bg-discord-card border overflow-hidden"
+          className="w-full max-w-[280px] rounded-2xl bg-discord-card border overflow-hidden relative"
           style={{ borderColor: `${skill.color}50`, boxShadow: `0 0 32px ${skill.color}20` }}
         >
           <div className="px-5 pt-5 pb-4 text-center">
@@ -47,13 +59,19 @@ export function SkillLevelUpModal() {
               {skill.icon}
             </div>
             <p className="text-white font-semibold text-sm mb-0.5">{skill.name}</p>
-            <p className="text-2xl font-black font-mono" style={{ color: skill.color }}>
+            <p className="text-2xl font-black font-mono mb-2" style={{ color: skill.color }}>
               Lv.{level}
             </p>
+            <p className="text-gray-300 text-xs italic mb-3">&ldquo;{quote}&rdquo;</p>
+            {milestoneLoot && (
+              <p className="text-[10px] text-gray-400 font-mono uppercase tracking-wider mb-2 px-2 py-1.5 rounded-lg bg-white/5 border border-white/10">
+                Unlocked: {milestoneLoot}
+              </p>
+            )}
             <button
               type="button"
-              onClick={dismissSkillLevelUp}
-              className="mt-4 px-6 py-2 rounded-xl text-sm font-semibold transition-all hover:opacity-90"
+              onClick={handleContinue}
+              className="mt-3 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-90 active:scale-95"
               style={{ backgroundColor: `${skill.color}25`, color: skill.color, border: `1px solid ${skill.color}40` }}
             >
               Continue

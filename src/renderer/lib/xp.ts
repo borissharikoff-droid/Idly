@@ -288,6 +288,12 @@ export function getAchievementById(id: string): AchievementDef | undefined {
   return ACHIEVEMENTS.find((a) => a.id === id)
 }
 
+/** Reward label for skill milestone at this level (e.g. "Coding Intern" at Developer Lv.10), or undefined. */
+export function getSkillMilestoneReward(skillId: string, level: number): string | undefined {
+  const def = getAchievementById(`skill_${skillId}_${level}`)
+  return def?.reward?.label
+}
+
 export function checkNewAchievements(
   session: { duration_seconds: number; start_time: number },
   activities: { category: string | null; start_time: number; end_time: number }[],
