@@ -147,28 +147,29 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-full items-center justify-center bg-discord-darker p-4">
-      <motion.div
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-        className="w-full max-w-sm"
-      >
-        <motion.div variants={itemVariants} className="text-center mb-5">
-          <motion.img
-            src={mascotImg}
-            alt="Idly"
-            className="w-24 h-24 mx-auto mb-2"
-            draggable={false}
-            transition={{ type: 'spring', damping: 20, stiffness: 200 }}
-          />
-          <h1 className="text-2xl font-mono font-bold text-[#8b5cf6] mb-1 tracking-wider">
-            idly
-          </h1>
-          <p className="text-gray-400 text-xs">
-            {isSignUp ? 'Create your account to start grinding' : 'Welcome back'}
-          </p>
-        </motion.div>
+    <div className="flex h-full min-h-0 flex-col bg-discord-darker p-4 overflow-y-auto">
+      <div className="flex min-h-full flex-col items-center justify-center py-6">
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="w-full max-w-sm flex-shrink-0"
+        >
+          <motion.div variants={itemVariants} className="text-center mb-4">
+            <motion.img
+              src={mascotImg}
+              alt="Idly"
+              className="w-20 h-20 mx-auto mb-2"
+              draggable={false}
+              transition={{ type: 'spring', damping: 20, stiffness: 200 }}
+            />
+            <h1 className="text-2xl font-mono font-bold text-[#8b5cf6] mb-1 tracking-wider">
+              idly
+            </h1>
+            <p className="text-gray-400 text-xs">
+              {isSignUp ? 'Create your account to start grinding' : 'Welcome back'}
+            </p>
+          </motion.div>
 
         <motion.div
           variants={itemVariants}
@@ -305,7 +306,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
             {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
           </motion.button>
         </motion.div>
-      </motion.div>
+        </motion.div>
+      </div>
     </div>
   )
 }
