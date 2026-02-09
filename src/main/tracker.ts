@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from 'child_process'
+import { spawn, type ChildProcess, type SpawnOptions } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 import { app } from 'electron'
@@ -155,7 +155,7 @@ function startWindowDetector(): void {
 
   const psExe = getPowerShellPath()
   const args = ['-NoProfile', '-NoLogo', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', detectorScriptPath]
-  const spawnOpts = { stdio: ['ignore', 'pipe', 'pipe'] as const, windowsHide: true, cwd: scriptDir, env: process.env }
+  const spawnOpts: SpawnOptions = { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true, cwd: scriptDir, env: process.env }
 
   function trySpawn(executable: string): ChildProcess | null {
     try {
