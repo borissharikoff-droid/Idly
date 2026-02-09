@@ -1,5 +1,5 @@
 import 'dotenv/config'
-import { app, BrowserWindow, Tray, nativeImage, Notification } from 'electron'
+import { app, BrowserWindow, Tray, nativeImage, Notification, Menu } from 'electron'
 import path from 'path'
 import { registerIpcHandlers, setMainWindow, setNotificationSender } from './ipc'
 import { startSmartNotifications, stopSmartNotifications } from './notifications'
@@ -24,6 +24,28 @@ function createTray() {
   const icon = nativeImage.createFromPath(getIconPath())
   tray = new Tray(icon.resize({ width: 16, height: 16 }))
   tray.setToolTip('Grinder')
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Show Grinder',
+      click: () => {
+        if (mainWindow) {
+          mainWindow.show()
+          mainWindow.focus()
+        }
+      },
+    },
+    { type: 'separator' },
+    {
+      label: 'Quit, I\'m done',
+      click: () => {
+        isQuitting = true
+        app.quit()
+      },
+    },
+  ])
+  tray.setContextMenu(contextMenu)
+
   tray.on('click', () => {
     if (mainWindow) {
       mainWindow.show()
