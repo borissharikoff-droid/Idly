@@ -39,9 +39,9 @@ public class WinApi {
     public static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")]
     public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-    private static extern int GetWindowText(IntPtr hWnd, byte[] lpString, int nMaxCount);
-    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    [DllImport("user32.dll", EntryPoint = "GetWindowTextW")]
+    private static extern int GetWindowText(IntPtr hWnd, IntPtr lpString, int nMaxCount);
+    [DllImport("user32.dll", EntryPoint = "GetWindowTextLengthW")]
     private static extern int GetWindowTextLength(IntPtr hWnd);
     [DllImport("user32.dll")]
     public static extern short GetAsyncKeyState(int vKey);
@@ -63,11 +63,17 @@ public class WinApi {
     private static string GetTitle(IntPtr hWnd) {
         int len = GetWindowTextLength(hWnd);
         if (len <= 0) return "";
-        int bufSize = (len + 2) * 2;
-        byte[] buf = new byte[bufSize];
-        int copied = GetWindowText(hWnd, buf, len + 1);
-        if (copied <= 0) return "";
-        return Encoding.Unicode.GetString(buf, 0, copied * 2);
+        int bufBytes = (len + 2) * 2;
+        IntPtr buf = Marshal.AllocHGlobal(bufBytes);
+        try {
+            int copied = GetWindowText(hWnd, buf, len + 1);
+            if (copied <= 0) return "";
+            byte[] raw = new byte[copied * 2];
+            Marshal.Copy(buf, raw, 0, copied * 2);
+            return Encoding.Unicode.GetString(raw);
+        } finally {
+            Marshal.FreeHGlobal(buf);
+        }
     }
     private static int CountKeyPresses() {
         int count = 0;
@@ -91,10 +97,12 @@ public class WinApi {
             return null;
         }
     }
+    private static int _iter = 0;
     public static void RunLoop() {
         WriteUtf8Line("READY");
         while (true) {
             try {
+                _iter++;
                 int keys = 0;
                 try { keys = CountKeyPresses(); } catch {}
                 int idleMs = 0;
@@ -103,6 +111,10 @@ public class WinApi {
                 uint pid = 0;
                 GetWindowThreadProcessId(hwnd, out pid);
                 string rawTitle = GetTitle(hwnd);
+                if (_iter <= 3) {
+                    int tlen = GetWindowTextLength(hwnd);
+                    WriteUtf8Line("DBG:iter=" + _iter + " hwnd=" + hwnd.ToInt64() + " pid=" + pid + " tlen=" + tlen + " title=" + rawTitle);
+                }
                 string title = rawTitle.Replace("\\r", " ").Replace("\\n", " ").Replace("|", "&#124;").Trim();
                 string pname = null;
                 if (pid > 0) {
