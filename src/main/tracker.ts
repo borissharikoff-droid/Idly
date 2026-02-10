@@ -31,6 +31,7 @@ try {
 using System;
 using System.Text;
 using System.Runtime.InteropServices;
+using System.Diagnostics;
 public class WinApi {
     [DllImport("user32.dll")]
     public static extern IntPtr GetForegroundWindow();
@@ -73,6 +74,14 @@ public class WinApi {
         uint now = GetTickCount();
         return (int)(now - lii.dwTime);
     }
+    public static string GetProcessName(uint pid) {
+        try {
+            Process p = Process.GetProcessById((int)pid);
+            return p.ProcessName;
+        } catch {
+            return null;
+        }
+    }
 }
 "@
   [Console]::Out.WriteLine("READY")
@@ -84,21 +93,22 @@ public class WinApi {
 }
 while ($true) {
     try {
-        $keys = [WinApi]::CountKeyPresses()
-        $idleMs = [WinApi]::GetIdleMs()
+        $keys = 0
+        try { $keys = [WinApi]::CountKeyPresses() } catch { }
+        $idleMs = 0
+        try { $idleMs = [WinApi]::GetIdleMs() } catch { }
         $hwnd = [WinApi]::GetForegroundWindow()
         $pid2 = [uint32]0
         [void][WinApi]::GetWindowThreadProcessId($hwnd, [ref]$pid2)
+        $rawTitle = [WinApi]::GetTitle($hwnd)
+        $title = ($rawTitle -replace '[\r\n]+', ' ' -replace '\|', '&#124;').Trim()
         if ($pid2 -gt 0) {
             $pname = $null
-            try {
-                $proc = Get-Process -Id $pid2 -ErrorAction SilentlyContinue
-                if ($proc -and $proc.ProcessName) { $pname = $proc.ProcessName }
-            } catch { }
+            try { $pname = [WinApi]::GetProcessName($pid2) } catch { }
             if (-not $pname) {
                 try {
-                    $byWindow = Get-Process | Where-Object { $_.MainWindowHandle -eq $hwnd } | Select-Object -First 1
-                    if ($byWindow -and $byWindow.ProcessName) { $pname = $byWindow.ProcessName }
+                    $proc = Get-Process -Id $pid2 -ErrorAction SilentlyContinue
+                    if ($proc) { $pname = $proc.ProcessName }
                 } catch { }
             }
             if (-not $pname) {
@@ -107,8 +117,6 @@ while ($true) {
                     if ($cim -and $cim.Name) { $pname = [System.IO.Path]::GetFileNameWithoutExtension($cim.Name) }
                 } catch { }
             }
-            $rawTitle = [WinApi]::GetTitle($hwnd)
-            $title = ($rawTitle -replace '[\r\n]+', ' ' -replace '\|', '&#124;').Trim()
             if ($pname -eq 'explorer' -and [string]::IsNullOrWhiteSpace($title)) {
                 [Console]::Out.WriteLine("WIN:Idle||" + $keys + "|" + $idleMs)
                 [Console]::Out.Flush()
@@ -120,11 +128,16 @@ while ($true) {
                 [Console]::Out.Flush()
             }
         } else {
-            [Console]::Out.WriteLine("WIN:Idle||" + $keys + "|" + $idleMs)
+            if ($title) {
+                [Console]::Out.WriteLine("WIN:Unknown|" + $title + "|" + $keys + "|" + $idleMs)
+            } else {
+                [Console]::Out.WriteLine("WIN:Idle||" + $keys + "|" + $idleMs)
+            }
             [Console]::Out.Flush()
         }
     } catch {
-        [Console]::Out.WriteLine("WIN:Idle||0|0")
+        $errMsg = ($_.Exception.Message -replace '[|\r\n]', ' ')
+        [Console]::Out.WriteLine("ERR:loop-" + $errMsg)
         [Console]::Out.Flush()
     }
     Start-Sleep -Milliseconds 1500
@@ -133,9 +146,16 @@ while ($true) {
 
 let hasReceivedWinLine = false
 let hasReceivedReady = false
+let detectorLineCount = 0
 
 function parseLine(line: string): void {
   const trimmed = line.trim()
+  if (!trimmed) return
+  detectorLineCount++
+  // Log first 10 lines from detector for debugging
+  if (detectorLineCount <= 10) {
+    log.info('[tracker] detector raw line #' + detectorLineCount + ':', trimmed.slice(0, 200))
+  }
   if (trimmed === 'READY') {
     hasReceivedReady = true
     log.info('[tracker] Detector script ready (Add-Type succeeded)')
@@ -147,10 +167,16 @@ function parseLine(line: string): void {
     latestWinInfo = { appName: 'Idly.TrackerError', title: msg, keys: 0, idleMs: 0 }
     return
   }
-  if (!trimmed.startsWith('WIN:')) return
+  if (!trimmed.startsWith('WIN:')) {
+    log.warn('[tracker] Unexpected detector output:', trimmed.slice(0, 200))
+    return
+  }
   const payload = trimmed.slice(4)
   const parts = payload.split('|')
-  if (parts.length < 4) return
+  if (parts.length < 4) {
+    log.warn('[tracker] Malformed WIN line (parts=' + parts.length + '):', trimmed.slice(0, 200))
+    return
+  }
   const appName = (parts[0] ?? '').trim() || 'Idle'
   const keys = parseInt(parts[parts.length - 2], 10) || 0
   const idleMs = parseInt(parts[parts.length - 1], 10) || 0
