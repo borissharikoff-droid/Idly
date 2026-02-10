@@ -91,7 +91,9 @@ public class WinApi {
   [Console]::Out.Flush()
   exit 1
 }
+$dbgIter = 0
 while ($true) {
+    $dbgIter++
     try {
         $keys = 0
         try { $keys = [WinApi]::CountKeyPresses() } catch { }
@@ -102,8 +104,8 @@ while ($true) {
         [void][WinApi]::GetWindowThreadProcessId($hwnd, [ref]$pid2)
         $rawTitle = [WinApi]::GetTitle($hwnd)
         $title = ($rawTitle -replace '[\r\n]+', ' ' -replace '\|', '&#124;').Trim()
+        $pname = $null
         if ($pid2 -gt 0) {
-            $pname = $null
             try { $pname = [WinApi]::GetProcessName($pid2) } catch { }
             if (-not $pname) {
                 try {
@@ -117,22 +119,22 @@ while ($true) {
                     if ($cim -and $cim.Name) { $pname = [System.IO.Path]::GetFileNameWithoutExtension($cim.Name) }
                 } catch { }
             }
-            if ($pname -eq 'explorer' -and [string]::IsNullOrWhiteSpace($title)) {
-                [Console]::Out.WriteLine("WIN:Idle||" + $keys + "|" + $idleMs)
-                [Console]::Out.Flush()
-            } elseif ($pname) {
-                [Console]::Out.WriteLine("WIN:" + $pname + "|" + $title + "|" + $keys + "|" + $idleMs)
-                [Console]::Out.Flush()
-            } else {
-                [Console]::Out.WriteLine("WIN:Unknown|" + $title + "|" + $keys + "|" + $idleMs)
-                [Console]::Out.Flush()
-            }
+        }
+        if ($dbgIter -le 10) {
+            [Console]::Out.WriteLine("DBG:iter=" + $dbgIter + " hwnd=" + $hwnd.ToInt64() + " pid=" + $pid2 + " pname=" + $pname + " title=" + $title)
+            [Console]::Out.Flush()
+        }
+        if ($pname -eq 'explorer' -and [string]::IsNullOrWhiteSpace($title)) {
+            [Console]::Out.WriteLine("WIN:Idle||" + $keys + "|" + $idleMs)
+            [Console]::Out.Flush()
+        } elseif ($pname) {
+            [Console]::Out.WriteLine("WIN:" + $pname + "|" + $title + "|" + $keys + "|" + $idleMs)
+            [Console]::Out.Flush()
+        } elseif ($title) {
+            [Console]::Out.WriteLine("WIN:Unknown|" + $title + "|" + $keys + "|" + $idleMs)
+            [Console]::Out.Flush()
         } else {
-            if ($title) {
-                [Console]::Out.WriteLine("WIN:Unknown|" + $title + "|" + $keys + "|" + $idleMs)
-            } else {
-                [Console]::Out.WriteLine("WIN:Idle||" + $keys + "|" + $idleMs)
-            }
+            [Console]::Out.WriteLine("WIN:Idle||" + $keys + "|" + $idleMs)
             [Console]::Out.Flush()
         }
     } catch {
@@ -159,6 +161,10 @@ function parseLine(line: string): void {
   if (trimmed === 'READY') {
     hasReceivedReady = true
     log.info('[tracker] Detector script ready (Add-Type succeeded)')
+    return
+  }
+  if (trimmed.startsWith('DBG:')) {
+    log.info('[tracker] ' + trimmed)
     return
   }
   if (trimmed.startsWith('ERR:')) {
