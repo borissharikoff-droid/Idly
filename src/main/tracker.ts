@@ -13,7 +13,9 @@ function getPowerShellPath(): string {
 // ── Persistent PowerShell window detector ──
 
 let detectorProcess: ChildProcess | null = null
-let latestWinInfo: { appName: string; title: string; keys: number; idleMs: number } | null = null
+let latestWinInfo: { appName: string; title: string; keys: number; idleMs: number; bgCategories: string[] } | null = null
+/** Cached background categories from last scan (bg scan runs every 2nd C# iteration). */
+let lastKnownBgCategories: string[] = []
 let stdoutBuffer = ''
 let detectorRestartTimeout: NodeJS.Timeout | null = null
 let detectorRestartCount = 0
@@ -97,6 +99,52 @@ public class WinApi {
             return null;
         }
     }
+    // --- Background music detection ---
+    private static readonly string[] MusicProcessNames = new string[] {
+        "spotify", "wmplayer", "vkmusic", "yandexmusic", "deezer",
+        "itunes", "tidal", "foobar2000", "aimp", "musicbee", "groove"
+    };
+    private static readonly string[] BrowserProcessNames = new string[] {
+        "chrome", "firefox", "msedge", "brave", "opera", "vivaldi", "arc", "yandex"
+    };
+    private static readonly string[] MusicTitleKeywords = new string[] {
+        "youtube music", "music.youtube", "spotify", "soundcloud",
+        "deezer", "apple music", "vk music", "vkmusic", "yandex music"
+    };
+    private static bool IsMusicTitle(string title) {
+        string lower = title.ToLower();
+        for (int i = 0; i < MusicTitleKeywords.Length; i++) {
+            if (lower.Contains(MusicTitleKeywords[i])) return true;
+        }
+        return false;
+    }
+    private static string DetectBackgroundMusic(IntPtr fgHwnd) {
+        try {
+            bool foundMusic = false;
+            Process[] procs = Process.GetProcesses();
+            foreach (Process p in procs) {
+                try {
+                    if (p.MainWindowHandle == IntPtr.Zero) continue;
+                    if (p.MainWindowHandle == fgHwnd) continue;
+                    string pn = p.ProcessName.ToLower();
+                    // Known music player processes
+                    for (int i = 0; i < MusicProcessNames.Length; i++) {
+                        if (pn == MusicProcessNames[i]) { foundMusic = true; break; }
+                    }
+                    if (foundMusic) break;
+                    // Browser windows with music titles
+                    for (int i = 0; i < BrowserProcessNames.Length; i++) {
+                        if (pn == BrowserProcessNames[i]) {
+                            string wt = p.MainWindowTitle ?? "";
+                            if (wt.Length > 0 && IsMusicTitle(wt)) { foundMusic = true; break; }
+                        }
+                    }
+                    if (foundMusic) break;
+                } catch { }
+            }
+            return foundMusic ? "music" : "";
+        } catch { return ""; }
+    }
     private static int _iter = 0;
     public static void RunLoop() {
         WriteUtf8Line("READY");
@@ -120,15 +168,20 @@ public class WinApi {
                 if (pid > 0) {
                     try { pname = GetProcessName(pid); } catch {}
                 }
+                // Detect background music (every 2nd iteration to reduce overhead)
+                string bgCats = "";
+                if (_iter % 2 == 0) {
+                    bgCats = DetectBackgroundMusic(hwnd);
+                }
                 string line;
                 if (pname == "explorer" && string.IsNullOrWhiteSpace(title)) {
-                    line = "WIN:Idle||" + keys + "|" + idleMs;
+                    line = "WIN:Idle||" + keys + "|" + idleMs + "|" + bgCats;
                 } else if (pname != null) {
-                    line = "WIN:" + pname + "|" + title + "|" + keys + "|" + idleMs;
+                    line = "WIN:" + pname + "|" + title + "|" + keys + "|" + idleMs + "|" + bgCats;
                 } else if (title.Length > 0) {
-                    line = "WIN:Unknown|" + title + "|" + keys + "|" + idleMs;
+                    line = "WIN:Unknown|" + title + "|" + keys + "|" + idleMs + "|" + bgCats;
                 } else {
-                    line = "WIN:Idle||" + keys + "|" + idleMs;
+                    line = "WIN:Idle||" + keys + "|" + idleMs + "|" + bgCats;
                 }
                 WriteUtf8Line(line);
             } catch (Exception ex) {
@@ -181,15 +234,19 @@ function parseLine(line: string): void {
   }
   const payload = trimmed.slice(4)
   const parts = payload.split('|')
-  if (parts.length < 4) {
+  if (parts.length < 5) {
     log.warn('[tracker] Malformed WIN line (parts=' + parts.length + '):', trimmed.slice(0, 200))
     return
   }
   const appName = (parts[0] ?? '').trim() || 'Idle'
-  const keys = parseInt(parts[parts.length - 2], 10) || 0
-  const idleMs = parseInt(parts[parts.length - 1], 10) || 0
-  const title = parts.slice(1, -2).join('|').replace(/&#124;/g, '|').trim()
-  latestWinInfo = { appName, title, keys, idleMs }
+  // Last 3 fields: keystrokeCount | idleMs | bgCategories
+  const bgRaw = (parts[parts.length - 1] ?? '').trim()
+  const idleMs = parseInt(parts[parts.length - 2], 10) || 0
+  const keys = parseInt(parts[parts.length - 3], 10) || 0
+  const title = parts.slice(1, -3).join('|').replace(/&#124;/g, '|').trim()
+  const bgCategories = bgRaw ? bgRaw.split(',').filter(Boolean) : lastKnownBgCategories
+  if (bgRaw) lastKnownBgCategories = bgCategories
+  latestWinInfo = { appName, title, keys, idleMs, bgCategories }
   if (!hasReceivedWinLine) {
     hasReceivedWinLine = true
     log.info('[tracker] First window data received', { appName, title: title.slice(0, 50) })
@@ -387,6 +444,8 @@ export interface ActivitySnapshot {
   appName: string
   windowTitle: string
   category: ActivityCategory
+  /** All active categories (foreground + background, e.g. ['games', 'music']) */
+  categories: ActivityCategory[]
   timestamp: number
   keystrokes: number
 }
@@ -548,13 +607,20 @@ function poll(): void {
     }
 
     // Idle (desktop with no title) does not give XP; Unknown windows use title-based categorization
-    const categories =
+    const fgCategories =
       rawName === 'Idle'
         ? (['idle'] as ActivityCategory[])
         : categorizeMultiple(rawName, windowTitle)
-    const primaryCategory = categories[0] ?? 'other'
+    // Merge background categories (e.g. music playing in Spotify while gaming)
+    const bgCats = (latestWinInfo.bgCategories || []) as ActivityCategory[]
+    const mergedSet = new Set<ActivityCategory>(fgCategories)
+    for (const bg of bgCats) {
+      if (bg && bg !== 'idle') mergedSet.add(bg)
+    }
+    const categories = Array.from(mergedSet)
+    const primaryCategory = fgCategories[0] ?? 'other'
     const displayName = getAppDisplayName(rawName)
-    lastActivity = { appName: displayName, windowTitle, category: primaryCategory, timestamp: now, keystrokes: totalSessionKeystrokes }
+    lastActivity = { appName: displayName, windowTitle, category: primaryCategory, categories, timestamp: now, keystrokes: totalSessionKeystrokes }
     listeners.forEach((cb) => cb(lastActivity!))
 
     const key = `${lastActivity.appName}|${[...categories].sort().join(',')}`
@@ -566,7 +632,7 @@ function poll(): void {
       currentSegmentActivity = lastActivity
     }
   } else {
-    lastActivity = { appName: 'Unknown', windowTitle: 'Searching 4 window...', category: 'other', timestamp: now, keystrokes: totalSessionKeystrokes }
+    lastActivity = { appName: 'Unknown', windowTitle: 'Searching 4 window...', category: 'other', categories: ['other'], timestamp: now, keystrokes: totalSessionKeystrokes }
     currentSegmentCategories = ['other']
     listeners.forEach((cb) => cb(lastActivity!))
   }

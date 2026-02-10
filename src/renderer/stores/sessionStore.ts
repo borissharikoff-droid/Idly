@@ -14,6 +14,8 @@ interface ActivitySnapshot {
   appName: string
   windowTitle: string
   category: string
+  /** All active categories (foreground + background, e.g. ['games', 'music']) */
+  categories?: string[]
   timestamp: number
 }
 
@@ -200,11 +202,15 @@ function startXpTicking() {
     const tickDurationMs = now - lastXpTickTime
     lastXpTickTime = now
 
-    // Only selected (focused) app windows give XP; idle/unknown do not
-    const category = currentActivity?.category || 'other'
-    if (category === 'idle') return
-    const rate = CATEGORY_XP_RATE[category] ?? 0.5
-    const xpEarned = Math.round((tickDurationMs / 60_000) * rate)
+    // All active categories give XP; idle does not
+    const cats = (currentActivity?.categories || [currentActivity?.category || 'other']).filter((c: string) => c !== 'idle')
+    if (cats.length === 0) return
+    // Sum XP rates across all active categories
+    let totalRate = 0
+    for (const cat of cats) {
+      totalRate += CATEGORY_XP_RATE[cat] ?? 0.5
+    }
+    const xpEarned = Math.round((tickDurationMs / 60_000) * totalRate)
 
     if (xpEarned <= 0) return
 
@@ -290,18 +296,26 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       pendingSkillLevelUpSkill?: { skillId: string; level: number } | null
       skillLevelNotified?: Record<string, number>
     } = { elapsedSeconds: Math.max(0, elapsed) }
-    if (status === 'running' && currentActivity && currentActivity.category !== 'idle') {
-      const skillId = categoryToSkillId(currentActivity.category)
-      const newSessionXP = { ...sessionSkillXP, [skillId]: (sessionSkillXP[skillId] ?? 0) + 1 }
-      updates.sessionSkillXP = newSessionXP
-      const baseXP = skillXPAtStart[skillId] ?? 0
-      const currentXP = baseXP + (newSessionXP[skillId] ?? 0)
-      const currentLevel = skillLevelFromXP(currentXP)
-      const prevLevel = skillLevelFromXP(baseXP)
-      const notifiedLevel = skillLevelNotified[skillId] ?? prevLevel
-      if (currentLevel > notifiedLevel) {
-        updates.pendingSkillLevelUpSkill = { skillId, level: currentLevel }
-        updates.skillLevelNotified = { ...skillLevelNotified, [skillId]: currentLevel }
+    if (status === 'running' && currentActivity) {
+      // Tick XP for ALL active categories (foreground + background)
+      const cats = (currentActivity.categories || [currentActivity.category]).filter((c: string) => c !== 'idle')
+      if (cats.length > 0) {
+        const newSessionXP = { ...sessionSkillXP }
+        let newNotified = skillLevelNotified
+        for (const cat of cats) {
+          const skillId = categoryToSkillId(cat)
+          newSessionXP[skillId] = (newSessionXP[skillId] ?? 0) + 1
+          const baseXP = skillXPAtStart[skillId] ?? 0
+          const currentXP = baseXP + (newSessionXP[skillId] ?? 0)
+          const currentLevel = skillLevelFromXP(currentXP)
+          const notifiedLevel = newNotified[skillId] ?? skillLevelFromXP(baseXP)
+          if (currentLevel > notifiedLevel) {
+            updates.pendingSkillLevelUpSkill = { skillId, level: currentLevel }
+            newNotified = { ...newNotified, [skillId]: currentLevel }
+          }
+        }
+        updates.sessionSkillXP = newSessionXP
+        if (newNotified !== skillLevelNotified) updates.skillLevelNotified = newNotified
       }
     }
     set(updates)

@@ -34,8 +34,9 @@ export default function App() {
   const { status, currentActivity } = useSessionStore()
   const presenceLabel = currentActivity && status === 'running'
     ? (() => {
-      const skill = getSkillById(categoryToSkillId(currentActivity.category))
-      return skill ? `Leveling ${skill.name}` : null
+      const cats = (currentActivity.categories || [currentActivity.category]).filter((c: string) => c !== 'idle')
+      const names = cats.map((c: string) => getSkillById(categoryToSkillId(c))?.name).filter(Boolean)
+      return names.length > 0 ? `Leveling ${names.join(' + ')}` : null
     })()
     : null
   usePresenceSync(presenceLabel, status === 'running', currentActivity?.appName ?? null)
