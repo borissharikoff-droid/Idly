@@ -29,6 +29,7 @@ const DETECTOR_SCRIPT = `
 try {
   Add-Type -TypeDefinition @"
 using System;
+using System.IO;
 using System.Text;
 using System.Runtime.InteropServices;
 using System.Diagnostics;
@@ -51,6 +52,12 @@ public class WinApi {
     public struct LASTINPUTINFO {
         public uint cbSize;
         public uint dwTime;
+    }
+    private static Stream _stdout = Console.OpenStandardOutput();
+    public static void WriteUtf8Line(string text) {
+        byte[] bytes = Encoding.UTF8.GetBytes(text + "\\n");
+        _stdout.Write(bytes, 0, bytes.Length);
+        _stdout.Flush();
     }
     public static string GetTitle(IntPtr hWnd) {
         int len = GetWindowTextLength(hWnd);
@@ -84,8 +91,7 @@ public class WinApi {
     }
 }
 "@
-  [Console]::Out.WriteLine("READY")
-  [Console]::Out.Flush()
+  [WinApi]::WriteUtf8Line("READY")
 } catch {
   [Console]::Out.WriteLine("ERR:AddType-" + ($_.Exception.Message -replace '[|\r\n]', ' '))
   [Console]::Out.Flush()
@@ -120,27 +126,21 @@ while ($true) {
                 } catch { }
             }
         }
-        if ($dbgIter -le 10) {
-            [Console]::Out.WriteLine("DBG:iter=" + $dbgIter + " hwnd=" + $hwnd.ToInt64() + " pid=" + $pid2 + " pname=" + $pname + " title=" + $title)
-            [Console]::Out.Flush()
+        if ($dbgIter -le 5) {
+            [WinApi]::WriteUtf8Line("DBG:iter=" + $dbgIter + " hwnd=" + $hwnd.ToInt64() + " pid=" + $pid2 + " pname=" + $pname + " title=" + $title)
         }
         if ($pname -eq 'explorer' -and [string]::IsNullOrWhiteSpace($title)) {
-            [Console]::Out.WriteLine("WIN:Idle||" + $keys + "|" + $idleMs)
-            [Console]::Out.Flush()
+            [WinApi]::WriteUtf8Line("WIN:Idle||" + $keys + "|" + $idleMs)
         } elseif ($pname) {
-            [Console]::Out.WriteLine("WIN:" + $pname + "|" + $title + "|" + $keys + "|" + $idleMs)
-            [Console]::Out.Flush()
+            [WinApi]::WriteUtf8Line("WIN:" + $pname + "|" + $title + "|" + $keys + "|" + $idleMs)
         } elseif ($title) {
-            [Console]::Out.WriteLine("WIN:Unknown|" + $title + "|" + $keys + "|" + $idleMs)
-            [Console]::Out.Flush()
+            [WinApi]::WriteUtf8Line("WIN:Unknown|" + $title + "|" + $keys + "|" + $idleMs)
         } else {
-            [Console]::Out.WriteLine("WIN:Idle||" + $keys + "|" + $idleMs)
-            [Console]::Out.Flush()
+            [WinApi]::WriteUtf8Line("WIN:Idle||" + $keys + "|" + $idleMs)
         }
     } catch {
         $errMsg = ($_.Exception.Message -replace '[|\r\n]', ' ')
-        [Console]::Out.WriteLine("ERR:loop-" + $errMsg)
-        [Console]::Out.Flush()
+        [WinApi]::WriteUtf8Line("ERR:loop-" + $errMsg)
     }
     Start-Sleep -Milliseconds 1500
 }

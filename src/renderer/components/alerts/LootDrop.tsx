@@ -107,8 +107,8 @@ export function LootDrop() {
               </motion.p>
             </div>
 
-            {/* Content: fixed height so Claim/Nice button stays in same place */}
-            <div className="px-6 pt-1 pb-4 h-[120px] flex flex-col">
+            {/* Content */}
+            <div className="px-6 pt-1 pb-4 min-h-[120px] flex flex-col">
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
