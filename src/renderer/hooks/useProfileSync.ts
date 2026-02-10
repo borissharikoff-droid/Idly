@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../stores/authStore'
-import { skillLevelFromXP } from '../lib/skills'
+import { computeTotalSkillLevel } from '../lib/skills'
 import { getEquippedBadges, getEquippedFrame } from '../lib/cosmetics'
 import { detectPersona } from '../lib/persona'
 
@@ -19,7 +19,7 @@ export function useProfileSync() {
       let totalSkillLevel = 0
       if (api?.db?.getAllSkillXP) {
         const rows = (await api.db.getAllSkillXP()) as { skill_id: string; total_xp: number }[]
-        totalSkillLevel = (rows || []).reduce((sum, r) => sum + skillLevelFromXP(r.total_xp), 0)
+        totalSkillLevel = computeTotalSkillLevel(rows || [])
       }
       const [streak] = await Promise.all([
         api.db.getStreak(),

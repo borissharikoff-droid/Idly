@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
 import { getStreakMultiplier } from '../../lib/xp'
-import { skillLevelFromXP, MAX_TOTAL_SKILL_LEVEL } from '../../lib/skills'
+import { computeTotalSkillLevel, MAX_TOTAL_SKILL_LEVEL } from '../../lib/skills'
 import { detectPersona } from '../../lib/persona'
 import { FRAMES, BADGES, getEquippedFrame, getEquippedBadges } from '../../lib/cosmetics'
 import { playClickSound } from '../../lib/sounds'
@@ -40,8 +40,7 @@ export function ProfileBar({ onNavigateProfile }: ProfileBarProps) {
     const api = window.electronAPI
     if (api?.db?.getAllSkillXP) {
       api.db.getAllSkillXP().then((rows: { skill_id: string; total_xp: number }[]) => {
-        const sum = (rows || []).reduce((s, r) => s + skillLevelFromXP(r.total_xp), 0)
-        setTotalSkillLevel(sum)
+        setTotalSkillLevel(computeTotalSkillLevel(rows || []))
       })
     }
     setFrameId(getEquippedFrame())

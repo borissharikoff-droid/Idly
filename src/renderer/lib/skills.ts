@@ -85,6 +85,24 @@ export function skillXPProgress(xp: number): { current: number; needed: number }
   return { current, needed }
 }
 
+/**
+ * Compute total skill level counting ALL skills (untracked = level 1).
+ * Accepts rows from DB (skill_id + total_xp) — missing skills default to level 1.
+ */
+export function computeTotalSkillLevel(rows: { skill_id: string; total_xp: number }[]): number {
+  const xpMap = new Map(rows.map((r) => [r.skill_id, r.total_xp]))
+  return SKILLS.reduce((sum, s) => sum + skillLevelFromXP(xpMap.get(s.id) ?? 0), 0)
+}
+
+/**
+ * Compute total skill level from pre-computed levels (e.g. from user_skills table).
+ * Missing skills default to level 1.
+ */
+export function computeTotalSkillLevelFromLevels(skills: { skill_id: string; level: number }[]): number {
+  const levelMap = new Map(skills.map((s) => [s.skill_id, s.level]))
+  return SKILLS.reduce((sum, s) => sum + Math.max(levelMap.get(s.id) ?? 1, 1), 0)
+}
+
 /** Total hours for display. */
 export function skillHoursFromXP(xp: number): number {
   return Math.floor(xp / 3600 * 10) / 10

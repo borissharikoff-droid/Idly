@@ -6,6 +6,7 @@ import { useAlertStore } from '../stores/alertStore'
 import { useFriendToastStore } from '../stores/friendToastStore'
 import { useNavBadgeStore } from '../stores/navBadgeStore'
 import { unlockCosmeticsFromAchievement } from '../lib/cosmetics'
+import { computeTotalSkillLevelFromLevels } from '../lib/skills'
 
 export interface FriendSkill {
   skill_id: string
@@ -124,7 +125,7 @@ export function useFriends() {
           }
           friendList = friendList.map((p) => {
             const allSkills = skillsByUser.get(p.id) || []
-            const total_skill_level = allSkills.reduce((sum, s) => sum + s.level, 0)
+            const total_skill_level = computeTotalSkillLevelFromLevels(allSkills)
             const list = [...allSkills].sort((a, b) => b.level - a.level).slice(0, 3)
             return { ...p, top_skills: list, total_skill_level }
           })
