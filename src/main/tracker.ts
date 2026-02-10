@@ -225,7 +225,7 @@ function parseLine(line: string): void {
   if (trimmed.startsWith('ERR:')) {
     const msg = trimmed.slice(4).trim()
     log.error('[tracker] Detector script error:', msg)
-    latestWinInfo = { appName: 'Idly.TrackerError', title: msg, keys: 0, idleMs: 0 }
+    latestWinInfo = { appName: 'Idly.TrackerError', title: msg, keys: 0, idleMs: 0, bgCategories: [] }
     return
   }
   if (!trimmed.startsWith('WIN:')) {
