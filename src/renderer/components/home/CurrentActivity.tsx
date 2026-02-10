@@ -19,7 +19,7 @@ export function CurrentActivity() {
   if (isPreloadError && api) {
     return (
       <div className="w-full max-w-xs rounded-xl px-4 py-3 border border-amber-500/30 bg-amber-950/30">
-        <p className="text-amber-400 text-sm font-medium">Ошибка загрузки</p>
+        <p className="text-amber-400 text-sm font-medium">Loading error</p>
         <p className="text-gray-400 text-xs mt-1 break-words">{(api as { _message?: string })._message || 'Preload failed'}</p>
       </div>
     )
@@ -39,7 +39,7 @@ export function CurrentActivity() {
     )
   }
 
-  const isDetectorError = currentActivity?.appName === 'Ошибка детектора окна'
+  const isDetectorError = currentActivity?.appName === 'Window detector error'
   const isUnknown = !currentActivity || currentActivity.appName === 'Unknown' || currentActivity.windowTitle === 'Searching 4 window...'
 
   const openLogs = () => api?.data?.openLogsFolder?.()
@@ -47,11 +47,11 @@ export function CurrentActivity() {
   if (isDetectorError && currentActivity) {
     return (
       <div className="w-full max-w-xs rounded-xl bg-amber-950/30 border border-amber-500/30 px-4 py-3">
-        <p className="text-amber-400 text-sm font-medium">Ошибка детектора окна</p>
+        <p className="text-amber-400 text-sm font-medium">Window detector error</p>
         <p className="text-gray-400 text-xs mt-1 break-words">{currentActivity.windowTitle}</p>
-        <p className="text-gray-500 text-[11px] mt-2">Проверьте логи в папке приложения или запустите приложение от имени администратора.</p>
+        <p className="text-gray-500 text-[11px] mt-2">Check the logs folder or try running the app as administrator.</p>
         {logsPath && <p className="text-gray-500 text-[11px] mt-1.5 font-mono truncate" title={logsPath}>{logsPath}</p>}
-        {api?.data?.openLogsFolder && <button type="button" onClick={openLogs} className="mt-2 text-xs text-cyber-neon hover:underline">Открыть папку логов</button>}
+        {api?.data?.openLogsFolder && <button type="button" onClick={openLogs} className="mt-2 text-xs text-cyber-neon hover:underline">Open logs folder</button>}
       </div>
     )
   }

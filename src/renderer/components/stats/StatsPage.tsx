@@ -259,7 +259,7 @@ export function StatsPage() {
             {/* Time filter */}
             <div className="flex gap-1.5">
               {(['today', 'week', 'all'] as TimeFilter[]).map((f) => (
-                <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1 rounded-lg text-xs font-mono transition-all ${filter === f ? 'bg-cyber-neon/15 border border-cyber-neon/30 text-cyber-neon' : 'bg-discord-card border border-white/5 text-gray-500 hover:text-white'}`}>
+                <button key={f} onClick={() => setFilter(f)} className={`flex-1 px-3 py-2 rounded-lg text-xs font-mono transition-all ${filter === f ? 'bg-cyber-neon/15 border border-cyber-neon/30 text-cyber-neon' : 'bg-discord-card border border-white/5 text-gray-500 hover:text-white'}`}>
                   {f === 'today' ? 'Today' : f === 'week' ? '7 days' : 'All time'}
                 </button>
               ))}
@@ -400,12 +400,12 @@ export function StatsPage() {
                     )
                   })}
                 </div>
-                <div className="flex justify-between mt-1">
-                  <span className="text-[8px] text-gray-600 font-mono">0:00</span>
-                  <span className="text-[8px] text-gray-600 font-mono">6:00</span>
-                  <span className="text-[8px] text-gray-600 font-mono">12:00</span>
-                  <span className="text-[8px] text-gray-600 font-mono">18:00</span>
-                  <span className="text-[8px] text-gray-600 font-mono">23:00</span>
+                <div className="flex justify-between mt-1.5">
+                  <span className="text-[10px] text-gray-600 font-mono">0:00</span>
+                  <span className="text-[10px] text-gray-600 font-mono">6:00</span>
+                  <span className="text-[10px] text-gray-600 font-mono">12:00</span>
+                  <span className="text-[10px] text-gray-600 font-mono">18:00</span>
+                  <span className="text-[10px] text-gray-600 font-mono">23:00</span>
                 </div>
               </div>
             )}

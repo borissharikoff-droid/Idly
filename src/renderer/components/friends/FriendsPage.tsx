@@ -42,9 +42,9 @@ export function FriendsPage() {
       ) : !supabase ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <span className="text-3xl mb-3">🔌</span>
-          <p className="text-white font-medium mb-1">Supabase не настроен</p>
+          <p className="text-white font-medium mb-1">Supabase not configured</p>
           <p className="text-gray-500 text-xs max-w-[280px]">
-            Добавьте VITE_SUPABASE_URL и VITE_SUPABASE_ANON_KEY в .env в корне проекта и пересоберите приложение (npm run build).
+            Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to .env in the project root and rebuild (npm run build).
           </p>
         </div>
       ) : view === 'compare' && selected ? (

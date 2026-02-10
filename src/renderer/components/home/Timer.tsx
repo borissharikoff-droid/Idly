@@ -28,7 +28,7 @@ export function Timer() {
       {/* Status line — always same height, instant switch */}
       <div className="h-5 flex items-center justify-center gap-2 mt-3">
         {status !== 'idle' && (
-          <p className="text-xs text-gray-500 font-mono">
+          <p className="text-xs text-gray-500 font-mono" title={status === 'running' ? 'Session is active — tracking your apps' : 'Session paused — timer stopped'}>
             {status === 'running' ? '● grinding...' : '◆ on pause'}
           </p>
         )}

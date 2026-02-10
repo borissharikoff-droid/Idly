@@ -54,7 +54,7 @@ export function SkillsPage() {
 
   const totalLevel = SKILLS.reduce((sum, s) => sum + skillLevelFromXP(liveById.get(s.id) ?? 0), 0)
 
-  // Качаемый скилл — наверх, остальные ниже
+  // Active skill on top, rest below
   const levelingFirst = levelingSkillId
     ? [...SKILLS.filter((s) => s.id === levelingSkillId), ...SKILLS.filter((s) => s.id !== levelingSkillId)]
     : SKILLS
@@ -89,6 +89,15 @@ export function SkillsPage() {
           <p className="text-[10px] text-gray-500 font-mono">TOTAL LV</p>
         </div>
       </div>
+
+      {/* Empty state */}
+      {!levelingSkillId && totalLevel <= 8 && skillData.length === 0 && (
+        <div className="rounded-xl bg-discord-card/60 border border-white/5 p-5 text-center mb-4">
+          <span className="text-2xl block mb-2">⚔</span>
+          <p className="text-gray-400 text-sm font-medium mb-1">No skill XP yet</p>
+          <p className="text-gray-600 text-xs">Start a grind and work in your apps to level up skills.</p>
+        </div>
+      )}
 
       {/* Leveling skill — on top when active */}
       {levelingSkillId && (() => {

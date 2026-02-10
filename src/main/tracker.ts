@@ -536,8 +536,8 @@ export function categorizeMultiple(appName: string, windowTitle: string): Activi
 }
 
 function getAppDisplayName(appName: string): string {
-  if (appName === 'Idly.TrackerError') return 'Ошибка детектора окна'
-  if (appName === 'Unknown') return 'Окно'
+  if (appName === 'Idly.TrackerError') return 'Window detector error'
+  if (appName === 'Unknown') return 'Window'
   const base = appName.replace(/\.(exe|app)$/i, '').replace(/\s+/g, '')
   const baseLower = base.toLowerCase()
   if (baseLower === 'electron' || baseLower === 'idly') return 'Idly'

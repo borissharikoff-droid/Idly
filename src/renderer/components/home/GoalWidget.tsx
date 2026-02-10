@@ -538,7 +538,7 @@ function GoalReachedModal({
           onClick={(e) => e.stopPropagation()}
         >
           <p className="text-center text-gray-100 font-medium">
-            Время вышло! Цель достигнута.
+            Goal reached!
           </p>
           <p className="text-center text-sm text-gray-400">
             {formatDuration(goal.target_seconds)}
@@ -555,7 +555,7 @@ function GoalReachedModal({
               onClick={onAddOneHour}
               className="flex-1 py-2.5 rounded-xl bg-cyber-neon/20 text-cyber-neon border border-cyber-neon/30 hover:bg-cyber-neon/30 font-medium text-sm transition-colors"
             >
-              Ещё час
+              +1 hour
             </button>
           </div>
         </motion.div>

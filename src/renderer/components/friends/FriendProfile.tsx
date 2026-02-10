@@ -188,7 +188,7 @@ export function FriendProfile({ profile, onBack, onCompare, onMessage }: FriendP
                 )}
               </div>
               {profile.is_online && appName && (
-                <span className="text-[10px] text-gray-500">в {appName}</span>
+                <span className="text-[10px] text-gray-500">in {appName}</span>
               )}
             </div>
 

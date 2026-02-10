@@ -13,8 +13,9 @@ export function SessionControls({ glowPulse }: SessionControlsProps) {
   const isPaused = status === 'paused'
   const isActive = isRunning || isPaused
   const [confirmState, setConfirmState] = useState<'none' | 'discard' | 'confirm'>('none')
+  const [starting, setStarting] = useState(false)
 
-  const handleStartStop = () => {
+  const handleStartStop = async () => {
     if (isActive) {
       playClickSound()
       if (elapsedSeconds < 30) {
@@ -23,8 +24,13 @@ export function SessionControls({ glowPulse }: SessionControlsProps) {
       }
       setConfirmState('confirm')
     } else {
-      start()
+      setStarting(true)
       playClickSound()
+      try {
+        await start()
+      } finally {
+        setTimeout(() => setStarting(false), 600)
+      }
     }
   }
 
@@ -76,7 +82,7 @@ export function SessionControls({ glowPulse }: SessionControlsProps) {
                 onClick={handleConfirmStop}
                 className="flex-1 py-2.5 rounded-xl bg-discord-red text-white text-sm font-bold hover:bg-red-500 shadow-[0_0_16px_rgba(237,66,69,0.4)] transition-all active:scale-95"
               >
-                I'm done
+                {confirmState === 'discard' ? 'Discard' : "I'm done"}
               </button>
             </div>
           </motion.div>
@@ -91,13 +97,16 @@ export function SessionControls({ glowPulse }: SessionControlsProps) {
           )}
           <button
             onClick={handleStartStop}
+            disabled={starting}
             className={`relative min-w-[120px] px-8 py-3 rounded-2xl font-bold text-sm transition-colors duration-150 active:scale-[0.93] ${
-              isActive
-                ? 'bg-discord-red text-white hover:bg-red-600'
-                : 'bg-cyber-neon text-discord-darker shadow-glow hover:shadow-[0_0_30px_rgba(0,255,136,0.5)]'
+              starting
+                ? 'bg-cyber-neon/60 text-discord-darker cursor-wait'
+                : isActive
+                  ? 'bg-discord-red text-white hover:bg-red-600'
+                  : 'bg-cyber-neon text-discord-darker shadow-glow hover:shadow-[0_0_30px_rgba(0,255,136,0.5)]'
             }`}
           >
-            {isActive ? 'STOP' : 'GRIND'}
+            {starting ? 'Starting...' : isActive ? 'STOP' : 'GRIND'}
           </button>
         </div>
         {isActive && (

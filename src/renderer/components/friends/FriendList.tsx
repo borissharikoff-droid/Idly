@@ -17,9 +17,10 @@ interface FriendListProps {
 export function FriendList({ friends, onSelectFriend, onMessageFriend, unreadByFriendId = {} }: FriendListProps) {
   if (friends.length === 0) {
     return (
-      <div className="rounded-xl bg-discord-card/80 border border-white/10 p-6 text-center text-gray-500">
-        <span className="text-2xl block mb-2">👥</span>
-        <p className="text-sm">No squad yet. Add someone by username to compete.</p>
+      <div className="rounded-xl bg-discord-card/80 border border-white/10 p-6 text-center">
+        <span className="text-3xl block mb-3">👥</span>
+        <p className="text-white font-medium text-sm mb-1">No squad yet</p>
+        <p className="text-gray-500 text-xs mb-3">Add your first friend by username to compete and flex stats.</p>
       </div>
     )
   }
@@ -140,7 +141,7 @@ export function FriendList({ friends, onSelectFriend, onMessageFriend, unreadByF
                   )}
                 </div>
                 {f.is_online && appName && (
-                  <span className="text-[10px] text-gray-500 truncate">в {appName}</span>
+                  <span className="text-[10px] text-gray-500 truncate">in {appName}</span>
                 )}
               </div>
 
@@ -174,7 +175,7 @@ export function FriendList({ friends, onSelectFriend, onMessageFriend, unreadByF
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onMessageFriend(f) }}
                   className="relative p-1.5 rounded-lg text-gray-400 hover:text-cyber-neon hover:bg-white/5 transition-colors"
-                  title="Написать"
+                  title="Message"
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />

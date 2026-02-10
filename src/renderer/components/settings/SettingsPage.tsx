@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { useState, useEffect, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
 import { useSessionStore } from '../../stores/sessionStore'
@@ -24,6 +24,17 @@ export function SettingsPage() {
   const [notifStreakWarning, setNotifStreakWarning] = useState(true)
   const [notifDistraction, setNotifDistraction] = useState(true)
   const [notifPraise, setNotifPraise] = useState(true)
+
+  // Accordion state — first two open by default
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set(['sound', 'preferences']))
+  const toggleSection = useCallback((id: string) => {
+    setOpenSections((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
 
   // Load local preferences
   useEffect(() => {
@@ -124,8 +135,7 @@ export function SettingsPage() {
       <h2 className="text-lg font-bold text-white">Settings</h2>
 
       {/* Sound Settings */}
-      <div className="rounded-xl bg-discord-card/80 border border-white/10 p-4 space-y-3">
-        <p className="text-xs uppercase tracking-wider text-gray-400 font-mono">[ sound ]</p>
+      <Section id="sound" title="sound" open={openSections.has('sound')} onToggle={toggleSection}>
         <ToggleRow
           label="Sound effects"
           enabled={!soundMuted}
@@ -148,11 +158,10 @@ export function SettingsPage() {
             </span>
           </div>
         )}
-      </div>
+      </Section>
 
       {/* Preferences */}
-      <div className="rounded-xl bg-discord-card/80 border border-white/10 p-4 space-y-3">
-        <p className="text-xs uppercase tracking-wider text-gray-400 font-mono">[ preferences ]</p>
+      <Section id="preferences" title="preferences" open={openSections.has('preferences')} onToggle={toggleSection}>
         <ToggleRow
           label="Keyboard shortcuts"
           sublabel="Ctrl+S start/stop, Ctrl+P pause"
@@ -171,11 +180,10 @@ export function SettingsPage() {
           enabled={autoLaunch}
           onChange={handleAutoLaunch}
         />
-      </div>
+      </Section>
 
       {/* AFK Detection */}
-      <div className="rounded-xl bg-discord-card/80 border border-white/10 p-4 space-y-3">
-        <p className="text-xs uppercase tracking-wider text-gray-400 font-mono">[ afk detection ]</p>
+      <Section id="afk" title="afk detection" open={openSections.has('afk')} onToggle={toggleSection}>
         <p className="text-xs text-gray-500">Auto-pause session when no input detected. AFK turns off automatically when you move the mouse or use the keyboard.</p>
         <ToggleRow
           label="Enable AFK pause"
@@ -200,11 +208,10 @@ export function SettingsPage() {
           </span>
         </div>
         )}
-      </div>
+      </Section>
 
       {/* Smart Notifications */}
-      <div className="rounded-xl bg-discord-card/80 border border-white/10 p-4 space-y-3">
-        <p className="text-xs uppercase tracking-wider text-gray-400 font-mono">[ smart notifications ]</p>
+      <Section id="notifications" title="smart notifications" open={openSections.has('notifications')} onToggle={toggleSection}>
         <ToggleRow
           label="Grind reminder"
           sublabel="Nudge if no session today"
@@ -229,15 +236,14 @@ export function SettingsPage() {
           enabled={notifPraise}
           onChange={handleNotifToggle('idly_notif_praise', setNotifPraise)}
         />
-      </div>
+      </Section>
 
       {/* Data & Friends */}
-      <div className="rounded-xl bg-discord-card/80 border border-white/10 p-4 space-y-3">
-        <p className="text-xs uppercase tracking-wider text-gray-400 font-mono">[ data & friends ]</p>
+      <Section id="data" title="data & friends" open={openSections.has('data')} onToggle={toggleSection}>
         <div className="flex items-center justify-between text-sm">
-          <span className="text-gray-400">Supabase (друзья)</span>
+          <span className="text-gray-400">Supabase (friends)</span>
           <span className={supabase ? 'text-cyber-neon font-mono' : 'text-gray-500 font-mono'}>
-            {supabase ? 'настроен' : 'не настроен'}
+            {supabase ? 'connected' : 'not configured'}
           </span>
         </div>
         <p className="text-xs text-gray-500">Download your grind history. Flex with data.</p>
@@ -262,7 +268,7 @@ export function SettingsPage() {
             {message.text}
           </p>
         )}
-      </div>
+      </Section>
 
       {/* Sign Out */}
       {supabase && user && (
@@ -277,6 +283,42 @@ export function SettingsPage() {
 
       <p className="text-center text-xs text-gray-600 pb-2">Idly v0.1.0</p>
     </motion.div>
+  )
+}
+
+function Section({ id, title, open, onToggle, children }: {
+  id: string
+  title: string
+  open: boolean
+  onToggle: (id: string) => void
+  children: React.ReactNode
+}) {
+  return (
+    <div className="rounded-xl bg-discord-card/80 border border-white/10 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => onToggle(id)}
+        className="w-full flex items-center justify-between p-4 text-left hover:bg-white/[0.02] transition-colors"
+      >
+        <p className="text-xs uppercase tracking-wider text-gray-400 font-mono">[ {title} ]</p>
+        <span className={`text-gray-600 text-xs transition-transform duration-200 ${open ? 'rotate-90' : ''}`}>›</span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-4 space-y-3">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }
 

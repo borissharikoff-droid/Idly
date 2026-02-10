@@ -36,6 +36,7 @@ export function UpdateBanner() {
           </p>
           <button
             onClick={handleInstall}
+            aria-label="Restart app to install update"
             className="text-[10px] font-bold px-3 py-1 rounded-lg bg-discord-accent text-white hover:bg-discord-accent/80 transition-colors"
           >
             Restart
