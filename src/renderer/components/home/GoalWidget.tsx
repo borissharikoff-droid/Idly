@@ -331,6 +331,12 @@ export function GoalWidget() {
           {isEmpty ? '+ set a goal' : '+ add goal'}
         </button>
       )}
+
+      <GoalReachedModal
+        goal={reachedGoal}
+        onClose={handleCompleteGoal}
+        onAddOneHour={handleAddOneHour}
+      />
     </div>
   )
 }
@@ -497,12 +503,6 @@ function TaskCreator({ onCreated, onCancel }: { onCreated: () => void; onCancel:
           Add task
         </button>
       </div>
-
-      <GoalReachedModal
-        goal={reachedGoal}
-        onClose={handleCompleteGoal}
-        onAddOneHour={handleAddOneHour}
-      />
     </div>
   )
 }
