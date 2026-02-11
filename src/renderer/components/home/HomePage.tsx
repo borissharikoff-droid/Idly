@@ -71,19 +71,20 @@ export function HomePage({ onNavigateProfile }: HomePageProps) {
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full max-w-xs rounded-xl bg-discord-card border border-orange-500/30 p-3 text-center"
+            className="w-full max-w-xs rounded-xl bg-discord-card border border-yellow-500/25 p-3 text-center"
           >
-            <p className="text-xs text-orange-400 font-medium mb-1">
-              Previous session interrupted ({formatRecoveryDuration(checkpoint.elapsed_seconds)})
+            <p className="text-xs text-yellow-400 font-medium mb-0.5">
+              Session recovered ({formatRecoveryDuration(checkpoint.elapsed_seconds)})
             </p>
-            <div className="flex justify-center gap-2">
-              <button
-                onClick={dismissCheckpoint}
-                className="text-[10px] px-3 py-1 rounded-lg bg-white/5 text-gray-400 hover:text-white transition-colors"
-              >
-                Dismiss
-              </button>
-            </div>
+            <p className="text-[10px] text-gray-400 mb-2">
+              App closed unexpectedly. Your progress was saved.
+            </p>
+            <button
+              onClick={dismissCheckpoint}
+              className="text-[10px] px-4 py-1 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-yellow-400 hover:bg-yellow-500/20 transition-colors"
+            >
+              Ok
+            </button>
           </motion.div>
         )}
 
