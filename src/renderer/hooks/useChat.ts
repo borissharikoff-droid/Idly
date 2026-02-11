@@ -132,7 +132,6 @@ export function useChat(peerId: string | null = null) {
         .single()
       setSending(false)
       if (error) {
-        console.error('[useChat] send failed:', error)
         setSendError(error.message)
         return
       }

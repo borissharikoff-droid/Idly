@@ -81,7 +81,6 @@ export function useFriends() {
         .select('id, status, user_id, friend_id')
         .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`)
       if (fsError) {
-        console.error('[useFriends] friendships error:', fsError)
         setError(fsError.message)
         setFriends([])
         setPendingRequests([])
@@ -97,7 +96,6 @@ export function useFriends() {
       if (acceptedIds.length > 0) {
         const { data: profiles, error: profError } = await supabase.from('profiles').select('*').in('id', acceptedIds)
         if (profError) {
-          console.error('[useFriends] profiles error:', profError)
           setError(profError.message)
           setFriends([])
           setPendingRequests([])
@@ -211,7 +209,6 @@ export function useFriends() {
       const incoming = pendingList.filter((r) => r.direction === 'incoming').length
       useNavBadgeStore.getState().setIncomingRequestsCount(incoming)
     } catch (e) {
-      console.error('[useFriends] unexpected error:', e)
       setError(e instanceof Error ? e.message : 'Failed to load friends')
       setFriends([])
       setPendingRequests([])

@@ -73,8 +73,8 @@ export default function App() {
           setStreakCount(streak)
           setShowStreak(true)
         }
-      } catch (e) {
-        console.error('Failed to check streak:', e)
+      } catch {
+        // streak check failed silently
       }
     }
 

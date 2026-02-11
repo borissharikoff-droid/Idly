@@ -102,7 +102,7 @@ export function GoalWidget() {
         }
       }
       withProgress.forEach((g) => { prevProgressRef.current[g.id] = g.progress })
-    } catch (e) { console.error('loadGoals failed', e) }
+    } catch { /* load failed */ }
   }, [])
 
   const loadTasks = useCallback(async () => {
@@ -111,7 +111,7 @@ export function GoalWidget() {
       try {
         const t = await api.db.getTasks()
         setTasks(t)
-      } catch (e) { console.error('loadTasks failed', e) }
+      } catch { /* load failed */ }
       return
     }
     setTasks(getTasksFromStorage())
@@ -133,7 +133,7 @@ export function GoalWidget() {
       await api.db.completeGoal(reachedGoal.id)
       setReachedGoal(null)
       setTimeout(loadGoals, 100)
-    } catch (e) { console.error('completeGoal failed', e) }
+    } catch { /* complete failed */ }
   }, [reachedGoal, loadGoals])
 
   const handleAddOneHour = useCallback(async () => {
@@ -150,7 +150,7 @@ export function GoalWidget() {
       prevProgressRef.current[reachedGoal.id] = reachedGoal.progress
       setReachedGoal(null)
       setTimeout(loadGoals, 100)
-    } catch (e) { console.error('updateGoal +1h failed', e) }
+    } catch { /* update failed */ }
   }, [reachedGoal, loadGoals])
 
   const handleDeleteGoal = useCallback(async (id: string) => {
@@ -161,9 +161,7 @@ export function GoalWidget() {
       setView('list')
       setEditingGoal(null)
       setTimeout(loadGoals, 100)
-    } catch (err) {
-      console.error('Failed to delete goal:', err)
-    }
+    } catch { /* delete failed */ }
   }, [loadGoals])
 
   const handleUpdateGoal = useCallback(async (goal: { id: string; target_seconds: number; target_category: string | null; period: string }) => {
@@ -174,9 +172,7 @@ export function GoalWidget() {
       setView('list')
       setEditingGoal(null)
       setTimeout(loadGoals, 100)
-    } catch (err) {
-      console.error('Failed to update goal:', err)
-    }
+    } catch { /* update failed */ }
   }, [loadGoals])
 
   const handleToggleTask = useCallback(async (id: string) => {
@@ -328,7 +324,7 @@ export function GoalWidget() {
           onClick={() => setView('add-pick')}
           className="w-full text-center text-xs text-gray-500 hover:text-cyber-neon/90 transition-colors font-mono py-2 rounded-lg hover:bg-cyber-neon/[0.06] active:scale-[0.98] border border-transparent hover:border-cyber-neon/20"
         >
-          {isEmpty ? '+ set a goal' : '+ add goal'}
+          + add goal
         </button>
       )}
 
@@ -454,7 +450,7 @@ function TaskCreator({ onCreated, onCancel }: { onCreated: () => void; onCancel:
         await api.db.createTask({ id: crypto.randomUUID(), text: trimmed })
         setText('')
         onCreated()
-      } catch (e) { console.error('createTask failed', e) }
+      } catch { /* create failed */ }
       return
     }
     const list = getTasksFromStorage()
@@ -686,10 +682,7 @@ function GoalCreator({ onCreated, onCancel }: { onCreated: () => void; onCancel:
 
   const handleCreate = async () => {
     const api = window.electronAPI
-    if (!api?.db?.createGoal) {
-      console.error('createGoal not available')
-      return
-    }
+    if (!api?.db?.createGoal) return
     try {
       await api.db.createGoal({
         id: crypto.randomUUID(),
@@ -700,9 +693,7 @@ function GoalCreator({ onCreated, onCancel }: { onCreated: () => void; onCancel:
         start_date: new Date().toISOString().slice(0, 10),
       })
       onCreated()
-    } catch (e) {
-      console.error('createGoal failed', e)
-    }
+    } catch { /* create failed */ }
   }
 
   return (

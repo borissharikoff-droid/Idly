@@ -45,7 +45,8 @@ export function Leaderboard() {
           .in('id', ids)
 
         if (profilesError) {
-          console.warn('Leaderboard profiles error:', profilesError.message)
+          setLoading(false)
+          return
         }
 
         // Fetch session totals and user_skills for total skill level
@@ -85,8 +86,8 @@ export function Leaderboard() {
         }))
         list.sort((a, b) => b.total_skill_level - a.total_skill_level)
         setRows(list)
-      } catch (err) {
-        console.warn('Leaderboard fetch error:', err)
+      } catch {
+        // leaderboard fetch failed silently
       }
       setLoading(false)
     })()
@@ -99,7 +100,19 @@ export function Leaderboard() {
   }
 
   if (!supabase || !user) return null
-  if (loading) return <p className="text-gray-500 text-sm py-4">Loading leaderboard...</p>
+  if (loading) return (
+    <div className="rounded-xl bg-discord-card/80 border border-white/10 p-4 space-y-2.5">
+      <p className="text-[10px] uppercase tracking-wider text-gray-500 font-mono mb-3">Leaderboard</p>
+      {[1,2,3].map(i => (
+        <div key={i} className="flex items-center gap-2.5 py-2 px-3 rounded-xl animate-pulse">
+          <div className="w-6 h-4 bg-discord-darker rounded" />
+          <div className="w-8 h-8 bg-discord-darker rounded-full" />
+          <div className="flex-1 h-4 bg-discord-darker rounded" />
+          <div className="w-10 h-4 bg-discord-darker rounded" />
+        </div>
+      ))}
+    </div>
+  )
 
   return (
     <motion.div

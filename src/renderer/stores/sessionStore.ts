@@ -226,7 +226,7 @@ function startXpTicking() {
       await api.db.setLocalStat('total_xp', String(newTotalXP))
     }
 
-    // Add popup — on grind page show reduced amount for pixel display ("кратно меньше")
+    // Add popup — on grind page show reduced amount for pixel display
     const popupId = crypto.randomUUID()
     const popupAmount = Math.max(1, Math.floor(xpEarned / 4))
     const newPopup = { id: popupId, amount: popupAmount }

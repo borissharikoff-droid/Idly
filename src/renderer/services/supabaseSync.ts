@@ -28,8 +28,8 @@ export async function syncSkillsToSupabase(
         updated_at: new Date().toISOString(),
       }, { onConflict: 'user_id,skill_id' })
     }
-  } catch (err) {
-    console.warn('[supabaseSync] Failed to sync skills:', err)
+  } catch {
+    // sync failed silently — will retry next session
   }
 }
 
@@ -50,7 +50,7 @@ export async function syncSessionToSupabase(
       end_time: new Date(endTime).toISOString(),
       duration_seconds: elapsedSeconds,
     })
-  } catch (err) {
-    console.warn('[supabaseSync] Failed to sync session:', err)
+  } catch {
+    // sync failed silently — will retry next session
   }
 }
