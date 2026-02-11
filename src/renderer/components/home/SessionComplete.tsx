@@ -12,6 +12,7 @@ export function SessionComplete() {
   const { lastSessionSummary, skillXPGains, streakMultiplier, sessionXPEarned, sessionRewards, liveXP, dismissComplete } = useSessionStore()
   const hasLootOpen = useAlertStore((s) => s.currentAlert !== null)
   const [progress, setProgress] = useState(100)
+  const [skillPage, setSkillPage] = useState(0)
   const elapsedRef = useRef(0)
 
   // Pause auto-dismiss while loot drop is open
@@ -100,40 +101,68 @@ export function SessionComplete() {
               </motion.div>
             )}
 
-            {skillXPGains.length > 0 && (
-              <div className="mt-3 space-y-2 text-left">
-                {skillXPGains.map((g) => {
-                  const skill = getSkillById(g.skillId)
-                  if (!skill) return null
-                  const leveledUp = g.levelAfter > g.levelBefore
-                  return (
-                    <motion.div
-                      key={g.skillId}
-                      initial={{ opacity: 0, x: -6 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      className={`rounded-lg px-2.5 py-2 border ${leveledUp ? 'bg-cyber-neon/10 border-cyber-neon/40 shadow-[0_0_12px_rgba(0,255,136,0.2)]' : 'bg-discord-dark/50 border-white/10'}`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-lg">{skill.icon}</span>
-                        <span className="text-white text-xs font-medium truncate flex-1">{skill.name}</span>
-                        <span className="text-cyber-neon text-xs font-mono shrink-0">+{g.xp} XP</span>
-                      </div>
-                      {leveledUp && (
-                        <p className="text-[10px] text-cyber-neon font-mono mt-0.5">
-                          Lv.{g.levelBefore} → Lv.{g.levelAfter}
-                        </p>
-                      )}
-                      <div className="h-1 rounded-full bg-discord-darker overflow-hidden mt-1.5">
-                        <div
-                          className="h-full rounded-full transition-all duration-300"
-                          style={{ width: '100%', backgroundColor: skill.color }}
-                        />
-                      </div>
-                    </motion.div>
-                  )
-                })}
-              </div>
-            )}
+            {skillXPGains.length > 0 && (() => {
+              const SKILLS_PER_PAGE = 3
+              const totalPages = Math.ceil(skillXPGains.length / SKILLS_PER_PAGE)
+              const pageSkills = skillXPGains.slice(skillPage * SKILLS_PER_PAGE, (skillPage + 1) * SKILLS_PER_PAGE)
+
+              return (
+                <div className="mt-3 text-left">
+                  <div className="space-y-2">
+                    {pageSkills.map((g) => {
+                      const skill = getSkillById(g.skillId)
+                      if (!skill) return null
+                      const leveledUp = g.levelAfter > g.levelBefore
+                      return (
+                        <motion.div
+                          key={g.skillId}
+                          initial={{ opacity: 0, x: -6 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          className={`rounded-lg px-2.5 py-2 border ${leveledUp ? 'bg-cyber-neon/10 border-cyber-neon/40 shadow-[0_0_12px_rgba(0,255,136,0.2)]' : 'bg-discord-dark/50 border-white/10'}`}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-lg">{skill.icon}</span>
+                            <span className="text-white text-xs font-medium truncate flex-1">{skill.name}</span>
+                            <span className="text-cyber-neon text-xs font-mono shrink-0">+{g.xp} XP</span>
+                          </div>
+                          {leveledUp && (
+                            <p className="text-[10px] text-cyber-neon font-mono mt-0.5">
+                              Lv.{g.levelBefore} → Lv.{g.levelAfter}
+                            </p>
+                          )}
+                          <div className="h-1 rounded-full bg-discord-darker overflow-hidden mt-1.5">
+                            <div
+                              className="h-full rounded-full transition-all duration-300"
+                              style={{ width: '100%', backgroundColor: skill.color }}
+                            />
+                          </div>
+                        </motion.div>
+                      )
+                    })}
+                  </div>
+
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-center gap-3 mt-2">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setSkillPage((p) => Math.max(0, p - 1)) }}
+                        disabled={skillPage === 0}
+                        className="w-7 h-7 rounded-lg bg-discord-dark/60 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-default transition-colors"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                      </button>
+                      <span className="text-[10px] font-mono text-gray-500">{skillPage + 1}/{totalPages}</span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setSkillPage((p) => Math.min(totalPages - 1, p + 1)) }}
+                        disabled={skillPage === totalPages - 1}
+                        className="w-7 h-7 rounded-lg bg-discord-dark/60 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white disabled:opacity-30 disabled:cursor-default transition-colors"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
 
             <button
               onClick={handleDismiss}
