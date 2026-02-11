@@ -26,6 +26,8 @@ exports.IPC_CHANNELS = {
         getUnlockedAchievements: 'db:getUnlockedAchievements',
         unlockAchievement: 'db:unlockAchievement',
         getAppUsageStats: 'db:getAppUsageStats',
+        getTopAppsByCategory: 'db:getTopAppsByCategory',
+        getTopTitlesByCategory: 'db:getTopTitlesByCategory',
         getCategoryStats: 'db:getCategoryStats',
         getContextSwitchCount: 'db:getContextSwitchCount',
         getSessionCount: 'db:getSessionCount',

@@ -7,6 +7,7 @@ import type { AchievementDef } from '../../lib/xp'
 import { useAlertStore } from '../../stores/alertStore'
 import { playClickSound } from '../../lib/sounds'
 import { detectPersona } from '../../lib/persona'
+import { useNavBadgeStore } from '../../stores/navBadgeStore'
 import { BADGES, FRAMES, FREE_AVATARS, LOCKED_AVATARS, getUnlockedBadges, getUnlockedFrames, getEquippedBadges, getEquippedFrame, equipBadge, unequipBadge, equipFrame, getUnlockedAvatarEmojis } from '../../lib/cosmetics'
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -97,6 +98,12 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
   const { current, needed } = xpProgressInLevel(totalXP)
   const pct = Math.min(100, (current / needed) * 100)
   const hasChanges = profileLoaded && (username !== originalUsername || avatar !== originalAvatar)
+
+  // Compute unclaimed loot count and push to nav badge store
+  const unclaimedCount = ACHIEVEMENTS.filter(a => unlockedIds.includes(a.id) && !claimedIds.includes(a.id) && a.reward).length
+  useEffect(() => {
+    useNavBadgeStore.getState().setUnclaimedLootCount(unclaimedCount)
+  }, [unclaimedCount])
 
   const saveProfile = async () => {
     if (!supabase || !user || !hasChanges) return
@@ -277,14 +284,14 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
       {/* Sub-tabs */}
       <div className="flex gap-1 bg-discord-darker/50 rounded-xl p-1">
         {([
-          { id: 'overview' as const, label: 'Edit', icon: '✏️' },
-          { id: 'achievements' as const, label: `Loot (${unlockedCount}/${ACHIEVEMENTS.length})`, icon: '🏆' },
-          { id: 'cosmetics' as const, label: 'Cosmetics', icon: '✨' },
+          { id: 'overview' as const, label: 'Edit', icon: '✏️', hasNotif: false },
+          { id: 'achievements' as const, label: `Loot (${unlockedCount}/${ACHIEVEMENTS.length})`, icon: '🏆', hasNotif: unclaimedCount > 0 },
+          { id: 'cosmetics' as const, label: 'Cosmetics', icon: '✨', hasNotif: false },
         ]).map(tab => (
           <button
             key={tab.id}
             onClick={() => { setActiveTab(tab.id); playClickSound() }}
-            className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-all ${
+            className={`relative flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-all ${
               activeTab === tab.id
                 ? 'bg-discord-card text-white shadow-sm'
                 : 'text-gray-500 hover:text-gray-300'
@@ -292,6 +299,9 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
           >
             <span className="mr-1">{tab.icon}</span>
             {tab.label}
+            {tab.hasNotif && (
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-orange-500" />
+            )}
           </button>
         ))}
       </div>

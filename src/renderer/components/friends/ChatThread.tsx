@@ -109,6 +109,7 @@ export function ChatThread({ profile, onBack, messages, loading, sending, sendEr
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+          autoFocus
           placeholder="Message..."
           className="flex-1 rounded-xl bg-discord-card border border-white/10 px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-cyber-neon/40"
         />

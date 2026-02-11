@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useFriends } from '../../hooks/useFriends'
 import { useChat } from '../../hooks/useChat'
 import { FriendList } from './FriendList'
@@ -30,6 +30,29 @@ export function FriendsPage() {
   }, [chat.markConversationRead, refresh])
 
   const incomingCount = pendingRequests.filter((r) => r.direction === 'incoming').length
+
+  // ESC key: navigate back within friends sub-views
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase()
+      if (tag === 'input' || tag === 'textarea') return
+      if (view === 'chat' || view === 'compare') {
+        e.stopImmediatePropagation()
+        setView(view === 'compare' ? 'profile' : 'list')
+        if (view === 'chat') setSelected(null)
+      } else if (view === 'profile') {
+        e.stopImmediatePropagation()
+        setView('list')
+        setSelected(null)
+      } else if (showLeaderboard) {
+        e.stopImmediatePropagation()
+        setShowLeaderboard(false)
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [view, showLeaderboard])
 
   return (
     <div className="p-4 pb-2">

@@ -23,6 +23,8 @@ export declare const IPC_CHANNELS: {
         readonly getUnlockedAchievements: "db:getUnlockedAchievements";
         readonly unlockAchievement: "db:unlockAchievement";
         readonly getAppUsageStats: "db:getAppUsageStats";
+        readonly getTopAppsByCategory: "db:getTopAppsByCategory";
+        readonly getTopTitlesByCategory: "db:getTopTitlesByCategory";
         readonly getCategoryStats: "db:getCategoryStats";
         readonly getContextSwitchCount: "db:getContextSwitchCount";
         readonly getSessionCount: "db:getSessionCount";

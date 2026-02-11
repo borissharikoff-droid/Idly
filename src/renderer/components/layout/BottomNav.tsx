@@ -5,8 +5,8 @@ import { useNavBadgeStore } from '../../stores/navBadgeStore'
 
 const tabs: { id: TabId; icon: string }[] = [
   { id: 'home', icon: '⏱' },
-  { id: 'skills', icon: '⚡' },
-  { id: 'stats', icon: '📊' },
+  { id: 'skills', icon: '📊' },
+  { id: 'stats', icon: '⚡' },
   { id: 'friends', icon: '👥' },
   { id: 'settings', icon: '⚙' },
 ]
@@ -18,7 +18,7 @@ interface BottomNavProps {
 
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   const { queue, currentAlert } = useAlertStore()
-  const { incomingRequestsCount, unreadMessagesCount } = useNavBadgeStore()
+  const { incomingRequestsCount, unreadMessagesCount, unclaimedLootCount } = useNavBadgeStore()
   const badgeHome = (currentAlert && !currentAlert.claimed ? 1 : 0) + queue.length
   const badgeFriends = incomingRequestsCount + unreadMessagesCount
   const hasUnclaimedLoot = currentAlert && !currentAlert.claimed
@@ -28,8 +28,8 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
       <nav className="flex items-center gap-4 rounded-full bg-[#1a1a2e] border border-white/[0.07] px-2.5 py-1.5">
         {tabs.map((tab) => {
           const active = activeTab === tab.id
-          const badgeCount = tab.id === 'home' ? badgeHome : tab.id === 'friends' ? badgeFriends : 0
-          const isLootBadge = tab.id === 'home' && badgeCount > 0 && hasUnclaimedLoot
+          const badgeCount = tab.id === 'home' ? badgeHome : tab.id === 'friends' ? badgeFriends : tab.id === 'profile' ? unclaimedLootCount : 0
+          const isLootBadge = (tab.id === 'home' && badgeCount > 0 && hasUnclaimedLoot) || (tab.id === 'profile' && unclaimedLootCount > 0)
           return (
             <button
               key={tab.id}

@@ -90,6 +90,12 @@ export function registerIpcHandlers() {
   ipcMain.handle(IPC_CHANNELS.db.getAppUsageStats, (_, sinceMs?: unknown) => {
     return db.getAppUsageStats(optionalSinceMs.parse(sinceMs))
   })
+  ipcMain.handle(IPC_CHANNELS.db.getTopAppsByCategory, (_, category: unknown, limit?: unknown) => {
+    return db.getTopAppsByCategory(stringId.parse(category), typeof limit === 'number' ? limit : undefined)
+  })
+  ipcMain.handle(IPC_CHANNELS.db.getTopTitlesByCategory, (_, category: unknown, limit?: unknown) => {
+    return db.getTopTitlesByCategory(stringId.parse(category), typeof limit === 'number' ? limit : undefined)
+  })
   ipcMain.handle(IPC_CHANNELS.db.getCategoryStats, (_, sinceMs?: unknown) => {
     return db.getCategoryStats(optionalSinceMs.parse(sinceMs))
   })

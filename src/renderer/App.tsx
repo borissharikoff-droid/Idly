@@ -19,6 +19,8 @@ import { UpdateBanner } from './components/UpdateBanner'
 import { useSessionStore } from './stores/sessionStore'
 import { categoryToSkillId, getSkillById } from './lib/skills'
 import { warmUpAudio } from './lib/sounds'
+import { ACHIEVEMENTS } from './lib/xp'
+import { useNavBadgeStore } from './stores/navBadgeStore'
 
 export type TabId = 'home' | 'skills' | 'stats' | 'profile' | 'friends' | 'settings'
 
@@ -50,6 +52,23 @@ export default function App() {
     }
     window.addEventListener('pointerdown', handler, { once: true })
     return () => window.removeEventListener('pointerdown', handler)
+  }, [])
+
+  // Compute unclaimed loot count on startup for nav badge
+  useEffect(() => {
+    const computeLootBadge = async () => {
+      const api = window.electronAPI
+      let unlockedIds: string[] = []
+      if (api?.db?.getUnlockedAchievements) {
+        unlockedIds = await api.db.getUnlockedAchievements()
+      } else {
+        unlockedIds = JSON.parse(localStorage.getItem('idly_unlocked_achievements') || '[]')
+      }
+      const claimedIds: string[] = JSON.parse(localStorage.getItem('idly_claimed_achievements') || '[]')
+      const count = ACHIEVEMENTS.filter(a => unlockedIds.includes(a.id) && !claimedIds.includes(a.id) && a.reward).length
+      useNavBadgeStore.getState().setUnclaimedLootCount(count)
+    }
+    computeLootBadge()
   }, [])
 
   // Check streak once on app startup
@@ -99,6 +118,20 @@ export default function App() {
 
   useEffect(() => {
     useSessionStore.getState().setGrindPageActive(activeTab === 'home')
+  }, [activeTab])
+
+  // Global ESC handler: go back to home tab (lowest priority — inner views handle first via stopPropagation)
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase()
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return
+      if (activeTab !== 'home') {
+        setActiveTab('home')
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
   }, [activeTab])
 
   return (

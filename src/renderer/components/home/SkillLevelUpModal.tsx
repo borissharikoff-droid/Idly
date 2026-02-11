@@ -5,7 +5,7 @@ import { playSessionCompleteSound, playClickSound } from '../../lib/sounds'
 import { getSkillQuote } from '../../lib/levelUpQuotes'
 import { getSkillMilestoneReward } from '../../lib/xp'
 import { PixelConfetti } from './PixelConfetti'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 
 export function SkillLevelUpModal() {
   const { pendingSkillLevelUpSkill, dismissSkillLevelUp, currentActivity } = useSessionStore()
@@ -16,13 +16,28 @@ export function SkillLevelUpModal() {
     }
   }, [pendingSkillLevelUpSkill])
 
+  // ESC to dismiss
+  useEffect(() => {
+    if (!pendingSkillLevelUpSkill) return
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopImmediatePropagation()
+        dismissSkillLevelUp()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [pendingSkillLevelUpSkill, dismissSkillLevelUp])
+
   if (!pendingSkillLevelUpSkill) return null
 
   const { skillId, level } = pendingSkillLevelUpSkill
   const skill = getSkillById(skillId)
   if (!skill) return null
 
-  const quote = getSkillQuote(skillId)
+  // Stable quote — computed once per level-up, not on every re-render
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const quote = useMemo(() => getSkillQuote(skillId), [skillId, level])
   const milestoneLoot = getSkillMilestoneReward(skillId, level)
   const appName = currentActivity?.appName || null
 

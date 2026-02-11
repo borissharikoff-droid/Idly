@@ -143,6 +143,30 @@ export function getDatabaseApi() {
       `).all(since) as { app_name: string; category: string; total_ms: number }[]
     },
 
+    /** Top apps for a specific activity category (e.g. 'coding', 'games', 'music') */
+    getTopAppsByCategory(category: string, limit?: number): { app_name: string; total_ms: number }[] {
+      return database.prepare(`
+        SELECT app_name, SUM(end_time - start_time) as total_ms
+        FROM activities
+        WHERE category = ? AND app_name IS NOT NULL AND app_name != ''
+        GROUP BY app_name
+        ORDER BY total_ms DESC
+        LIMIT ?
+      `).all(category, limit || 5) as { app_name: string; total_ms: number }[]
+    },
+
+    /** Top window titles for a specific category (useful for music tracks, browser pages, etc.) */
+    getTopTitlesByCategory(category: string, limit?: number): { window_title: string; total_ms: number }[] {
+      return database.prepare(`
+        SELECT window_title, SUM(end_time - start_time) as total_ms
+        FROM activities
+        WHERE category = ? AND window_title IS NOT NULL AND window_title != ''
+        GROUP BY window_title
+        ORDER BY total_ms DESC
+        LIMIT ?
+      `).all(category, limit || 5) as { window_title: string; total_ms: number }[]
+    },
+
     /** Aggregate category usage across all sessions */
     getCategoryStats(sinceMs?: number): { category: string; total_ms: number }[] {
       const since = sinceMs || 0
