@@ -96,11 +96,31 @@ function SkillDetailPanel({ skill, level, xp, current, needed }: {
         <span className="text-[11px] font-mono text-gray-300">{formatXP(xp)}</span>
       </div>
 
-      {loaded && topApps.length > 0 && (
+      {!loaded && (
         <>
           <div className="h-px bg-white/[0.06] my-1" />
+          <div className="space-y-1.5 animate-pulse">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="flex items-center gap-2">
+                <div className="w-3 h-3 bg-discord-darker rounded" />
+                <div className="flex-1 space-y-1">
+                  <div className="flex justify-between">
+                    <div className="w-20 h-3 bg-discord-darker rounded" />
+                    <div className="w-10 h-3 bg-discord-darker rounded" />
+                  </div>
+                  <div className="h-1 bg-discord-darker rounded-full" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {loaded && topApps.length > 0 && (
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25 }}>
+          <div className="h-px bg-white/[0.06] my-1" />
           <p className="text-[10px] text-gray-500 font-mono uppercase tracking-wider">{labels.appsTitle}</p>
-          <div className="space-y-1">
+          <div className="space-y-1 mt-1">
             {topApps.map((app, i) => {
               const maxMs = topApps[0].total_ms
               const pct = maxMs > 0 ? (app.total_ms / maxMs) * 100 : 0
@@ -123,14 +143,14 @@ function SkillDetailPanel({ skill, level, xp, current, needed }: {
               )
             })}
           </div>
-        </>
+        </motion.div>
       )}
 
       {loaded && topTitles.length > 0 && labels.titlesTitle && (
-        <>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.25, delay: 0.1 }}>
           <div className="h-px bg-white/[0.06] my-1" />
           <p className="text-[10px] text-gray-500 font-mono uppercase tracking-wider">{labels.titlesTitle}</p>
-          <div className="space-y-1">
+          <div className="space-y-1 mt-1">
             {topTitles.slice(0, 5).map((t, i) => (
               <div key={t.window_title} className="flex items-center gap-2">
                 <span className="text-[10px] text-gray-600 font-mono w-3 text-right">{i + 1}</span>
@@ -139,7 +159,7 @@ function SkillDetailPanel({ skill, level, xp, current, needed }: {
               </div>
             ))}
           </div>
-        </>
+        </motion.div>
       )}
     </div>
   )
