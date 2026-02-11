@@ -142,9 +142,17 @@ export function FriendsPage() {
                 </div>
               )}
               {loading ? (
-                <div className="rounded-xl bg-discord-card/80 border border-white/10 p-6 text-center text-gray-500">
-                  <span className="text-2xl block mb-2">⏳</span>
-                  <p className="text-sm">Loading friends...</p>
+                <div className="rounded-xl bg-discord-card/80 border border-white/10 p-4 space-y-2.5">
+                  {[1,2,3].map(i => (
+                    <div key={i} className="flex items-center gap-2.5 py-2 px-3 rounded-xl animate-pulse">
+                      <div className="w-9 h-9 bg-discord-darker rounded-full" />
+                      <div className="flex-1 space-y-1.5">
+                        <div className="w-24 h-3.5 bg-discord-darker rounded" />
+                        <div className="w-16 h-2.5 bg-discord-darker rounded" />
+                      </div>
+                      <div className="w-8 h-8 bg-discord-darker rounded-lg" />
+                    </div>
+                  ))}
                 </div>
               ) : (
                 <FriendList
