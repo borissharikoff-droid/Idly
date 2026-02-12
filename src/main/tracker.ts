@@ -181,9 +181,10 @@ public class WinApi {
                     try { pname = GetProcessName(pid); } catch {}
                 }
                 // Detect background music (every 2nd iteration to reduce overhead)
-                string bgCats = "";
+                string bgCats = _iter % 2 == 0 ? "_" : "";
                 if (_iter % 2 == 0) {
-                    bgCats = DetectBackgroundMusic(hwnd);
+                    string detected = DetectBackgroundMusic(hwnd);
+                    bgCats = "_" + detected;
                 }
                 string line;
                 if (pname == "explorer" && string.IsNullOrWhiteSpace(title)) {
@@ -256,8 +257,10 @@ function parseLine(line: string): void {
   const idleMs = parseInt(parts[parts.length - 2], 10) || 0
   const keys = parseInt(parts[parts.length - 3], 10) || 0
   const title = parts.slice(1, -3).join('|').replace(/&#124;/g, '|').trim()
-  const bgCategories = bgRaw ? bgRaw.split(',').filter(Boolean) : lastKnownBgCategories
-  if (bgRaw) lastKnownBgCategories = bgCategories
+  // bgRaw starts with "_" when bg scan actually ran; empty = scan skipped (use cache)
+  const didScan = bgRaw.startsWith('_')
+  const bgCategories = didScan ? bgRaw.slice(1).split(',').filter(Boolean) : lastKnownBgCategories
+  if (didScan) lastKnownBgCategories = bgCategories
   latestWinInfo = { appName, title, keys, idleMs, bgCategories }
   if (!hasReceivedWinLine) {
     hasReceivedWinLine = true
