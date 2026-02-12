@@ -4,6 +4,7 @@ import { useAuthStore } from '../stores/authStore'
 import { computeTotalSkillLevel } from '../lib/skills'
 import { getEquippedBadges, getEquippedFrame } from '../lib/cosmetics'
 import { detectPersona } from '../lib/persona'
+import { syncSkillsToSupabase } from '../services/supabaseSync'
 
 export function useProfileSync() {
   const { user } = useAuthStore()
@@ -54,6 +55,10 @@ export function useProfileSync() {
     }
 
     sync()
+    // Sync local skill XP to user_skills so friends/leaderboard show real levels
+    if (window.electronAPI?.db?.getAllSkillXP) {
+      syncSkillsToSupabase(window.electronAPI).catch(() => {})
+    }
     intervalRef.current = setInterval(sync, 60000)
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current)

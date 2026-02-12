@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useFriends } from '../../hooks/useFriends'
 import { useChat } from '../../hooks/useChat'
 import { FriendList } from './FriendList'
+import { FriendListSkeleton } from './FriendListSkeleton'
 import { AddFriend } from './AddFriend'
 import { FriendProfile } from './FriendProfile'
 import { PendingRequests } from './PendingRequests'
@@ -10,6 +11,7 @@ import { FriendCompare } from './FriendCompare'
 import { ChatThread } from './ChatThread'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
+import { useChatTargetStore } from '../../stores/chatTargetStore'
 import type { FriendProfile as FriendProfileType } from '../../hooks/useFriends'
 
 type FriendView = 'list' | 'profile' | 'compare' | 'chat'
@@ -22,6 +24,19 @@ export function FriendsPage() {
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const peerId = view === 'chat' && selected ? selected.id : null
   const chat = useChat(peerId)
+  const chatTargetFriendId = useChatTargetStore((s) => s.friendId)
+  const setChatTargetFriendId = useChatTargetStore((s) => s.setFriendId)
+
+  // Navigate to chat when MessageBanner signals (e.g. clicked on new message)
+  useEffect(() => {
+    if (!chatTargetFriendId) return
+    const friend = friends.find((f) => f.id === chatTargetFriendId)
+    setChatTargetFriendId(null)
+    if (friend) {
+      setSelected(friend)
+      setView('chat')
+    }
+  }, [chatTargetFriendId, friends, setChatTargetFriendId])
 
   // Wrap markConversationRead to also refresh friend unread badges
   const markConversationReadAndRefresh = useCallback(async (otherUserId: string) => {
@@ -67,7 +82,13 @@ export function FriendsPage() {
           onBack={() => { setSelected(null); setView('list') }}
           onCompare={() => setView('compare')}
           onMessage={() => setView('chat')}
-          onRemove={async () => { await removeFriend(selected.friendship_id); setSelected(null); setView('list') }}
+          onRemove={async () => {
+            const ok = await removeFriend(selected.friendship_id)
+            if (ok) {
+              setSelected(null)
+              setView('list')
+            }
+          }}
         />
       ) : (
         <div className="space-y-4">
@@ -120,10 +141,7 @@ export function FriendsPage() {
                 </div>
               )}
               {loading ? (
-                <div className="rounded-xl bg-discord-card/80 border border-white/10 p-6 text-center text-gray-500">
-                  <span className="text-2xl block mb-2">⏳</span>
-                  <p className="text-sm">Loading friends...</p>
-                </div>
+                <FriendListSkeleton />
               ) : (
                 <FriendList
                   friends={friends}

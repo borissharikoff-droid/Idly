@@ -4,6 +4,8 @@ import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
 import { FRAMES, BADGES } from '../../lib/cosmetics'
 import { getPersonaById } from '../../lib/persona'
+import { computeTotalSkillLevelFromLevels, normalizeSkillId, skillLevelFromXP } from '../../lib/skills'
+import { LeaderboardSkeleton } from './LeaderboardSkeleton'
 
 interface LeaderboardRow {
   id: string
@@ -62,27 +64,39 @@ export function Leaderboard() {
           // session_summaries table may not exist yet
         }
 
-        const skillLevelByUser: Record<string, number> = {}
+        const skillsByUser = new Map<string, Map<string, { skill_id: string; level: number }>>()
         try {
-          const { data: skillsRows } = await supabase.from('user_skills').select('user_id, level').in('user_id', ids)
-          ;(skillsRows || []).forEach((r: { user_id: string; level: number }) => {
-            skillLevelByUser[r.user_id] = (skillLevelByUser[r.user_id] || 0) + (r.level || 0)
-          })
+          const { data: skillsRows } = await supabase.from('user_skills').select('user_id, skill_id, level, total_xp').in('user_id', ids)
+          for (const row of skillsRows || []) {
+            const r = row as { user_id: string; skill_id: string; level: number | null; total_xp?: number | null }
+            const userSkillMap = skillsByUser.get(r.user_id) || new Map<string, { skill_id: string; level: number }>()
+            const skill_id = normalizeSkillId(r.skill_id)
+            const level = Math.max(r.level ?? 0, skillLevelFromXP(r.total_xp ?? 0))
+            const prev = userSkillMap.get(skill_id)
+            userSkillMap.set(skill_id, { skill_id, level: Math.max(prev?.level ?? 0, level) })
+            skillsByUser.set(r.user_id, userSkillMap)
+          }
         } catch {
           // user_skills may not exist
         }
 
-        const list: LeaderboardRow[] = (profiles || []).map((p) => ({
-          id: p.id,
-          username: p.username,
-          avatar_url: p.avatar_url,
-          total_seconds: byUser[p.id] || 0,
-          total_skill_level: skillLevelByUser[p.id] ?? (p.level || 0),
-          streak_count: p.streak_count || 0,
-          equipped_badges: p.equipped_badges || [],
-          equipped_frame: p.equipped_frame || null,
-          persona_id: p.persona_id ?? null,
-        }))
+        const list: LeaderboardRow[] = (profiles || []).map((p) => {
+          const allSkills = Array.from((skillsByUser.get(p.id) || new Map()).values())
+          const total_skill_level = allSkills.length > 0
+            ? computeTotalSkillLevelFromLevels(allSkills)
+            : (p.level ?? 0)
+          return {
+            id: p.id,
+            username: p.username,
+            avatar_url: p.avatar_url,
+            total_seconds: byUser[p.id] || 0,
+            total_skill_level,
+            streak_count: p.streak_count || 0,
+            equipped_badges: p.equipped_badges || [],
+            equipped_frame: p.equipped_frame || null,
+            persona_id: p.persona_id ?? null,
+          }
+        })
         list.sort((a, b) => b.total_skill_level - a.total_skill_level)
         setRows(list)
       } catch (err) {
@@ -99,7 +113,7 @@ export function Leaderboard() {
   }
 
   if (!supabase || !user) return null
-  if (loading) return <p className="text-gray-500 text-sm py-4">Loading leaderboard...</p>
+  if (loading) return <LeaderboardSkeleton />
 
   return (
     <motion.div

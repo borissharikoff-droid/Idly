@@ -1,9 +1,11 @@
 /**
  * SupabaseSync — syncs session and skill data to Supabase using the singleton client.
+ * user_skills is the source for per-skill breakdown; profiles.level is updated by useProfileSync.
+ * Sync runs on session end AND on app load so existing local XP appears in user_skills.
  */
 
 import { supabase } from '../lib/supabase'
-import { skillLevelFromXP, SKILLS } from '../lib/skills'
+import { skillLevelFromXP, SKILLS, normalizeSkillId } from '../lib/skills'
 
 /** Sync skill XP data to Supabase user_skills table. */
 export async function syncSkillsToSupabase(
@@ -15,7 +17,11 @@ export async function syncSkillsToSupabase(
     if (!user) return
 
     const allRows = (await api.db.getAllSkillXP()) as { skill_id: string; total_xp: number }[]
-    const xpMap = new Map(allRows.map((r) => [r.skill_id, r.total_xp]))
+    const xpMap = new Map<string, number>()
+    for (const row of allRows) {
+      const id = normalizeSkillId(row.skill_id)
+      xpMap.set(id, (xpMap.get(id) ?? 0) + (row.total_xp ?? 0))
+    }
     // Sync ALL skills (including untracked ones at level 1 / 0 XP)
     for (const skill of SKILLS) {
       const total_xp = xpMap.get(skill.id) ?? 0

@@ -5,8 +5,9 @@ import { checkSocialAchievements } from '../lib/xp'
 import { useAlertStore } from '../stores/alertStore'
 import { useFriendToastStore } from '../stores/friendToastStore'
 import { useNavBadgeStore } from '../stores/navBadgeStore'
+import { useNotificationStore } from '../stores/notificationStore'
 import { unlockCosmeticsFromAchievement } from '../lib/cosmetics'
-import { computeTotalSkillLevelFromLevels } from '../lib/skills'
+import { computeTotalSkillLevelFromLevels, normalizeSkillId, skillLevelFromXP } from '../lib/skills'
 
 export interface FriendSkill {
   skill_id: string
@@ -121,16 +122,24 @@ export function useFriends() {
           }
         })
         try {
-          const { data: skillsRows } = await supabase.from('user_skills').select('user_id, skill_id, level').in('user_id', acceptedIds)
-          const skillsByUser = new Map<string, { skill_id: string; level: number }[]>()
+          const { data: skillsRows } = await supabase.from('user_skills').select('user_id, skill_id, level, total_xp').in('user_id', acceptedIds)
+          const skillsByUser = new Map<string, Map<string, { skill_id: string; level: number }>>()
           for (const row of skillsRows || []) {
-            const list = skillsByUser.get(row.user_id) || []
-            list.push({ skill_id: row.skill_id, level: row.level })
-            skillsByUser.set(row.user_id, list)
+            const userId = (row as { user_id: string }).user_id
+            const skill_id = normalizeSkillId((row as { skill_id: string }).skill_id)
+            const levelRaw = (row as { level: number | null }).level ?? 0
+            const totalXp = (row as { total_xp?: number | null }).total_xp ?? 0
+            const level = Math.max(1, Math.max(levelRaw, skillLevelFromXP(totalXp)))
+            const bySkill = skillsByUser.get(userId) || new Map<string, { skill_id: string; level: number }>()
+            const prev = bySkill.get(skill_id)
+            bySkill.set(skill_id, { skill_id, level: Math.max(prev?.level ?? 0, level) })
+            skillsByUser.set(userId, bySkill)
           }
           friendList = friendList.map((p) => {
-            const allSkills = skillsByUser.get(p.id) || []
-            const total_skill_level = computeTotalSkillLevelFromLevels(allSkills)
+            const allSkills = Array.from((skillsByUser.get(p.id) || new Map()).values())
+            const total_skill_level = allSkills.length > 0
+              ? computeTotalSkillLevelFromLevels(allSkills)
+              : (p.level ?? 0)
             const list = [...allSkills].sort((a, b) => b.level - a.level).slice(0, 3)
             return { ...p, top_skills: list, total_skill_level }
           })
@@ -139,14 +148,21 @@ export function useFriends() {
         }
       }
 
-      // Friend toasts: came online (only after we have a previous snapshot)
+      // Friend toasts + bell notifications: came online, leveled up
       const prev = previousFriendsRef.current
       if (prev !== null) {
         const name = (f: FriendProfile) => f.username?.trim() || 'Friend'
+        const pushNotif = useNotificationStore.getState().push
         for (const friend of friendList) {
           const p = prev.find((x) => x.id === friend.id)
           if (!p?.is_online && friend.is_online) {
             pushFriendToast({ type: 'online', friendName: name(friend) })
+            pushNotif({ type: 'friend_online', icon: friend.avatar_url || '🟢', title: `${name(friend)} is online`, body: friend.current_activity ? `Active: ${friend.current_activity}` : 'Just came online' })
+          }
+          const prevLevel = p?.total_skill_level ?? 0
+          const newLevel = friend.total_skill_level ?? 0
+          if (prevLevel > 0 && newLevel > prevLevel) {
+            pushNotif({ type: 'friend_levelup', icon: '⬆️', title: `${name(friend)} leveled up!`, body: `Total level: ${prevLevel} → ${newLevel}` })
           }
         }
       }
@@ -233,6 +249,17 @@ export function useFriends() {
     fetchFriends()
   }, [fetchFriends])
 
+  const removeFriend = useCallback(async (friendshipId: string): Promise<boolean> => {
+    if (!supabase) return false
+    const { error } = await supabase.from('friendships').delete().eq('id', friendshipId)
+    if (error) {
+      setError(`Remove failed: ${error.message}`)
+      return false
+    }
+    await fetchFriends(true)
+    return true
+  }, [fetchFriends])
+
   useEffect(() => {
     fetchFriends()
   }, [fetchFriends])
@@ -292,5 +319,5 @@ export function useFriends() {
   }, [user, fetchFriends])
 
   const refresh = useCallback(() => fetchFriends(true), [fetchFriends])
-  return { friends, pendingRequests, unreadByFriendId, loading, error, refresh, acceptRequest, rejectRequest }
+  return { friends, pendingRequests, unreadByFriendId, loading, error, refresh, acceptRequest, rejectRequest, removeFriend }
 }

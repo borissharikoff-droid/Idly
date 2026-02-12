@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
 import { getStreakMultiplier } from '../../lib/xp'
@@ -7,6 +7,8 @@ import { detectPersona } from '../../lib/persona'
 import { FRAMES, BADGES, getEquippedFrame, getEquippedBadges } from '../../lib/cosmetics'
 import { playClickSound } from '../../lib/sounds'
 import { useAlertStore } from '../../stores/alertStore'
+import { useNotificationStore } from '../../stores/notificationStore'
+import { NotificationPanel } from '../notifications/NotificationPanel'
 
 interface ProfileBarProps {
   onNavigateProfile?: () => void
@@ -26,6 +28,10 @@ export function ProfileBar({ onNavigateProfile }: ProfileBarProps) {
   const activeFrame = FRAMES.find(f => f.id === frameId)
   const streakMult = getStreakMultiplier(streak)
   const lootCount = useAlertStore((s) => (s.currentAlert ? 1 : 0) + s.queue.length)
+  const unreadCount = useNotificationStore((s) => s.unreadCount)
+  const [bellOpen, setBellOpen] = useState(false)
+  const bellRef = useRef<HTMLButtonElement>(null)
+  const toggleBell = useCallback(() => { playClickSound(); setBellOpen((o) => !o) }, [])
 
   useEffect(() => {
     if (supabase && user) {
@@ -65,7 +71,7 @@ export function ProfileBar({ onNavigateProfile }: ProfileBarProps) {
   return (
     <div className={`flex flex-col items-center px-4 pt-3 pb-4 transition-opacity duration-150 ${loaded ? 'opacity-100' : 'opacity-0'}`}>
       {/* Top row: avatar + info + sign out — overflow hidden so tooltips don't expand window */}
-      <div className="flex items-center gap-2.5 w-full max-w-[260px] min-w-0">
+      <div className="flex items-center gap-2.5 w-full max-w-[340px] min-w-0">
         {/* Avatar */}
         <button onClick={() => { playClickSound(); onNavigateProfile?.() }} className={`relative shrink-0 ${activeFrame ? `frame-style-${activeFrame.style}` : ''}`} title="Profile">
           {activeFrame && (
@@ -122,6 +128,26 @@ export function ProfileBar({ onNavigateProfile }: ProfileBarProps) {
             )}
 
           </div>
+        </div>
+
+        <div className="relative shrink-0">
+          <button
+            ref={bellRef}
+            onClick={toggleBell}
+            className="w-8 h-8 rounded-lg bg-discord-card/60 border border-white/[0.06] flex items-center justify-center text-gray-400 hover:text-white hover:border-white/10 transition-colors relative"
+            title="Notifications"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-orange-500 text-white text-[8px] font-bold flex items-center justify-center">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+          <NotificationPanel open={bellOpen} onClose={() => setBellOpen(false)} bellRef={bellRef} />
         </div>
 
       </div>

@@ -70,9 +70,6 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 420,
     height: 700,
-    minWidth: 380,
-    minHeight: 500,
-    maxWidth: 600,
     icon: getIconPath(),
     webPreferences: {
       preload: path.join(__dirname, '../../preload/index.js'),
@@ -82,7 +79,7 @@ function createWindow() {
     frame: true,
     backgroundColor: '#11111b',
     show: false,
-    resizable: true,
+    resizable: false,
   })
 
   const devServerUrl = 'http://localhost:5173'

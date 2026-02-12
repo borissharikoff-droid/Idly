@@ -13,6 +13,8 @@ export interface FriendToast {
 
 const TOAST_TTL_MS = 4500
 const MAX_TOASTS = 3
+const ONLINE_DEDUPE_WINDOW_MS = 12_000
+const lastOnlineShownAt = new Map<string, number>()
 
 interface FriendToastStore {
   toasts: FriendToast[]
@@ -25,6 +27,13 @@ export const useFriendToastStore = create<FriendToastStore>((set, get) => ({
   toasts: [],
 
   push(payload) {
+    if (payload.type === 'online') {
+      const key = payload.friendName.trim().toLowerCase()
+      const now = Date.now()
+      const last = lastOnlineShownAt.get(key) ?? 0
+      if (now - last < ONLINE_DEDUPE_WINDOW_MS) return
+      lastOnlineShownAt.set(key, now)
+    }
     const id = crypto.randomUUID()
     const toast: FriendToast = {
       id,

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
 import type { FriendProfile as FriendProfileType } from '../../hooks/useFriends'
 import { FRAMES, BADGES } from '../../lib/cosmetics'
-import { getSkillById, getSkillByName, SKILLS, computeTotalSkillLevelFromLevels, MAX_TOTAL_SKILL_LEVEL } from '../../lib/skills'
+import { getSkillById, getSkillByName, SKILLS, computeTotalSkillLevelFromLevels, MAX_TOTAL_SKILL_LEVEL, normalizeSkillId, skillLevelFromXP, skillXPProgress } from '../../lib/skills'
 import { getPersonaById } from '../../lib/persona'
 import { ACHIEVEMENTS } from '../../lib/xp'
 
@@ -27,8 +27,42 @@ interface FriendSkillRow {
   total_xp: number
 }
 
+function formatXp(xp: number): string {
+  return Math.max(0, Math.floor(xp)).toLocaleString()
+}
+
+function estimateSkillLevels(total: number, activeSkillName: string | null): FriendSkillRow[] {
+  if (total <= 0) return []
+  const rows = new Map<string, FriendSkillRow>()
+  const activeSkillId = activeSkillName ? getSkillByName(activeSkillName)?.id ?? null : null
+
+  // First point goes to the currently active skill (if any).
+  let remaining = total
+  if (activeSkillId && remaining > 0) {
+    rows.set(activeSkillId, { skill_id: activeSkillId, level: 1, total_xp: 0 })
+    remaining--
+  }
+
+  // Then give baseline 1 per other skills while we still have points.
+  for (const skill of SKILLS.filter((s) => s.id !== activeSkillId)) {
+    if (remaining <= 0) break
+    rows.set(skill.id, { skill_id: skill.id, level: 1, total_xp: 0 })
+    remaining--
+  }
+
+  // Put remaining points into active skill (or researcher fallback).
+  if (remaining > 0) {
+    const targetId = activeSkillId ?? 'researcher'
+    const current = rows.get(targetId) || { skill_id: targetId, level: 0, total_xp: 0 }
+    rows.set(targetId, { ...current, level: current.level + remaining })
+  }
+
+  return Array.from(rows.values())
+}
+
 export function FriendProfile({ profile, onBack, onCompare, onMessage, onRemove }: FriendProfileProps) {
   const [sessions, setSessions] = useState<SessionSummary[]>([])
+  const [totalGrindSeconds, setTotalGrindSeconds] = useState(0)
   const [achievements, setAchievements] = useState<string[]>([])
   const [allSkills, setAllSkills] = useState<FriendSkillRow[]>([])
   const [confirmRemove, setConfirmRemove] = useState(false)
@@ -43,6 +77,14 @@ export function FriendProfile({ profile, onBack, onCompare, onMessage, onRemove 
       .limit(10)
       .then(({ data }) => setSessions((data as SessionSummary[]) || []))
     supabase
+      .from('session_summaries')
+      .select('duration_seconds')
+      .eq('user_id', profile.id)
+      .then(({ data }) => {
+        const total = ((data as { duration_seconds: number }[]) || []).reduce((sum, row) => sum + (row.duration_seconds || 0), 0)
+        setTotalGrindSeconds(total)
+      })
+    supabase
       .from('user_achievements')
       .select('achievement_id')
       .eq('user_id', profile.id)
@@ -51,16 +93,36 @@ export function FriendProfile({ profile, onBack, onCompare, onMessage, onRemove 
       .from('user_skills')
       .select('skill_id, level, total_xp')
       .eq('user_id', profile.id)
-      .then(({ data }) => setAllSkills((data as FriendSkillRow[]) || []))
+      .then(({ data }) => {
+        const merged = new Map<string, FriendSkillRow>()
+        for (const raw of ((data as FriendSkillRow[]) || [])) {
+          const skill_id = normalizeSkillId(raw.skill_id)
+          const total_xp = raw.total_xp ?? 0
+          const levelFromXp = skillLevelFromXP(total_xp)
+          const level = Math.max(raw.level ?? 0, levelFromXp)
+          const prev = merged.get(skill_id)
+          if (!prev) {
+            merged.set(skill_id, { skill_id, level, total_xp })
+          } else {
+            merged.set(skill_id, {
+              skill_id,
+              level: Math.max(prev.level, level),
+              total_xp: Math.max(prev.total_xp ?? 0, total_xp),
+            })
+          }
+        }
+        setAllSkills(Array.from(merged.values()))
+      })
   }, [profile.id])
 
   const formatDuration = (s: number) => {
     const h = Math.floor(s / 3600)
     const m = Math.floor((s % 3600) / 60)
-    return h > 0 ? `${h}h ${m}m` : `${m}m`
+    const sec = Math.floor(s % 60)
+    if (h > 0) return `${h}h ${m}m`
+    if (m > 0) return `${m}m`
+    return `${sec}s`
   }
-
-  const totalGrindSeconds = sessions.reduce((s, sess) => s + sess.duration_seconds, 0)
   const frame = FRAMES.find(fr => fr.id === profile.equipped_frame)
   const badges = (profile.equipped_badges || [])
     .map(bId => BADGES.find(b => b.id === bId))
@@ -78,6 +140,11 @@ export function FriendProfile({ profile, onBack, onCompare, onMessage, onRemove 
   const totalSkillLevel = allSkills.length > 0
     ? computeTotalSkillLevelFromLevels(allSkills.map(s => ({ skill_id: s.skill_id, level: s.level })))
     : (profile.total_skill_level ?? 0)
+  const mergedSkillRows: FriendSkillRow[] = allSkills.length > 0
+    ? allSkills
+    : (profile.top_skills && profile.top_skills.length > 0
+      ? profile.top_skills.map((s) => ({ skill_id: s.skill_id, level: s.level, total_xp: 0 }))
+      : estimateSkillLevels(totalSkillLevel, levelingSkill))
   const persona = getPersonaById(profile.persona_id ?? null)
 
   // Unlocked achievements details
@@ -133,10 +200,10 @@ export function FriendProfile({ profile, onBack, onCompare, onMessage, onRemove 
       <AnimatePresence>
         {confirmRemove && (
           <motion.div
-            initial={{ opacity: 0, height: 0, marginBottom: -16 }}
-            animate={{ opacity: 1, height: 'auto', marginBottom: 0 }}
-            exit={{ opacity: 0, height: 0, marginBottom: -16 }}
-            transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+            initial={{ opacity: 0, height: 0, y: -6, scale: 0.98, marginBottom: -16 }}
+            animate={{ opacity: 1, height: 'auto', y: 0, scale: 1, marginBottom: 0 }}
+            exit={{ opacity: 0, height: 0, y: -6, scale: 0.98, marginBottom: -16 }}
+            transition={{ duration: 0.36, ease: [0.16, 1, 0.3, 1] }}
             className="rounded-xl bg-red-500/10 border border-red-500/20 p-3 flex items-center justify-between overflow-hidden"
           >
             <span className="text-xs text-red-400">Remove {profile.username || 'this friend'}?</span>
@@ -264,10 +331,19 @@ export function FriendProfile({ profile, onBack, onCompare, onMessage, onRemove 
       <div className="rounded-xl bg-discord-card/80 border border-white/10 p-4 space-y-2.5">
         <p className="text-[10px] uppercase tracking-wider text-gray-500 font-mono">Skills</p>
         {(() => {
-          const skillMap = new Map(allSkills.map((s) => [s.skill_id, s]))
+          const skillMap = new Map(mergedSkillRows.map((s) => [s.skill_id, s]))
           return SKILLS.map((skillDef) => {
             const data = skillMap.get(skillDef.id)
-            const level = data?.level ?? 0
+            const level = Math.max(1, data?.level ?? 0)
+            const totalXp = data?.total_xp ?? 0
+            const hasRealXp = allSkills.length > 0 && totalXp > 0
+            const xpProg = hasRealXp ? skillXPProgress(totalXp) : null
+            const pct = xpProg && xpProg.needed > 0
+              ? Math.min(100, (xpProg.current / xpProg.needed) * 100)
+              : Math.min(100, (level / 99) * 100)
+            const xpTitle = hasRealXp
+              ? `${skillDef.name}: ${formatXp(totalXp)} XP`
+              : `${skillDef.name}: XP sync pending`
             const isActive = levelingSkill === skillDef.name
             return (
               <div
@@ -294,8 +370,8 @@ export function FriendProfile({ profile, onBack, onCompare, onMessage, onRemove 
                       </span>
                     )}
                   </div>
-                  <div className="h-1 rounded-full bg-white/[0.04] overflow-hidden">
-                    <div className="h-full rounded-full" style={{ backgroundColor: skillDef.color, width: `${Math.min(100, level >= 99 ? 100 : (level / 99) * 100)}%` }} />
+                  <div className="h-1 rounded-full bg-white/[0.04] overflow-hidden" title={xpTitle}>
+                    <div className="h-full rounded-full" style={{ backgroundColor: skillDef.color, width: `${pct}%` }} />
                   </div>
                 </div>
                 <div
@@ -303,12 +379,17 @@ export function FriendProfile({ profile, onBack, onCompare, onMessage, onRemove 
                   style={{ backgroundColor: `${skillDef.color}10`, border: `1px solid ${skillDef.color}20` }}
                 >
                   <span className="text-[8px] text-gray-500 font-mono leading-none">LV</span>
-                  <span className="text-sm font-mono font-bold leading-tight" style={{ color: skillDef.color }}>{level}</span>
+                  <span className="text-[10px] font-mono font-bold leading-tight" style={{ color: skillDef.color }}>{level}/99</span>
                 </div>
               </div>
             )
           })
         })()}
+        {allSkills.length === 0 && (
+          <p className="text-[11px] text-gray-500">
+            Showing synced top skills only. Full skill breakdown updates after friend sync.
+          </p>
+        )}
       </div>
 
       {/* Achievements */}

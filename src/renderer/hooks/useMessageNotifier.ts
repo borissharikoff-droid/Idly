@@ -2,8 +2,8 @@ import { useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../stores/authStore'
 import { useNavBadgeStore } from '../stores/navBadgeStore'
-import { useFriendToastStore } from '../stores/friendToastStore'
 import { useMessageToastStore } from '../stores/messageToastStore'
+import { useNotificationStore } from '../stores/notificationStore'
 import { playMessageSound } from '../lib/sounds'
 
 /**
@@ -61,18 +61,22 @@ export function useMessageNotifier() {
           try {
             window.electronAPI?.window?.flashFrame?.()
           } catch {}
-          // Fetch sender profile for toast
+          const preview = row.body.length > 30 ? row.body.slice(0, 30) + '...' : row.body
+          // Push to MessageBanner immediately so it shows at top of screen
+          useMessageToastStore.getState().push({
+            senderId: row.sender_id,
+            senderName: 'Friend',
+            senderAvatar: '💬',
+            preview,
+          })
+          // Fetch sender profile and update system notifications
           supabase.from('profiles').select('username, avatar_url').eq('id', row.sender_id).single().then(({ data: profile }) => {
             const name = profile?.username?.trim() || 'Friend'
             const avatar = profile?.avatar_url || '💬'
-            const preview = row.body.length > 30 ? row.body.slice(0, 30) + '...' : row.body
-            useFriendToastStore.getState().push({ type: 'message', friendName: name, messagePreview: preview })
-            useMessageToastStore.getState().push({
-              senderId: row.sender_id,
-              senderName: name,
-              senderAvatar: avatar,
-              preview,
-            })
+            try {
+              useNotificationStore.getState().push({ type: 'message', icon: avatar, title: name, body: preview })
+            } catch {}
+            // Note: MessageBanner already showed with "Friend" - we could update but banner is per-message, next one will have correct name
           })
         }
       )

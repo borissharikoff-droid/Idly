@@ -55,6 +55,22 @@ export function categoryToSkillId(category: string): string {
   return CATEGORY_TO_SKILL[category] ?? 'researcher'
 }
 
+/**
+ * Normalize skill id from Supabase/user data.
+ * Supports:
+ * - canonical ids: developer, communicator, etc.
+ * - legacy category ids: coding, social, etc.
+ * - skill names: "Developer", "Communicator", etc.
+ */
+export function normalizeSkillId(raw: string): string {
+  if (!raw) return 'researcher'
+  const value = String(raw).trim().toLowerCase()
+  if (SKILLS.some((s) => s.id === value)) return value
+  if (CATEGORY_TO_SKILL[value]) return CATEGORY_TO_SKILL[value]
+  const byName = SKILLS.find((s) => s.name.toLowerCase() === value)
+  return byName?.id ?? 'researcher'
+}
+
 export function getSkillById(skillId: string): SkillDef | undefined {
   return SKILLS.find((s) => s.id === skillId)
 }
@@ -91,7 +107,7 @@ export function skillXPProgress(xp: number): { current: number; needed: number }
  * Unleveled (0 XP or missing) = 0. Example: listener 5 + designer 10 = 15/792.
  */
 export function computeTotalSkillLevel(rows: { skill_id: string; total_xp: number }[]): number {
-  const xpMap = new Map(rows.map((r) => [r.skill_id, r.total_xp]))
+  const xpMap = new Map(rows.map((r) => [normalizeSkillId(r.skill_id), r.total_xp]))
   return SKILLS.reduce((sum, s) => sum + skillLevelFromXP(xpMap.get(s.id) ?? 0), 0)
 }
 
@@ -100,7 +116,7 @@ export function computeTotalSkillLevel(rows: { skill_id: string; total_xp: numbe
  * Sum of levels; missing/unleveled = 0.
  */
 export function computeTotalSkillLevelFromLevels(skills: { skill_id: string; level: number }[]): number {
-  const levelMap = new Map(skills.map((s) => [s.skill_id, s.level]))
+  const levelMap = new Map(skills.map((s) => [normalizeSkillId(s.skill_id), s.level]))
   return SKILLS.reduce((sum, s) => sum + (levelMap.get(s.id) ?? 0), 0)
 }
 

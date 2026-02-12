@@ -8,6 +8,20 @@ interface SkillRow {
   total_xp: number
 }
 
+interface AppStat {
+  app_name: string
+  category: string
+  total_ms: number
+}
+
+function formatAppTime(ms: number): string {
+  const totalMin = Math.floor(ms / 60_000)
+  const h = Math.floor(totalMin / 60)
+  const m = totalMin % 60
+  if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`
+  return `${m}m`
+}
+
 function formatXP(xp: number): string {
   if (xp >= 1_000_000) return `${(xp / 1_000_000).toFixed(1)}M`
   if (xp >= 1_000) return `${(xp / 1_000).toFixed(1)}K`
@@ -18,6 +32,7 @@ export function SkillsPage() {
   const [skillData, setSkillData] = useState<SkillRow[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [topAppsBySkill, setTopAppsBySkill] = useState<Record<string, { app_name: string; total_ms: number }[]>>({})
   const { status, currentActivity, sessionSkillXP } = useSessionStore()
   const levelingSkillId = status === 'running' && currentActivity ? categoryToSkillId(currentActivity.category) : null
   const hasMountedRef = useRef(false)
@@ -51,6 +66,23 @@ export function SkillsPage() {
   }
 
   useEffect(() => { load() }, [])
+
+  // Load top 3 apps for expanded skill
+  useEffect(() => {
+    if (!expandedId) return
+    const skill = SKILLS.find((s) => s.id === expandedId)
+    if (!skill) return
+    const api = window.electronAPI
+    if (!api?.db?.getAppUsageStats) return
+    api.db.getAppUsageStats().then((raw) => {
+      const apps = (raw as AppStat[]) || []
+      const forCategory = apps
+        .filter((a) => a.category === skill.category)
+        .slice(0, 3)
+        .map((a) => ({ app_name: a.app_name, total_ms: a.total_ms }))
+      setTopAppsBySkill((prev) => ({ ...prev, [expandedId]: forCategory }))
+    }).catch(() => {})
+  }, [expandedId])
 
   const totalLevel = SKILLS.reduce((sum, s) => sum + skillLevelFromXP(liveById.get(s.id) ?? 0), 0)
 
@@ -191,6 +223,19 @@ export function SkillsPage() {
                         <span className="text-[11px] text-gray-400">Total XP</span>
                         <span className="text-[11px] font-mono text-gray-300">{formatXP(xp)}</span>
                       </div>
+                      {topAppsBySkill[skill.id] && topAppsBySkill[skill.id].length > 0 && (
+                        <div className="pt-2 border-t border-white/[0.04]">
+                          <span className="text-[10px] text-gray-500 font-mono uppercase">Top apps</span>
+                          <div className="mt-1.5 space-y-1">
+                            {topAppsBySkill[skill.id].map((a, i) => (
+                              <div key={a.app_name} className="flex items-center justify-between text-[11px]">
+                                <span className="text-gray-300 truncate">{a.app_name}</span>
+                                <span className="text-gray-500 font-mono shrink-0 ml-2">{formatAppTime(a.total_ms)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 )}
@@ -320,6 +365,19 @@ export function SkillsPage() {
                         <span className="text-[11px] text-gray-400">Total XP</span>
                         <span className="text-[11px] font-mono text-gray-300">{formatXP(xp)}</span>
                       </div>
+                      {topAppsBySkill[skill.id] && topAppsBySkill[skill.id].length > 0 && (
+                        <div className="pt-2 border-t border-white/[0.04]">
+                          <span className="text-[10px] text-gray-500 font-mono uppercase">Top apps</span>
+                          <div className="mt-1.5 space-y-1">
+                            {topAppsBySkill[skill.id].map((a) => (
+                              <div key={a.app_name} className="flex items-center justify-between text-[11px]">
+                                <span className="text-gray-300 truncate">{a.app_name}</span>
+                                <span className="text-gray-500 font-mono shrink-0 ml-2">{formatAppTime(a.total_ms)}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 )}

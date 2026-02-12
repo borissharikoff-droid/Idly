@@ -1,4 +1,5 @@
 import { ipcMain, app, dialog, shell } from 'electron'
+import { createBadgeImage } from './badgeOverlay'
 import path from 'path'
 import fs from 'fs'
 import { getTrackerApi } from './tracker'
@@ -306,6 +307,26 @@ export function registerIpcHandlers() {
   ipcMain.handle(IPC_CHANNELS.updater.install, () => {
     const { autoUpdater } = require('electron-updater')
     autoUpdater.quitAndInstall(false, true)
+  })
+
+  // ── Window: flash + taskbar badge (Windows overlay) ───────────────────────
+  ipcMain.handle('window:flashFrame', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.flashFrame(true)
+    }
+  })
+  ipcMain.handle('window:setBadgeCount', async (_: unknown, count: number) => {
+    const n = typeof count === 'number' ? Math.max(0, Math.floor(count)) : 0
+    if (process.platform === 'darwin' && app.dock) {
+      app.dock.setBadge(n > 0 ? String(n) : '')
+    } else if (process.platform === 'win32' && mainWindow && !mainWindow.isDestroyed()) {
+      if (n === 0) {
+        mainWindow.setOverlayIcon(null, '')
+      } else {
+        const img = await createBadgeImage(n)
+        if (img) mainWindow.setOverlayIcon(img, `${n} unread`)
+      }
+    }
   })
 }
 
