@@ -4,6 +4,7 @@ import { useAuthStore } from '../stores/authStore'
 import { useNavBadgeStore } from '../stores/navBadgeStore'
 import { useFriendToastStore } from '../stores/friendToastStore'
 import { useMessageToastStore } from '../stores/messageToastStore'
+import { useNotificationStore } from '../stores/notificationStore'
 import { playMessageSound } from '../lib/sounds'
 
 /**
@@ -72,6 +73,12 @@ export function useMessageNotifier() {
               senderName: name,
               senderAvatar: avatar,
               preview,
+            })
+            useNotificationStore.getState().push({
+              type: 'message',
+              icon: avatar,
+              title: name,
+              body: preview,
             })
           })
         }

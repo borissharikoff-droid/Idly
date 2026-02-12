@@ -5,6 +5,7 @@ import { checkSocialAchievements } from '../lib/xp'
 import { useAlertStore } from '../stores/alertStore'
 import { useFriendToastStore } from '../stores/friendToastStore'
 import { useNavBadgeStore } from '../stores/navBadgeStore'
+import { useNotificationStore } from '../stores/notificationStore'
 import { unlockCosmeticsFromAchievement } from '../lib/cosmetics'
 import { computeTotalSkillLevelFromLevels } from '../lib/skills'
 
@@ -139,14 +140,31 @@ export function useFriends() {
         }
       }
 
-      // Friend toasts: came online (only after we have a previous snapshot)
+      // Friend toasts + notifications: came online, leveled up
       const prev = previousFriendsRef.current
       if (prev !== null) {
         const name = (f: FriendProfile) => f.username?.trim() || 'Friend'
+        const pushNotif = useNotificationStore.getState().push
         for (const friend of friendList) {
           const p = prev.find((x) => x.id === friend.id)
           if (!p?.is_online && friend.is_online) {
             pushFriendToast({ type: 'online', friendName: name(friend) })
+            pushNotif({
+              type: 'friend_online',
+              icon: friend.avatar_url || '🟢',
+              title: `${name(friend)} is online`,
+              body: friend.current_activity ? `Active: ${friend.current_activity}` : 'Just came online',
+            })
+          }
+          const prevLevel = p?.total_skill_level ?? 0
+          const newLevel = friend.total_skill_level ?? 0
+          if (prevLevel > 0 && newLevel > prevLevel) {
+            pushNotif({
+              type: 'friend_levelup',
+              icon: '⬆️',
+              title: `${name(friend)} leveled up!`,
+              body: `Total level: ${prevLevel} → ${newLevel}`,
+            })
           }
         }
       }
