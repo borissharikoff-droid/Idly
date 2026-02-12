@@ -22,6 +22,7 @@ import { warmUpAudio } from './lib/sounds'
 import { ACHIEVEMENTS } from './lib/xp'
 import { useNavBadgeStore } from './stores/navBadgeStore'
 import { useUpdateChecker } from './hooks/useUpdateChecker'
+import { useMessageNotifier } from './hooks/useMessageNotifier'
 
 export type TabId = 'home' | 'skills' | 'stats' | 'profile' | 'friends' | 'settings'
 
@@ -45,6 +46,7 @@ export default function App() {
   useKeyboardShortcuts()
   useFriends() // run so friend presence polling + online/leveling toasts work on all tabs
   useUpdateChecker()
+  useMessageNotifier() // global: message sound, taskbar flash/badge, toast banner on ALL tabs
 
   // Pre-warm audio context on first user gesture
   useEffect(() => {

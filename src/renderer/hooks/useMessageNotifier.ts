@@ -1,0 +1,81 @@
+import { useEffect, useRef } from 'react'
+import { supabase } from '../lib/supabase'
+import { useAuthStore } from '../stores/authStore'
+import { useNavBadgeStore } from '../stores/navBadgeStore'
+import { useFriendToastStore } from '../stores/friendToastStore'
+import { useMessageToastStore } from '../stores/messageToastStore'
+import { playMessageSound } from '../lib/sounds'
+
+/**
+ * Global hook that listens for incoming messages on ALL tabs (not just friends).
+ * Handles sound, taskbar flash, taskbar badge, friend toast, and message banner.
+ * Must be called once in App.tsx.
+ */
+export function useMessageNotifier() {
+  const { user } = useAuthStore()
+  const { addUnreadMessages, setUnreadMessagesCount } = useNavBadgeStore()
+  const initialized = useRef(false)
+
+  // Fetch initial unread count
+  useEffect(() => {
+    if (!supabase || !user?.id) {
+      setUnreadMessagesCount(0)
+      return
+    }
+    supabase
+      .from('messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('receiver_id', user.id)
+      .is('read_at', null)
+      .then(({ count, error }) => {
+        if (!error) setUnreadMessagesCount(count ?? 0)
+      })
+  }, [user?.id, setUnreadMessagesCount])
+
+  // Real-time subscription for incoming messages
+  useEffect(() => {
+    if (!supabase || !user?.id) return
+    const channel = supabase
+      .channel('global-dm-notifier')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `receiver_id=eq.${user.id}`,
+        },
+        (payload) => {
+          const row = payload.new as { id: string; sender_id: string; body: string }
+          addUnreadMessages(1)
+          playMessageSound()
+          // Flash + badge on Windows taskbar
+          try {
+            ;(window.electronAPI as any)?.window?.flashFrame?.()
+            ;(window.electronAPI as any)?.window?.setBadgeCount?.(
+              useNavBadgeStore.getState().unreadMessagesCount + 1
+            )
+          } catch {}
+          // Fetch sender profile for toast
+          supabase.from('profiles').select('username, avatar_url').eq('id', row.sender_id).single().then(({ data: profile }) => {
+            const name = profile?.username?.trim() || 'Friend'
+            const avatar = profile?.avatar_url || '💬'
+            const preview = row.body.length > 30 ? row.body.slice(0, 30) + '...' : row.body
+            useFriendToastStore.getState().push({ type: 'message', friendName: name, messagePreview: preview })
+            useMessageToastStore.getState().push({
+              senderId: row.sender_id,
+              senderName: name,
+              senderAvatar: avatar,
+              preview,
+            })
+          })
+        }
+      )
+      .subscribe()
+    initialized.current = true
+    return () => {
+      supabase.removeChannel(channel)
+      initialized.current = false
+    }
+  }, [user?.id, addUnreadMessages])
+}

@@ -132,7 +132,10 @@ export function useFriends() {
           }
           friendList = friendList.map((p) => {
             const allSkills = skillsByUser.get(p.id) || []
-            const total_skill_level = computeTotalSkillLevelFromLevels(allSkills)
+            // Only compute from user_skills if data exists, otherwise use profiles.level
+            const total_skill_level = allSkills.length > 0
+              ? computeTotalSkillLevelFromLevels(allSkills)
+              : (p.level || 0)
             const list = [...allSkills].sort((a, b) => b.level - a.level).slice(0, 3)
             return { ...p, top_skills: list, total_skill_level }
           })

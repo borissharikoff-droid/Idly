@@ -74,6 +74,7 @@ export const IPC_CHANNELS = {
   },
   window: {
     flashFrame: 'window:flashFrame',
+    setBadgeCount: 'window:setBadgeCount',
   },
   updater: {
     status: 'updater:status',

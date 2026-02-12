@@ -1,4 +1,4 @@
-import { useEffect, useRef, RefObject } from 'react'
+import { useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useNotificationStore, NotificationType, Notification } from '../../stores/notificationStore'
 
@@ -36,7 +36,7 @@ function groupBySection(items: Notification[]) {
 interface NotificationPanelProps {
   open: boolean
   onClose: () => void
-  bellRef?: RefObject<HTMLButtonElement | null>
+  bellRef?: { current: HTMLButtonElement | null }
 }
 
 export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelProps) {

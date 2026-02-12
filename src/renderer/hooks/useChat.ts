@@ -2,9 +2,6 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../stores/authStore'
 import { useNavBadgeStore } from '../stores/navBadgeStore'
-import { useFriendToastStore } from '../stores/friendToastStore'
-import { useMessageToastStore } from '../stores/messageToastStore'
-import { playMessageSound } from '../lib/sounds'
 
 export interface ChatMessage {
   id: string
@@ -17,14 +14,14 @@ export interface ChatMessage {
 
 let _channelSeq = 0
 
-/** @param peerId When set, new messages from this peer are appended to the thread and do not increase unread count. */
+/** @param peerId When set, new messages from this peer are appended to the thread in real-time. */
 export function useChat(peerId: string | null = null) {
   const { user } = useAuthStore()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(false)
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
-  const { setUnreadMessagesCount, addUnreadMessages } = useNavBadgeStore()
+  const { setUnreadMessagesCount } = useNavBadgeStore()
   const peerIdRef = useRef(peerId)
   peerIdRef.current = peerId
 
@@ -38,18 +35,10 @@ export function useChat(peerId: string | null = null) {
     if (!error) setUnreadMessagesCount(count ?? 0)
   }, [user?.id, setUnreadMessagesCount])
 
-  useEffect(() => {
-    if (!user?.id) {
-      setUnreadMessagesCount(0)
-      return
-    }
-    fetchUnreadCount()
-  }, [user?.id, fetchUnreadCount, setUnreadMessagesCount])
-
-  // Real-time subscription for incoming messages — stable channel, uses ref for peerId
+  // Real-time: append messages from the currently open peer to the thread
   useEffect(() => {
     if (!supabase || !user?.id) return
-    const channelName = `dm-incoming-${++_channelSeq}`
+    const channelName = `dm-thread-${++_channelSeq}`
     const channel = supabase
       .channel(channelName)
       .on(
@@ -63,32 +52,11 @@ export function useChat(peerId: string | null = null) {
         (payload) => {
           const row = payload.new as ChatMessage
           const currentPeer = peerIdRef.current
-          const isFromOpenThread = currentPeer !== null && row.sender_id === currentPeer
-          if (isFromOpenThread) {
+          if (currentPeer !== null && row.sender_id === currentPeer) {
             setMessages((prev) => {
               if (prev.some((m) => m.id === row.id)) return prev
               return [...prev, row].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
             })
-          } else {
-            addUnreadMessages(1)
-            playMessageSound()
-            // Flash Windows taskbar
-            ;(window.electronAPI as any)?.window?.flashFrame?.()
-            // Show toast with sender name
-            if (supabase) {
-              supabase.from('profiles').select('username, avatar_url').eq('id', row.sender_id).single().then(({ data: profile }) => {
-                const name = profile?.username?.trim() || 'Friend'
-                const avatar = profile?.avatar_url || '💬'
-                const preview = row.body.length > 30 ? row.body.slice(0, 30) + '...' : row.body
-                useFriendToastStore.getState().push({ type: 'message', friendName: name, messagePreview: preview })
-                useMessageToastStore.getState().push({
-                  senderId: row.sender_id,
-                  senderName: name,
-                  senderAvatar: avatar,
-                  preview,
-                })
-              })
-            }
           }
         }
       )
@@ -96,7 +64,7 @@ export function useChat(peerId: string | null = null) {
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [user?.id, addUnreadMessages])
+  }, [user?.id])
 
   // Polling fallback: when chat is open, poll every 5s for new messages
   useEffect(() => {
@@ -165,6 +133,8 @@ export function useChat(peerId: string | null = null) {
         .eq('sender_id', otherUserId)
         .is('read_at', null)
       fetchUnreadCount()
+      // Clear taskbar badge when reading messages
+      try { (window.electronAPI as any)?.window?.setBadgeCount?.(0) } catch {}
     },
     [user?.id, fetchUnreadCount]
   )

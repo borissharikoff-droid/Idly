@@ -239,6 +239,10 @@ export function registerIpcHandlers() {
   ipcMain.handle(IPC_CHANNELS.window.flashFrame, () => {
     if (mainWindow && !mainWindow.isFocused()) mainWindow.flashFrame(true)
   })
+  ipcMain.handle(IPC_CHANNELS.window.setBadgeCount, (_, count: unknown) => {
+    const n = typeof count === 'number' ? count : 0
+    app.setBadgeCount(Math.max(0, n))
+  })
 
   // ── Data export ──
   ipcMain.handle(IPC_CHANNELS.data.exportSessions, async (_, format: unknown) => {

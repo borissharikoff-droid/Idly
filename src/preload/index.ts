@@ -156,7 +156,10 @@ try {
       setAutoLaunch: (enabled: boolean) => ipcRenderer.invoke(CH.settings.setAutoLaunch, enabled),
     },
     notify: { show: (title: string, body: string) => ipcRenderer.invoke(CH.notify.show, title, body) },
-    window: { flashFrame: () => ipcRenderer.invoke(CH.window.flashFrame) },
+    window: {
+      flashFrame: () => ipcRenderer.invoke(CH.window.flashFrame),
+      setBadgeCount: (count: number) => ipcRenderer.invoke(CH.window.setBadgeCount, count),
+    },
     data: {
       exportSessions: (format: 'csv' | 'json') => ipcRenderer.invoke(CH.data.exportSessions, format),
       getLogsPath: () => ipcRenderer.invoke(CH.data.getLogsPath),
