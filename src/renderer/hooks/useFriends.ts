@@ -119,6 +119,8 @@ export function useFriends() {
             friendship_status: f.status,
             top_skills: [] as FriendSkill[],
             persona_id: (p.persona_id as string | null) ?? null,
+            equipped_badges: Array.isArray(p.equipped_badges) ? (p.equipped_badges as string[]) : [],
+            equipped_frame: (p.equipped_frame as string | null) ?? null,
           }
         })
         try {
