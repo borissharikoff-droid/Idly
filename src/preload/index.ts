@@ -65,6 +65,7 @@ const CH = {
     saveCheckpoint: 'db:saveCheckpoint',
     getCheckpoint: 'db:getCheckpoint',
     clearCheckpoint: 'db:clearCheckpoint',
+    restoreSkillXP: 'db:restoreSkillXP',
   },
   ai: {
     analyzeSession: 'ai:analyzeSession',
