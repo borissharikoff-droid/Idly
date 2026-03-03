@@ -7,7 +7,7 @@ import { MOTION } from '../../lib/motion'
 import { PageHeader } from '../shared/PageHeader'
 import { InlineSuccess } from '../shared/InlineSuccess'
 
-export function SettingsPage({ onNavigateAdmin }: { onNavigateAdmin?: () => void }) {
+export function SettingsPage() {
   const { user, signOut } = useAuthStore()
 
   const [message, setMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
@@ -230,18 +230,6 @@ export function SettingsPage({ onNavigateAdmin }: { onNavigateAdmin?: () => void
           className="w-full py-2.5 rounded-xl bg-discord-red/20 border border-discord-red/30 text-discord-red font-semibold text-sm hover:bg-discord-red/30 transition-colors"
         >
           Sign Out
-        </motion.button>
-      )}
-
-      {/* Admin Panel */}
-      {onNavigateAdmin && (
-        <motion.button
-          whileTap={MOTION.interactive.tap}
-          onClick={() => { playClickSound(); onNavigateAdmin() }}
-          className="w-full py-2.5 rounded-xl bg-discord-card border border-white/10 text-sm text-gray-400 font-semibold hover:border-white/20 hover:text-white transition-colors flex items-center justify-between px-4"
-        >
-          <span>Admin Panel</span>
-          <span className="text-xs text-gray-600">›</span>
         </motion.button>
       )}
 

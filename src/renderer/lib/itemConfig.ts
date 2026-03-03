@@ -67,8 +67,27 @@ export function loadAdminConfig(): AdminConfig {
   }
 }
 
-export function saveAdminConfig(cfg: AdminConfig): void {
+function saveAdminConfig(cfg: AdminConfig): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg))
+}
+
+/** Fetch admin config from Supabase and cache locally. Call once after auth. */
+export async function syncAdminConfigFromSupabase(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabaseClient: { from: (table: string) => any },
+): Promise<void> {
+  try {
+    const { data } = await supabaseClient
+      .from('admin_config')
+      .select('config')
+      .eq('id', 'singleton')
+      .maybeSingle()
+    if (data?.config && typeof data.config === 'object') {
+      saveAdminConfig(data.config as AdminConfig)
+    }
+  } catch {
+    // offline or table missing — use cached config
+  }
 }
 
 /** Apply overrides to LOOT_ITEMS and BOSSES arrays in-place. Call once at app startup. */
