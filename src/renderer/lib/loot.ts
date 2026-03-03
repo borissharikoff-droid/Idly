@@ -1,6 +1,6 @@
 export type LootRarity = 'common' | 'rare' | 'epic' | 'legendary' | 'mythic'
-export type LootSlot = 'head' | 'body' | 'legs' | 'ring' | 'consumable' | 'plant'
-export const LOOT_SLOTS: LootSlot[] = ['head', 'body', 'legs', 'ring']
+export type LootSlot = 'head' | 'body' | 'legs' | 'ring' | 'weapon' | 'consumable' | 'plant'
+export const LOOT_SLOTS: LootSlot[] = ['head', 'body', 'legs', 'ring', 'weapon']
 
 export const POTION_IDS = ['atk_potion', 'hp_potion', 'regen_potion'] as const
 export const POTION_MAX = 50
@@ -901,6 +901,63 @@ export const LOOT_ITEMS: LootItemDef[] = [
     perkValue: 0,
     perkDescription: 'Farm harvest. Sell on the Marketplace.',
   },
+
+  // ── Weapons (weapon slot — always +ATK) ────────────────────────────────
+  {
+    id: 'iron_sword',
+    name: 'Iron Sword',
+    slot: 'weapon',
+    rarity: 'common',
+    icon: '⚔️',
+    description: 'A sturdy iron blade — reliable in any fight.',
+    perkType: 'atk_boost',
+    perkValue: 6,
+    perkDescription: '+6 ATK',
+  },
+  {
+    id: 'steel_blade',
+    name: 'Steel Blade',
+    slot: 'weapon',
+    rarity: 'rare',
+    icon: '🗡️',
+    description: 'Tempered steel with a keen edge.',
+    perkType: 'atk_boost',
+    perkValue: 14,
+    perkDescription: '+14 ATK',
+  },
+  {
+    id: 'void_edge',
+    name: 'Void Edge',
+    slot: 'weapon',
+    rarity: 'epic',
+    icon: '⚡',
+    description: 'A blade crackling with electric energy from the void.',
+    perkType: 'atk_boost',
+    perkValue: 25,
+    perkDescription: '+25 ATK',
+  },
+  {
+    id: 'nexus_sword',
+    name: 'Nexus Sword',
+    slot: 'weapon',
+    rarity: 'legendary',
+    icon: '🌟',
+    description: 'Forged at the nexus of all realities. Immense power.',
+    perkType: 'atk_boost',
+    perkValue: 45,
+    perkDescription: '+45 ATK',
+  },
+  {
+    id: 'omega_blade',
+    name: 'Omega Blade',
+    slot: 'weapon',
+    rarity: 'mythic',
+    icon: '☄️',
+    description: 'The ultimate weapon. Nothing can withstand its edge.',
+    perkType: 'atk_boost',
+    perkValue: 75,
+    perkDescription: '+75 ATK',
+  },
 ]
 
 export const CHEST_DEFS: Record<ChestType, ChestDef> = {
@@ -921,6 +978,7 @@ export const CHEST_DEFS: Record<ChestType, ChestDef> = {
       { itemId: 'soft_glow', weight: 80 },
       { itemId: 'canvas_cap', weight: 80 },
       { itemId: 'iron_gauntlet', weight: 80 },
+      { itemId: 'iron_sword', weight: 80 },
       // Rare (×8)
       { itemId: 'grind_hoodie', weight: 8 },
       { itemId: 'speed_shorts', weight: 8 },
@@ -935,6 +993,7 @@ export const CHEST_DEFS: Record<ChestType, ChestDef> = {
       { itemId: 'sketch_hood', weight: 8 },
       { itemId: 'steel_helm', weight: 8 },
       { itemId: 'regen_ring', weight: 8 },
+      { itemId: 'steel_blade', weight: 8 },
       // Epic (×1)
       { itemId: 'pulse_aura', weight: 1 },
       { itemId: 'aegis_aura', weight: 1 },
@@ -948,6 +1007,7 @@ export const CHEST_DEFS: Record<ChestType, ChestDef> = {
       { itemId: 'aurora_field', weight: 1 },
       { itemId: 'war_blade', weight: 1 },
       { itemId: 'titan_plate', weight: 1 },
+      { itemId: 'void_edge', weight: 1 },
     ],
   },
   rare_chest: {
@@ -972,6 +1032,7 @@ export const CHEST_DEFS: Record<ChestType, ChestDef> = {
       { itemId: 'sketch_hood', weight: 60 },
       { itemId: 'steel_helm', weight: 60 },
       { itemId: 'regen_ring', weight: 60 },
+      { itemId: 'steel_blade', weight: 60 },
       // Epic (×10)
       { itemId: 'pulse_aura', weight: 10 },
       { itemId: 'aegis_aura', weight: 10 },
@@ -985,6 +1046,7 @@ export const CHEST_DEFS: Record<ChestType, ChestDef> = {
       { itemId: 'aurora_field', weight: 10 },
       { itemId: 'war_blade', weight: 10 },
       { itemId: 'titan_plate', weight: 10 },
+      { itemId: 'void_edge', weight: 10 },
       // Legendary (×2)
       { itemId: 'geek_glasses', weight: 2 },
       { itemId: 'hacker_jacket', weight: 2 },
@@ -995,6 +1057,7 @@ export const CHEST_DEFS: Record<ChestType, ChestDef> = {
       { itemId: 'mythic_monocle', weight: 2 },
       { itemId: 'eclipse_mantle', weight: 2 },
       { itemId: 'vitality_aura', weight: 2 },
+      { itemId: 'nexus_sword', weight: 2 },
     ],
   },
   epic_chest: {
@@ -1018,6 +1081,7 @@ export const CHEST_DEFS: Record<ChestType, ChestDef> = {
       { itemId: 'aurora_field', weight: 50 },
       { itemId: 'war_blade', weight: 50 },
       { itemId: 'titan_plate', weight: 50 },
+      { itemId: 'void_edge', weight: 50 },
       // Legendary (×12)
       { itemId: 'geek_glasses', weight: 12 },
       { itemId: 'hacker_jacket', weight: 12 },
@@ -1028,9 +1092,11 @@ export const CHEST_DEFS: Record<ChestType, ChestDef> = {
       { itemId: 'mythic_monocle', weight: 12 },
       { itemId: 'eclipse_mantle', weight: 12 },
       { itemId: 'vitality_aura', weight: 12 },
+      { itemId: 'nexus_sword', weight: 12 },
       // Mythic gear (×0.5)
       { itemId: 'omega_crown', weight: 0.5 },
       { itemId: 'prism_aura', weight: 0.5 },
+      { itemId: 'omega_blade', weight: 0.5 },
       // Mythic potions (×1)
       { itemId: 'atk_potion', weight: 1 },
       { itemId: 'hp_potion', weight: 1 },
@@ -1055,9 +1121,11 @@ export const CHEST_DEFS: Record<ChestType, ChestDef> = {
       { itemId: 'mythic_monocle', weight: 20 },
       { itemId: 'eclipse_mantle', weight: 20 },
       { itemId: 'vitality_aura', weight: 20 },
+      { itemId: 'nexus_sword', weight: 20 },
       // Mythic gear (×2)
       { itemId: 'omega_crown', weight: 2 },
       { itemId: 'prism_aura', weight: 2 },
+      { itemId: 'omega_blade', weight: 2 },
       // Mythic potions (×3)
       { itemId: 'atk_potion', weight: 3 },
       { itemId: 'hp_potion', weight: 3 },

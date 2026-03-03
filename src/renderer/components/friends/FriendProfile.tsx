@@ -41,6 +41,7 @@ const FRIEND_LOOT_SLOT_META: Record<LootSlot, { label: string; icon: string }> =
   body: { label: 'Body', icon: '👕' },
   legs: { label: 'Legs', icon: '🦵' },
   ring: { label: 'Ring', icon: '💍' },
+  weapon: { label: 'Weapon', icon: '⚔️' },
   consumable: { label: 'Consumable', icon: '⚗️' },
   plant: { label: 'Plant', icon: '🌿' },
 }

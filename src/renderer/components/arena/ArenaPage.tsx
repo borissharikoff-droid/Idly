@@ -190,40 +190,41 @@ export function ArenaPage() {
           )}
         </div>
         <div className="flex gap-2">
-          {/* Gear slots */}
+          {/* Gear slots — layout: head/body/legs on left, ring/weapon compact squares on right */}
           {(() => {
-            const renderArenaSlot = (slot: LootSlot) => {
+            // Full-width horizontal row slot (head/body/legs)
+            const renderRowSlot = (slot: LootSlot) => {
               const meta = SLOT_META[slot]
               const item = equippedBySlot[slot]
                 ? LOOT_ITEMS.find((x) => x.id === equippedBySlot[slot]) ?? null
                 : null
               const theme = item ? RARITY_THEME[normalizeRarity(item.rarity)] : null
-
               const inner = (
                 <>
                   <div
-                    className="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden"
+                    className="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden"
                     style={theme
                       ? { background: `radial-gradient(circle at 50% 40%, ${theme.glow}55 0%, rgba(9,9,17,0.95) 70%)` }
                       : { background: 'rgba(9,9,17,0.85)' }}
                   >
                     {item
-                      ? <LootVisual icon={item.icon} image={item.image} className="w-6 h-6 object-contain" scale={item.renderScale ?? 1} />
-                      : <span className="text-[13px] opacity-[0.13]">{meta.icon}</span>
-                    }
+                      ? <LootVisual icon={item.icon} image={item.image} className="w-5 h-5 object-contain" scale={item.renderScale ?? 1} />
+                      : <span className="text-[12px] opacity-[0.13]">{meta.icon}</span>}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[7px] text-gray-500 font-mono uppercase tracking-wider leading-none">{meta.label}</p>
                     <p className={`text-[10px] font-medium truncate mt-0.5 leading-tight ${item ? 'text-white/85' : 'text-gray-600'}`}>
                       {item ? item.name : 'Empty'}
                     </p>
+                    {item && item.perkType === 'atk_boost' && (
+                      <p className="text-[8px] text-red-400/70 font-mono leading-none mt-0.5">+{item.perkValue} ATK</p>
+                    )}
                   </div>
                   {theme && <div className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: theme.color }} />}
                 </>
               )
-
               return (
-                <BuffTooltip key={slot} item={item} placement="right" stretch>
+                <BuffTooltip key={slot} item={item} placement="bottom" stretch>
                   <div
                     className="rounded-md border overflow-hidden h-full"
                     style={theme
@@ -231,25 +232,80 @@ export function ArenaPage() {
                       : { borderColor: 'rgba(255,255,255,0.06)', background: 'rgba(12,12,20,0.70)' }}
                   >
                     {item ? (
-                      <button
-                        type="button"
-                        onClick={() => { playClickSound(); setInspectItemId(item.id) }}
-                        className="w-full h-full px-2 py-3 flex items-center gap-2 hover:bg-white/[0.05] transition-colors"
-                      >
+                      <button type="button" onClick={() => { playClickSound(); setInspectItemId(item.id) }}
+                        className="w-full h-full px-2 py-2.5 flex items-center gap-2 hover:bg-white/[0.05] transition-colors">
                         {inner}
                       </button>
                     ) : (
-                      <div className="h-full px-2 py-3 flex items-center gap-2">{inner}</div>
+                      <div className="h-full px-2 py-2.5 flex items-center gap-2">{inner}</div>
                     )}
                   </div>
                 </BuffTooltip>
               )
             }
+
+            // Compact square slot (ring/weapon) — icon centered + label + perk
+            const renderSquareSlot = (slot: LootSlot) => {
+              const meta = SLOT_META[slot]
+              const item = equippedBySlot[slot]
+                ? LOOT_ITEMS.find((x) => x.id === equippedBySlot[slot]) ?? null
+                : null
+              const theme = item ? RARITY_THEME[normalizeRarity(item.rarity)] : null
+              const inner = (
+                <div className="flex flex-col items-center justify-center gap-0.5 w-full h-full py-2 px-1">
+                  <div
+                    className="w-8 h-8 rounded-md flex items-center justify-center overflow-hidden flex-shrink-0"
+                    style={theme
+                      ? { background: `radial-gradient(circle at 50% 40%, ${theme.glow}55 0%, rgba(9,9,17,0.95) 70%)` }
+                      : { background: 'rgba(9,9,17,0.85)' }}
+                  >
+                    {item
+                      ? <LootVisual icon={item.icon} image={item.image} className="w-5 h-5 object-contain" scale={item.renderScale ?? 1} />
+                      : <span className="text-[13px] opacity-[0.13]">{meta.icon}</span>}
+                  </div>
+                  <p className="text-[7px] text-gray-500 font-mono uppercase tracking-wider leading-none text-center w-full truncate">
+                    {item ? item.name : meta.label}
+                  </p>
+                  {item && item.perkType === 'atk_boost' && (
+                    <p className="text-[7px] text-red-400/70 font-mono leading-none">+{item.perkValue} ATK</p>
+                  )}
+                  {theme && <div className="w-1 h-1 rounded-full" style={{ background: theme.color }} />}
+                </div>
+              )
+              return (
+                <BuffTooltip key={slot} item={item} placement="bottom" stretch>
+                  <div
+                    className="rounded-md border overflow-hidden h-full"
+                    style={theme
+                      ? { borderColor: theme.border, background: `linear-gradient(135deg, ${theme.glow}10 0%, rgba(12,12,20,0.95) 55%)` }
+                      : { borderColor: 'rgba(255,255,255,0.06)', background: 'rgba(12,12,20,0.70)' }}
+                  >
+                    {item ? (
+                      <button type="button" onClick={() => { playClickSound(); setInspectItemId(item.id) }}
+                        className="w-full h-full hover:bg-white/[0.05] transition-colors">
+                        {inner}
+                      </button>
+                    ) : (
+                      <div className="h-full">{inner}</div>
+                    )}
+                  </div>
+                </BuffTooltip>
+              )
+            }
+
             return (
-              <div className="flex flex-col gap-1" style={{ flex: '2', minWidth: 0 }}>
-                {(['head', 'body', 'ring', 'legs'] as LootSlot[]).map((s) => (
-                  <div key={s} className="flex-1 min-h-0">{renderArenaSlot(s)}</div>
-                ))}
+              <div className="flex gap-1" style={{ flex: '2', minWidth: 0 }}>
+                {/* Left: head / body / legs */}
+                <div className="flex flex-col gap-1 flex-1 min-w-0">
+                  {(['head', 'body', 'legs'] as LootSlot[]).map((s) => (
+                    <div key={s} className="flex-1 min-h-0">{renderRowSlot(s)}</div>
+                  ))}
+                </div>
+                {/* Right: ring (top) / weapon (bottom, taller) */}
+                <div className="flex flex-col gap-1" style={{ width: 52 }}>
+                  <div className="flex-1 min-h-0">{renderSquareSlot('ring')}</div>
+                  <div style={{ flex: 2 }} className="min-h-0">{renderSquareSlot('weapon')}</div>
+                </div>
               </div>
             )
           })()}

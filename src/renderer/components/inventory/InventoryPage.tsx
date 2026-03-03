@@ -38,7 +38,7 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
   const consumePotion = useInventoryStore((s) => s.consumePotion)
   const inBattle = Boolean(useArenaStore((s) => s.activeBattle))
   const [sortBy, setSortBy] = useState<'rarity' | 'name'>('rarity')
-  const [filterBy, setFilterBy] = useState<'all' | 'combat' | 'xp' | 'drops' | 'potions' | 'chests' | 'cosmetic' | 'plants'>('all')
+  const [filterBy, setFilterBy] = useState<'all' | 'combat' | 'weapons' | 'xp' | 'drops' | 'potions' | 'chests' | 'cosmetic' | 'plants'>('all')
   const [inspectSlotId, setInspectSlotId] = useState<string | null>(null)
   const [listForSaleTarget, setListForSaleTarget] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; slotId: string } | null>(null)
@@ -111,7 +111,8 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
 
   const FILTERS = [
     { id: 'all',     label: 'All',      icon: '🎒' },
-    { id: 'combat',  label: 'Combat',   icon: '⚔️' },
+    { id: 'weapons', label: 'Weapons',  icon: '⚔️' },
+    { id: 'combat',  label: 'Combat',   icon: '🛡️' },
     { id: 'xp',      label: 'XP',       icon: '📈' },
     { id: 'drops',   label: 'Drops',    icon: '🎁' },
     { id: 'potions', label: 'Potions',  icon: '⚗️' },
@@ -126,6 +127,7 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
     if (slot.kind !== 'item') return false
     const item = LOOT_ITEMS.find((x) => x.id === slot.itemId)
     if (!item) return false
+    if (filterBy === 'weapons')  return item.slot === 'weapon'
     if (filterBy === 'combat')  return ['atk_boost', 'hp_boost', 'hp_regen_boost'].includes(item.perkType as string)
     if (filterBy === 'xp')      return ['xp_skill_boost', 'xp_global_boost', 'focus_boost'].includes(item.perkType as string)
     if (filterBy === 'drops')   return (item.perkType as string) === 'chest_drop_boost'
@@ -324,35 +326,38 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
         </div>
 
         <div className="flex gap-2">
-          {/* Left: gear slots */}
+          {/* Gear slots — head/body/legs on left, ring/weapon compact squares on right */}
           {(() => {
-            const renderSlot = (slot: LootSlot) => {
+            const renderRowSlot = (slot: LootSlot) => {
               const meta = SLOT_META[slot]
               const equippedItem = LOOT_ITEMS.find((item) => item.id === equippedBySlot[slot])
               const theme = equippedItem ? RARITY_THEME[normalizeRarity(equippedItem.rarity)] : null
               const inner = (
                 <>
                   <div
-                    className="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden"
+                    className="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden"
                     style={theme
                       ? { background: `radial-gradient(circle at 50% 40%, ${theme.glow}55 0%, rgba(9,9,17,0.95) 70%)` }
                       : { background: 'rgba(9,9,17,0.85)' }}
                   >
                     {equippedItem
-                      ? <LootVisual icon={equippedItem.icon} image={equippedItem.image} className="w-6 h-6 object-contain" scale={equippedItem.renderScale ?? 1} />
-                      : <span className="text-[13px] opacity-[0.13]">{meta.icon}</span>}
+                      ? <LootVisual icon={equippedItem.icon} image={equippedItem.image} className="w-5 h-5 object-contain" scale={equippedItem.renderScale ?? 1} />
+                      : <span className="text-[12px] opacity-[0.13]">{meta.icon}</span>}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-[7px] text-gray-500 font-mono uppercase tracking-wider leading-none">{meta.label}</p>
                     <p className={`text-[10px] font-medium truncate mt-0.5 leading-tight ${equippedItem ? 'text-white/85' : 'text-gray-600'}`}>
                       {equippedItem ? equippedItem.name : 'Empty'}
                     </p>
+                    {equippedItem && equippedItem.perkType === 'atk_boost' && (
+                      <p className="text-[8px] text-red-400/70 font-mono leading-none mt-0.5">+{equippedItem.perkValue} ATK</p>
+                    )}
                   </div>
                   {theme && <div className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: theme.color }} />}
                 </>
               )
               return (
-                <BuffTooltip key={slot} item={equippedItem ?? null} placement="right" stretch>
+                <BuffTooltip key={slot} item={equippedItem ?? null} placement="bottom" stretch>
                   <div
                     className="rounded-md border overflow-hidden h-full"
                     style={theme
@@ -364,22 +369,80 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
                         type="button"
                         onClick={() => { playClickSound(); setInspectSlotId(`item:${equippedItem.id}`) }}
                         onContextMenu={(e) => { e.preventDefault(); unequipSlot(slot) }}
-                        className="w-full h-full px-2 py-3 flex items-center gap-2 hover:bg-white/[0.05] transition-colors"
+                        className="w-full h-full px-2 py-2.5 flex items-center gap-2 hover:bg-white/[0.05] transition-colors"
                       >
                         {inner}
                       </button>
                     ) : (
-                      <div className="h-full px-2 py-3 flex items-center gap-2">{inner}</div>
+                      <div className="h-full px-2 py-2.5 flex items-center gap-2">{inner}</div>
                     )}
                   </div>
                 </BuffTooltip>
               )
             }
+
+            const renderSquareSlot = (slot: LootSlot) => {
+              const meta = SLOT_META[slot]
+              const equippedItem = LOOT_ITEMS.find((item) => item.id === equippedBySlot[slot])
+              const theme = equippedItem ? RARITY_THEME[normalizeRarity(equippedItem.rarity)] : null
+              const inner = (
+                <div className="flex flex-col items-center justify-center gap-0.5 w-full h-full py-2 px-1">
+                  <div
+                    className="w-8 h-8 rounded-md flex items-center justify-center overflow-hidden flex-shrink-0"
+                    style={theme
+                      ? { background: `radial-gradient(circle at 50% 40%, ${theme.glow}55 0%, rgba(9,9,17,0.95) 70%)` }
+                      : { background: 'rgba(9,9,17,0.85)' }}
+                  >
+                    {equippedItem
+                      ? <LootVisual icon={equippedItem.icon} image={equippedItem.image} className="w-5 h-5 object-contain" scale={equippedItem.renderScale ?? 1} />
+                      : <span className="text-[13px] opacity-[0.13]">{meta.icon}</span>}
+                  </div>
+                  <p className="text-[7px] text-gray-500 font-mono uppercase tracking-wider leading-none text-center w-full truncate">
+                    {equippedItem ? equippedItem.name : meta.label}
+                  </p>
+                  {equippedItem && equippedItem.perkType === 'atk_boost' && (
+                    <p className="text-[7px] text-red-400/70 font-mono leading-none">+{equippedItem.perkValue} ATK</p>
+                  )}
+                  {theme && <div className="w-1 h-1 rounded-full" style={{ background: theme.color }} />}
+                </div>
+              )
+              return (
+                <BuffTooltip key={slot} item={equippedItem ?? null} placement="bottom" stretch>
+                  <div
+                    className="rounded-md border overflow-hidden h-full"
+                    style={theme
+                      ? { borderColor: theme.border, background: `linear-gradient(135deg, ${theme.glow}10 0%, rgba(12,12,20,0.95) 55%)` }
+                      : { borderColor: 'rgba(255,255,255,0.06)', background: 'rgba(12,12,20,0.70)' }}
+                  >
+                    {equippedItem ? (
+                      <button
+                        type="button"
+                        onClick={() => { playClickSound(); setInspectSlotId(`item:${equippedItem.id}`) }}
+                        onContextMenu={(e) => { e.preventDefault(); unequipSlot(slot) }}
+                        className="w-full h-full hover:bg-white/[0.05] transition-colors">
+                        {inner}
+                      </button>
+                    ) : (
+                      <div className="h-full">{inner}</div>
+                    )}
+                  </div>
+                </BuffTooltip>
+              )
+            }
+
             return (
-              <div className="flex flex-col gap-1" style={{ flex: '2', minWidth: 0 }}>
-                {(['head', 'body', 'ring', 'legs'] as LootSlot[]).map((s) => (
-                  <div key={s} className="flex-1 min-h-0">{renderSlot(s)}</div>
-                ))}
+              <div className="flex gap-1" style={{ flex: '2', minWidth: 0 }}>
+                {/* Left: head / body / legs */}
+                <div className="flex flex-col gap-1 flex-1 min-w-0">
+                  {(['head', 'body', 'legs'] as LootSlot[]).map((s) => (
+                    <div key={s} className="flex-1 min-h-0">{renderRowSlot(s)}</div>
+                  ))}
+                </div>
+                {/* Right: ring (top) / weapon (taller bottom) */}
+                <div className="flex flex-col gap-1" style={{ width: 52 }}>
+                  <div className="flex-1 min-h-0">{renderSquareSlot('ring')}</div>
+                  <div style={{ flex: 2 }} className="min-h-0">{renderSquareSlot('weapon')}</div>
+                </div>
               </div>
             )
           })()}
@@ -490,6 +553,11 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
               const slotTheme = RARITY_THEME[normalizeRarity(slotRarity)]
               const isEquipped = slot.kind === 'item' && slot.equipped
               const isPending = slot.kind === 'pending'
+              const lootItem = slot.kind === 'item' ? LOOT_ITEMS.find((x) => x.id === slot.itemId) : null
+              const perkChip = lootItem && lootItem.perkType !== 'cosmetic' && lootItem.slot !== 'consumable' && lootItem.slot !== 'plant'
+                ? lootItem.perkDescription
+                : null
+
               return (
                 <button
                   key={slot.id}
@@ -507,10 +575,10 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
                   }}
                   className="relative w-full px-2.5 py-2 flex items-center gap-2.5 rounded-lg border hover:bg-white/[0.04] active:scale-[0.99] transition-all text-left"
                   style={{
-                    borderColor: slotTheme.border,
+                    borderColor: isEquipped ? slotTheme.border : `${slotTheme.border}70`,
                     background: isEquipped
-                      ? `linear-gradient(135deg, ${slotTheme.glow}14 0%, rgba(12,12,20,0.95) 55%)`
-                      : `linear-gradient(135deg, ${slotTheme.glow}07 0%, rgba(12,12,20,0.85) 60%)`,
+                      ? `linear-gradient(135deg, ${slotTheme.glow}18 0%, rgba(12,12,20,0.95) 55%)`
+                      : `linear-gradient(135deg, ${slotTheme.glow}06 0%, rgba(12,12,20,0.88) 60%)`,
                   }}
                 >
                   {isPending && (
@@ -528,41 +596,44 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
                       icon={slot.icon}
                       image={slot.image}
                       className="w-6 h-6 object-contain"
-                      scale={slot.kind === 'item' ? (LOOT_ITEMS.find((x) => x.id === slot.itemId)?.renderScale ?? 1) : 1}
+                      scale={lootItem?.renderScale ?? 1}
                     />
                     {isEquipped && (
-                      <span className="absolute top-[3px] left-[3px] w-[5px] h-[5px] rounded-full" style={{ background: slotTheme.color }} />
+                      <span
+                        className="absolute bottom-0 right-0 text-[7px] font-bold font-mono px-0.5 rounded-tl rounded-br leading-tight"
+                        style={{ background: slotTheme.border, color: '#000' }}
+                      >EQ</span>
                     )}
                   </div>
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-[11px] font-medium truncate text-white/85 leading-tight">{slot.title}</p>
-                      {slot.kind === 'item' && (() => {
-                        const lootItem = LOOT_ITEMS.find((x) => x.id === slot.itemId)
-                        if (!lootItem || lootItem.slot === 'consumable') return null
-                        return (
-                          <span className="flex-shrink-0 text-[8px] font-mono uppercase tracking-wide px-1 py-px rounded border border-white/10 text-gray-500 leading-none">
-                            {SLOT_LABEL[lootItem.slot]}
-                          </span>
-                        )
-                      })()}
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <p className="text-[11px] font-medium text-white/90 leading-tight truncate max-w-[120px]">{slot.title}</p>
+                      {lootItem && lootItem.slot !== 'consumable' && lootItem.slot !== 'plant' && (
+                        <span className="flex-shrink-0 text-[7px] font-mono uppercase tracking-wide px-1 py-px rounded border border-white/10 text-gray-500 leading-none">
+                          {SLOT_LABEL[lootItem.slot]}
+                        </span>
+                      )}
                     </div>
-                    <p className="text-[9px] text-gray-500 truncate mt-0.5">{slot.subtitle}</p>
+                    {perkChip ? (
+                      <p className="text-[9px] font-mono mt-0.5 leading-none" style={{ color: slotTheme.color }}>{perkChip}</p>
+                    ) : (
+                      <p className="text-[9px] text-gray-500 truncate mt-0.5">{slot.subtitle}</p>
+                    )}
                   </div>
 
-                  {/* Right: qty + rarity dot */}
+                  {/* Right: qty badge + rarity dot */}
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     {slot.quantity > 1 && (
                       <span
                         className="text-[9px] font-bold font-mono px-1.5 py-0.5 rounded"
-                        style={{ background: `${slotTheme.border}50`, color: slotTheme.color }}
+                        style={{ background: `${slotTheme.border}55`, color: slotTheme.color }}
                       >
                         ×{slot.quantity}
                       </span>
                     )}
-                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: slotTheme.color }} />
+                    <div className="w-2 h-2 rounded-full" style={{ background: slotTheme.color }} />
                   </div>
                 </button>
               )
