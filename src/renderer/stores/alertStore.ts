@@ -72,6 +72,8 @@ export const useAlertStore = create<AlertStore>((set, get) => ({
     set((s) => ({
       currentAlert: s.currentAlert ? { ...s.currentAlert, claimed: true } : null,
     }))
+    // Auto-advance to next alert after a short display delay
+    setTimeout(() => get().showNext(), 1200)
   },
 
   dismissCurrent() {

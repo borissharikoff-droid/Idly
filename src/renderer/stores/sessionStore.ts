@@ -350,7 +350,6 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         // Only queue a new level-up if the modal is not already showing
         const { pendingSkillLevelUpSkill: currentPending } = get()
         const skillDelta = computeSkillXpForCategories(cats, 1)
-        ensureInventoryHydrated()
         const perk = getEquippedPerkRuntime(useInventoryStore.getState().equippedBySlot)
         const activeFocusMultiplier = get().focusModeActive ? perk.focusBoostMultiplier : 1
         for (const [skillId, delta] of Object.entries(skillDelta)) {
@@ -486,6 +485,9 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     }
     stopCheckpointSaving()
     stopXpTicking()
+    // Clean up AFK listener so re-starting doesn't accumulate duplicate listeners
+    afkUnsubscribe?.()
+    afkUnsubscribe = null
     playSessionStopSound()
     const { sessionId, sessionStartTime, elapsedSeconds, wasAfkPausedThisSession, focusModeActive, focusModeOsApplied } = get()
     const api = typeof window !== 'undefined' ? window.electronAPI : null
@@ -696,6 +698,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         xp,
         levelBefore: skillLevelFromXP(beforeXp),
         levelAfter: skillLevelFromXP(afterXp),
+        totalXpAfter: afterXp,
       })
       if (api?.db?.addSkillXP) {
         await api.db.addSkillXP(skillId, xp).catch(() => {})
@@ -786,6 +789,22 @@ declare global {
         getSkillXP: (skillId: string) => Promise<number>
         addSkillXP: (skillId: string, amount: number) => Promise<void>
         getAllSkillXP: () => Promise<{ skill_id: string; total_xp: number }[]>
+        restoreSkillXP: (rows: { skill_id: string; total_xp: number }[]) => Promise<void>
+        // Grind Tasks
+        getTasks: () => Promise<{ id: string; text: string; done: boolean; created_at: number }[]>
+        createTask: (task: { id: string; text: string }) => Promise<void>
+        toggleTask: (id: string) => Promise<void>
+        updateTaskText: (id: string, text: string) => Promise<void>
+        deleteTask: (id: string) => Promise<void>
+        clearDoneTasks: () => Promise<void>
+        // Sessions (paginated)
+        getSessionsPage: (limit: number, offset: number, sinceMs: number) => Promise<unknown[]>
+        // Extended stats
+        getDistractionMetrics: (sinceMs?: number) => Promise<unknown>
+        getFocusBlocks: (sinceMs: number, minMinutes: number) => Promise<unknown[]>
+        getSiteUsageStats: (sinceMs?: number) => Promise<unknown[]>
+        getCategoryTrends: (days: number) => Promise<unknown[]>
+        getPeriodComparison: (currentSinceMs: number, currentUntilMs: number, previousSinceMs: number, previousUntilMs: number) => Promise<unknown>
         // Goals
         getActiveGoals: () => Promise<{ id: string; type: string; target_seconds: number; target_category: string | null; period: string; start_date: string; completed_at: number | null }[]>
         getAllGoals: () => Promise<{ id: string; type: string; target_seconds: number; target_category: string | null; period: string; start_date: string; completed_at: number | null }[]>

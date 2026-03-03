@@ -21,6 +21,7 @@ interface VictoryResultModalProps {
   goldAlreadyAdded?: boolean
   bossName?: string
   goldLost?: number
+  chest?: { type: string; name: string; icon: string } | null
   onClose: () => void
 }
 
@@ -31,6 +32,7 @@ export function VictoryResultModal({
   goldAlreadyAdded = true,
   bossName,
   goldLost = 0,
+  chest,
   onClose,
 }: VictoryResultModalProps) {
   const [progress, setProgress] = useState(100)
@@ -169,6 +171,13 @@ export function VictoryResultModal({
                     ? 'Gold lost. Gear up and try again.'
                     : 'Gear up and try again.'}
               </p>
+
+              {victory && chest && (
+                <div className="mt-3 flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/25">
+                  <span className="text-lg">{chest.icon}</span>
+                  <span className="text-[11px] text-amber-300 font-semibold">{chest.name} dropped!</span>
+                </div>
+              )}
 
               {/* CTA */}
               <button

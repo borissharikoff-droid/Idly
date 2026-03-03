@@ -36,8 +36,6 @@ export function HomePage({ onNavigateProfile, onNavigateInventory, onNavigateFri
   const prevStatusRef = useRef(status)
   const notifiedCheckpointUpdatedAtRef = useRef<number | null>(null)
 
-  const isPhilTestAccount = false
-
   useEffect(() => {
     if (status !== 'idle') return
     const api = window.electronAPI
@@ -85,12 +83,10 @@ export function HomePage({ onNavigateProfile, onNavigateInventory, onNavigateFri
     prevStatusRef.current = status
 
     if (wasIdle && status === 'running' && showWelcome) {
-      if (!isPhilTestAccount) {
-        localStorage.setItem('grindly_welcomed', '1')
-      }
+      localStorage.setItem('grindly_welcomed', '1')
       setShowWelcome(false)
     }
-  }, [status, showWelcome, isPhilTestAccount])
+  }, [status, showWelcome])
 
   const welcomeVisible = showWelcome && status === 'idle'
 

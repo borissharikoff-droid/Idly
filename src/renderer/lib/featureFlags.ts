@@ -1,4 +1,4 @@
-function readFlag(key: string, fallback: boolean): boolean {
+export function isFeatureEnabled(key: string, fallback = true): boolean {
   if (typeof window === 'undefined') return fallback
   const raw = localStorage.getItem(`grindly_flag_${key}`)
   if (raw === null) return fallback
@@ -6,7 +6,7 @@ function readFlag(key: string, fallback: boolean): boolean {
 }
 
 export const FEATURE_FLAGS = {
-  progressTimeline: readFlag('progress_timeline', true),
-  socialFeed: readFlag('social_feed', true),
-  skillCompetitions: readFlag('skill_competitions', true),
-} as const
+  get progressTimeline() { return isFeatureEnabled('progress_timeline', true) },
+  get socialFeed() { return isFeatureEnabled('social_feed', true) },
+  get skillCompetitions() { return isFeatureEnabled('skill_competitions', true) },
+}

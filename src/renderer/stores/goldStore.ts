@@ -35,9 +35,12 @@ export const useGoldStore = create<GoldState>((set, get) => ({
   async syncToSupabase(userId: string) {
     if (!supabase) return
     const { gold } = get()
-    await supabase
+    const { error } = await supabase
       .from('profiles')
       .update({ gold: Math.max(0, gold), updated_at: new Date().toISOString() })
       .eq('id', userId)
+    if (error) {
+      console.warn('[goldStore] syncToSupabase failed:', error.message)
+    }
   },
 }))

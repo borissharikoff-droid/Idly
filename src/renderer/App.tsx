@@ -151,7 +151,10 @@ export default function App() {
   const setArenaResultModal = useArenaStore((s) => s.setResultModal)
 
   useEffect(() => {
-    migrateLegacyLocalStorage()
+    if (!localStorage.getItem('grindly_migration_done')) {
+      migrateLegacyLocalStorage()
+      localStorage.setItem('grindly_migration_done', '1')
+    }
   }, [])
 
   useEffect(() => {
@@ -177,7 +180,7 @@ export default function App() {
       window.removeEventListener('mousedown', onMouseBack)
       window.removeEventListener('auxclick', onMouseBack)
     }
-  }, [activeTab])
+  }, [activeTab, navigateTo])
 
   // Pre-warm audio context on first user gesture
   useEffect(() => {
@@ -236,8 +239,8 @@ export default function App() {
           setStreakCount(streak)
           setShowStreak(true)
         }
-      } catch (e) {
-        console.error('Failed to check streak:', e)
+      } catch {
+        // non-critical — streak overlay simply won't show
       }
     }
 
@@ -408,6 +411,7 @@ export default function App() {
             goldAlreadyAdded={arenaResultModal?.goldAlreadyAdded ?? true}
             bossName={arenaResultModal?.bossName}
             goldLost={arenaResultModal?.goldLost}
+            chest={arenaResultModal?.chest}
             onClose={() => setArenaResultModal(null)}
           />
           <MessageBanner onNavigateToChat={handleNavigateToChat} />

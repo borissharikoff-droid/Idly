@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import { LOOT_ITEMS, getRarityTheme, getItemPower, MARKETPLACE_BLOCKED_ITEMS, estimateLootDropRate, type LootRarity } from '../../lib/loot'
+import { getFarmItemDisplay } from '../../lib/farming'
 import { SKILLS } from '../../lib/skills'
 import { fetchActiveListings, buyListing, cancelListing, expireOldListings, type ListingWithSeller } from '../../services/marketplaceService'
 import { useGoldStore } from '../../stores/goldStore'
@@ -17,6 +18,107 @@ import { playClickSound } from '../../lib/sounds'
 import { RARITY_THEME, SLOT_LABEL, LootVisual as LootVisualShared, normalizeRarity } from '../loot/LootUI'
 
 const RARITY_ORDER: LootRarity[] = ['common', 'rare', 'epic', 'legendary', 'mythic']
+
+function ListingCard({
+  listing,
+  user,
+  gold,
+  buyingId,
+  cancellingId,
+  onBuy,
+  onCancelClick,
+}: {
+  listing: ListingWithSeller
+  user: { id: string } | null
+  gold: number | null
+  buyingId: string | null
+  cancellingId: string | null
+  onBuy: (l: ListingWithSeller) => void
+  onCancelClick: (l: ListingWithSeller) => void
+}) {
+  const item = LOOT_ITEMS.find((x) => x.id === listing.item_id)
+  const farmDisplay = !item ? getFarmItemDisplay(listing.item_id) : null
+  const displayRarity = item?.rarity ?? farmDisplay?.rarity ?? 'common'
+  const theme = getRarityTheme(displayRarity)
+  const isOwn = user?.id === listing.seller_id
+  const canAfford = (gold ?? 0) >= listing.price_gold
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.15 }}
+      className="group rounded-2xl border p-4 flex items-center gap-4 transition-all duration-200 hover:border-white/15 hover:shadow-lg"
+      style={{ borderColor: theme.border, backgroundColor: `${theme.color}08` }}
+    >
+      <div
+        className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 relative"
+        style={{ borderColor: theme.border, borderWidth: 1, backgroundColor: `${theme.color}15` }}
+      >
+        <LootVisualShared
+          icon={item?.icon ?? farmDisplay?.icon ?? '📦'}
+          image={item?.image}
+          className="w-9 h-9 object-contain"
+          scale={item?.renderScale ?? 1}
+        />
+        {listing.quantity > 1 && (
+          <span
+            className="absolute -top-1.5 -right-1.5 text-[9px] font-bold px-1.5 py-0.5 rounded-full border"
+            style={{ color: theme.color, backgroundColor: '#11111b', borderColor: theme.border }}
+          >
+            ×{listing.quantity}
+          </span>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-white truncate">{item?.name ?? farmDisplay?.name ?? listing.item_id}</p>
+        <p className="text-[11px] text-gray-400 truncate mt-0.5">{item?.perkDescription ?? ''}</p>
+        <div className="flex items-center gap-2 mt-2 flex-wrap">
+          <span
+            className="text-[10px] font-medium px-2 py-0.5 rounded-md capitalize"
+            style={{ color: theme.color, backgroundColor: `${theme.color}18` }}
+          >
+            {displayRarity}
+          </span>
+          {item && <span className="text-[10px] text-gray-500">IP {getItemPower(item.rarity)}</span>}
+          <span className="text-[10px] text-gray-500 truncate">
+            by {listing.seller_username ?? 'Anonymous'}
+          </span>
+        </div>
+      </div>
+      <div className="shrink-0 flex flex-col items-end gap-2">
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/12 border border-amber-500/25">
+          <span className="text-amber-400" aria-hidden>🪙</span>
+          <span className="text-amber-400 font-bold tabular-nums text-sm">{listing.price_gold}</span>
+        </div>
+        {isOwn ? (
+          <button
+            type="button"
+            onClick={() => onCancelClick(listing)}
+            disabled={cancellingId === listing.id}
+            className="px-4 py-2 rounded-xl text-xs font-semibold bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
+            {cancellingId === listing.id ? '...' : 'Remove'}
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => onBuy(listing)}
+            disabled={buyingId === listing.id}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+              canAfford
+                ? 'bg-cyber-neon/20 border-cyber-neon/40 text-cyber-neon hover:bg-cyber-neon/30'
+                : 'bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20'
+            }`}
+          >
+            {buyingId === listing.id ? '...' : 'Buy'}
+          </button>
+        )}
+      </div>
+    </motion.div>
+  )
+}
 
 interface MarketplacePageProps {
   onBack?: () => void
@@ -41,7 +143,8 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
   const [rarityFilter, setRarityFilter] = useState<string>('')
   const [priceMin, setPriceMin] = useState('')
   const [priceMax, setPriceMax] = useState('')
-  const [sortBy, setSortBy] = useState<'price_asc' | 'price_desc'>('price_asc')
+  const [sortBy, setSortBy] = useState<'price_asc' | 'price_desc' | 'newest'>('newest')
+  const [myListingsOpen, setMyListingsOpen] = useState(true)
   const gold = useGoldStore((s) => s.gold)
   const syncFromSupabase = useGoldStore((s) => s.syncFromSupabase)
   const user = useAuthStore((s) => s.user)
@@ -52,7 +155,8 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
     if (searchLower) {
       result = result.filter((l) => {
         const item = LOOT_ITEMS.find((x) => x.id === l.item_id)
-        return (item?.name ?? l.item_id).toLowerCase().includes(searchLower)
+        const name = item?.name ?? getFarmItemDisplay(l.item_id)?.name ?? l.item_id
+        return name.toLowerCase().includes(searchLower)
       })
     }
     if (perkFilter) {
@@ -79,7 +183,8 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
     if (rarityFilter) {
       result = result.filter((l) => {
         const item = LOOT_ITEMS.find((x) => x.id === l.item_id)
-        return (item?.rarity ?? 'common') === rarityFilter
+        const rarity = item?.rarity ?? getFarmItemDisplay(l.item_id)?.rarity ?? 'common'
+        return rarity === rarityFilter
       })
     }
     const min = priceMin.trim() ? Math.max(0, Math.floor(Number(priceMin) || 0)) : 0
@@ -87,9 +192,11 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
     if (min > 0 || max < Infinity) {
       result = result.filter((l) => l.price_gold >= min && l.price_gold <= max)
     }
-    result.sort((a, b) =>
-      sortBy === 'price_asc' ? a.price_gold - b.price_gold : b.price_gold - a.price_gold,
-    )
+    result.sort((a, b) => {
+      if (sortBy === 'price_asc') return a.price_gold - b.price_gold
+      if (sortBy === 'price_desc') return b.price_gold - a.price_gold
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    })
     return result
   }, [listings, search, perkFilter, skillFilter, rarityFilter, priceMin, priceMax, sortBy])
 
@@ -199,8 +306,12 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
     setRarityFilter('')
     setPriceMin('')
     setPriceMax('')
-    setSortBy('price_asc')
+    setSortBy('newest')
   }
+
+  const myListings = filteredListings.filter((l) => user?.id === l.seller_id)
+  const otherListings = filteredListings.filter((l) => user?.id !== l.seller_id)
+  const totalVisible = listings.filter((l) => !MARKETPLACE_BLOCKED_ITEMS.includes(l.item_id)).length
 
   return (
     <motion.div
@@ -255,23 +366,23 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search..."
+            placeholder={`Search ${totalVisible} listing${totalVisible !== 1 ? 's' : ''}…`}
             className="flex-1 min-w-0 px-3 py-1.5 rounded-lg bg-[#11111b] border border-white/[0.08] text-white text-xs placeholder-gray-500 focus:border-cyber-neon/40 outline-none transition-all"
           />
           <button
             type="button"
-            onClick={() => setSortBy((s) => s === 'price_asc' ? 'price_desc' : 'price_asc')}
+            onClick={() => setSortBy((s) => s === 'price_asc' ? 'price_desc' : s === 'price_desc' ? 'newest' : 'price_asc')}
             className="px-2.5 py-1.5 rounded-lg bg-[#11111b] border border-white/[0.08] text-gray-400 text-xs hover:text-white transition-colors whitespace-nowrap"
           >
-            🪙 {sortBy === 'price_asc' ? '↑' : '↓'}
+            {sortBy === 'newest' ? '🕒 New' : `🪙 ${sortBy === 'price_asc' ? '↑' : '↓'}`}
           </button>
           {activeFiltersCount > 0 && (
             <button
               type="button"
               onClick={clearFilters}
-              className="px-2.5 py-1.5 rounded-lg bg-[#11111b] border border-cyber-neon/30 text-cyber-neon text-xs hover:bg-cyber-neon/10 transition-colors"
+              className="px-2.5 py-1.5 rounded-lg bg-[#11111b] border border-cyber-neon/30 text-cyber-neon text-xs hover:bg-cyber-neon/10 transition-colors whitespace-nowrap"
             >
-              Clear
+              Clear ({activeFiltersCount})
             </button>
           )}
         </div>
@@ -379,105 +490,54 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
             </div>
           ))}
         </div>
-      ) : listings.length === 0 ? (
+      ) : totalVisible === 0 ? (
         <div className="py-16 text-center rounded-2xl border border-white/[0.06] bg-[#1e1e2e]/50">
           <span className="text-5xl mb-4 block opacity-60">🛒</span>
-          <p className="text-sm font-medium text-gray-300">No listings yet</p>
+          <p className="text-sm font-medium text-gray-300">Marketplace is empty</p>
           <p className="text-xs text-gray-500 mt-1.5">List items from your inventory to get started.</p>
         </div>
       ) : filteredListings.length === 0 ? (
         <div className="py-16 text-center rounded-2xl border border-white/[0.06] bg-[#1e1e2e]/50">
           <span className="text-5xl mb-4 block opacity-60">🔍</span>
-          <p className="text-sm font-medium text-gray-300">No items match</p>
-          <p className="text-xs text-gray-500 mt-1.5">Try adjusting your filters.</p>
+          <p className="text-sm font-medium text-gray-300">No listings match your filters</p>
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="mt-3 px-4 py-1.5 rounded-lg border border-cyber-neon/30 text-cyber-neon text-xs hover:bg-cyber-neon/10 transition-colors"
+          >
+            Clear filters
+          </button>
         </div>
       ) : (
-        <div className="space-y-3">
-          {filteredListings.map((listing, i) => {
-            const item = LOOT_ITEMS.find((x) => x.id === listing.item_id)
-            const theme = getRarityTheme(item?.rarity ?? 'common')
-            const isOwn = user?.id === listing.seller_id
-            const canAfford = (gold ?? 0) >= listing.price_gold
-
-            return (
-              <motion.div
-                key={listing.id}
-                layout
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.15 }}
-                className="group rounded-2xl border p-4 flex items-center gap-4 transition-all duration-200 hover:border-white/15 hover:shadow-lg"
-                style={{
-                  borderColor: theme.border,
-                  backgroundColor: `${theme.color}08`,
-                }}
+        <div className="space-y-4">
+          {/* My Listings section */}
+          {myListings.length > 0 && (
+            <div className="rounded-2xl border border-white/[0.08] bg-[#1e1e2e]/60 overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setMyListingsOpen((v) => !v)}
+                className="w-full flex items-center justify-between px-4 py-2.5 text-left hover:bg-white/[0.03] transition-colors"
               >
-                <div
-                  className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0 transition-transform group-hover:scale-105"
-                  style={{
-                    borderColor: theme.border,
-                    borderWidth: 1,
-                    backgroundColor: `${theme.color}15`,
-                  }}
-                >
-                  <LootVisualShared
-                    icon={item?.icon ?? '📦'}
-                    image={item?.image}
-                    className="w-9 h-9 object-contain"
-                    scale={item?.renderScale ?? 1}
-                  />
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono text-gray-400 uppercase tracking-wider">My Listings</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-cyber-neon/15 text-cyber-neon font-bold">{myListings.length}</span>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-white truncate">{item?.name ?? listing.item_id}</p>
-                  <p className="text-[11px] text-gray-400 truncate mt-0.5">{item?.perkDescription ?? ''}</p>
-                  <div className="flex items-center gap-2 mt-2 flex-wrap">
-                    <span
-                      className="text-[10px] font-medium px-2 py-0.5 rounded-md capitalize"
-                      style={{ color: theme.color, backgroundColor: `${theme.color}18` }}
-                    >
-                      {item?.rarity ?? 'common'}
-                    </span>
-                    <span className="text-[10px] text-gray-500">IP {getItemPower(item?.rarity ?? '')}</span>
-                    <span className="text-[10px] text-gray-500 truncate">
-                      by {listing.seller_username ?? 'Anonymous'}{listing.seller_avatar_url ? ` ${listing.seller_avatar_url}` : ''}
-                    </span>
-                  </div>
+                <span className="text-gray-500 text-[10px]">{myListingsOpen ? '▾' : '▸'}</span>
+              </button>
+              {myListingsOpen && (
+                <div className="border-t border-white/[0.06] divide-y divide-white/[0.04]">
+                  {myListings.map((listing) => <ListingCard key={listing.id} listing={listing} user={user} gold={gold} buyingId={buyingId} cancellingId={cancellingId} onBuy={handleBuyClick} onCancelClick={(l) => { setCancelError(null); setCancelConfirmTarget(l) }} />)}
                 </div>
-                <div className="shrink-0 flex flex-col items-end gap-2">
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/12 border border-amber-500/25">
-                    <span className="text-amber-400" aria-hidden>🪙</span>
-                    <span className="text-amber-400 font-bold tabular-nums text-sm">{listing.price_gold}</span>
-                  </div>
-                  {isOwn ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setCancelError(null)
-                        setCancelConfirmTarget(listing)
-                      }}
-                      disabled={cancellingId === listing.id}
-                      className="px-4 py-2 rounded-xl text-xs font-semibold bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                    >
-                      {cancellingId === listing.id ? '...' : 'Remove'}
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => handleBuyClick(listing)}
-                      disabled={buyingId === listing.id}
-                      className={`px-4 py-2 rounded-xl text-xs font-semibold border transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-                        canAfford
-                          ? 'bg-cyber-neon/20 border-cyber-neon/40 text-cyber-neon hover:bg-cyber-neon/30'
-                          : 'bg-red-500/10 border-red-500/30 text-red-400 hover:bg-red-500/20'
-                      }`}
-                    >
-                      {buyingId === listing.id ? '...' : 'Buy'}
-                    </button>
-                  )}
-                </div>
-              </motion.div>
-            )
-          })}
+              )}
+            </div>
+          )}
+
+          {/* Other listings */}
+          {otherListings.length > 0 && (
+            <div className="space-y-3">
+              {otherListings.map((listing) => <ListingCard key={listing.id} listing={listing} user={user} gold={gold} buyingId={buyingId} cancellingId={cancellingId} onBuy={handleBuyClick} onCancelClick={(l) => { setCancelError(null); setCancelConfirmTarget(l) }} />)}
+            </div>
+          )}
         </div>
       )}
 
@@ -487,7 +547,8 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
         createPortal(
           (() => {
             const alertItem = LOOT_ITEMS.find((x) => x.id === noGoldAlert.item_id)
-            const alertRarity = normalizeRarity(alertItem?.rarity)
+            const alertFarm = !alertItem ? getFarmItemDisplay(noGoldAlert.item_id) : null
+            const alertRarity = normalizeRarity(alertItem?.rarity ?? alertFarm?.rarity)
             const alertTheme = RARITY_THEME[alertRarity]
             const deficit = noGoldAlert.price_gold - (gold ?? 0)
             const dropRate = alertItem ? estimateLootDropRate(alertItem.id, { source: 'skill_grind', focusCategory: 'coding' }) : 0
@@ -531,13 +592,13 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                       style={{ backgroundColor: `${alertTheme.color}18`, border: `1px solid ${alertTheme.border}`, boxShadow: `0 0 20px ${alertTheme.glow}` }}
                     >
                       <LootVisualShared
-                        icon={alertItem?.icon ?? '📦'}
+                        icon={alertItem?.icon ?? alertFarm?.icon ?? '📦'}
                         image={alertItem?.image}
                         className="w-14 h-14 object-contain"
                         scale={alertItem?.renderScale ?? 1}
                       />
                     </div>
-                    <p className="text-sm font-semibold text-white text-center leading-tight">{alertItem?.name ?? noGoldAlert.item_id}</p>
+                    <p className="text-sm font-semibold text-white text-center leading-tight">{alertItem?.name ?? alertFarm?.name ?? noGoldAlert.item_id}</p>
                     <span
                       className="inline-flex mt-1 text-[10px] px-2 py-0.5 rounded border font-mono uppercase tracking-wide"
                       style={{ color: alertTheme.color, borderColor: alertTheme.border, backgroundColor: `${alertTheme.color}1A` }}
@@ -598,7 +659,8 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
             >
               {(() => {
                 const item = LOOT_ITEMS.find((x) => x.id === buyConfirmTarget.item_id)
-                const confirmRarity = normalizeRarity(item?.rarity)
+                const confirmFarm = !item ? getFarmItemDisplay(buyConfirmTarget.item_id) : null
+                const confirmRarity = normalizeRarity(item?.rarity ?? confirmFarm?.rarity)
                 const confirmTheme = RARITY_THEME[confirmRarity]
                 return (
                   <>
@@ -609,13 +671,13 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                         style={{ backgroundColor: `${confirmTheme.color}18`, border: `1px solid ${confirmTheme.border}`, boxShadow: `0 0 20px ${confirmTheme.glow}` }}
                       >
                         <LootVisualShared
-                          icon={item?.icon ?? '📦'}
+                          icon={item?.icon ?? confirmFarm?.icon ?? '📦'}
                           image={item?.image}
                           className="w-14 h-14 object-contain"
                           scale={item?.renderScale ?? 1}
                         />
                       </div>
-                      <p className="text-sm font-semibold text-white text-center">{item?.name ?? buyConfirmTarget.item_id}</p>
+                      <p className="text-sm font-semibold text-white text-center">{item?.name ?? confirmFarm?.name ?? buyConfirmTarget.item_id}</p>
                       <span
                         className="inline-flex mt-1 text-[10px] px-2 py-0.5 rounded border font-mono uppercase tracking-wide"
                         style={{ color: confirmTheme.color, borderColor: confirmTheme.border, backgroundColor: `${confirmTheme.color}1A` }}
@@ -677,7 +739,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
           >
             <p className="text-sm font-semibold text-white mb-1">Remove listing?</p>
             <p className="text-[11px] text-gray-400 mb-4">
-              {LOOT_ITEMS.find((x) => x.id === cancelConfirmTarget.item_id)?.name ?? cancelConfirmTarget.item_id} will return to your inventory.
+              {LOOT_ITEMS.find((x) => x.id === cancelConfirmTarget.item_id)?.name ?? getFarmItemDisplay(cancelConfirmTarget.item_id)?.name ?? cancelConfirmTarget.item_id} will return to your inventory.
             </p>
             {cancelError && (
               <p className="text-[11px] text-red-400 mb-3">{cancelError}</p>

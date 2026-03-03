@@ -58,25 +58,32 @@ export function ArenaPage() {
   const [bossFlash, setBossFlash] = useState(false)
   const prevPlayerHpRef = useRef<number | null>(null)
   const prevBossHpRef = useRef<number | null>(null)
+  const flashTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
 
   useEffect(() => {
     const buildLevels = (rows: { skill_id: string; total_xp: number }[]): Record<string, number> => {
       const xpMap = new Map(rows.map((r) => [r.skill_id, r.total_xp]))
       return Object.fromEntries(SKILLS.map((s) => [s.id, skillLevelFromXP(xpMap.get(s.id) ?? 0)]))
     }
-    const api = window.electronAPI
-    if (api?.db?.getAllSkillXP) {
-      api.db.getAllSkillXP()
-        .then((rows: { skill_id: string; total_xp: number }[]) => setSkillLevels(buildLevels(rows ?? [])))
-        .catch(() => setSkillLevels({}))
-    } else {
-      try {
-        const stored = JSON.parse(localStorage.getItem('grindly_skill_xp') || '{}') as Record<string, number>
-        setSkillLevels(buildLevels(Object.entries(stored).map(([skill_id, total_xp]) => ({ skill_id, total_xp }))))
-      } catch {
-        setSkillLevels({})
+    const loadLevels = () => {
+      const api = window.electronAPI
+      if (api?.db?.getAllSkillXP) {
+        api.db.getAllSkillXP()
+          .then((rows: { skill_id: string; total_xp: number }[]) => setSkillLevels(buildLevels(rows ?? [])))
+          .catch(() => setSkillLevels({}))
+      } else {
+        try {
+          const stored = JSON.parse(localStorage.getItem('grindly_skill_xp') || '{}') as Record<string, number>
+          setSkillLevels(buildLevels(Object.entries(stored).map(([skill_id, total_xp]) => ({ skill_id, total_xp }))))
+        } catch {
+          setSkillLevels({})
+        }
       }
     }
+    loadLevels()
+    const onVisibility = () => { if (!document.hidden) loadLevels() }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
   }, [])
 
   useEffect(() => {
@@ -101,9 +108,21 @@ export function ArenaPage() {
     const playerHit = prevPlayerHpRef.current !== null && battleState.playerHp < prevPlayerHpRef.current
     prevBossHpRef.current = battleState.bossHp
     prevPlayerHpRef.current = battleState.playerHp
-    if (bossHit) { setBossFlash(true); setTimeout(() => setBossFlash(false), 280) }
-    if (playerHit) { setPlayerFlash(true); setTimeout(() => setPlayerFlash(false), 280) }
+    if (bossHit) {
+      setBossFlash(true)
+      const t = setTimeout(() => setBossFlash(false), 280)
+      flashTimersRef.current.push(t)
+    }
+    if (playerHit) {
+      setPlayerFlash(true)
+      const t = setTimeout(() => setPlayerFlash(false), 280)
+      flashTimersRef.current.push(t)
+    }
   }, [battleState])
+
+  useEffect(() => {
+    return () => { flashTimersRef.current.forEach(clearTimeout) }
+  }, [])
 
   useEffect(() => { setConfirmDelete(false) }, [inspectItemId])
   useEffect(() => { setConfirmForfeit(false) }, [activeBattle])
@@ -427,8 +446,8 @@ export function ArenaPage() {
                           const victory = battleState?.victory ?? false
                           const gold = victory ? activeBattle.bossSnapshot.rewards.gold : 0
                           const bossName = activeBattle.bossSnapshot.name
-                          const goldLost = endBattle()
-                          setResultModal({ victory, gold, goldAlreadyAdded: true, bossName, goldLost })
+                          const { goldLost, chest } = endBattle()
+                          setResultModal({ victory, gold, goldAlreadyAdded: true, bossName, goldLost, chest })
                         }}
                         className="w-full px-3.5 py-5 flex items-center justify-center gap-2 hover:bg-white/5 transition-colors"
                       >

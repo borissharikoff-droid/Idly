@@ -21,6 +21,7 @@ import {
   nonNegativeInt,
   localStatKey,
   localStatValue,
+  restoreSkillXPSchema,
 } from './validation'
 import { IPC_CHANNELS } from '../shared/ipcChannels'
 
@@ -125,7 +126,7 @@ export function registerIpcHandlers() {
   })
   ipcMain.handle(IPC_CHANNELS.db.getAllSkillXP, () => db.getAllSkillXP())
   ipcMain.handle(IPC_CHANNELS.db.restoreSkillXP, (_, rows: unknown) => {
-    const parsed = (rows as { skill_id: string; total_xp: number }[])
+    const parsed = restoreSkillXPSchema.parse(rows)
     db.restoreSkillXPFromCloud(parsed)
   })
 
@@ -380,12 +381,12 @@ export function registerIpcHandlers() {
   })
 
   // ── Window: flash + taskbar badge (Windows overlay) ───────────────────────
-  ipcMain.handle('window:flashFrame', () => {
+  ipcMain.handle(IPC_CHANNELS.window.flashFrame, () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.flashFrame(true)
     }
   })
-  ipcMain.handle('window:setBadgeCount', async (_: unknown, count: number) => {
+  ipcMain.handle(IPC_CHANNELS.window.setBadgeCount, async (_: unknown, count: number) => {
     const n = typeof count === 'number' ? Math.max(0, Math.floor(count)) : 0
     if (process.platform === 'darwin' && app.dock) {
       app.dock.setBadge(n > 0 ? String(n) : '')

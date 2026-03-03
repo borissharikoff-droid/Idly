@@ -231,14 +231,17 @@ export async function syncSkillsToSupabase(
       }
       const payload = localPayload.map((entry) => mergeSkillPayload(entry, existingBySkill.get(entry.skill_id)))
 
-      // Detect: local SQLite was empty but cloud has data → caller should restore to SQLite
-      const localTotalXP = localPayload.reduce((sum, r) => sum + r.total_xp, 0)
-      const cloudSkillRows: { skill_id: string; total_xp: number }[] | undefined =
-        localTotalXP === 0 && existingBySkill.size > 0
-          ? [...existingBySkill.values()]
-              .filter((r) => (r.total_xp ?? 0) > 0)
-              .map((r) => ({ skill_id: normalizeSkillId(r.skill_id), total_xp: r.total_xp ?? 0 }))
-          : undefined
+      // Detect skills where cloud has MORE XP than local → restore to SQLite so local is never behind cloud.
+      // This handles: fresh installs, reinstalls, account logins on new machines, admin corrections.
+      // restoreSkillXPFromCloud uses MAX() in SQL so it never reduces existing local XP.
+      const cloudHigherRows = [...existingBySkill.values()]
+        .filter((r) => {
+          const cloudXp = r.total_xp ?? 0
+          const localXp = xpMap.get(normalizeSkillId(r.skill_id)) ?? 0
+          return cloudXp > localXp
+        })
+        .map((r) => ({ skill_id: normalizeSkillId(r.skill_id), total_xp: r.total_xp ?? 0 }))
+      const cloudSkillRows = cloudHigherRows.length > 0 ? cloudHigherRows : undefined
 
       const primaryRes = await withTimeout(
         supabase

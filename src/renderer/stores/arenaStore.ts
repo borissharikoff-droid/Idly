@@ -17,18 +17,20 @@ export interface ActiveBattle {
   isDaily: boolean
 }
 
+export interface ArenaChestDrop { type: ChestType; name: string; icon: string }
+
 interface ArenaState {
   activeBattle: ActiveBattle | null
   killCounts: Record<string, number>
   dailyBossClaimedDate: string | null
-  resultModal: { victory: boolean; gold: number; goldAlreadyAdded?: boolean; bossName?: string; goldLost?: number; isDaily?: boolean } | null
-  setResultModal: (v: { victory: boolean; gold: number; goldAlreadyAdded?: boolean; bossName?: string; goldLost?: number; isDaily?: boolean } | null) => void
+  resultModal: { victory: boolean; gold: number; goldAlreadyAdded?: boolean; bossName?: string; goldLost?: number; isDaily?: boolean; chest?: ArenaChestDrop | null } | null
+  setResultModal: (v: { victory: boolean; gold: number; goldAlreadyAdded?: boolean; bossName?: string; goldLost?: number; isDaily?: boolean; chest?: ArenaChestDrop | null } | null) => void
   recordKill: (bossId: string) => void
   startBattle: (bossId: string) => boolean
-  /** Resolves the battle (grants victory gold, applies death penalty). Returns gold lost on defeat. */
-  endBattle: () => number
-  /** Same as endBattle but victory gold is claimed later via notification. Returns gold lost on defeat. */
-  endBattleWithoutGold: () => number
+  /** Resolves the battle (grants victory gold, applies death penalty). Returns goldLost and optional chest drop. */
+  endBattle: () => { goldLost: number; chest: ArenaChestDrop | null }
+  /** Same as endBattle but victory gold is claimed later via notification. Returns goldLost and optional chest drop. */
+  endBattleWithoutGold: () => { goldLost: number; chest: ArenaChestDrop | null }
   getBattleState: () => ReturnType<typeof computeBattleStateAtTime> | null
   forfeitBattle: () => void
 }
@@ -46,6 +48,11 @@ function clearStaleActiveBattle() {
     const parsed = JSON.parse(raw)
     const ab = parsed?.state?.activeBattle
     if (!ab) return
+    if (!ab.startTime || ab.startTime <= 0 || ab.startTime > Date.now()) {
+      parsed.state.activeBattle = null
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed))
+      return
+    }
     const elapsed = (Date.now() - ab.startTime) / 1000
     const state = computeBattleStateAtTime(ab.playerSnapshot, ab.bossSnapshot, elapsed)
     if (state.isComplete) {
@@ -103,7 +110,7 @@ export const useArenaStore = create<ArenaState>()(
 
       endBattle() {
         const { activeBattle } = get()
-        if (!activeBattle) return 0
+        if (!activeBattle) return { goldLost: 0, chest: null }
 
         const state = computeBattleStateAtTime(
           activeBattle.playerSnapshot,
@@ -111,6 +118,7 @@ export const useArenaStore = create<ArenaState>()(
           (Date.now() - activeBattle.startTime) / 1000,
         )
         let goldLost = 0
+        let droppedChest: ArenaChestDrop | null = null
         if (state.victory) {
           get().recordKill(activeBattle.bossSnapshot.id)
           useGoldStore.getState().addGold(activeBattle.bossSnapshot.rewards.gold)
@@ -124,12 +132,7 @@ export const useArenaStore = create<ArenaState>()(
             useInventoryStore.getState().addChest(ct, 'session_complete', Math.round(lootChance * 100))
             const chest = CHEST_DEFS[ct]
             if (chest) {
-              useNotificationStore.getState().push({
-                type: 'progression',
-                icon: chest.icon,
-                title: `${chest.name} dropped!`,
-                body: 'Boss kill reward — check your inventory.',
-              })
+              droppedChest = { type: ct, name: chest.name, icon: chest.icon }
             }
           }
 
@@ -138,16 +141,9 @@ export const useArenaStore = create<ArenaState>()(
             const dailyChestType = (lootTier ?? 'common_chest') as ChestType
             useInventoryStore.getState().addChest(dailyChestType, 'session_complete', 100)
             const dailyChest = CHEST_DEFS[dailyChestType]
-            if (dailyChest) {
-              useNotificationStore.getState().push({
-                type: 'progression',
-                icon: '⭐',
-                title: 'Daily bonus!',
-                body: `${dailyChest.name} guaranteed — check inventory.`,
-              })
+            if (dailyChest && !droppedChest) {
+              droppedChest = { type: dailyChestType, name: dailyChest.name, icon: '⭐' }
             }
-            const today = new Date().toLocaleDateString('sv-SE')
-            set({ dailyBossClaimedDate: today })
           }
         } else {
           // Death penalty: lose % of current gold
@@ -161,19 +157,35 @@ export const useArenaStore = create<ArenaState>()(
         }
 
         set({ activeBattle: null })
-        return goldLost
+        return { goldLost, chest: droppedChest }
       },
 
       endBattleWithoutGold() {
         const { activeBattle } = get()
         let goldLost = 0
+        let droppedChest: ArenaChestDrop | null = null
         if (activeBattle) {
           const state = computeBattleStateAtTime(
             activeBattle.playerSnapshot,
             activeBattle.bossSnapshot,
             (Date.now() - activeBattle.startTime) / 1000,
           )
-          if (!state.victory) {
+          if (state.victory) {
+            get().recordKill(activeBattle.bossSnapshot.id)
+            const { lootChance, lootTier } = activeBattle.bossSnapshot.rewards
+            if (lootChance != null && lootTier && Math.random() < lootChance) {
+              const ct = lootTier as ChestType
+              useInventoryStore.getState().addChest(ct, 'session_complete', Math.round(lootChance * 100))
+              const chest = CHEST_DEFS[ct]
+              if (chest) droppedChest = { type: ct, name: chest.name, icon: chest.icon }
+            }
+            if (activeBattle.isDaily) {
+              const dailyChestType = (lootTier ?? 'common_chest') as ChestType
+              useInventoryStore.getState().addChest(dailyChestType, 'session_complete', 100)
+              const dailyChest = CHEST_DEFS[dailyChestType]
+              if (dailyChest && !droppedChest) droppedChest = { type: dailyChestType, name: dailyChest.name, icon: '⭐' }
+            }
+          } else {
             const currentGold = useGoldStore.getState().gold
             goldLost = Math.floor(currentGold * DEATH_GOLD_PENALTY)
             if (goldLost > 0) {
@@ -184,7 +196,7 @@ export const useArenaStore = create<ArenaState>()(
           }
         }
         set({ activeBattle: null })
-        return goldLost
+        return { goldLost, chest: droppedChest }
       },
 
       getBattleState() {

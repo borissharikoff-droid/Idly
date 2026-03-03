@@ -8,6 +8,12 @@ import { initAutoUpdater } from './updater'
 import { disableFocusMode } from './focusMode'
 import log from './logger'
 
+const gotSingleInstanceLock = app.requestSingleInstanceLock()
+if (!gotSingleInstanceLock) {
+  app.quit()
+  process.exit(0)
+}
+
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
 let isQuitting = false
@@ -135,6 +141,14 @@ function createWindow() {
 // Prevent GPU cache errors on Windows (permission / lock issues)
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache')
 app.commandLine.appendSwitch('disable-gpu-cache')
+
+app.on('second-instance', () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.show()
+    mainWindow.focus()
+  }
+})
 
 app.whenReady().then(() => {
   log.info('Grindly starting up', { isDev, platform: process.platform })

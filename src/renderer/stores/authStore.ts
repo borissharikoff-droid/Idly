@@ -28,9 +28,13 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         set({ user: session?.user ?? null, loading: false })
       }
     })
-    supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       set({ user: session?.user ?? null })
     })
+    // Store for cleanup (best-effort; Electron renderer lives for the full app lifetime)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('beforeunload', () => subscription.unsubscribe(), { once: true })
+    }
   },
 
   async signIn(email: string, password: string) {

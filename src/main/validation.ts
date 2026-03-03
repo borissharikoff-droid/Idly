@@ -57,3 +57,10 @@ export const nonNegativeInt = z.number().int().nonnegative()
 
 export const localStatKey = z.string().min(1).max(256)
 export const localStatValue = z.string().max(10000)
+
+export const restoreSkillXPSchema = z.array(
+  z.object({
+    skill_id: z.string().min(1).max(64),
+    total_xp: z.number().int().nonnegative(),
+  }),
+).max(50)

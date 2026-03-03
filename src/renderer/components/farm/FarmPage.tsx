@@ -6,7 +6,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { supabase } from '../../lib/supabase'
 import { syncInventoryToSupabase, fetchFarmFromCloud } from '../../services/supabaseSync'
 import { ensureInventoryHydrated, useInventoryStore } from '../../stores/inventoryStore'
-import { SEED_DEFS, SLOT_UNLOCK_COSTS, MAX_FARM_SLOTS, getSeedById, formatGrowTime, SEED_ZIP_LABELS, type SeedZipTier } from '../../lib/farming'
+import { SEED_DEFS, SLOT_UNLOCK_COSTS, MAX_FARM_SLOTS, getSeedById, formatGrowTime, SEED_ZIP_LABELS, SEED_ZIP_ITEM_IDS, type SeedZipTier } from '../../lib/farming'
 import { LOOT_ITEMS, getRarityTheme } from '../../lib/loot'
 import { RARITY_THEME, normalizeRarity } from '../loot/LootUI'
 import { PageHeader } from '../shared/PageHeader'
@@ -15,6 +15,7 @@ import { PixelConfetti } from '../home/PixelConfetti'
 import { MOTION } from '../../lib/motion'
 import { playClickSound, playLootRaritySound } from '../../lib/sounds'
 import { track } from '../../lib/analytics'
+import { ListForSaleModal } from '../inventory/ListForSaleModal'
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -114,7 +115,9 @@ const ZIP_RARITY_MAP: Record<SeedZipTier, string> = {
 function SeedZipSection() {
   const seedZips = useFarmStore((s) => s.seedZips)
   const openSeedZip = useFarmStore((s) => s.openSeedZip)
+  const removeSeedZip = useFarmStore((s) => s.removeSeedZip)
   const [lastOpened, setLastOpened] = useState<{ tier: SeedZipTier; seedId: string } | null>(null)
+  const [sellTarget, setSellTarget] = useState<SeedZipTier | null>(null)
 
   const totalZips = ZIP_TIER_ORDER.reduce((acc, t) => acc + (seedZips[t] ?? 0), 0)
 
@@ -149,6 +152,14 @@ function SeedZipSection() {
                 <p className="text-[9px] text-gray-400 mt-0.5">Contains a {tier} seed</p>
               </div>
               <span className="text-sm font-mono font-bold shrink-0 mr-2" style={{ color: t.color }}>×{count}</span>
+              <motion.button
+                type="button"
+                whileTap={{ scale: 0.93 }}
+                onClick={() => { playClickSound(); setSellTarget(tier) }}
+                className="shrink-0 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-colors text-amber-300 border border-amber-500/40 bg-amber-500/15 hover:bg-amber-500/25"
+              >
+                Sell
+              </motion.button>
               <motion.button
                 type="button"
                 whileTap={{ scale: 0.93 }}
@@ -194,6 +205,16 @@ function SeedZipSection() {
           ) : null
         })()}
       </AnimatePresence>
+
+      {sellTarget && (
+        <ListForSaleModal
+          itemId={SEED_ZIP_ITEM_IDS[sellTarget]}
+          maxQty={seedZips[sellTarget] ?? 1}
+          onDeductItem={(qty) => removeSeedZip(sellTarget, qty)}
+          onClose={() => setSellTarget(null)}
+          onListed={() => setSellTarget(null)}
+        />
+      )}
     </div>
   )
 }

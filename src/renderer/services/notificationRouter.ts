@@ -25,6 +25,25 @@ const COOLDOWNS_MS: Record<RoutedNotificationEventType, number> = {
 }
 
 const lastSentByKey = new Map<string, number>()
+const MAX_COOLDOWN_ENTRIES = 500
+
+function evictStaleEntries(now: number): void {
+  if (lastSentByKey.size < MAX_COOLDOWN_ENTRIES) return
+  const maxCooldown = Math.max(...Object.values(COOLDOWNS_MS))
+  for (const [key, ts] of lastSentByKey) {
+    if (now - ts > maxCooldown) lastSentByKey.delete(key)
+  }
+  // If still over limit after evicting expired, drop oldest by insertion order
+  if (lastSentByKey.size >= MAX_COOLDOWN_ENTRIES) {
+    const toDelete = lastSentByKey.size - Math.floor(MAX_COOLDOWN_ENTRIES * 0.8)
+    let deleted = 0
+    for (const key of lastSentByKey.keys()) {
+      if (deleted >= toDelete) break
+      lastSentByKey.delete(key)
+      deleted++
+    }
+  }
+}
 
 function mapTypeForPanel(type: RoutedNotificationEventType): NotificationType {
   if (type === 'friend_levelup') return 'friend_levelup'
@@ -40,6 +59,7 @@ export async function routeNotification(
   const cooldown = COOLDOWNS_MS[event.type] ?? 30_000
   const prev = lastSentByKey.get(event.dedupeKey) ?? 0
   if (now - prev < cooldown) return false
+  evictStaleEntries(now)
   lastSentByKey.set(event.dedupeKey, now)
 
   useNotificationStore.getState().push({

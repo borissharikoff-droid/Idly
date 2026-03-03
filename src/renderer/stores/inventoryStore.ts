@@ -48,14 +48,12 @@ interface InventoryState {
   claimAllPendingRewards: () => void
   rollSkillGrindDrop: (context: LootDropContext, elapsedSeconds: number) => PendingReward | null
   rollSessionChestDrop: (context: LootDropContext) => { rewardId: string; chestType: ChestType; estimatedDropRate: number }
-  openChestAndGrantItem: (chestType: ChestType, context: LootDropContext) => { itemId: string; estimatedDropRate: number } | null
+  openChestAndGrantItem: (chestType: ChestType, context: LootDropContext) => { itemId: string; estimatedDropRate: number; goldDropped: number } | null
   deleteChest: (chestType: ChestType, amount?: number) => void
   equipItem: (itemId: string) => void
   deleteItem: (itemId: string, amount?: number) => void
   unequipSlot: (slot: LootSlot) => void
   addItem: (itemId: string, qty?: number) => void
-  grantItemForTesting: (itemId: string, quantity?: number) => void
-  grantChestForTesting: (chestType: ChestType, quantity?: number) => void
   /** Permanently consume a potion, boosting the corresponding stat by 1. Returns false if maxed or not owned. */
   consumePotion: (itemId: string) => boolean
   /** Merge cloud data into local (takes max). Used after sync. */
@@ -69,9 +67,9 @@ const STORAGE_KEY = 'grindly_inventory_state_v2'
 // - base chance: 0.02%/min → ~1.2% per hour → ~1 chest per 80+ hours grinding
 const SKILL_DROP_COOLDOWN_MS = 3_600_000
 const BASE_DROP_PER_MINUTE = 0.0002
-const FORCE_DROP_EVERY_COOLDOWN_FOR_TESTS = false
 
-const initialState: Omit<InventoryState, 'hydrate' | 'addItem' | 'addChest' | 'claimPendingReward' | 'claimAllPendingRewards' | 'rollSkillGrindDrop' | 'rollSessionChestDrop' | 'openChestAndGrantItem' | 'equipItem' | 'unequipSlot' | 'mergeFromCloud' | 'consumePotion' | 'deletePendingReward' | 'deleteChest' | 'deleteItem' | 'grantItemForTesting' | 'grantChestForTesting'> = {
+
+const initialState: Omit<InventoryState, 'hydrate' | 'addItem' | 'addChest' | 'claimPendingReward' | 'claimAllPendingRewards' | 'rollSkillGrindDrop' | 'rollSessionChestDrop' | 'openChestAndGrantItem' | 'equipItem' | 'unequipSlot' | 'mergeFromCloud' | 'consumePotion' | 'deletePendingReward' | 'deleteChest' | 'deleteItem'> = {
   items: {},
   chests: {
     common_chest: 0,
@@ -227,17 +225,15 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     const lastDropAt = state.lastSkillDropAt > now ? 0 : state.lastSkillDropAt
     if (now - lastDropAt < SKILL_DROP_COOLDOWN_MS) return null
     if (elapsedSeconds <= 0) return null
-    if (!FORCE_DROP_EVERY_COOLDOWN_FOR_TESTS) {
-      const perk = getEquippedPerkRuntime(state.equippedBySlot)
-      const categoryBonus = context.focusCategory ? (perk.chestDropChanceBonusByCategory[context.focusCategory] ?? 0) : 0
-      const effectivePerMinute = BASE_DROP_PER_MINUTE * (1 + categoryBonus)
-      const perSecond = effectivePerMinute / 60
-      // Clamp to cooldown window to avoid near-100% chance on first ever roll (lastSkillDropAt=0).
-      const sinceLastDrop = lastDropAt > 0 ? Math.floor((now - lastDropAt) / 1000) : SKILL_DROP_COOLDOWN_MS / 1000
-      const elapsedForChance = Math.max(elapsedSeconds, Math.min(sinceLastDrop, SKILL_DROP_COOLDOWN_MS / 1000))
-      const chance = 1 - Math.pow(1 - perSecond, Math.max(1, elapsedForChance))
-      if (Math.random() > chance) return null
-    }
+    const perk = getEquippedPerkRuntime(state.equippedBySlot)
+    const categoryBonus = context.focusCategory ? (perk.chestDropChanceBonusByCategory[context.focusCategory] ?? 0) : 0
+    const effectivePerMinute = BASE_DROP_PER_MINUTE * (1 + categoryBonus)
+    const perSecond = effectivePerMinute / 60
+    // Clamp to cooldown window to avoid near-100% chance on first ever roll (lastSkillDropAt=0).
+    const sinceLastDrop = lastDropAt > 0 ? Math.floor((now - lastDropAt) / 1000) : SKILL_DROP_COOLDOWN_MS / 1000
+    const elapsedForChance = Math.max(elapsedSeconds, Math.min(sinceLastDrop, SKILL_DROP_COOLDOWN_MS / 1000))
+    const chance = 1 - Math.pow(1 - perSecond, Math.max(1, elapsedForChance))
+    if (Math.random() > chance) return null
 
     const chestRoll = rollChestDrop(context, state.pity)
     const reward: PendingReward = {
@@ -401,36 +397,6 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     const safeQty = Math.max(1, Math.floor(qty))
     set((state) => {
       const next = { ...state, items: { ...state.items, [itemId]: (state.items[itemId] ?? 0) + safeQty } }
-      saveSnapshot(next)
-      return next
-    })
-  },
-
-  grantItemForTesting(itemId, quantity = 1) {
-    const safeQty = Math.max(1, Math.floor(quantity))
-    set((state) => {
-      const next: InventoryState = {
-        ...state,
-        items: {
-          ...state.items,
-          [itemId]: (state.items[itemId] ?? 0) + safeQty,
-        },
-      }
-      saveSnapshot(next)
-      return next
-    })
-  },
-
-  grantChestForTesting(chestType, quantity = 1) {
-    const safeQty = Math.max(1, Math.floor(quantity))
-    set((state) => {
-      const next: InventoryState = {
-        ...state,
-        chests: {
-          ...state.chests,
-          [chestType]: (state.chests[chestType] ?? 0) + safeQty,
-        },
-      }
       saveSnapshot(next)
       return next
     })

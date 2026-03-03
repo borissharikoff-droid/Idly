@@ -43,7 +43,7 @@ export const DAILY_ACTIVITY_DEFS: DailyActivityDef[] = [
 ]
 
 function todayKey(): string {
-  return new Date().toISOString().slice(0, 10)
+  return new Date().toLocaleDateString('sv-SE')
 }
 
 function defaultState(): DailyState {

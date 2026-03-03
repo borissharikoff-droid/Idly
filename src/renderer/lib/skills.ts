@@ -65,6 +65,7 @@ const CATEGORY_TO_SKILL: Record<string, string> = {
   creative: 'creator',
   learning: 'learner',
   music: 'listener',
+  farming: 'farmer',
   other: 'researcher',
 }
 
@@ -98,15 +99,21 @@ export function getSkillByName(name: string): SkillDef | undefined {
   return SKILLS.find((s) => s.name.toLowerCase() === n.toLowerCase())
 }
 
-/** Level (0–99) from total XP. 0 = no progress, 1–99 = leveled. */
+/** Precomputed XP thresholds for each level (index = level). */
+const XP_THRESHOLDS: readonly number[] = Array.from({ length: MAX_LEVEL + 1 }, (_, i) => xpForLevel(i))
+
+/** Level (0–99) from total XP. 0 = no progress, 1–99 = leveled. Binary search O(log n). */
 export function skillLevelFromXP(xp: number): number {
   if (xp <= 0) return 0
   if (xp >= MAX_XP) return MAX_LEVEL
-  let level = 0
-  while (level < MAX_LEVEL && xpForLevel(level + 1) <= xp) {
-    level++
+  let lo = 0
+  let hi = MAX_LEVEL
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1
+    if (XP_THRESHOLDS[mid] <= xp) lo = mid
+    else hi = mid - 1
   }
-  return level
+  return lo
 }
 
 /** Progress within current level: { current, needed } in XP. */

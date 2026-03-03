@@ -2,7 +2,25 @@
   "permissions": {
     "allow": [
       "Bash(wc:*)",
-      "Bash(npx vitest run:*)"
+      "Bash(npx vitest run:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(npx vite:*)",
+      "Bash(npx:*)",
+      "Bash(python3:*)",
+      "Bash(gh auth:*)",
+      "Bash(gh repo:*)",
+      "Bash(ls:*)",
+      "Bash(curl:*)",
+      "Bash(__NEW_LINE_23c0cb9cc700528b__ echo:*)",
+      "Bash(__NEW_LINE_297717848f38b0e6__ echo:*)",
+      "Bash(__NEW_LINE_da1cdac80f27b42a__:*)",
+      "Bash(gh run:*)",
+      "Bash(gh api:*)",
+      "Bash(gh release:*)",
+      "Bash(node:*)",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__execute_sql"
     ]
   }
 }

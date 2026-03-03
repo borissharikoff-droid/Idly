@@ -87,4 +87,8 @@ export const IPC_CHANNELS = {
     disable: 'focus:disable',
     status: 'focus:status',
   },
+  window: {
+    flashFrame: 'window:flashFrame',
+    setBadgeCount: 'window:setBadgeCount',
+  },
 } as const

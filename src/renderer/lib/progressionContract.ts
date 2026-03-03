@@ -32,17 +32,11 @@ export interface ProgressionEvent {
   rewards: RewardGrantPayload[]
   title: string
   description: string
+  icon?: string
 }
 
 function roundToInt(value: number): number {
   return Math.max(0, Math.round(value))
-}
-
-export function computeGlobalXpForCategories(categories: string[], durationSeconds: number): number {
-  // Global XP was removed from the product model.
-  void categories
-  void durationSeconds
-  return 0
 }
 
 /**

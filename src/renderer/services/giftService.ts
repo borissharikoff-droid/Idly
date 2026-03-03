@@ -112,7 +112,7 @@ export async function claimGift(giftId: string): Promise<{ ok: boolean; itemId?:
   if (isSeedId(g.item_id)) {
     useFarmStore.getState().addSeed(g.item_id, g.quantity)
   } else {
-    useInventoryStore.getState().grantItemForTesting(g.item_id, g.quantity)
+    useInventoryStore.getState().addItem(g.item_id, g.quantity)
   }
   const { items, chests } = useInventoryStore.getState()
   const { seeds, seedZips } = useFarmStore.getState()

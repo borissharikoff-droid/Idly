@@ -315,3 +315,12 @@ export function formatCountdown(remainingSeconds: number): string {
   if (m > 0) return `${m}m ${s.toString().padStart(2, '0')}s`
   return `${s}s`
 }
+
+/** Returns display info for farm-specific item IDs (seed zips) not found in LOOT_ITEMS. */
+export function getFarmItemDisplay(itemId: string): { name: string; icon: string; rarity: LootRarity } | null {
+  const tier = seedZipTierFromItemId(itemId)
+  if (tier) {
+    return { name: `${SEED_ZIP_LABELS[tier]} Seed Zip`, icon: SEED_ZIP_ICONS[tier], rarity: tier }
+  }
+  return null
+}

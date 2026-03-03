@@ -217,16 +217,10 @@ public class WinApi {
 
 let hasReceivedWinLine = false
 let hasReceivedReady = false
-let detectorLineCount = 0
 
 function parseLine(line: string): void {
   const trimmed = line.trim()
   if (!trimmed) return
-  detectorLineCount++
-  // Log first 10 lines from detector for debugging
-  if (detectorLineCount <= 10) {
-    log.info('[tracker] detector raw line #' + detectorLineCount + ':', trimmed.slice(0, 200))
-  }
   if (trimmed === 'READY') {
     hasReceivedReady = true
     log.info('[tracker] Detector script ready (Add-Type succeeded)')

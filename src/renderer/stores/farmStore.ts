@@ -41,9 +41,10 @@ interface FarmState {
   plantSeed: (slotIndex: number, seedId: string) => void
   harvestSlot: (slotIndex: number) => HarvestResult | null
   harvestAll: () => HarvestResult[]
-  rollSeedDrop: (chestType: ChestType) => void
+  rollSeedDrop: (chestType: ChestType) => SeedZipTier | null
   addSeed: (seedId: string, qty: number) => void
   addSeedZip: (tier: SeedZipTier, qty?: number) => void
+  removeSeedZip: (tier: SeedZipTier, qty?: number) => void
   openSeedZip: (tier: SeedZipTier) => string | null
   /** Merge cloud seeds into local (takes max). Used after sync. */
   mergeSeedsFromCloud: (cloudSeeds: Record<string, number>) => void
@@ -168,10 +169,11 @@ export const useFarmStore = create<FarmState>()(
       },
 
       rollSeedDrop(chestType) {
-        if (!rollSeedZipFromChest(chestType)) return
+        if (!rollSeedZipFromChest(chestType)) return null
         const tier = CHEST_TO_ZIP_TIER[chestType]
         const { seedZips } = get()
         set({ seedZips: { ...seedZips, [tier]: (seedZips[tier] ?? 0) + 1 } })
+        return tier
       },
 
       addSeed(seedId, qty) {
@@ -182,6 +184,11 @@ export const useFarmStore = create<FarmState>()(
       addSeedZip(tier, qty = 1) {
         const { seedZips } = get()
         set({ seedZips: { ...seedZips, [tier]: (seedZips[tier] ?? 0) + qty } })
+      },
+
+      removeSeedZip(tier, qty = 1) {
+        const { seedZips } = get()
+        set({ seedZips: { ...seedZips, [tier]: Math.max(0, (seedZips[tier] ?? 0) - qty) } })
       },
 
       openSeedZip(tier) {

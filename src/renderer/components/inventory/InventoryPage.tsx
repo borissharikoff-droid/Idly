@@ -10,6 +10,7 @@ import { ListForSaleModal } from './ListForSaleModal'
 import { PageHeader } from '../shared/PageHeader'
 import { playClickSound, playPotionSound } from '../../lib/sounds'
 import { syncInventoryToSupabase } from '../../services/supabaseSync'
+import { useNotificationStore } from '../../stores/notificationStore'
 import { useFarmStore } from '../../stores/farmStore'
 import { SLOT_META, SLOT_LABEL, LootVisual, RARITY_THEME, normalizeRarity } from '../loot/LootUI'
 import { BuffTooltip } from '../shared/BuffTooltip'
@@ -39,7 +40,7 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
   const [inspectSlotId, setInspectSlotId] = useState<string | null>(null)
   const [listForSaleTarget, setListForSaleTarget] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; slotId: string } | null>(null)
-  const [openChestModal, setOpenChestModal] = useState<{ chestType: ChestType; itemId: string } | null>(null)
+  const [openChestModal, setOpenChestModal] = useState<{ chestType: ChestType; itemId: string; seedZipTier: import('../../lib/farming').SeedZipTier | null } | null>(null)
   const [chestModalAnimSeed, setChestModalAnimSeed] = useState(0)
   const [chestChainMessage, setChestChainMessage] = useState<string | null>(null)
 
@@ -214,12 +215,12 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
   const openChest = (chestType: ChestType) => {
     const result = openChestAndGrantItem(chestType, { source: 'session_complete' })
     if (!result) return
-    useFarmStore.getState().rollSeedDrop(chestType)
+    const seedZipTier = useFarmStore.getState().rollSeedDrop(chestType)
     setInspectSlotId(null)
     setContextMenu(null)
     setChestChainMessage(null)
     setChestModalAnimSeed((v) => v + 1)
-    setOpenChestModal({ chestType, itemId: result.itemId })
+    setOpenChestModal({ chestType, itemId: result.itemId, seedZipTier: seedZipTier ?? null })
   }
 
   const isPotionMaxed = (itemId: string) => {
@@ -247,7 +248,10 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
         if (ok) playPotionSound()
         return
       }
-      if (inBattle) return   // gear locked during battle
+      if (inBattle) {
+        useNotificationStore.getState().push({ type: 'progression', icon: '⚔️', title: 'Combat active', body: 'Cannot change gear during a boss fight.' })
+        return
+      }
       if (slot.equipped) return unequipSlot(item.slot)
       return equipItem(slot.itemId)
     }
@@ -286,17 +290,17 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
       claimPendingReward(pending.id)
       const result = openChestAndGrantItem(chestType, { source: 'session_complete' })
       if (!result) return false
-      useFarmStore.getState().rollSeedDrop(chestType)
+      const seedZipTier = useFarmStore.getState().rollSeedDrop(chestType)
       setChestModalAnimSeed((v) => v + 1)
-      setOpenChestModal({ chestType, itemId: result.itemId })
+      setOpenChestModal({ chestType, itemId: result.itemId, seedZipTier: seedZipTier ?? null })
       return true
     }
     if ((chests[chestType] ?? 0) > 0) {
       const result = openChestAndGrantItem(chestType, { source: 'session_complete' })
       if (!result) return false
-      useFarmStore.getState().rollSeedDrop(chestType)
+      const seedZipTier = useFarmStore.getState().rollSeedDrop(chestType)
       setChestModalAnimSeed((v) => v + 1)
-      setOpenChestModal({ chestType, itemId: result.itemId })
+      setOpenChestModal({ chestType, itemId: result.itemId, seedZipTier: seedZipTier ?? null })
       return true
     }
     return false
@@ -668,7 +672,7 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
                   const isConsumable = inspectSlot.kind === 'item' && LOOT_ITEMS.find((x) => x.id === inspectSlot.itemId)?.slot === 'consumable'
                   const isMaxed = isConsumable && isPotionMaxed(inspectSlot.kind === 'item' ? inspectSlot.itemId : '')
                   const isGearLocked = inBattle && inspectSlot.kind === 'item' && !isConsumable
-                  const disabled = isPlant || isMaxed || isGearLocked
+                  const disabled = isPlant || isMaxed
                   return (
                     <button
                       type="button"
@@ -678,9 +682,9 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
                         runPrimaryAction(inspectSlot)
                       }}
                       className={`flex-1 min-w-0 text-[10px] py-1.5 rounded border font-semibold transition-colors ${
-                        disabled ? 'border-white/10 text-gray-600 cursor-not-allowed' : ''
+                        disabled || isGearLocked ? 'border-white/10 text-gray-600 cursor-not-allowed' : ''
                       }`}
-                      style={disabled ? undefined : { color: inspectTheme.color, borderColor: inspectTheme.border, backgroundColor: `${inspectTheme.color}22` }}
+                      style={disabled || isGearLocked ? undefined : { color: inspectTheme.color, borderColor: inspectTheme.border, backgroundColor: `${inspectTheme.color}22` }}
                     >
                       {getPrimaryActionLabel(inspectSlot)}
                     </button>
@@ -731,7 +735,7 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
                 const isConsumable = slot.kind === 'item' && LOOT_ITEMS.find((x) => x.id === slot.itemId)?.slot === 'consumable'
                 const isMaxed = isConsumable && isPotionMaxed(slot.kind === 'item' ? slot.itemId : '')
                 const isGearLocked = inBattle && slot.kind === 'item' && !isConsumable
-                const disabled = isPlant || isMaxed || isGearLocked
+                const disabled = isPlant || isMaxed
                 return (
                   <button
                     type="button"
@@ -739,10 +743,10 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
                     onClick={() => {
                       playClickSound()
                       runPrimaryAction(slot)
-                      setContextMenu(null)
+                      if (!isGearLocked) setContextMenu(null)
                     }}
                     className={`block w-full text-left text-[11px] px-2 py-1 rounded ${
-                      disabled ? 'text-gray-600 cursor-not-allowed' : 'text-cyber-neon hover:bg-cyber-neon/15'
+                      disabled || isGearLocked ? 'text-gray-600 cursor-not-allowed' : 'text-cyber-neon hover:bg-cyber-neon/15'
                     }`}
                   >
                     {getPrimaryActionLabel(slot)}
@@ -782,6 +786,7 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
         {listForSaleTarget && (
           <ListForSaleModal
             itemId={listForSaleTarget}
+            maxQty={useInventoryStore.getState().items[listForSaleTarget] ?? 1}
             onClose={() => setListForSaleTarget(null)}
             onListed={async () => {
               const { items, chests } = useInventoryStore.getState()
@@ -797,6 +802,7 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
         open={Boolean(openChestModal)}
         chestType={openChestModal?.chestType ?? null}
         item={openChestModal ? (LOOT_ITEMS.find((x) => x.id === openChestModal.itemId) ?? null) : null}
+        seedZipTier={openChestModal?.seedZipTier}
         onClose={() => {
           setOpenChestModal(null)
           setChestChainMessage(null)

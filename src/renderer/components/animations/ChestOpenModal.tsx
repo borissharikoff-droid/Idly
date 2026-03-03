@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChestType, LootItemDef } from '../../lib/loot'
 import { CHEST_DEFS, getRarityTheme } from '../../lib/loot'
+import { SEED_ZIP_LABELS, type SeedZipTier } from '../../lib/farming'
 import { MOTION } from '../../lib/motion'
 import { PixelConfetti } from '../home/PixelConfetti'
 import { playClickSound, playLootRaritySound } from '../../lib/sounds'
@@ -12,6 +13,7 @@ interface ChestOpenModalProps {
   chestType: ChestType | null
   item: LootItemDef | null
   goldDropped?: number
+  seedZipTier?: SeedZipTier | null
   onClose: () => void
   nextAvailable?: boolean
   onOpenNext?: () => void
@@ -24,6 +26,7 @@ export function ChestOpenModal({
   chestType,
   item,
   goldDropped = 0,
+  seedZipTier,
   onClose,
   nextAvailable = false,
   onOpenNext,
@@ -165,8 +168,8 @@ export function ChestOpenModal({
               </p>
               <p className="text-[10px] text-gray-300">{item.perkDescription}</p>
             </motion.div>
-            {/* Fixed-height gold row — always reserves space so button never moves */}
-            <div className="h-9 flex items-center justify-center">
+            {/* Bonus drops row */}
+            <div className="flex flex-col items-center gap-1.5">
               {goldDropped > 0 && (
                 <motion.div
                   initial={{ opacity: 0, y: 4 }}
@@ -178,6 +181,18 @@ export function ChestOpenModal({
                   <span className="text-sm font-bold text-amber-400 tabular-nums">+{goldDropped}</span>
                 </motion.div>
               )}
+              {seedZipTier && (
+                <motion.div
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.25, duration: 0.2 }}
+                  className="flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg bg-green-500/12 border border-green-500/25"
+                >
+                  <span aria-hidden>🎒</span>
+                  <span className="text-sm font-semibold text-green-300">+ {SEED_ZIP_LABELS[seedZipTier]} Seed Zip</span>
+                </motion.div>
+              )}
+              {!goldDropped && !seedZipTier && <div className="h-9" />}
             </div>
             <button
               type="button"

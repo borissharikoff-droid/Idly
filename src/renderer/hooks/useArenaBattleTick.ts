@@ -44,10 +44,10 @@ export function useArenaBattleTick(activeTab: TabId) {
 
       timeoutRef.current = setTimeout(() => {
         if (activeTabRef.current === 'arena') {
-          const goldLost = endBattle()
-          setResultModal({ victory, gold, goldAlreadyAdded: true, bossName, goldLost })
+          const { goldLost, chest } = endBattle()
+          setResultModal({ victory, gold, goldAlreadyAdded: true, bossName, goldLost, chest })
         } else {
-          const goldLost = endBattleWithoutGold()
+          const { goldLost } = endBattleWithoutGold()
           const notifId = pushNotification({
             type: 'arena_result',
             icon: victory ? '🏆' : '💀',

@@ -68,7 +68,7 @@ export async function processAchievementsElectron(
   const rewardPayloads: RewardGrantPayload[] = []
   const syncedAchievementIds: string[] = []
   for (const { id, def } of newAchievementList) {
-    api.db.unlockAchievement(id)
+    await api.db.unlockAchievement(id).catch(() => {})
     syncedAchievementIds.push(id)
     rewardPayloads.push(...mapAchievementToRewardPayloads(def))
     grantAchievementCosmetics(id)
@@ -84,7 +84,7 @@ export async function processAchievementsElectron(
     }
     const skillAch = checkSkillAchievements(skillLevels, updatedUnlocked)
     for (const { id, def } of skillAch) {
-      api.db.unlockAchievement(id)
+      await api.db.unlockAchievement(id).catch(() => {})
       syncedAchievementIds.push(id)
       rewardPayloads.push(...mapAchievementToRewardPayloads(def))
       grantAchievementCosmetics(id)
