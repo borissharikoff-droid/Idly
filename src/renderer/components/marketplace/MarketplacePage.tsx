@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { motion } from 'framer-motion'
+import { motion, usePresence } from 'framer-motion'
 import { LOOT_ITEMS, getRarityTheme, getItemPower, MARKETPLACE_BLOCKED_ITEMS, estimateLootDropRate, type LootRarity } from '../../lib/loot'
 import { getFarmItemDisplay, isSeedId, isSeedZipId } from '../../lib/farming'
 import { SKILLS } from '../../lib/skills'
@@ -155,6 +155,16 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
   const listingsRef = useRef<ListingWithSeller[]>([])
   const cancelledListingIdsRef = useRef<Set<string>>(new Set())
 
+  // Close all modals when the page starts its exit animation (prevents stuck overlay)
+  const [isPresent] = usePresence()
+  useEffect(() => {
+    if (!isPresent) {
+      setBuyConfirmTarget(null)
+      setCancelConfirmTarget(null)
+      setNoGoldAlert(null)
+    }
+  }, [isPresent])
+
   const filteredListings = useMemo(() => {
     let result = listings.filter((l) => !MARKETPLACE_BLOCKED_ITEMS.includes(l.item_id))
     const searchLower = search.trim().toLowerCase()
@@ -296,6 +306,18 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
     return () => document.removeEventListener('mousedown', handler)
   }, [showInfo])
 
+  // Escape key closes any open modal
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      if (buyConfirmTarget) { e.stopImmediatePropagation(); setBuyConfirmTarget(null); return }
+      if (cancelConfirmTarget) { e.stopImmediatePropagation(); setCancelConfirmTarget(null); setCancelError(null); return }
+      if (noGoldAlert) { e.stopImmediatePropagation(); setNoGoldAlert(null) }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [buyConfirmTarget, cancelConfirmTarget, noGoldAlert])
+
   const showNoGoldAlert = (listing: ListingWithSeller) => {
     if (noGoldTimer) clearTimeout(noGoldTimer)
     setNoGoldAlert(listing)
@@ -320,20 +342,23 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
     setBuyConfirmTarget(null)
     if (!user) return
     setBuyingId(listing.id)
-    const res = await partialBuyListing(listing.id, qty)
-    setBuyingId(null)
-    if (res.ok) {
-      playClickSound()
-      syncFromSupabase(user.id)
-      const { items, chests } = useInventoryStore.getState()
-      const { seeds, seedZips } = useFarmStore.getState()
-      const merged = await syncInventoryToSupabase(items, chests, { merge: true, seeds, seedZips })
-      if (merged.ok && merged.mergedChests) {
-        if (merged.mergedItems) useInventoryStore.getState().mergeFromCloud(merged.mergedItems, merged.mergedChests)
-        if (merged.mergedSeeds) useFarmStore.getState().mergeSeedsFromCloud(merged.mergedSeeds)
-        if (merged.mergedSeedZips) useFarmStore.getState().mergeSeedZipsFromCloud(merged.mergedSeedZips)
+    try {
+      const res = await partialBuyListing(listing.id, qty)
+      if (res.ok) {
+        playClickSound()
+        syncFromSupabase(user.id)
+        const { items, chests } = useInventoryStore.getState()
+        const { seeds, seedZips } = useFarmStore.getState()
+        const merged = await syncInventoryToSupabase(items, chests, { merge: true, seeds, seedZips })
+        if (merged.ok && merged.mergedChests) {
+          if (merged.mergedItems) useInventoryStore.getState().mergeFromCloud(merged.mergedItems, merged.mergedChests)
+          if (merged.mergedSeeds) useFarmStore.getState().mergeSeedsFromCloud(merged.mergedSeeds)
+          if (merged.mergedSeedZips) useFarmStore.getState().mergeSeedZipsFromCloud(merged.mergedSeedZips)
+        }
+        loadListings().catch(() => {})
       }
-      loadListings().catch(() => {})
+    } finally {
+      setBuyingId(null)
     }
   }
 
@@ -342,22 +367,27 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
     cancelledListingIdsRef.current.add(listing.id)
     setCancellingId(listing.id)
     setCancelError(null)
-    const res = await cancelListing(listing.id)
-    setCancellingId(null)
-    if (res.ok) {
-      playClickSound()
-      setCancelConfirmTarget(null)
-      const { items, chests } = useInventoryStore.getState()
-      const { seeds, seedZips } = useFarmStore.getState()
-      const merged = await syncInventoryToSupabase(items, chests, { merge: true, seeds, seedZips })
-      if (merged.ok && merged.mergedChests) {
-        if (merged.mergedItems) useInventoryStore.getState().mergeFromCloud(merged.mergedItems, merged.mergedChests)
-        if (merged.mergedSeeds) useFarmStore.getState().mergeSeedsFromCloud(merged.mergedSeeds)
-        if (merged.mergedSeedZips) useFarmStore.getState().mergeSeedZipsFromCloud(merged.mergedSeedZips)
+    try {
+      const res = await cancelListing(listing.id)
+      if (res.ok) {
+        playClickSound()
+        setCancelConfirmTarget(null)
+        const { items, chests } = useInventoryStore.getState()
+        const { seeds, seedZips } = useFarmStore.getState()
+        const merged = await syncInventoryToSupabase(items, chests, { merge: true, seeds, seedZips })
+        if (merged.ok && merged.mergedChests) {
+          if (merged.mergedItems) useInventoryStore.getState().mergeFromCloud(merged.mergedItems, merged.mergedChests)
+          if (merged.mergedSeeds) useFarmStore.getState().mergeSeedsFromCloud(merged.mergedSeeds)
+          if (merged.mergedSeedZips) useFarmStore.getState().mergeSeedZipsFromCloud(merged.mergedSeedZips)
+        }
+        loadListings().catch(() => {})
+      } else {
+        setCancelError(res.error ?? 'Failed to remove listing')
       }
-      loadListings().catch(() => {})
-    } else {
-      setCancelError(res.error ?? 'Failed to remove listing')
+    } catch {
+      setCancelError('Network error — try again')
+    } finally {
+      setCancellingId(null)
     }
   }
 
@@ -473,8 +503,9 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
         </div>
 
         {/* Row 2: all chips in a single scrollable line — never wraps */}
+        <div className="relative">
         <div
-          className="flex items-center gap-1.5 overflow-x-auto"
+          className="flex items-center gap-1.5 overflow-x-auto pr-5"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}
         >
           {/* Category chips */}
@@ -556,6 +587,9 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
             className="grindly-no-spinner shrink-0 w-12 px-1.5 py-0.5 rounded-md bg-[#11111b] border border-white/[0.08] text-white text-[10px] placeholder-gray-600 focus:border-cyber-neon/40 outline-none text-center"
           />
           <span className="text-amber-400/70 text-[10px] shrink-0">🪙</span>
+        </div>
+        {/* gradient fade to indicate more content to the right */}
+        <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-[#11111b] to-transparent" />
         </div>
       </div>
 
@@ -738,7 +772,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
         typeof document !== 'undefined' &&
         createPortal(
           <div
-            className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+            className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4"
             onClick={() => setBuyConfirmTarget(null)}
           >
             <motion.div
@@ -866,7 +900,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
         typeof document !== 'undefined' &&
         createPortal(
           <div
-            className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+            className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4"
             onClick={() => {
               setCancelConfirmTarget(null)
               setCancelError(null)

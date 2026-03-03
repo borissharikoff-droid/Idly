@@ -1,16 +1,14 @@
-## What's new in v2.0.7
+## What's new in v2.1.0
 
 **New:**
-- Marketplace: partial buy — choose quantity when listing has multiple items
-- Marketplace: sale notification in bell panel + Market badge counter
+- Live admin config: boss stats, item perks, and skins now update for all players without restarting the app (polls every 5 min)
 
-**Improved:**
-- Marketplace: filters fixed to 2 rows, no layout jumping
-- Arena: boss cards show only avatar, name, HP, damage, chest
-
-**Other:**
-- /release command for automated releases
-- GitHub Actions reads patch notes from RELEASE_NOTES.md
+**Fixed:**
+- Gray screen / frozen UI after clicking in the marketplace — modals now close instantly when navigating away
+- Marketplace filters overflow fixed: gradient fade shows hidden chips, scroll works correctly
+- Listing multiple items now clearly shows "price per 1 unit" hint with running total
+- Buy/cancel operations are now crash-safe (try-finally guarantees state cleanup)
+- Escape key closes any open marketplace modal
 
 ---
 Released: 2026-03-03

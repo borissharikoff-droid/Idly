@@ -113,17 +113,19 @@ export function ListForSaleModal({ itemId, onClose, onListed, maxQty = 1, onDedu
         <p className="text-[10px] text-amber-400/80 mb-2">
           5% commission: {commission} gold {clampedMaxQty > 1 ? `(${qty} × price × 5%)` : '(charged when listing)'}
         </p>
+        {clampedMaxQty > 1 && (
+          <p className="text-[11px] text-amber-400/80 mb-1.5">
+            ↳ Enter price <span className="font-semibold">for 1 unit</span> — total: {priceNum > 0 ? priceNum * qty : '?'} 🪙
+          </p>
+        )}
         <input
           type="number"
           min={1}
           value={price}
           onChange={(e) => setPrice(e.target.value)}
-          placeholder="Price per item (gold)"
+          placeholder={clampedMaxQty > 1 ? 'Price per 1 unit (gold)' : 'Price (gold)'}
           className="grindly-no-spinner w-full px-3 py-2 rounded-lg bg-discord-darker border border-white/15 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-cyber-neon/50"
         />
-        {priceNum > 0 && qty > 1 && (
-          <p className="text-[10px] text-gray-500 mt-1">Total value: {priceNum * qty} 🪙</p>
-        )}
         {error && <p className="text-[11px] text-red-400 mt-1">{error}</p>}
         <div className="flex gap-2 mt-4">
           <button
