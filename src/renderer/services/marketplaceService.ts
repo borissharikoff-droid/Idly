@@ -108,6 +108,7 @@ export interface BuyListingResult {
   error?: string
   item_id?: string
   quantity?: number
+  cost?: number
 }
 
 export async function buyListing(listingId: string): Promise<BuyListingResult> {
@@ -117,11 +118,17 @@ export async function buyListing(listingId: string): Promise<BuyListingResult> {
   const result = data as { ok?: boolean; error?: string; item_id?: string; quantity?: number }
   if (!result?.ok) return { ok: false, error: result?.error ?? 'Purchase failed' }
   track('marketplace_buy', { item_id: result.item_id, quantity: result.quantity })
-  return {
-    ok: true,
-    item_id: result.item_id,
-    quantity: result.quantity,
-  }
+  return { ok: true, item_id: result.item_id, quantity: result.quantity }
+}
+
+export async function partialBuyListing(listingId: string, quantity: number): Promise<BuyListingResult> {
+  if (!supabase) return { ok: false, error: 'Supabase not configured' }
+  const { data, error } = await supabase.rpc('partial_buy_listing', { p_listing_id: listingId, p_quantity: quantity })
+  if (error) return { ok: false, error: error.message }
+  const result = data as { ok?: boolean; error?: string; item_id?: string; quantity?: number; cost?: number }
+  if (!result?.ok) return { ok: false, error: result?.error ?? 'Purchase failed' }
+  track('marketplace_buy', { item_id: result.item_id, quantity: result.quantity })
+  return { ok: true, item_id: result.item_id, quantity: result.quantity, cost: result.cost }
 }
 
 export interface CancelListingResult {

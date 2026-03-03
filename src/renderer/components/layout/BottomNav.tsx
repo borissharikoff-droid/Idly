@@ -35,7 +35,7 @@ interface BottomNavProps {
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   const [moreOpen, setMoreOpen] = useState(false)
   const { queue, currentAlert } = useAlertStore()
-  const { incomingRequestsCount, unreadMessagesCount } = useNavBadgeStore()
+  const { incomingRequestsCount, unreadMessagesCount, marketplaceSaleCount } = useNavBadgeStore()
   const isArenaBattleActive = useArenaStore((s) => !!s.activeBattle)
   const planted = useFarmStore((s) => s.planted)
   const badgeHome = (currentAlert && !currentAlert.claimed ? 1 : 0) + queue.length
@@ -53,7 +53,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   ).length
 
   const secondaryIsActive = SECONDARY_IDS.has(activeTab)
-  const secondaryHasBadge = badgeFarm > 0 || isArenaBattleActive
+  const secondaryHasBadge = badgeFarm > 0 || isArenaBattleActive || marketplaceSaleCount > 0
 
   const navigate = (id: TabId) => {
     playTabSound()
@@ -88,7 +88,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
               <div className="p-1.5 grid grid-cols-3 gap-0.5">
                 {SECONDARY_TABS.map((tab) => {
                   const isActive = activeTab === tab.id
-                  const tabBadge = tab.id === 'farm' ? badgeFarm : 0
+                  const tabBadge = tab.id === 'farm' ? badgeFarm : tab.id === 'marketplace' ? marketplaceSaleCount : 0
                   const tabPulse = tab.id === 'arena' && isArenaBattleActive
                   return (
                     <motion.button

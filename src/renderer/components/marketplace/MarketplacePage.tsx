@@ -1,13 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion } from 'framer-motion'
 import { LOOT_ITEMS, getRarityTheme, getItemPower, MARKETPLACE_BLOCKED_ITEMS, estimateLootDropRate, type LootRarity } from '../../lib/loot'
 import { getFarmItemDisplay, isSeedId, isSeedZipId } from '../../lib/farming'
 import { SKILLS } from '../../lib/skills'
-import { fetchActiveListings, buyListing, cancelListing, expireOldListings, type ListingWithSeller } from '../../services/marketplaceService'
+import { fetchActiveListings, partialBuyListing, cancelListing, expireOldListings, type ListingWithSeller } from '../../services/marketplaceService'
 import { useGoldStore } from '../../stores/goldStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useInventoryStore } from '../../stores/inventoryStore'
+import { useNavBadgeStore } from '../../stores/navBadgeStore'
+import { useNotificationStore } from '../../stores/notificationStore'
 import { syncInventoryToSupabase } from '../../services/supabaseSync'
 import { supabase } from '../../lib/supabase'
 import { useFarmStore } from '../../stores/farmStore'
@@ -130,6 +132,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
   const [loading, setLoading] = useState(true)
   const [buyingId, setBuyingId] = useState<string | null>(null)
   const [buyConfirmTarget, setBuyConfirmTarget] = useState<ListingWithSeller | null>(null)
+  const [buyQty, setBuyQty] = useState(1)
   const [noGoldAlert, setNoGoldAlert] = useState<ListingWithSeller | null>(null)
   const [noGoldTimer, setNoGoldTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
   const [cancellingId, setCancellingId] = useState<string | null>(null)
@@ -148,6 +151,9 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
   const gold = useGoldStore((s) => s.gold)
   const syncFromSupabase = useGoldStore((s) => s.syncFromSupabase)
   const user = useAuthStore((s) => s.user)
+  // Track my active listing IDs to detect sales via realtime
+  const listingsRef = useRef<ListingWithSeller[]>([])
+  const cancelledListingIdsRef = useRef<Set<string>>(new Set())
 
   const filteredListings = useMemo(() => {
     let result = listings.filter((l) => !MARKETPLACE_BLOCKED_ITEMS.includes(l.item_id))
@@ -203,14 +209,15 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
 
   const [refreshing, setRefreshing] = useState(false)
 
-  const loadListings = async (withExpiry = false) => {
+  const loadListings = async (withExpiry = false): Promise<ListingWithSeller[]> => {
     setLoading(true)
     try {
       if (withExpiry) await expireOldListings()
       const data = await fetchActiveListings()
       setListings(data)
+      return data
     } catch {
-      // ignore network errors
+      return []
     } finally {
       setLoading(false)
     }
@@ -224,6 +231,15 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
     setRefreshing(false)
   }
 
+  // Keep ref in sync for sold-listing detection
+  useEffect(() => { listingsRef.current = listings }, [listings])
+
+  // Reset buy quantity when modal target changes
+  useEffect(() => { setBuyQty(1) }, [buyConfirmTarget?.id])
+
+  // Clear marketplace badge when page opens
+  useEffect(() => { useNavBadgeStore.getState().clearMarketplaceSale() }, [])
+
   useEffect(() => {
     loadListings(true)
   }, [])
@@ -232,10 +248,34 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
     if (!supabase || !user) return
     const channel = supabase
       .channel('marketplace-listings-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'marketplace_listings' }, () => {
-        loadListings(false).catch(() => {})
-        // Re-sync gold in case one of our listings was sold
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'marketplace_listings' }, async () => {
+        // Snapshot my active listing IDs before refresh
+        const prevMyIds = new Set(
+          listingsRef.current.filter((l) => l.seller_id === user.id).map((l) => l.id)
+        )
+        const newListings = await loadListings(false)
         syncFromSupabase(user.id).catch(() => {})
+        // Detect sold listings (disappeared without being cancelled by me)
+        if (prevMyIds.size > 0) {
+          const newIds = new Set(newListings.map((l) => l.id))
+          for (const prevId of prevMyIds) {
+            if (!newIds.has(prevId) && !cancelledListingIdsRef.current.has(prevId)) {
+              const sold = listingsRef.current.find((l) => l.id === prevId)
+              if (sold) {
+                const soldItem = LOOT_ITEMS.find((x) => x.id === sold.item_id)
+                const soldFarm = !soldItem ? getFarmItemDisplay(sold.item_id) : null
+                const soldName = soldItem?.name ?? soldFarm?.name ?? sold.item_id
+                useNotificationStore.getState().push({
+                  type: 'marketplace_sale',
+                  icon: '🛒',
+                  title: 'Item sold!',
+                  body: `${soldName}${sold.quantity > 1 ? ` ×${sold.quantity}` : ''} — ${sold.price_gold} 🪙`,
+                })
+                useNavBadgeStore.getState().addMarketplaceSale()
+              }
+            }
+          }
+        }
       })
       .subscribe()
     return () => { supabase.removeChannel(channel).catch(() => {}) }
@@ -265,18 +305,22 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
 
   const handleBuyClick = (listing: ListingWithSeller) => {
     if (!user) return
-    if ((gold ?? 0) < listing.price_gold) {
+    // For multi-qty listings, even 1 unit might be affordable — check cost of 1 unit
+    const minCost = listing.quantity > 1
+      ? Math.ceil(listing.price_gold / listing.quantity)
+      : listing.price_gold
+    if ((gold ?? 0) < minCost) {
       showNoGoldAlert(listing)
       return
     }
     setBuyConfirmTarget(listing)
   }
 
-  const handleBuy = async (listing: ListingWithSeller) => {
+  const handleBuy = async (listing: ListingWithSeller, qty: number) => {
     setBuyConfirmTarget(null)
     if (!user) return
     setBuyingId(listing.id)
-    const res = await buyListing(listing.id)
+    const res = await partialBuyListing(listing.id, qty)
     setBuyingId(null)
     if (res.ok) {
       playClickSound()
@@ -295,6 +339,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
 
   const handleCancel = async (listing: ListingWithSeller) => {
     if (!user || listing.seller_id !== user.id) return
+    cancelledListingIdsRef.current.add(listing.id)
     setCancellingId(listing.id)
     setCancelError(null)
     const res = await cancelListing(listing.id)
@@ -398,10 +443,10 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
         }
       />
 
-      {/* Filters */}
-      <div className="space-y-2">
-        {/* Search + sort */}
-        <div className="flex gap-2">
+      {/* Filters — fixed 2 rows, no layout shift */}
+      <div className="space-y-1.5">
+        {/* Row 1: Search + sort + clear */}
+        <div className="flex gap-1.5">
           <input
             type="text"
             value={search}
@@ -412,36 +457,40 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
           <button
             type="button"
             onClick={() => setSortBy((s) => s === 'price_asc' ? 'price_desc' : s === 'price_desc' ? 'newest' : 'price_asc')}
-            className="px-2.5 py-1.5 rounded-lg bg-[#11111b] border border-white/[0.08] text-gray-400 text-xs hover:text-white transition-colors whitespace-nowrap"
+            className="px-2.5 py-1.5 rounded-lg bg-[#11111b] border border-white/[0.08] text-gray-400 text-xs hover:text-white transition-colors whitespace-nowrap shrink-0"
           >
-            {sortBy === 'newest' ? '🕒 New' : `🪙 ${sortBy === 'price_asc' ? '↑' : '↓'}`}
+            {sortBy === 'newest' ? '🕒' : `🪙${sortBy === 'price_asc' ? '↑' : '↓'}`}
           </button>
           {activeFiltersCount > 0 && (
             <button
               type="button"
               onClick={clearFilters}
-              className="px-2.5 py-1.5 rounded-lg bg-[#11111b] border border-cyber-neon/30 text-cyber-neon text-xs hover:bg-cyber-neon/10 transition-colors whitespace-nowrap"
+              className="px-2.5 py-1.5 rounded-lg bg-[#11111b] border border-cyber-neon/30 text-cyber-neon text-xs hover:bg-cyber-neon/10 transition-colors whitespace-nowrap shrink-0"
             >
-              Clear ({activeFiltersCount})
+              ×{activeFiltersCount}
             </button>
           )}
         </div>
 
-        {/* Category chips */}
-        <div className="flex flex-wrap gap-1.5">
+        {/* Row 2: all chips in a single scrollable line — never wraps */}
+        <div
+          className="flex items-center gap-1.5 overflow-x-auto"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}
+        >
+          {/* Category chips */}
           {([
             { id: '', label: 'All' },
             { id: 'combat', label: '⚔ Combat' },
             { id: 'xp', label: '📈 XP' },
             { id: 'drops', label: '🎁 Drops' },
-            { id: 'cosmetic', label: '✨ Cosmetic' },
+            { id: 'cosmetic', label: '✨ Cos' },
             { id: 'seeds', label: '🌱 Seeds' },
           ] as const).map((f) => (
             <button
               key={f.id}
               type="button"
               onClick={() => { setPerkFilter(f.id); setSkillFilter('') }}
-              className={`px-2.5 py-1 rounded-lg border text-[11px] font-medium transition-all ${
+              className={`shrink-0 px-2 py-0.5 rounded-md border text-[11px] font-medium transition-all ${
                 perkFilter === f.id
                   ? 'border-cyber-neon/50 bg-cyber-neon/12 text-cyber-neon'
                   : 'border-white/[0.07] bg-[#11111b] text-gray-500 hover:text-gray-300 hover:border-white/15'
@@ -450,30 +499,27 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
               {f.label}
             </button>
           ))}
-        </div>
 
-        {/* Skill sub-chips — only when XP selected */}
-        {perkFilter === 'xp' && (
-          <div className="flex flex-wrap gap-1">
-            {SKILLS.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => setSkillFilter((prev) => prev === s.id ? '' : s.id)}
-                className={`px-2 py-0.5 rounded-md border text-[10px] transition-all ${
-                  skillFilter === s.id
-                    ? 'border-white/30 bg-white/10 text-white'
-                    : 'border-white/[0.06] text-gray-600 hover:text-gray-400 hover:border-white/12'
-                }`}
-              >
-                {s.icon} {s.name}
-              </button>
-            ))}
-          </div>
-        )}
+          {/* Skill sub-chips inline when XP selected */}
+          {perkFilter === 'xp' && SKILLS.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => setSkillFilter((prev) => prev === s.id ? '' : s.id)}
+              className={`shrink-0 px-2 py-0.5 rounded-md border text-[10px] transition-all ${
+                skillFilter === s.id
+                  ? 'border-white/30 bg-white/10 text-white'
+                  : 'border-white/[0.06] text-gray-600 hover:text-gray-400 hover:border-white/12'
+              }`}
+            >
+              {s.icon} {s.name}
+            </button>
+          ))}
 
-        {/* Rarity + price */}
-        <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Separator */}
+          <span className="shrink-0 w-px h-3.5 bg-white/10 mx-0.5" />
+
+          {/* Rarity chips */}
           {RARITY_ORDER.map((r) => {
             const t = RARITY_THEME[normalizeRarity(r)]
             const active = rarityFilter === r
@@ -482,7 +528,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                 key={r}
                 type="button"
                 onClick={() => setRarityFilter((prev) => prev === r ? '' : r)}
-                className="px-2.5 py-1 rounded-lg border text-[11px] font-medium capitalize transition-all"
+                className="shrink-0 px-2 py-0.5 rounded-md border text-[10px] font-medium capitalize transition-all"
                 style={active
                   ? { borderColor: t.border, background: `${t.glow}18`, color: t.color }
                   : { borderColor: 'rgba(255,255,255,0.07)', background: '#11111b', color: '#6b7280' }}
@@ -491,22 +537,25 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
               </button>
             )
           })}
-          <div className="flex items-center gap-1 ml-auto">
-            <input
-              type="number" min={0} value={priceMin}
-              onChange={(e) => setPriceMin(e.target.value)}
-              placeholder="Min"
-              className="grindly-no-spinner w-14 px-2 py-1 rounded-lg bg-[#11111b] border border-white/[0.08] text-white text-[11px] placeholder-gray-600 focus:border-cyber-neon/40 outline-none text-center"
-            />
-            <span className="text-gray-600 text-xs">–</span>
-            <input
-              type="number" min={0} value={priceMax}
-              onChange={(e) => setPriceMax(e.target.value)}
-              placeholder="Max"
-              className="grindly-no-spinner w-14 px-2 py-1 rounded-lg bg-[#11111b] border border-white/[0.08] text-white text-[11px] placeholder-gray-600 focus:border-cyber-neon/40 outline-none text-center"
-            />
-            <span className="text-amber-400/70 text-xs">🪙</span>
-          </div>
+
+          {/* Separator */}
+          <span className="shrink-0 w-px h-3.5 bg-white/10 mx-0.5" />
+
+          {/* Price range */}
+          <input
+            type="number" min={0} value={priceMin}
+            onChange={(e) => setPriceMin(e.target.value)}
+            placeholder="Min"
+            className="grindly-no-spinner shrink-0 w-12 px-1.5 py-0.5 rounded-md bg-[#11111b] border border-white/[0.08] text-white text-[10px] placeholder-gray-600 focus:border-cyber-neon/40 outline-none text-center"
+          />
+          <span className="text-gray-600 text-[10px] shrink-0">–</span>
+          <input
+            type="number" min={0} value={priceMax}
+            onChange={(e) => setPriceMax(e.target.value)}
+            placeholder="Max"
+            className="grindly-no-spinner shrink-0 w-12 px-1.5 py-0.5 rounded-md bg-[#11111b] border border-white/[0.08] text-white text-[10px] placeholder-gray-600 focus:border-cyber-neon/40 outline-none text-center"
+          />
+          <span className="text-amber-400/70 text-[10px] shrink-0">🪙</span>
         </div>
       </div>
 
@@ -703,18 +752,24 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                 const confirmFarm = !item ? getFarmItemDisplay(buyConfirmTarget.item_id) : null
                 const confirmRarity = normalizeRarity(item?.rarity ?? confirmFarm?.rarity)
                 const confirmTheme = RARITY_THEME[confirmRarity]
+                const maxQty = buyConfirmTarget.quantity
+                const isMulti = maxQty > 1
+                const buyCost = isMulti
+                  ? Math.ceil(buyConfirmTarget.price_gold * buyQty / maxQty)
+                  : buyConfirmTarget.price_gold
+                const canAffordSelected = (gold ?? 0) >= buyCost
                 return (
                   <>
                     {/* large centered item visual */}
-                    <div className="flex flex-col items-center mb-4">
+                    <div className="flex flex-col items-center mb-3">
                       <div
-                        className="w-20 h-20 rounded-2xl flex items-center justify-center mb-2.5"
+                        className="w-16 h-16 rounded-2xl flex items-center justify-center mb-2"
                         style={{ backgroundColor: `${confirmTheme.color}18`, border: `1px solid ${confirmTheme.border}`, boxShadow: `0 0 20px ${confirmTheme.glow}` }}
                       >
                         <LootVisualShared
                           icon={item?.icon ?? confirmFarm?.icon ?? '📦'}
                           image={item?.image}
-                          className="w-14 h-14 object-contain"
+                          className="w-11 h-11 object-contain"
                           scale={item?.renderScale ?? 1}
                         />
                       </div>
@@ -726,15 +781,59 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                         {confirmRarity}
                       </span>
                       {item?.perkDescription && (
-                        <p className="text-[11px] text-gray-400 text-center mt-1.5 leading-snug">{item.perkDescription}</p>
+                        <p className="text-[10px] text-gray-400 text-center mt-1 leading-snug">{item.perkDescription}</p>
                       )}
                     </div>
 
+                    {/* Quantity stepper — only when listing has multiple */}
+                    {isMulti && (
+                      <div className="mb-3 rounded-xl bg-discord-darker/60 border border-white/[0.08] p-2.5">
+                        <p className="text-[10px] text-gray-500 font-mono mb-2 text-center">
+                          Available: {maxQty} · {Math.round(buyConfirmTarget.price_gold / maxQty * 10) / 10} 🪙 each
+                        </p>
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setBuyQty((q) => Math.max(1, q - 1))}
+                            className="w-8 h-8 rounded-lg border border-white/15 text-gray-300 hover:bg-white/10 text-sm font-bold transition-colors"
+                          >
+                            −
+                          </button>
+                          <input
+                            type="number"
+                            min={1}
+                            max={maxQty}
+                            value={buyQty}
+                            onChange={(e) => {
+                              const v = Math.max(1, Math.min(maxQty, Math.floor(Number(e.target.value) || 1)))
+                              setBuyQty(v)
+                            }}
+                            className="grindly-no-spinner w-16 text-center bg-[#11111b] border border-white/10 rounded-lg text-white text-sm font-bold py-1 outline-none focus:border-cyber-neon/40"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setBuyQty((q) => Math.min(maxQty, q + 1))}
+                            className="w-8 h-8 rounded-lg border border-white/15 text-gray-300 hover:bg-white/10 text-sm font-bold transition-colors"
+                          >
+                            +
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setBuyQty(maxQty)}
+                            className="px-2.5 py-1 rounded-lg border border-white/15 text-gray-400 text-[10px] hover:bg-white/10 transition-colors"
+                          >
+                            Max
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     {/* price */}
-                    <div className="flex items-center justify-center gap-1.5 mb-4 px-3 py-2 rounded-xl bg-amber-500/8 border border-amber-500/20">
+                    <div className={`flex items-center justify-center gap-1.5 mb-3 px-3 py-2 rounded-xl border ${canAffordSelected ? 'bg-amber-500/8 border-amber-500/20' : 'bg-red-500/8 border-red-500/20'}`}>
                       <span className="text-amber-400">🪙</span>
-                      <span className="text-amber-400 font-bold tabular-nums">{buyConfirmTarget.price_gold}</span>
+                      <span className={`font-bold tabular-nums ${canAffordSelected ? 'text-amber-400' : 'text-red-400'}`}>{buyCost}</span>
                       <span className="text-gray-500 text-xs">gold</span>
+                      {!canAffordSelected && <span className="text-red-400 text-xs ml-1">· {buyCost - (gold ?? 0)} short</span>}
                     </div>
 
                     <div className="flex gap-2">
@@ -747,10 +846,11 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleBuy(buyConfirmTarget)}
-                        className="flex-1 py-2 rounded-lg bg-cyber-neon/20 border border-cyber-neon/40 text-cyber-neon text-xs font-semibold hover:bg-cyber-neon/30"
+                        onClick={() => handleBuy(buyConfirmTarget, buyQty)}
+                        disabled={!canAffordSelected}
+                        className="flex-1 py-2 rounded-lg bg-cyber-neon/20 border border-cyber-neon/40 text-cyber-neon text-xs font-semibold hover:bg-cyber-neon/30 disabled:opacity-40 disabled:cursor-not-allowed"
                       >
-                        Buy
+                        {isMulti ? `Buy ×${buyQty}` : 'Buy'}
                       </button>
                     </div>
                   </>

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type NotificationType = 'friend_levelup' | 'update' | 'progression' | 'arena_result'
+export type NotificationType = 'friend_levelup' | 'update' | 'progression' | 'arena_result' | 'marketplace_sale'
 
 export interface Notification {
   id: string
@@ -34,7 +34,7 @@ interface NotificationStore {
 }
 
 const MAX = 50
-const ALLOWED_TYPES: NotificationType[] = ['update', 'friend_levelup', 'progression', 'arena_result']
+const ALLOWED_TYPES: NotificationType[] = ['update', 'friend_levelup', 'progression', 'arena_result', 'marketplace_sale']
 
 export const useNotificationStore = create<NotificationStore>((set, get) => ({
   items: [],

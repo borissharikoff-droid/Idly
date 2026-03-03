@@ -30,7 +30,7 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
   const user = useAuthStore((s) => s.user)
   const setResultModal = useArenaStore((s) => s.setResultModal)
   const presentRecoveryComplete = useSessionStore((s) => s.presentRecoveryComplete)
-  const [filter, setFilter] = useState<'all' | 'update' | 'friend_levelup' | 'progression' | 'arena_result'>('all')
+  const [filter, setFilter] = useState<'all' | 'update' | 'friend_levelup' | 'progression' | 'arena_result' | 'marketplace_sale'>('all')
   const panelRef = useRef<HTMLDivElement>(null)
   const filteredItems = items.filter((i) => (filter === 'all' ? true : i.type === filter))
 
@@ -78,7 +78,7 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
             )}
           </div>
           <div className="px-3 py-1.5 border-b border-white/[0.06] flex items-center gap-1.5 flex-wrap">
-            {(['all', 'update', 'friend_levelup', 'progression', 'arena_result'] as const).map((t) => (
+            {(['all', 'update', 'friend_levelup', 'progression', 'arena_result', 'marketplace_sale'] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setFilter(t)}
@@ -88,7 +88,7 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                     : 'border-white/10 text-gray-500 hover:text-gray-300'
                 }`}
               >
-                {t === 'all' ? 'All' : t === 'update' ? 'Updates' : t === 'friend_levelup' ? 'Friends' : t === 'arena_result' ? 'Arena' : 'Progress'}
+                {t === 'all' ? 'All' : t === 'update' ? 'Updates' : t === 'friend_levelup' ? 'Friends' : t === 'arena_result' ? 'Arena' : t === 'marketplace_sale' ? 'Market' : 'Progress'}
               </button>
             ))}
           </div>

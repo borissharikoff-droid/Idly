@@ -33,8 +33,13 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG=${GITHUB_REF#refs/tags/}
+          if [ -f "RELEASE_NOTES.md" ]; then
+            NOTES=$(cat RELEASE_NOTES.md)
+          else
+            NOTES="Release $TAG"
+          fi
           gh release create "$TAG" \
-            --title "$TAG" \
-            --notes "Release $TAG" \
+            --title "Grindly $TAG" \
+            --notes "$NOTES" \
             release/*.exe \
             release/latest.yml
