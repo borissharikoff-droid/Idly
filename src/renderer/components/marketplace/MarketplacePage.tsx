@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, usePresence } from 'framer-motion'
 import { LOOT_ITEMS, getRarityTheme, getItemPower, MARKETPLACE_BLOCKED_ITEMS, estimateLootDropRate, type LootRarity } from '../../lib/loot'
@@ -148,6 +148,8 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
   const [priceMax, setPriceMax] = useState('')
   const [sortBy, setSortBy] = useState<'price_asc' | 'price_desc' | 'newest'>('newest')
   const [myListingsOpen, setMyListingsOpen] = useState(true)
+  const [filtersExpanded, setFiltersExpanded] = useState(false)
+  const [cancelGroupTarget, setCancelGroupTarget] = useState<{ ids: string[]; name: string; totalQty: number } | null>(null)
   const gold = useGoldStore((s) => s.gold)
   const syncFromSupabase = useGoldStore((s) => s.syncFromSupabase)
   const user = useAuthStore((s) => s.user)
@@ -394,6 +396,25 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
     }
   }
 
+  const handleCancelGroup = async (ids: string[]) => {
+    if (!user) return
+    for (const id of ids) cancelledListingIdsRef.current.add(id)
+    setCancellingId(ids[0] ?? null)
+    setCancelGroupTarget(null)
+    for (const id of ids) await cancelListing(id).catch(() => {})
+    setCancellingId(null)
+    playClickSound()
+    const { items, chests } = useInventoryStore.getState()
+    const { seeds, seedZips } = useFarmStore.getState()
+    const merged = await syncInventoryToSupabase(items, chests, { merge: true, seeds, seedZips })
+    if (merged.ok && merged.mergedChests) {
+      if (merged.mergedItems) useInventoryStore.getState().mergeFromCloud(merged.mergedItems, merged.mergedChests)
+      if (merged.mergedSeeds) useFarmStore.getState().mergeSeedsFromCloud(merged.mergedSeeds)
+      if (merged.mergedSeedZips) useFarmStore.getState().mergeSeedZipsFromCloud(merged.mergedSeedZips)
+    }
+    loadListings().catch(() => {})
+  }
+
   const activeFiltersCount = [search, perkFilter, skillFilter, rarityFilter, priceMin, priceMax].filter(Boolean).length
   const clearFilters = () => {
     setSearch('')
@@ -408,6 +429,19 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
   const myListings = filteredListings.filter((l) => user?.id === l.seller_id)
   const otherListings = filteredListings.filter((l) => user?.id !== l.seller_id)
   const totalVisible = listings.filter((l) => !MARKETPLACE_BLOCKED_ITEMS.includes(l.item_id)).length
+
+  // Group identical my-listings (same item + same price/unit) into merged cards
+  const mergedMyListings = useMemo(() => {
+    const groups = new Map<string, { rep: ListingWithSeller; ids: string[]; totalQty: number; pricePerUnit: number }>()
+    for (const l of myListings) {
+      const ppu = l.quantity > 0 ? Math.round(l.price_gold / l.quantity) : l.price_gold
+      const key = `${l.item_id}::${ppu}`
+      const g = groups.get(key)
+      if (g) { g.ids.push(l.id); g.totalQty += l.quantity }
+      else groups.set(key, { rep: l, ids: [l.id], totalQty: l.quantity, pricePerUnit: ppu })
+    }
+    return Array.from(groups.values())
+  }, [myListings])
 
   return (
     <motion.div
@@ -476,7 +510,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
         }
       />
 
-      {/* Filters — fixed 2 rows, no layout shift */}
+      {/* Filters */}
       <div className="space-y-1.5">
         {/* Row 1: Search + sort + clear */}
         <div className="flex gap-1.5">
@@ -491,6 +525,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
             type="button"
             onClick={() => setSortBy((s) => s === 'price_asc' ? 'price_desc' : s === 'price_desc' ? 'newest' : 'price_asc')}
             className="px-2.5 py-1.5 rounded-lg bg-[#11111b] border border-white/[0.08] text-gray-400 text-xs hover:text-white transition-colors whitespace-nowrap shrink-0"
+            title="Sort order"
           >
             {sortBy === 'newest' ? '🕒' : `🪙${sortBy === 'price_asc' ? '↑' : '↓'}`}
           </button>
@@ -505,95 +540,104 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
           )}
         </div>
 
-        {/* Row 2: all chips in a single scrollable line — never wraps */}
-        <div className="relative">
-        <div
-          className="flex items-center gap-1.5 overflow-x-auto pr-5"
-          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}
-        >
-          {/* Category chips */}
+        {/* Row 2: Category chips + expand toggle */}
+        <div className="flex items-center gap-1 flex-wrap">
           {([
             { id: '', label: 'All' },
             { id: 'combat', label: '⚔ Combat' },
             { id: 'xp', label: '📈 XP' },
             { id: 'drops', label: '🎁 Drops' },
-            { id: 'cosmetic', label: '✨ Cos' },
+            { id: 'cosmetic', label: '✨ Cosmetic' },
             { id: 'seeds', label: '🌱 Seeds' },
           ] as const).map((f) => (
             <button
               key={f.id}
               type="button"
               onClick={() => { setPerkFilter(f.id); setSkillFilter('') }}
-              className={`shrink-0 px-2 py-0.5 rounded-md border text-[11px] font-medium transition-all ${
+              className={`px-2 py-0.5 rounded-md border text-[11px] font-medium transition-all ${
                 perkFilter === f.id
                   ? 'border-cyber-neon/50 bg-cyber-neon/12 text-cyber-neon'
-                  : 'border-white/[0.07] bg-[#11111b] text-gray-500 hover:text-gray-300 hover:border-white/15'
+                  : 'border-white/[0.08] bg-[#11111b] text-gray-400 hover:text-gray-200 hover:border-white/20'
               }`}
             >
               {f.label}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => setFiltersExpanded((v) => !v)}
+            title={filtersExpanded ? 'Hide filters' : 'More filters'}
+            className={`px-2 py-0.5 rounded-md border text-[11px] transition-all ${
+              filtersExpanded
+                ? 'border-white/20 bg-white/8 text-gray-300'
+                : 'border-white/[0.08] bg-[#11111b] text-gray-500 hover:text-gray-300 hover:border-white/20'
+            }`}
+          >
+            {filtersExpanded ? '▲' : '▼'}
+          </button>
+        </div>
 
-          {/* Skill sub-chips inline when XP selected */}
-          {perkFilter === 'xp' && SKILLS.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => setSkillFilter((prev) => prev === s.id ? '' : s.id)}
-              className={`shrink-0 px-2 py-0.5 rounded-md border text-[10px] transition-all ${
-                skillFilter === s.id
-                  ? 'border-white/30 bg-white/10 text-white'
-                  : 'border-white/[0.06] text-gray-600 hover:text-gray-400 hover:border-white/12'
-              }`}
-            >
-              {s.icon} {s.name}
-            </button>
-          ))}
-
-          {/* Separator */}
-          <span className="shrink-0 w-px h-3.5 bg-white/10 mx-0.5" />
-
-          {/* Rarity chips */}
-          {RARITY_ORDER.map((r) => {
-            const t = RARITY_THEME[normalizeRarity(r)]
-            const active = rarityFilter === r
-            return (
+        {/* Row 3: Skill sub-chips (XP filter selected) */}
+        {perkFilter === 'xp' && (
+          <div className="flex flex-wrap gap-1">
+            {SKILLS.map((s) => (
               <button
-                key={r}
+                key={s.id}
                 type="button"
-                onClick={() => setRarityFilter((prev) => prev === r ? '' : r)}
-                className="shrink-0 px-2 py-0.5 rounded-md border text-[10px] font-medium capitalize transition-all"
-                style={active
-                  ? { borderColor: t.border, background: `${t.glow}18`, color: t.color }
-                  : { borderColor: 'rgba(255,255,255,0.07)', background: '#11111b', color: '#6b7280' }}
+                onClick={() => setSkillFilter((prev) => prev === s.id ? '' : s.id)}
+                className={`px-2 py-0.5 rounded-md border text-[10px] transition-all ${
+                  skillFilter === s.id
+                    ? 'border-white/30 bg-white/10 text-white'
+                    : 'border-white/[0.06] bg-[#11111b] text-gray-500 hover:text-gray-300 hover:border-white/15'
+                }`}
               >
-                {r}
+                {s.icon} {s.name}
               </button>
-            )
-          })}
+            ))}
+          </div>
+        )}
 
-          {/* Separator */}
-          <span className="shrink-0 w-px h-3.5 bg-white/10 mx-0.5" />
-
-          {/* Price range */}
-          <input
-            type="number" min={0} value={priceMin}
-            onChange={(e) => setPriceMin(e.target.value)}
-            placeholder="Min"
-            className="grindly-no-spinner shrink-0 w-12 px-1.5 py-0.5 rounded-md bg-[#11111b] border border-white/[0.08] text-white text-[10px] placeholder-gray-600 focus:border-cyber-neon/40 outline-none text-center"
-          />
-          <span className="text-gray-600 text-[10px] shrink-0">–</span>
-          <input
-            type="number" min={0} value={priceMax}
-            onChange={(e) => setPriceMax(e.target.value)}
-            placeholder="Max"
-            className="grindly-no-spinner shrink-0 w-12 px-1.5 py-0.5 rounded-md bg-[#11111b] border border-white/[0.08] text-white text-[10px] placeholder-gray-600 focus:border-cyber-neon/40 outline-none text-center"
-          />
-          <span className="text-amber-400/70 text-[10px] shrink-0">🪙</span>
-        </div>
-        {/* gradient fade to indicate more content to the right */}
-        <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-[#11111b] to-transparent" />
-        </div>
+        {/* Row 4: Rarity + price range (expanded only) */}
+        {filtersExpanded && (
+          <div className="rounded-lg border border-white/[0.07] bg-[#11111b]/60 p-2 space-y-1.5">
+            <div className="flex items-center gap-1 flex-wrap">
+              <span className="text-[9px] font-mono uppercase tracking-wider text-gray-600 mr-1">Rarity</span>
+              {RARITY_ORDER.map((r) => {
+                const t = RARITY_THEME[normalizeRarity(r)]
+                const active = rarityFilter === r
+                return (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setRarityFilter((prev) => prev === r ? '' : r)}
+                    className="px-2 py-0.5 rounded-md border text-[10px] font-medium capitalize transition-all"
+                    style={active
+                      ? { borderColor: t.border, background: `${t.glow}18`, color: t.color }
+                      : { borderColor: 'rgba(255,255,255,0.07)', background: 'transparent', color: '#9ca3af' }}
+                  >
+                    {r}
+                  </button>
+                )
+              })}
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[9px] font-mono uppercase tracking-wider text-gray-600 mr-1">Price 🪙</span>
+              <input
+                type="number" min={0} value={priceMin}
+                onChange={(e) => setPriceMin(e.target.value)}
+                placeholder="Min"
+                className="grindly-no-spinner w-14 px-1.5 py-0.5 rounded-md bg-[#0d0d1a] border border-white/[0.08] text-white text-[11px] placeholder-gray-600 focus:border-cyber-neon/40 outline-none text-center"
+              />
+              <span className="text-gray-600 text-[10px]">–</span>
+              <input
+                type="number" min={0} value={priceMax}
+                onChange={(e) => setPriceMax(e.target.value)}
+                placeholder="Max"
+                className="grindly-no-spinner w-14 px-1.5 py-0.5 rounded-md bg-[#0d0d1a] border border-white/[0.08] text-white text-[11px] placeholder-gray-600 focus:border-cyber-neon/40 outline-none text-center"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -638,7 +682,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
       ) : (
         <div className="space-y-4">
           {/* My Listings section */}
-          {myListings.length > 0 && (
+          {mergedMyListings.length > 0 && (
             <div className="rounded-2xl border border-white/[0.08] bg-[#1e1e2e]/60 overflow-hidden">
               <button
                 type="button"
@@ -652,8 +696,78 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                 <span className="text-gray-500 text-[10px]">{myListingsOpen ? '▾' : '▸'}</span>
               </button>
               {myListingsOpen && (
-                <div className="border-t border-white/[0.06] divide-y divide-white/[0.04]">
-                  {myListings.map((listing) => <ListingCard key={listing.id} listing={listing} user={user} gold={gold} buyingId={buyingId} cancellingId={cancellingId} onBuy={handleBuyClick} onCancelClick={(l) => { setCancelError(null); setCancelConfirmTarget(l) }} />)}
+                <div className="border-t border-white/[0.06] flex flex-col gap-2 p-2">
+                  {mergedMyListings.map(({ rep, ids, totalQty, pricePerUnit }) => {
+                    const item = LOOT_ITEMS.find((x) => x.id === rep.item_id)
+                    const farmDisplay = !item ? getFarmItemDisplay(rep.item_id) : null
+                    const name = item?.name ?? farmDisplay?.name ?? rep.item_id
+                    const displayRarity = item?.rarity ?? farmDisplay?.rarity ?? 'common'
+                    const theme = getRarityTheme(displayRarity)
+                    const isGroup = ids.length > 1
+                    const isCancelling = ids.some((id) => cancellingId === id)
+                    const totalPrice = isGroup ? pricePerUnit * totalQty : rep.price_gold
+                    return (
+                      <div
+                        key={ids.join(',')}
+                        className="rounded-xl border p-2.5 flex items-center gap-3 transition-all"
+                        style={{ borderColor: theme.border, backgroundColor: `${theme.color}08` }}
+                      >
+                        {/* icon */}
+                        <div
+                          className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 relative"
+                          style={{ borderColor: theme.border, borderWidth: 1, backgroundColor: `${theme.color}15` }}
+                        >
+                          <LootVisualShared
+                            icon={item?.icon ?? farmDisplay?.icon ?? '📦'}
+                            image={item?.image}
+                            className="w-6 h-6 object-contain"
+                            scale={item?.renderScale ?? 1}
+                          />
+                          {totalQty > 1 && (
+                            <span
+                              className="absolute -top-1 -right-1 text-[8px] font-bold px-1 py-px rounded-full border leading-none"
+                              style={{ color: theme.color, backgroundColor: '#11111b', borderColor: theme.border }}
+                            >
+                              ×{totalQty}
+                            </span>
+                          )}
+                        </div>
+                        {/* info */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[12px] font-semibold text-white truncate">{name}</p>
+                          <p className="text-[10px] text-gray-400 mt-0.5">
+                            {isGroup
+                              ? <><span className="text-gray-500">{ids.length} orders · </span>{pricePerUnit}🪙 each</>
+                              : <>{rep.quantity > 1 ? `${rep.quantity} units · ` : ''}{pricePerUnit}🪙{rep.quantity > 1 ? '/unit' : ''}</>
+                            }
+                          </p>
+                        </div>
+                        {/* price + cancel */}
+                        <div className="flex flex-col items-end gap-1.5 shrink-0">
+                          <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/12 border border-amber-500/25">
+                            <span className="text-amber-400 text-[10px]">🪙</span>
+                            <span className="text-amber-400 font-bold text-[11px] tabular-nums">{totalPrice}</span>
+                          </div>
+                          <button
+                            type="button"
+                            disabled={isCancelling}
+                            onClick={() => {
+                              playClickSound()
+                              if (isGroup) {
+                                setCancelGroupTarget({ ids, name, totalQty })
+                              } else {
+                                setCancelError(null)
+                                setCancelConfirmTarget(rep)
+                              }
+                            }}
+                            className="px-2.5 py-0.5 rounded-lg text-[10px] font-semibold bg-red-500/15 border border-red-500/30 text-red-400 hover:bg-red-500/25 disabled:opacity-50 transition-all whitespace-nowrap"
+                          >
+                            {isCancelling ? '…' : isGroup ? `Remove ×${ids.length}` : 'Remove'}
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               )}
             </div>
@@ -893,6 +1007,47 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                   </>
                 )
               })()}
+            </motion.div>
+          </div>,
+          document.body,
+        )}
+
+      {/* Cancel group confirmation modal */}
+      {cancelGroupTarget &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4"
+            onClick={() => setCancelGroupTarget(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="w-[300px] rounded-xl bg-discord-card border border-white/10 p-4 flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className="text-sm font-semibold text-white mb-1">Remove {cancelGroupTarget.ids.length} listings?</p>
+              <p className="text-[11px] text-gray-400 mb-4">
+                {cancelGroupTarget.name}
+                {cancelGroupTarget.totalQty > 1 ? ` ×${cancelGroupTarget.totalQty}` : ''} will return to your inventory.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCancelGroupTarget(null)}
+                  className="flex-1 py-2 rounded-lg border border-white/15 text-gray-400 text-xs hover:bg-white/5"
+                >
+                  Keep
+                </button>
+                <button
+                  type="button"
+                  disabled={cancelGroupTarget.ids.some((id) => cancellingId === id)}
+                  onClick={() => handleCancelGroup(cancelGroupTarget.ids)}
+                  className="flex-1 py-2 rounded-lg bg-red-500/20 border border-red-500/40 text-red-400 text-xs font-semibold hover:bg-red-500/30 disabled:opacity-50"
+                >
+                  Remove all
+                </button>
+              </div>
             </motion.div>
           </div>,
           document.body,

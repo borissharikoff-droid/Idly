@@ -1,3 +1,18 @@
+## What's new in v2.1.3
+
+**Inventory:**
+- Items now shown in a compact 2-column grid instead of a full-width list
+- Text is brighter and larger throughout — name, perk value, slot tag all more readable
+- Icon size increased, perk chip more prominent in rarity color
+
+**Marketplace:**
+- Identical My Listings (same item + same price/unit) are now merged into one card showing total quantity and order count — "Remove ×N" cancels all at once
+- My Listings cards no longer blend together — proper spacing between each card
+- Filters redesigned: main categories always visible, secondary filters (rarity + price range) hidden behind a ▼ expand button
+
+---
+Released: 2026-03-03
+
 ## What's new in v2.1.2
 
 **New:**

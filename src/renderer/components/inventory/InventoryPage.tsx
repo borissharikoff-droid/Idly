@@ -501,9 +501,9 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
       <div className="rounded-xl border border-white/[0.08] bg-discord-card/80 p-3 space-y-2.5">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <p className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">
+          <p className="text-[11px] uppercase tracking-widest text-gray-400 font-mono font-semibold">
             Inventory
-            <span className="ml-1.5 text-gray-600 normal-case tracking-normal">
+            <span className="ml-1.5 text-gray-500 normal-case tracking-normal font-normal">
               {sortedSlots.length}{sortedSlots.length !== slots.length ? `\u00a0/\u00a0${slots.length}` : ''}
             </span>
           </p>
@@ -528,7 +528,7 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
                 className={`flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[10px] font-medium transition-all ${
                   active
                     ? 'border-cyber-neon/40 bg-cyber-neon/10 text-cyber-neon'
-                    : 'border-white/[0.07] bg-discord-darker/30 text-gray-500 hover:text-gray-300 hover:border-white/15'
+                    : 'border-white/[0.08] bg-discord-darker/30 text-gray-400 hover:text-gray-200 hover:border-white/20'
                 }`}
               >
                 <span className="text-[11px] leading-none">{f.icon}</span>
@@ -547,7 +547,7 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
         ) : sortedSlots.length === 0 ? (
           <p className="text-[11px] text-gray-500 py-2">Nothing here.</p>
         ) : (
-          <div className="space-y-1">
+          <div className="grid grid-cols-2 gap-1.5">
             {sortedSlots.map((slot) => {
               const slotRarity = getSlotRarity(slot)
               const slotTheme = RARITY_THEME[normalizeRarity(slotRarity)]
@@ -573,21 +573,31 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
                       slotId: slot.id,
                     })
                   }}
-                  className="relative w-full px-2.5 py-2 flex items-center gap-2.5 rounded-lg border hover:bg-white/[0.04] active:scale-[0.99] transition-all text-left"
+                  className="relative flex flex-col items-center gap-1.5 p-2.5 rounded-lg border hover:bg-white/[0.05] active:scale-[0.98] transition-all text-center overflow-hidden"
                   style={{
-                    borderColor: isEquipped ? slotTheme.border : `${slotTheme.border}70`,
+                    borderColor: isEquipped ? slotTheme.border : `${slotTheme.border}55`,
                     background: isEquipped
-                      ? `linear-gradient(135deg, ${slotTheme.glow}18 0%, rgba(12,12,20,0.95) 55%)`
-                      : `linear-gradient(135deg, ${slotTheme.glow}06 0%, rgba(12,12,20,0.88) 60%)`,
+                      ? `linear-gradient(160deg, ${slotTheme.glow}20 0%, rgba(12,12,20,0.95) 60%)`
+                      : `linear-gradient(160deg, ${slotTheme.glow}08 0%, rgba(12,12,20,0.90) 65%)`,
                   }}
                 >
                   {isPending && (
                     <span className="absolute inset-0 rounded-lg pointer-events-none animate-pulse border border-amber-400/30" />
                   )}
 
+                  {/* Qty badge — top-right corner */}
+                  {slot.quantity > 1 && (
+                    <span
+                      className="absolute top-1.5 right-1.5 text-[9px] font-bold font-mono px-1 py-px rounded leading-none z-10"
+                      style={{ background: `${slotTheme.border}55`, color: slotTheme.color }}
+                    >
+                      ×{slot.quantity}
+                    </span>
+                  )}
+
                   {/* Icon box */}
                   <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden relative"
+                    className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden relative"
                     style={isEquipped
                       ? { background: `radial-gradient(circle at 50% 40%, ${slotTheme.glow}55 0%, rgba(9,9,17,0.95) 70%)` }
                       : { background: 'rgba(9,9,17,0.85)' }}
@@ -595,7 +605,7 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
                     <LootVisual
                       icon={slot.icon}
                       image={slot.image}
-                      className="w-6 h-6 object-contain"
+                      className="w-7 h-7 object-contain"
                       scale={lootItem?.renderScale ?? 1}
                     />
                     {isEquipped && (
@@ -606,34 +616,22 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
                     )}
                   </div>
 
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <p className="text-[11px] font-medium text-white/90 leading-tight truncate max-w-[120px]">{slot.title}</p>
-                      {lootItem && lootItem.slot !== 'consumable' && lootItem.slot !== 'plant' && (
-                        <span className="flex-shrink-0 text-[7px] font-mono uppercase tracking-wide px-1 py-px rounded border border-white/10 text-gray-500 leading-none">
-                          {SLOT_LABEL[lootItem.slot]}
-                        </span>
-                      )}
-                    </div>
-                    {perkChip ? (
-                      <p className="text-[9px] font-mono mt-0.5 leading-none" style={{ color: slotTheme.color }}>{perkChip}</p>
-                    ) : (
-                      <p className="text-[9px] text-gray-500 truncate mt-0.5">{slot.subtitle}</p>
-                    )}
-                  </div>
+                  {/* Name */}
+                  <p className="text-[11px] font-semibold text-white leading-tight w-full truncate">{slot.title}</p>
 
-                  {/* Right: qty badge + rarity dot */}
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {slot.quantity > 1 && (
-                      <span
-                        className="text-[9px] font-bold font-mono px-1.5 py-0.5 rounded"
-                        style={{ background: `${slotTheme.border}55`, color: slotTheme.color }}
-                      >
-                        ×{slot.quantity}
-                      </span>
+                  {/* Perk or subtitle */}
+                  {perkChip ? (
+                    <p className="text-[10px] font-mono font-semibold leading-none" style={{ color: slotTheme.color }}>{perkChip}</p>
+                  ) : (
+                    <p className="text-[9px] text-gray-400 truncate w-full leading-none">{slot.subtitle}</p>
+                  )}
+
+                  {/* Rarity dot + slot tag */}
+                  <div className="flex items-center gap-1">
+                    <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: slotTheme.color }} />
+                    {lootItem && lootItem.slot !== 'consumable' && lootItem.slot !== 'plant' && (
+                      <span className="text-[8px] font-mono uppercase tracking-wide text-gray-500">{SLOT_LABEL[lootItem.slot]}</span>
                     )}
-                    <div className="w-2 h-2 rounded-full" style={{ background: slotTheme.color }} />
                   </div>
                 </button>
               )

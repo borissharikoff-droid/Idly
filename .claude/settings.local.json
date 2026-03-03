@@ -20,7 +20,14 @@
       "Bash(gh release:*)",
       "Bash(node:*)",
       "mcp__supabase__list_tables",
-      "mcp__supabase__execute_sql"
+      "mcp__supabase__execute_sql",
+      "Bash(powershell:*)",
+      "Bash(xargs grep:*)",
+      "Bash(grep:*)",
+      "Bash(python:*)",
+      "Bash(npm version:*)",
+      "mcp__supabase__apply_migration"
     ]
-  }
+  },
+  "outputStyle": "default"
 }

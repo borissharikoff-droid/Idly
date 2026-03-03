@@ -1,4 +1,4 @@
-import { getCombatStatsFromEquipped, type CombatStats } from './loot'
+import { getCombatStatsFromEquipped, type CombatStats, type ChestType } from './loot'
 import type { LootSlot } from './loot'
 
 const BASE_ATK = 5
@@ -21,7 +21,7 @@ export interface BossDef {
   image?: string
   hp: number
   atk: number
-  rewards: { gold: number; lootChance?: number; lootTier?: string }
+  rewards: { chestTier: ChestType }
   requirements?: BossRequirements
 }
 
@@ -31,31 +31,31 @@ export interface BossDef {
 export const BOSSES: BossDef[] = [
   // Tier E — intro. No gear needed. Fight ≈2min at base ATK=5.
   { id: 'slime',  name: 'Slime',  icon: '💧', hp: 600,    atk: 0.5,
-    rewards: { gold: 10,  lootChance: 0.20, lootTier: 'common_chest' } },
+    rewards: { chestTier: 'common_chest' } },
 
   // Tier D — ~10min at ATK≥9. Regen negates boss damage.
   { id: 'goblin', name: 'Goblin', icon: '👺', hp: 5400,   atk: 3,
-    rewards: { gold: 28,  lootChance: 0.25, lootTier: 'rare_chest'   },
+    rewards: { chestTier: 'rare_chest' },
     requirements: { minAtk: 9, minHpRegen: 3 } },
 
   // Tier C — ~20min at ATK≥11. Requires some HP investment.
   { id: 'wolf',   name: 'Wolf',   icon: '🐺', hp: 13200,  atk: 5,
-    rewards: { gold: 55,  lootChance: 0.30, lootTier: 'rare_chest'   },
+    rewards: { chestTier: 'rare_chest' },
     requirements: { minAtk: 11, minHp: 200, minHpRegen: 5 } },
 
   // Tier B — ~40min at ATK≥18. Mid-game grind required.
   { id: 'orc',    name: 'Orc',    icon: '👹', hp: 43200,  atk: 8,
-    rewards: { gold: 100, lootChance: 0.35, lootTier: 'epic_chest'   },
+    rewards: { chestTier: 'epic_chest' },
     requirements: { minAtk: 18, minHp: 280, minHpRegen: 8, minSkillLevel: { gamer: 5 } } },
 
   // Tier A — ~60min at ATK≥25. High-level commitment.
   { id: 'troll',  name: 'Troll',  icon: '🧌', hp: 90000,  atk: 13,
-    rewards: { gold: 175, lootChance: 0.40, lootTier: 'epic_chest'   },
+    rewards: { chestTier: 'epic_chest' },
     requirements: { minAtk: 25, minHp: 380, minHpRegen: 13, minSkillLevel: { gamer: 12 } } },
 
   // Tier S — ~90min at ATK≥35. Ultimate challenge.
   { id: 'dragon', name: 'Dragon', icon: '🐉', hp: 189000, atk: 20,
-    rewards: { gold: 300, lootChance: 0.50, lootTier: 'legendary_chest' },
+    rewards: { chestTier: 'legendary_chest' },
     requirements: { minAtk: 35, minHp: 500, minHpRegen: 20, minSkillLevel: { gamer: 25 } } },
 ]
 

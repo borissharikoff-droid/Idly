@@ -387,9 +387,6 @@ export function ArenaPage() {
           const killCount = killCounts[boss.id] ?? 0
           const isDaily = boss.id === dailyBossId
           const dailyClaimed = isDaily && dailyBossClaimedDate === today
-          const displayGold = isDaily && !dailyClaimed
-            ? boss.rewards.gold * 2
-            : boss.rewards.gold
 
           const reqTexts: string[] = []
           if (req) {
@@ -457,7 +454,7 @@ export function ArenaPage() {
                     )}
                   </div>
 
-                  {/* Row 2: stat chips — HP / ATK / Gold */}
+                  {/* Row 2: stat chips — HP / ATK */}
                   <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                     <span className="inline-flex items-center gap-0.5 text-[10px] font-mono font-semibold text-red-300 bg-red-500/10 border border-red-500/25 px-1.5 py-0.5 rounded">
                       ❤️ {formatShort(boss.hp)}
@@ -465,23 +462,23 @@ export function ArenaPage() {
                     <span className="inline-flex items-center gap-0.5 text-[10px] font-mono font-semibold text-orange-300 bg-orange-500/10 border border-orange-500/25 px-1.5 py-0.5 rounded">
                       ⚔️ {boss.atk}<span className="text-[8px] text-orange-400/60">/s</span>
                     </span>
-                    <span className="inline-flex items-center gap-0.5 text-[10px] font-mono font-semibold text-amber-300 bg-amber-500/10 border border-amber-500/25 px-1.5 py-0.5 rounded">
-                      🪙 {displayGold}{isDaily && !dailyClaimed && <span className="text-amber-200/70 text-[8px]"> ×2</span>}
-                    </span>
                   </div>
 
-                  {/* Row 3: chest drop */}
-                  {boss.rewards.lootTier && boss.rewards.lootChance && (() => {
-                    const chestDef = CHEST_DEFS[boss.rewards.lootTier as ChestType]
-                    const goldRange = GOLD_BY_CHEST[boss.rewards.lootTier as ChestType]
+                  {/* Row 3: guaranteed chest drop */}
+                  {(() => {
+                    const chestTier = isDaily && !dailyClaimed
+                      ? ({ common_chest: 'rare_chest', rare_chest: 'epic_chest', epic_chest: 'legendary_chest', legendary_chest: 'legendary_chest' } as Record<string, string>)[boss.rewards.chestTier] ?? boss.rewards.chestTier
+                      : boss.rewards.chestTier
+                    const chestDef = CHEST_DEFS[chestTier as ChestType]
+                    const goldRange = GOLD_BY_CHEST[chestTier as ChestType]
                     if (!chestDef) return null
                     return (
                       <div className="flex items-center gap-1 mt-1.5">
                         <span className="text-[10px] font-mono text-purple-300/80 bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 rounded">
-                          {Math.round(boss.rewards.lootChance * 100)}%
+                          100%
                         </span>
                         <span className="text-[10px] text-gray-500">→</span>
-                        <span className="text-[10px] text-gray-300 font-medium">{chestDef.icon} {chestDef.name}</span>
+                        <span className="text-[10px] text-gray-300 font-medium">{chestDef.icon} {chestDef.name}{isDaily && !dailyClaimed ? ' ⭐' : ''}</span>
                         {goldRange && (
                           <span className="text-[9px] text-amber-400/50 font-mono">({goldRange.min}–{goldRange.max}🪙)</span>
                         )}
@@ -532,10 +529,9 @@ export function ArenaPage() {
                         onClick={() => {
                           playClickSound()
                           const victory = battleState?.victory ?? false
-                          const gold = victory ? activeBattle.bossSnapshot.rewards.gold : 0
                           const bossName = activeBattle.bossSnapshot.name
                           const { goldLost, chest } = endBattle()
-                          setResultModal({ victory, gold, goldAlreadyAdded: true, bossName, goldLost, chest })
+                          setResultModal({ victory, gold: 0, goldAlreadyAdded: true, bossName, goldLost, chest })
                         }}
                         className="w-full px-3.5 py-5 flex items-center justify-center gap-2 hover:bg-white/5 transition-colors"
                       >

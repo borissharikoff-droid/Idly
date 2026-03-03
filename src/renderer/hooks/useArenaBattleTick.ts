@@ -38,27 +38,26 @@ export function useArenaBattleTick(activeTab: TabId) {
       if (!state?.isComplete || completedRef.current) return
 
       completedRef.current = true
-      const gold = state.victory ? activeBattle.bossSnapshot.rewards.gold : 0
       const victory = state.victory ?? false
       const bossName = activeBattle.bossSnapshot.name
 
       timeoutRef.current = setTimeout(() => {
         if (activeTabRef.current === 'arena') {
           const { goldLost, chest } = endBattle()
-          setResultModal({ victory, gold, goldAlreadyAdded: true, bossName, goldLost, chest })
+          setResultModal({ victory, gold: 0, goldAlreadyAdded: true, bossName, goldLost, chest })
         } else {
-          const { goldLost } = endBattleWithoutGold()
+          const { goldLost, chest } = endBattleWithoutGold()
           const notifId = pushNotification({
             type: 'arena_result',
             icon: victory ? '🏆' : '💀',
             title: victory ? `You killed ${bossName}!` : `You died vs ${bossName}`,
-            body: victory && gold > 0
-              ? `+${formatShort(gold)} gold — tap Claim`
+            body: victory
+              ? chest ? `${chest.icon} ${chest.name} — check Inventory` : 'Boss slain!'
               : goldLost > 0 ? `-${formatShort(goldLost)} 🪙 lost on death` : '',
-            arenaResult: { victory, gold, bossName },
+            arenaResult: { victory, gold: 0, bossName },
           })
           if (notifId) {
-            pushArenaToast({ victory, bossName, gold, notificationId: notifId })
+            pushArenaToast({ victory, bossName, gold: 0, notificationId: notifId })
           }
         }
       }, 1200)
