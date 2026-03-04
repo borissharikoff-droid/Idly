@@ -1,3 +1,16 @@
+## What's new in v2.2.0
+
+**New:**
+- Arena loadout now uses the full Character panel (row slots for head/body/legs, square slots for ring/weapon, 4 stat cards)
+
+**Improved:**
+- Removed all old gear items from the game — item system reset for manual re-entry via dashboard
+- Chest drop tables updated: common/rare give nothing, epic/legendary drop potions
+- Dashboard: added  slot type, synced ITEM_CATALOG and CHEST_CATALOG to match
+
+---
+Released: 2026-03-04
+
 ## What's new in v2.1.4
 
 **Inventory — Character panel redesign:**

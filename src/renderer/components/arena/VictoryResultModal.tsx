@@ -5,7 +5,6 @@ import { PixelConfetti } from '../home/PixelConfetti'
 import { playClickSound, playArenaVictorySound, playArenaDefeatSound } from '../../lib/sounds'
 import { useGoldStore } from '../../stores/goldStore'
 import { useAuthStore } from '../../stores/authStore'
-import { GOLD_BY_CHEST, type ChestType } from '../../lib/loot'
 
 function formatShort(n: number): string {
   if (!Number.isFinite(n) || n < 0) return '0'
@@ -22,7 +21,7 @@ interface VictoryResultModalProps {
   goldAlreadyAdded?: boolean
   bossName?: string
   goldLost?: number
-  chest?: { type: string; name: string; icon: string } | null
+  chest?: { type: string; name: string; icon: string; image?: string } | null
   onClose: () => void
 }
 
@@ -174,19 +173,17 @@ export function VictoryResultModal({
               </p>
 
               {victory && chest && (() => {
-                const goldRange = GOLD_BY_CHEST[chest.type as ChestType]
                 return (
                   <div className="mt-3 rounded-xl bg-purple-500/10 border border-purple-500/25 p-3">
                     <div className="flex items-center justify-center gap-2 mb-1">
-                      <span className="text-2xl">{chest.icon}</span>
+                      {chest.image
+                        ? <img src={chest.image} alt={chest.name} className="w-8 h-8 object-contain" style={{ imageRendering: 'pixelated' }} />
+                        : <span className="text-2xl">{chest.icon}</span>}
                       <div className="text-left">
                         <p className="text-[12px] text-purple-300 font-semibold">{chest.name} dropped!</p>
                         <p className="text-[10px] text-gray-500">Open from Inventory tab</p>
                       </div>
                     </div>
-                    {goldRange && (
-                      <p className="text-[10px] text-amber-400/70 text-center mt-1">{goldRange.min}–{goldRange.max} 🪙 + random item inside</p>
-                    )}
                   </div>
                 )
               })()}

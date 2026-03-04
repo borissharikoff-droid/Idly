@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion'
 import { PIXEL_CONFETTI_COLORS } from '../../lib/uiConstants'
 
-const COUNT = 28
 const SIZE = 6
 
 interface PixelConfettiProps {
@@ -12,11 +11,13 @@ interface PixelConfettiProps {
   accentColor?: string
   /** Duration in seconds. */
   duration?: number
+  /** Number of particles. */
+  count?: number
 }
 
-export function PixelConfetti({ originX = 0.5, originY = 0.5, accentColor, duration = 2.2 }: PixelConfettiProps) {
-  const particles = Array.from({ length: COUNT }, (_, i) => {
-    const angle = (i / COUNT) * Math.PI * 2 + Math.random() * 0.5
+export function PixelConfetti({ originX = 0.5, originY = 0.5, accentColor, duration = 2.2, count = 14 }: PixelConfettiProps) {
+  const particles = Array.from({ length: count }, (_, i) => {
+    const angle = (i / count) * Math.PI * 2 + Math.random() * 0.5
     const speed = 120 + Math.random() * 180
     const color = i < 3 && accentColor ? accentColor : PIXEL_CONFETTI_COLORS[i % PIXEL_CONFETTI_COLORS.length]
     const delay = Math.random() * 0.15

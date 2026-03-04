@@ -42,7 +42,7 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
   const [inspectSlotId, setInspectSlotId] = useState<string | null>(null)
   const [listForSaleTarget, setListForSaleTarget] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; slotId: string } | null>(null)
-  const [openChestModal, setOpenChestModal] = useState<{ chestType: ChestType; itemId: string; seedZipTier: import('../../lib/farming').SeedZipTier | null } | null>(null)
+  const [openChestModal, setOpenChestModal] = useState<{ chestType: ChestType; itemId: string; seedZipTier: import('../../lib/farming').SeedZipTier | null; goldDropped: number } | null>(null)
   const [chestModalAnimSeed, setChestModalAnimSeed] = useState(0)
   const [chestChainMessage, setChestChainMessage] = useState<string | null>(null)
 
@@ -116,7 +116,7 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
     { id: 'xp',      label: 'XP',       icon: '📈' },
     { id: 'drops',   label: 'Drops',    icon: '🎁' },
     { id: 'potions', label: 'Potions',  icon: '⚗️' },
-    { id: 'chests',  label: 'Chests',   icon: '📦' },
+    { id: 'chests',  label: 'Bags',     icon: '📦' },
     { id: 'cosmetic',label: 'Cosmetic', icon: '✨' },
     { id: 'plants',  label: 'Plants',   icon: '🌿' },
   ] as const
@@ -204,7 +204,7 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
     const hasMore =
       pendingRewards.some((r) => !r.claimed && r.chestType === openChestModal.chestType) || (chests[openChestModal.chestType] ?? 0) > 0
     if (chestModalAnimSeed > 1 && !hasMore) {
-      setChestChainMessage('Oops, your chests are over')
+      setChestChainMessage('Oops, your bags are over')
       return
     }
     setChestChainMessage(null)
@@ -224,7 +224,7 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
     setContextMenu(null)
     setChestChainMessage(null)
     setChestModalAnimSeed((v) => v + 1)
-    setOpenChestModal({ chestType, itemId: result.itemId, seedZipTier: seedZipTier ?? null })
+    setOpenChestModal({ chestType, itemId: result.itemId, seedZipTier: seedZipTier ?? null, goldDropped: result.goldDropped })
   }
 
   const isPotionMaxed = (itemId: string) => {
@@ -296,7 +296,7 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
       if (!result) return false
       const seedZipTier = useFarmStore.getState().rollSeedDrop(chestType)
       setChestModalAnimSeed((v) => v + 1)
-      setOpenChestModal({ chestType, itemId: result.itemId, seedZipTier: seedZipTier ?? null })
+      setOpenChestModal({ chestType, itemId: result.itemId, seedZipTier: seedZipTier ?? null, goldDropped: result.goldDropped })
       return true
     }
     if ((chests[chestType] ?? 0) > 0) {
@@ -304,7 +304,7 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
       if (!result) return false
       const seedZipTier = useFarmStore.getState().rollSeedDrop(chestType)
       setChestModalAnimSeed((v) => v + 1)
-      setOpenChestModal({ chestType, itemId: result.itemId, seedZipTier: seedZipTier ?? null })
+      setOpenChestModal({ chestType, itemId: result.itemId, seedZipTier: seedZipTier ?? null, goldDropped: result.goldDropped })
       return true
     }
     return false
@@ -334,30 +334,34 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
             const theme = equippedItem ? RARITY_THEME[normalizeRarity(equippedItem.rarity)] : null
             const row = (
               <div
-                className="flex items-center gap-2 px-2 py-1.5 rounded-lg border overflow-hidden h-full"
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl border overflow-hidden h-full relative"
                 style={theme
-                  ? { borderColor: theme.border, background: `linear-gradient(90deg, ${theme.glow}16 0%, rgba(12,12,20,0.92) 55%)` }
-                  : { borderColor: 'rgba(255,255,255,0.06)', background: 'rgba(12,12,20,0.55)' }}
+                  ? { borderColor: theme.border, background: `linear-gradient(100deg, ${theme.glow}20 0%, rgba(10,10,18,0.96) 50%)` }
+                  : { borderColor: 'rgba(255,255,255,0.07)', background: 'rgba(10,10,18,0.70)' }}
               >
-                <div className="w-[3px] rounded-full self-stretch flex-shrink-0" style={{ background: theme ? theme.color : 'rgba(255,255,255,0.07)', minHeight: 28 }} />
+                {/* Rarity accent bar */}
+                <div className="w-[3px] rounded-full self-stretch flex-shrink-0" style={{ background: theme ? theme.color : 'rgba(255,255,255,0.07)', minHeight: 36 }} />
+                {/* Item icon */}
                 <div
-                  className="w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden"
+                  className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden"
                   style={theme
-                    ? { background: `radial-gradient(circle at 50% 40%, ${theme.glow}50 0%, rgba(9,9,17,0.95) 68%)`, border: `1px solid ${theme.border}55` }
+                    ? { background: `radial-gradient(circle at 50% 40%, ${theme.glow}55 0%, rgba(9,9,17,0.95) 65%)`, border: `1px solid ${theme.border}66` }
                     : { background: 'rgba(9,9,17,0.80)', border: '1px solid rgba(255,255,255,0.06)' }}
                 >
                   {equippedItem
-                    ? <LootVisual icon={equippedItem.icon} image={equippedItem.image} className="w-5 h-5 object-contain" scale={equippedItem.renderScale ?? 1} />
-                    : <span className="text-[13px]" style={{ opacity: 0.18 }}>{meta.icon}</span>}
+                    ? <LootVisual icon={equippedItem.icon} image={equippedItem.image} className="w-6 h-6 object-contain" scale={equippedItem.renderScale ?? 1} />
+                    : <span className="text-lg" style={{ opacity: 0.15 }}>{meta.icon}</span>}
                 </div>
+                {/* Text */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-[7px] font-mono uppercase tracking-widest leading-none" style={{ color: 'rgba(156,163,175,0.45)' }}>{meta.label}</p>
-                  <p className={`text-[10px] font-semibold mt-0.5 truncate leading-tight ${equippedItem ? 'text-white' : 'italic'}`}
-                    style={equippedItem ? undefined : { color: 'rgba(255,255,255,0.2)' }}>
+                  <p className="text-[9px] font-mono uppercase tracking-widest leading-none" style={{ color: 'rgba(156,163,175,0.4)' }}>{meta.label}</p>
+                  <p className={`text-[12px] font-semibold mt-1 truncate leading-tight ${equippedItem ? 'text-white' : 'italic'}`}
+                    style={equippedItem ? undefined : { color: 'rgba(255,255,255,0.18)' }}>
                     {equippedItem ? equippedItem.name : 'empty'}
                   </p>
                 </div>
-                <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: theme ? theme.color : 'rgba(255,255,255,0.08)' }} />
+                {/* Rarity dot */}
+                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: theme ? theme.color : 'rgba(255,255,255,0.08)', boxShadow: theme ? `0 0 6px ${theme.color}88` : 'none' }} />
               </div>
             )
             return (
@@ -375,27 +379,34 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
             const theme = equippedItem ? RARITY_THEME[normalizeRarity(equippedItem.rarity)] : null
             const sq = (
               <div
-                className="rounded-lg border overflow-hidden h-full"
+                className="rounded-xl border overflow-hidden h-full"
                 style={theme
-                  ? { borderColor: theme.border, background: `linear-gradient(160deg, ${theme.glow}14 0%, rgba(12,12,20,0.92) 60%)` }
-                  : { borderColor: 'rgba(255,255,255,0.06)', background: 'rgba(12,12,20,0.55)' }}
+                  ? { borderColor: theme.border, background: `linear-gradient(160deg, ${theme.glow}18 0%, rgba(10,10,18,0.96) 65%)` }
+                  : { borderColor: 'rgba(255,255,255,0.07)', background: 'rgba(10,10,18,0.70)' }}
               >
-                <div className="flex flex-col items-center justify-center gap-0.5 w-full h-full py-1.5 px-1">
+                <div className="flex flex-col items-center justify-center gap-1.5 w-full h-full py-2.5 px-2">
+                  {/* Slot label above icon */}
+                  <p className="text-[8px] font-mono uppercase tracking-widest leading-none" style={{ color: 'rgba(156,163,175,0.35)' }}>
+                    {meta.label}
+                  </p>
+                  {/* Icon */}
                   <div
-                    className="w-7 h-7 rounded-md flex items-center justify-center overflow-hidden"
+                    className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden"
                     style={theme
-                      ? { background: `radial-gradient(circle at 50% 40%, ${theme.glow}55 0%, rgba(9,9,17,0.95) 70%)` }
-                      : { background: 'rgba(9,9,17,0.85)' }}
+                      ? { background: `radial-gradient(circle at 50% 40%, ${theme.glow}60 0%, rgba(9,9,17,0.95) 70%)`, border: `1px solid ${theme.border}55` }
+                      : { background: 'rgba(9,9,17,0.85)', border: '1px solid rgba(255,255,255,0.06)' }}
                   >
                     {equippedItem
-                      ? <LootVisual icon={equippedItem.icon} image={equippedItem.image} className="w-4 h-4 object-contain" scale={equippedItem.renderScale ?? 1} />
-                      : <span className="text-[11px]" style={{ opacity: 0.18 }}>{meta.icon}</span>}
+                      ? <LootVisual icon={equippedItem.icon} image={equippedItem.image} className="w-6 h-6 object-contain" scale={equippedItem.renderScale ?? 1} />
+                      : <span className="text-lg" style={{ opacity: 0.15 }}>{meta.icon}</span>}
                   </div>
-                  <p className="text-[7px] font-mono uppercase tracking-wider leading-none text-center w-full truncate"
-                    style={{ color: equippedItem ? 'rgba(255,255,255,0.65)' : 'rgba(156,163,175,0.35)' }}>
-                    {equippedItem ? equippedItem.name : meta.label}
+                  {/* Item name or empty */}
+                  <p className="text-[8px] font-mono leading-none text-center w-full truncate"
+                    style={{ color: equippedItem ? 'rgba(255,255,255,0.70)' : 'rgba(156,163,175,0.3)' }}>
+                    {equippedItem ? equippedItem.name : '—'}
                   </p>
-                  {theme && <div className="w-1 h-1 rounded-full" style={{ background: theme.color }} />}
+                  {/* Rarity dot */}
+                  {theme && <div className="w-1.5 h-1.5 rounded-full" style={{ background: theme.color, boxShadow: `0 0 5px ${theme.color}99` }} />}
                 </div>
               </div>
             )
@@ -422,39 +433,40 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
           ]
 
           return (
-            <div className="flex gap-1.5">
-              {/* Col 1: Head / Body / Legs */}
-              <div className="flex flex-col gap-1 flex-1 min-w-0">
-                {(['head', 'body', 'legs'] as LootSlot[]).map((s) => (
-                  <div key={s} className="flex-1 min-h-0">{renderRowSlot(s)}</div>
-                ))}
+            <div className="space-y-2">
+              {/* Gear: left column (head/body/legs) + right column (ring/weapon) */}
+              <div className="flex gap-2">
+                {/* Col 1: Head / Body / Legs */}
+                <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                  {(['head', 'body', 'legs'] as LootSlot[]).map((s) => (
+                    <div key={s}>{renderRowSlot(s)}</div>
+                  ))}
+                </div>
+
+                {/* Col 2: Ring (top, smaller) + Weapon (bottom, bigger) */}
+                <div className="flex flex-col gap-1.5" style={{ width: 76 }}>
+                  <div style={{ flex: 1 }}>{renderSquareSlot('ring')}</div>
+                  <div style={{ flex: 2 }}>{renderSquareSlot('weapon')}</div>
+                </div>
               </div>
 
-              {/* Col 2: Ring (top) + Weapon (taller bottom) */}
-              <div className="flex flex-col gap-1" style={{ width: 50 }}>
-                <div style={{ flex: 1 }}>{renderSquareSlot('ring')}</div>
-                <div style={{ flex: 2 }}>{renderSquareSlot('weapon')}</div>
-              </div>
-
-              {/* Col 3: Stats */}
-              <div
-                className="flex flex-col justify-between rounded-lg border border-white/[0.08] p-2"
-                style={{ width: 66, background: 'rgba(8,8,16,0.55)' }}
-              >
-                <p className="text-[7px] font-mono uppercase tracking-widest text-center mb-1" style={{ color: 'rgba(156,163,175,0.4)' }}>Stats</p>
+              {/* Stats row — full width, 4 cards */}
+              <div className="grid grid-cols-4 gap-1.5">
                 {statRows.map(({ icon, value, label, unit, color, maxed }) => {
                   const c = maxed ? '#f59e0b' : color
                   return (
-                    <div key={label} className="flex items-center gap-1.5">
-                      <span className="text-[10px] leading-none flex-shrink-0">{icon}</span>
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-[12px] font-mono font-bold leading-none tabular-nums" style={{ color: c, textShadow: `0 0 6px ${c}55` }}>
-                          {value}
-                        </span>
-                        <span className="text-[7px] font-mono uppercase leading-none" style={{ color: 'rgba(156,163,175,0.45)' }}>
-                          {label}{unit}
-                        </span>
-                      </div>
+                    <div
+                      key={label}
+                      className="flex flex-col items-center justify-center gap-1 rounded-xl border py-3"
+                      style={{ borderColor: `${c}22`, background: `linear-gradient(160deg, ${c}0d 0%, rgba(8,8,16,0.80) 70%)` }}
+                    >
+                      <span className="text-base leading-none">{icon}</span>
+                      <span className="text-[17px] font-mono font-bold tabular-nums leading-none" style={{ color: c, textShadow: `0 0 10px ${c}66` }}>
+                        {value}
+                      </span>
+                      <span className="text-[8px] font-mono uppercase tracking-widest leading-none" style={{ color: `${c}88` }}>
+                        {label}{unit}
+                      </span>
                     </div>
                   )
                 })}
@@ -524,6 +536,20 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
                 ? getItemPerkDescription(lootItem)
                 : null
 
+              // slotTheme.color is always a proper hex (#rrggbb) — safe to append hex alpha.
+              // slotTheme.border is rgba(...) so we avoid concatenating hex onto it.
+              const rarityNorm = normalizeRarity(slotRarity)
+              const glowSizes: Record<string, [string, string]> = {
+                // [normal, equipped] — [spread, spread]
+                common:    ['none',                             'none'],
+                rare:      [`0 0 8px ${slotTheme.color}55`,   `0 0 12px ${slotTheme.color}88`],
+                epic:      [`0 0 10px ${slotTheme.color}66`,  `0 0 16px ${slotTheme.color}99`],
+                legendary: [`0 0 14px ${slotTheme.color}77`,  `0 0 20px ${slotTheme.color}AA`],
+                mythical:  [`0 0 18px ${slotTheme.color}88`,  `0 0 26px ${slotTheme.color}BB`],
+              }
+              const [glowNormal, glowEquipped] = glowSizes[rarityNorm] ?? ['none', 'none']
+              const itemBoxShadow = isEquipped ? glowEquipped : glowNormal
+
               return (
                 <button
                   key={slot.id}
@@ -539,12 +565,13 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
                       slotId: slot.id,
                     })
                   }}
-                  className="relative flex flex-col items-center gap-1.5 p-2.5 rounded-lg border hover:bg-white/[0.05] active:scale-[0.98] transition-all text-center overflow-hidden"
+                  className="relative flex flex-col items-center gap-1.5 p-2.5 rounded-lg border hover:brightness-110 active:scale-[0.98] transition-all text-center overflow-hidden"
                   style={{
-                    borderColor: isEquipped ? slotTheme.border : `${slotTheme.border}55`,
+                    borderColor: isEquipped ? `${slotTheme.color}CC` : `${slotTheme.color}66`,
+                    boxShadow: itemBoxShadow,
                     background: isEquipped
-                      ? `linear-gradient(160deg, ${slotTheme.glow}20 0%, rgba(12,12,20,0.95) 60%)`
-                      : `linear-gradient(160deg, ${slotTheme.glow}08 0%, rgba(12,12,20,0.90) 65%)`,
+                      ? `linear-gradient(160deg, ${slotTheme.glow}22 0%, rgba(12,12,20,0.95) 60%)`
+                      : `linear-gradient(160deg, ${slotTheme.glow}10 0%, rgba(12,12,20,0.92) 65%)`,
                   }}
                 >
                   {isPending && (
@@ -697,7 +724,7 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
                   )
                 })()}
                 {inspectSlot.kind === 'chest' && (
-                  <p className="text-[10px] text-gray-300">Chest can be opened to roll a random item.</p>
+                  <p className="text-[10px] text-gray-300">Bag can be opened to roll a random item.</p>
                 )}
                 {inspectSlot.kind === 'pending' && (
                   <p className="text-[10px] text-gray-300">Pending drop from activity. Claim it first.</p>
@@ -839,6 +866,7 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
         open={Boolean(openChestModal)}
         chestType={openChestModal?.chestType ?? null}
         item={openChestModal ? (LOOT_ITEMS.find((x) => x.id === openChestModal.itemId) ?? null) : null}
+        goldDropped={openChestModal?.goldDropped}
         seedZipTier={openChestModal?.seedZipTier}
         onClose={() => {
           setOpenChestModal(null)
@@ -851,7 +879,7 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
           if (!openChestModal) return
           const opened = openNextChest(openChestModal.chestType)
           if (!opened) {
-            setChestChainMessage('Oops, your chests are over')
+            setChestChainMessage('Oops, your bags are over')
           }
         }}
       />

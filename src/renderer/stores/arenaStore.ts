@@ -16,7 +16,7 @@ export interface ActiveBattle {
   isDaily: boolean
 }
 
-export interface ArenaChestDrop { type: ChestType; name: string; icon: string }
+export interface ArenaChestDrop { type: ChestType; name: string; icon: string; image?: string }
 
 interface ArenaState {
   activeBattle: ActiveBattle | null
@@ -130,7 +130,7 @@ export const useArenaStore = create<ArenaState>()(
           useInventoryStore.getState().addChest(ct, 'session_complete', 100)
           const chest = CHEST_DEFS[ct]
           if (chest) {
-            droppedChest = { type: ct, name: chest.name, icon: activeBattle.isDaily ? '⭐' : chest.icon }
+            droppedChest = { type: ct, name: chest.name, icon: activeBattle.isDaily ? '⭐' : chest.icon, image: chest.image }
           }
         } else {
           // Death penalty: lose % of current gold
@@ -162,7 +162,7 @@ export const useArenaStore = create<ArenaState>()(
             const ct = activeBattle.bossSnapshot.rewards.chestTier
             useInventoryStore.getState().addChest(ct, 'session_complete', 100)
             const chest = CHEST_DEFS[ct]
-            if (chest) droppedChest = { type: ct, name: chest.name, icon: activeBattle.isDaily ? '⭐' : chest.icon }
+            if (chest) droppedChest = { type: ct, name: chest.name, icon: activeBattle.isDaily ? '⭐' : chest.icon, image: chest.image }
           } else {
             const currentGold = useGoldStore.getState().gold
             goldLost = Math.floor(currentGold * DEATH_GOLD_PENALTY)

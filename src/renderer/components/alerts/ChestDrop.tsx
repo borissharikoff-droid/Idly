@@ -42,7 +42,7 @@ export function ChestDrop() {
             useNotificationStore.getState().push({
               type: 'progression',
               icon: liveChest.icon,
-              title: `Missed chest: ${liveChest.name}`,
+              title: `Missed bag: ${liveChest.name}`,
               body: 'You can open it later from Backpack.',
             })
           }
@@ -106,7 +106,7 @@ export function ChestDrop() {
                 <p className="text-[10px] text-cyber-neon font-mono uppercase tracking-wider mt-3">Loot drop</p>
                 <p className="text-white font-semibold text-lg mt-1">{chest.name}</p>
                 <p className="text-[11px] text-gray-400 mt-1">
-                  A chest dropped during your grind session.
+                  A bag dropped during your grind session.
                 </p>
                 <div className="mt-4 flex gap-2">
                   <button
