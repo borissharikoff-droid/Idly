@@ -6,7 +6,8 @@ import { useAuthStore } from '../../stores/authStore'
 import { supabase } from '../../lib/supabase'
 import { syncInventoryToSupabase, fetchFarmFromCloud } from '../../services/supabaseSync'
 import { ensureInventoryHydrated, useInventoryStore } from '../../stores/inventoryStore'
-import { SEED_DEFS, SLOT_UNLOCK_COSTS, MAX_FARM_SLOTS, getSeedById, formatGrowTime, SEED_ZIP_LABELS, SEED_ZIP_ITEM_IDS, type SeedZipTier } from '../../lib/farming'
+import { SEED_DEFS, SLOT_UNLOCK_COSTS, MAX_FARM_SLOTS, getSeedById, formatGrowTime, SEED_ZIP_ITEM_IDS, getSeedZipDisplay, type SeedZipTier } from '../../lib/farming'
+import { useAdminConfigStore } from '../../stores/adminConfigStore'
 import { LOOT_ITEMS, getRarityTheme } from '../../lib/loot'
 import { RARITY_THEME, normalizeRarity } from '../loot/LootUI'
 import { PageHeader } from '../shared/PageHeader'
@@ -93,9 +94,11 @@ function HarvestAllBanner({ results, onDone }: { results: HarvestResult[]; onDon
             {p.icon} <span className="text-lime-400 font-bold">×{p.qty}</span>
           </span>
         ))}
-        {zipCount > 0 && (
-          <span className="text-[11px] text-gray-300 font-mono">🎒 ×{zipCount} Seed Zip</span>
-        )}
+        {zipCount > 0 && (() => {
+          const firstTier = results.find((r) => r.seedZipTier)?.seedZipTier
+          const d = firstTier ? getSeedZipDisplay(firstTier) : null
+          return <span className="text-[11px] text-gray-300 font-mono flex items-center gap-1">{d?.image ? <img src={d.image} className="w-4 h-4 object-contain inline" /> : (d?.icon ?? '🎒')} ×{zipCount} Seed Zip</span>
+        })()}
       </div>
     </motion.div>
   )
@@ -118,6 +121,7 @@ function SeedZipSection() {
   const removeSeedZip = useFarmStore((s) => s.removeSeedZip)
   const [lastOpened, setLastOpened] = useState<{ tier: SeedZipTier; seedId: string } | null>(null)
   const [sellTarget, setSellTarget] = useState<SeedZipTier | null>(null)
+  useAdminConfigStore((s) => s.rev) // re-render when admin config changes
 
   const totalZips = ZIP_TIER_ORDER.reduce((acc, t) => acc + (seedZips[t] ?? 0), 0)
 
@@ -146,9 +150,9 @@ function SeedZipSection() {
             <motion.div key={tier} layout className="rounded-lg border flex items-center gap-2.5 px-2.5 py-2"
               style={{ borderColor: t.border, background: `linear-gradient(135deg, ${t.glow}10 0%, rgba(10,10,20,0.88) 60%)` }}
             >
-              <span className="text-xl shrink-0">🎒</span>
+              {(() => { const d = getSeedZipDisplay(tier); return d.image ? <img src={d.image} className="w-6 h-6 object-contain shrink-0" /> : <span className="text-xl shrink-0">{d.icon}</span> })()}
               <div className="flex-1 min-w-0">
-                <p className="text-[11px] font-semibold text-white">{SEED_ZIP_LABELS[tier]} Seed Zip</p>
+                <p className="text-[11px] font-semibold text-white">{getSeedZipDisplay(tier).name}</p>
                 <p className="text-[9px] text-gray-400 mt-0.5">Contains a {tier} seed</p>
               </div>
               <span className="text-sm font-mono font-bold shrink-0 mr-2" style={{ color: t.color }}>×{count}</span>
@@ -311,10 +315,10 @@ function HarvestRevealModal({ result, onClose }: { result: HarvestResult; onClos
               className="flex items-center gap-2 rounded-lg border px-2.5 py-1.5 relative"
               style={{ borderColor: zipT.border, background: `${zipT.glow}12` }}
             >
-              <span className="text-base">🎒</span>
+              {(() => { const d = getSeedZipDisplay(result.seedZipTier!); return d.image ? <img src={d.image} className="w-5 h-5 object-contain" /> : <span className="text-base">{d.icon}</span> })()}
               <div className="flex-1 text-left">
                 <p className="text-[10px] font-bold leading-none" style={{ color: zipT.color }}>Bonus drop!</p>
-                <p className="text-[9px] text-gray-400 font-mono mt-0.5">{SEED_ZIP_LABELS[result.seedZipTier]} Seed Zip</p>
+                <p className="text-[9px] text-gray-400 font-mono mt-0.5">{getSeedZipDisplay(result.seedZipTier!).name}</p>
               </div>
             </div>
           )}

@@ -1,9 +1,10 @@
 import { AnimatePresence, motion } from 'framer-motion'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { ChestType, LootItemDef } from '../../lib/loot'
 import { CHEST_DEFS, getRarityTheme, getItemPerkDescription } from '../../lib/loot'
-import { SEED_ZIP_LABELS, type SeedZipTier } from '../../lib/farming'
+import { getSeedZipDisplay, type SeedZipTier } from '../../lib/farming'
+import { useAdminConfigStore } from '../../stores/adminConfigStore'
 import { MOTION } from '../../lib/motion'
 import { PixelConfetti } from '../home/PixelConfetti'
 import { playClickSound, playLootRaritySound } from '../../lib/sounds'
@@ -136,10 +137,28 @@ export function ChestOpenModal({
   const chestTheme = getRarityTheme(chestRarity)
   const isLegendary = chestRarity === 'legendary'
 
+  useAdminConfigStore((s) => s.rev) // re-render when admin config changes
+
   const [phase, setPhase] = useState<'opening' | 'revealed'>('opening')
   const lootCardRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
   const [tilt, setTilt] = useState({ x: 0, y: 0 })
   const [hovering, setHovering] = useState(false)
+  const [scrollPos, setScrollPos] = useState<'start' | 'middle' | 'end'>('start')
+
+  const updateScrollPos = useCallback(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const { scrollLeft, scrollWidth, clientWidth } = el
+    if (scrollWidth <= clientWidth + 2) { setScrollPos('start'); return }
+    if (scrollLeft <= 2) setScrollPos('start')
+    else if (scrollLeft + clientWidth >= scrollWidth - 2) setScrollPos('end')
+    else setScrollPos('middle')
+  }, [])
+
+  const scrollBy = useCallback((dir: 'left' | 'right') => {
+    scrollRef.current?.scrollBy({ left: dir === 'right' ? 160 : -160, behavior: 'smooth' })
+  }, [])
 
   const shakeFrames = makeShakeFrames(animCfg.shakeMag, animCfg.shakeCount)
   const scaleFrames = makeScaleFrames(animCfg.shakeCount)
@@ -147,6 +166,8 @@ export function ChestOpenModal({
   useEffect(() => {
     if (!open) { setPhase('opening'); return }
     setPhase('opening')
+    setScrollPos('start')
+    if (scrollRef.current) scrollRef.current.scrollLeft = 0
     const t = setTimeout(() => setPhase('revealed'), animCfg.openMs)
     return () => clearTimeout(t)
   }, [open, revealKey, animCfg.openMs])
@@ -176,83 +197,23 @@ export function ChestOpenModal({
 
   if (typeof document === 'undefined') return null
   return createPortal(
-    <AnimatePresence mode="wait">
+    <AnimatePresence>
       {open && chest && item && (
+        // Outer wrapper — stable key: only mounts/unmounts when modal opens/closes entirely.
+        // This keeps the backdrop from flashing on "Open more".
         <motion.div
-          key={revealKey}
+          key="bag-modal"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          exit={{ opacity: 0, transition: { duration: 0 } }}
-          transition={{ duration: 0.18, ease: 'easeOut' }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
           className="fixed inset-0 z-[120] flex items-center justify-center p-4"
           onClick={onClose}
         >
-          {/* ── Backdrop layers ── */}
-          <motion.div
-            className="absolute inset-0 bg-black"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.82 }}
-            transition={{ duration: 0.3, ease: 'easeOut' }}
-          />
+          {/* ── Backdrop — stable, never re-animates on chain-open ── */}
+          <div className="absolute inset-0 bg-black/85" />
 
-          {/* Colored radial glow */}
-          {animCfg.backdropGlow && (
-            <motion.div
-              className="absolute inset-0 pointer-events-none"
-              initial={{ opacity: 0 }}
-              animate={{
-                opacity: isLegendary && !isRevealed
-                  ? [0, 0.7, 0.4, 0.8, 0.4]
-                  : isRevealed ? 0.65 : 0.3,
-              }}
-              transition={{
-                duration: isLegendary && !isRevealed ? animCfg.openMs / 1000 : 0.5,
-                repeat: isLegendary && !isRevealed ? Infinity : 0,
-                ease: 'easeInOut',
-              }}
-              style={{ background: `radial-gradient(ellipse 68% 52% at 50% 40%, ${chestTheme.glow}55 0%, transparent 68%)` }}
-            />
-          )}
-
-          {/* Legendary: rotating conic rays (on reveal) */}
-          {animCfg.hasRays && (
-            <motion.div
-              className="absolute inset-0 pointer-events-none overflow-hidden"
-              animate={{ opacity: isRevealed ? 1 : 0 }}
-              transition={{ duration: 0.6, ease: 'easeOut' }}
-            >
-              <motion.div
-                className="absolute inset-0"
-                style={{
-                  background: `conic-gradient(from 0deg at 50% 42%,
-                    transparent 0deg,   ${rarityTheme.color}18 18deg,  transparent 36deg,
-                    transparent 72deg,  ${rarityTheme.color}10 90deg,  transparent 108deg,
-                    transparent 144deg, ${rarityTheme.color}18 162deg, transparent 180deg,
-                    transparent 216deg, ${rarityTheme.color}0E 234deg, transparent 252deg,
-                    transparent 288deg, ${rarityTheme.color}16 306deg, transparent 324deg,
-                    transparent 342deg, ${rarityTheme.color}12 354deg, transparent 360deg)`,
-                }}
-                animate={{ rotate: 360 }}
-                transition={{ duration: 18, repeat: Infinity, ease: 'linear' }}
-              />
-            </motion.div>
-          )}
-
-          {/* Reveal flash — radial burst from center */}
-          <AnimatePresence>
-            {isRevealed && animCfg.flashOpacity > 0 && (
-              <motion.div
-                key={`flash:${revealKey}`}
-                className="absolute inset-0 pointer-events-none"
-                style={{ background: `radial-gradient(circle at 50% 42%, ${rarityTheme.color} 0%, transparent 60%)` }}
-                initial={{ opacity: animCfg.flashOpacity }}
-                animate={{ opacity: 0 }}
-                transition={{ duration: 0.5, ease: [0.2, 0, 0.4, 1] }}
-              />
-            )}
-          </AnimatePresence>
-
-          {/* Confetti — fires after reveal */}
+          {/* Confetti — keyed so it re-fires on each open */}
           {isRevealed && (
             <PixelConfetti
               key={`confetti:${revealKey}`}
@@ -264,8 +225,9 @@ export function ChestOpenModal({
             />
           )}
 
-          {/* ── Card ── */}
+          {/* ── Card — also stable: stays in place on chain-open ── */}
           <motion.div
+            key="bag-card"
             initial={{ scale: 0.82, opacity: 0, y: 24 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.88, opacity: 0, y: 16 }}
@@ -281,7 +243,7 @@ export function ChestOpenModal({
               transition: 'box-shadow 0.5s ease',
             }}
           >
-            {/* Card ambient glow */}
+            {/* Card ambient glow — continuous, not keyed */}
             <motion.div
               aria-hidden
               className="absolute inset-0 pointer-events-none rounded-2xl"
@@ -290,241 +252,345 @@ export function ChestOpenModal({
               transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
             />
 
-            {/* Legendary: pulsing border ring during opening */}
-            <AnimatePresence>
-              {isLegendary && !isRevealed && (
-                <motion.div
-                  key="border-ring"
-                  aria-hidden
-                  className="absolute inset-0 rounded-2xl pointer-events-none border-2"
-                  style={{ borderColor: chestTheme.color }}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: [0, 0.9, 0] }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.7, repeat: Infinity, ease: 'easeInOut' }}
-                />
-              )}
-            </AnimatePresence>
-
-            {/* ── Chest icon ── */}
-            {/* Float wrapper — gentle bob during opening */}
-            <motion.div
-              className="mx-auto w-fit"
-              animate={!isRevealed
-                ? { y: [0, -animCfg.floatY, 0] }
-                : { y: 0 }
-              }
-              transition={!isRevealed
-                ? { duration: animCfg.floatDur, repeat: Infinity, ease: 'easeInOut' }
-                : { type: 'spring', stiffness: 200, damping: 18 }
-              }
-            >
-              {/* Shake wrapper — fires once on mount */}
+            {/* ── Inner content — re-keyed on each bag open ── */}
+            {/* On "Open more": old content fades out (100ms), new content fades in with fresh opening animation */}
+            <AnimatePresence mode="wait">
               <motion.div
-                animate={!isRevealed
-                  ? { rotate: shakeFrames, scale: scaleFrames }
-                  : { rotate: 0, scale: 1.08 }
-                }
-                transition={!isRevealed
-                  ? { duration: animCfg.chestDur, ease: 'easeInOut', times: shakeFrames.map((_, i) => i / (shakeFrames.length - 1)) }
-                  : { type: 'spring', stiffness: 220, damping: 16 }
-                }
-                className="w-[76px] h-[76px] rounded-2xl border flex items-center justify-center relative overflow-hidden"
-                style={{
-                  borderColor: chestTheme.border,
-                  background: `radial-gradient(circle at 50% 35%, ${chestTheme.glow}55 0%, rgba(8,8,16,0.92) 70%)`,
-                  boxShadow: `0 0 18px ${chestTheme.glow}88`,
-                }}
+                key={revealKey}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1, transition: { duration: 0.14, ease: 'easeOut' } }}
+                exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.1, ease: 'easeIn' } }}
               >
-                {chest.image ? (
-                  <img
-                    src={chest.image}
-                    alt=""
-                    className="w-12 h-12 object-contain select-none"
-                    style={{ imageRendering: 'pixelated' }}
-                    draggable={false}
+                {/* Colored radial backdrop glow (inside card context) */}
+                {animCfg.backdropGlow && (
+                  <motion.div
+                    className="absolute inset-0 pointer-events-none rounded-2xl"
+                    initial={{ opacity: 0 }}
+                    animate={{
+                      opacity: isLegendary && !isRevealed
+                        ? [0, 0.7, 0.4, 0.8, 0.4]
+                        : isRevealed ? 0.65 : 0.3,
+                    }}
+                    transition={{
+                      duration: isLegendary && !isRevealed ? animCfg.openMs / 1000 : 0.5,
+                      repeat: isLegendary && !isRevealed ? Infinity : 0,
+                      ease: 'easeInOut',
+                    }}
+                    style={{ background: `radial-gradient(ellipse 120% 80% at 50% 0%, ${chestTheme.glow}50 0%, transparent 70%)` }}
                   />
-                ) : (
-                  <span className="text-4xl">{chest.icon}</span>
                 )}
-              </motion.div>
-            </motion.div>
 
-            {/* Status label — AnimatePresence for smooth swap */}
-            <div className="mt-3 h-[18px] relative overflow-hidden">
-              <AnimatePresence mode="wait">
-                <motion.p
-                  key={isRevealed ? 'revealed' : 'opening'}
-                  className="absolute inset-0 text-[11px] font-mono uppercase tracking-wider text-center"
-                  style={{ color: chestTheme.color }}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.2, ease: 'easeOut' }}
-                >
-                  {isRevealed ? 'Bag opened' : 'Opening\u2026'}
-                </motion.p>
-              </AnimatePresence>
-            </div>
-
-            <p className="text-sm text-white/80 font-medium mt-0.5">{chest.name}</p>
-
-            {/* ── Loot card ── */}
-            <motion.div
-              className="mt-3"
-              animate={{
-                opacity: isRevealed ? 1 : 0,
-                y: isRevealed ? 0 : 18,
-                scale: isRevealed ? 1 : 0.9,
-                filter: isRevealed ? 'blur(0px)' : 'blur(4px)',
-              }}
-              transition={{
-                type: 'spring',
-                stiffness: 280,
-                damping: 24,
-                delay: isRevealed ? 0.04 : 0,
-                filter: { duration: 0.3, ease: 'easeOut', delay: isRevealed ? 0.04 : 0 },
-              }}
-              style={{ pointerEvents: isRevealed ? 'auto' : 'none' }}
-            >
-              <motion.div
-                ref={lootCardRef}
-                onMouseMove={handleLootMouseMove}
-                onMouseEnter={() => setHovering(true)}
-                onMouseLeave={() => { setHovering(false); setTilt({ x: 0, y: 0 }) }}
-                className="rounded-xl border p-3.5 relative overflow-hidden cursor-default"
-                style={{
-                  borderColor: rarityTheme.border,
-                  background: `linear-gradient(135deg, ${rarityTheme.glow}18 0%, rgba(8,8,16,0.95) 60%)`,
-                  transform: hovering
-                    ? `perspective(600px) rotateY(${tilt.x * 3.5}deg) rotateX(${tilt.y * -3.5}deg)`
-                    : undefined,
-                  transition: hovering ? 'transform 0.07s ease-out' : 'transform 0.45s ease-out',
-                  boxShadow: `0 0 16px ${rarityTheme.glow}44`,
-                }}
-              >
-                {/* Moving highlight */}
-                <div
-                  className="absolute inset-0 pointer-events-none rounded-xl"
-                  style={{
-                    background: `radial-gradient(circle at ${glowX}% ${glowY}%, ${rarityTheme.glow} 0%, transparent 55%)`,
-                    opacity: hovering ? 0.45 : 0.28,
-                    transition: hovering ? 'opacity 0.08s' : 'opacity 0.5s',
-                  }}
-                />
-                {/* Ambient pulse */}
-                <motion.div
-                  className="absolute inset-0 pointer-events-none rounded-xl"
-                  animate={{ opacity: [0.25, 0.5, 0.28] }}
-                  transition={{ duration: 1.9, repeat: Infinity, ease: 'easeInOut' }}
-                  style={{ boxShadow: `inset 0 0 18px ${rarityTheme.glow}` }}
-                />
-
-                {/* Item image */}
-                <motion.div
-                  className="flex justify-center"
-                  animate={{ x: itemX, y: itemY }}
-                  transition={{ type: 'spring', stiffness: 220, damping: 22 }}
-                >
-                  {item.image ? (
-                    <img
-                      src={item.image}
-                      alt=""
-                      className="w-[60px] h-[60px] object-contain select-none"
-                      style={{ imageRendering: 'pixelated' }}
-                      draggable={false}
+                {/* Legendary: rotating conic rays */}
+                {animCfg.hasRays && (
+                  <motion.div
+                    className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl"
+                    animate={{ opacity: isRevealed ? 1 : 0 }}
+                    transition={{ duration: 0.6, ease: 'easeOut' }}
+                  >
+                    <motion.div
+                      className="absolute inset-0"
+                      style={{
+                        background: `conic-gradient(from 0deg at 50% 42%,
+                          transparent 0deg,   ${rarityTheme.color}18 18deg,  transparent 36deg,
+                          transparent 72deg,  ${rarityTheme.color}10 90deg,  transparent 108deg,
+                          transparent 144deg, ${rarityTheme.color}18 162deg, transparent 180deg,
+                          transparent 216deg, ${rarityTheme.color}0E 234deg, transparent 252deg,
+                          transparent 288deg, ${rarityTheme.color}16 306deg, transparent 324deg,
+                          transparent 342deg, ${rarityTheme.color}12 354deg, transparent 360deg)`,
+                      }}
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 18, repeat: Infinity, ease: 'linear' }}
                     />
+                  </motion.div>
+                )}
+
+                {/* Legendary: pulsing border ring during opening */}
+                <AnimatePresence>
+                  {isLegendary && !isRevealed && (
+                    <motion.div
+                      key="border-ring"
+                      aria-hidden
+                      className="absolute inset-0 rounded-2xl pointer-events-none border-2"
+                      style={{ borderColor: chestTheme.color }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: [0, 0.9, 0] }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.7, repeat: Infinity, ease: 'easeInOut' }}
+                    />
+                  )}
+                </AnimatePresence>
+
+                {/* Reveal flash */}
+                <AnimatePresence>
+                  {isRevealed && animCfg.flashOpacity > 0 && (
+                    <motion.div
+                      key="flash"
+                      className="absolute inset-0 pointer-events-none rounded-2xl"
+                      style={{ background: `radial-gradient(circle at 50% 42%, ${rarityTheme.color} 0%, transparent 60%)` }}
+                      initial={{ opacity: animCfg.flashOpacity }}
+                      animate={{ opacity: 0 }}
+                      transition={{ duration: 0.5, ease: [0.2, 0, 0.4, 1] }}
+                    />
+                  )}
+                </AnimatePresence>
+
+                {/* ── Chest icon ── */}
+                <motion.div
+                  className="mx-auto w-fit relative"
+                  animate={!isRevealed ? { y: [0, -animCfg.floatY, 0] } : { y: 0 }}
+                  transition={!isRevealed
+                    ? { duration: animCfg.floatDur, repeat: Infinity, ease: 'easeInOut' }
+                    : { type: 'spring', stiffness: 200, damping: 18 }
+                  }
+                >
+                  <motion.div
+                    animate={!isRevealed
+                      ? { rotate: shakeFrames, scale: scaleFrames }
+                      : { rotate: 0, scale: 1.08 }
+                    }
+                    transition={!isRevealed
+                      ? { duration: animCfg.chestDur, ease: 'easeInOut', times: shakeFrames.map((_, i) => i / (shakeFrames.length - 1)) }
+                      : { type: 'spring', stiffness: 220, damping: 16 }
+                    }
+                    className="w-[76px] h-[76px] rounded-2xl border flex items-center justify-center relative overflow-hidden"
+                    style={{
+                      borderColor: chestTheme.border,
+                      background: `radial-gradient(circle at 50% 35%, ${chestTheme.glow}55 0%, rgba(8,8,16,0.92) 70%)`,
+                      boxShadow: `0 0 18px ${chestTheme.glow}88`,
+                    }}
+                  >
+                    {chest.image ? (
+                      <img src={chest.image} alt="" className="w-12 h-12 object-contain select-none" style={{ imageRendering: 'pixelated' }} draggable={false} />
+                    ) : (
+                      <span className="text-4xl">{chest.icon}</span>
+                    )}
+                  </motion.div>
+                </motion.div>
+
+                {/* Status label */}
+                <div className="mt-3 h-[18px] relative overflow-hidden">
+                  <AnimatePresence mode="wait">
+                    <motion.p
+                      key={isRevealed ? 'revealed' : 'opening'}
+                      className="absolute inset-0 text-[11px] font-mono uppercase tracking-wider text-center"
+                      style={{ color: chestTheme.color }}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -6 }}
+                      transition={{ duration: 0.2, ease: 'easeOut' }}
+                    >
+                      {isRevealed ? 'Bag opened' : 'Opening\u2026'}
+                    </motion.p>
+                  </AnimatePresence>
+                </div>
+
+                <p className="text-sm text-white/80 font-medium mt-0.5">{chest.name}</p>
+
+                {/* Drop count */}
+                {isRevealed && (() => {
+                  const count = 1 + (goldDropped > 0 ? 1 : 0) + (seedZipTier ? 1 : 0)
+                  if (count < 2) return null
+                  return (
+                    <motion.p
+                      className="text-[10px] text-gray-500 mt-0.5"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.15, duration: 0.25 }}
+                    >
+                      {count} items dropped
+                    </motion.p>
+                  )
+                })()}
+
+                {/* ── Loot scroll ── */}
+                <motion.div
+                  className="mt-3"
+                  animate={{
+                    opacity: isRevealed ? 1 : 0,
+                    y: isRevealed ? 0 : 18,
+                    scale: isRevealed ? 1 : 0.9,
+                    filter: isRevealed ? 'blur(0px)' : 'blur(4px)',
+                  }}
+                  transition={{
+                    type: 'spring', stiffness: 280, damping: 24,
+                    delay: isRevealed ? 0.04 : 0,
+                    filter: { duration: 0.3, ease: 'easeOut', delay: isRevealed ? 0.04 : 0 },
+                  }}
+                  style={{ pointerEvents: isRevealed ? 'auto' : 'none' }}
+                >
+                  <div className="relative">
+                    {(goldDropped > 0 || seedZipTier) && scrollPos !== 'start' && (
+                      <button
+                        type="button"
+                        onClick={() => scrollBy('left')}
+                        className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90"
+                        style={{ background: 'rgba(8,8,16,0.85)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(4px)', marginLeft: '-12px' }}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 2L4 6l3.5 4" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </button>
+                    )}
+                    {(goldDropped > 0 || seedZipTier) && scrollPos !== 'end' && (
+                      <button
+                        type="button"
+                        onClick={() => scrollBy('right')}
+                        className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90"
+                        style={{ background: 'rgba(8,8,16,0.85)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(4px)', marginRight: '-12px' }}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4.5 2L8 6l-3.5 4" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </button>
+                    )}
+                    <div
+                      ref={scrollRef}
+                      onScroll={updateScrollPos}
+                      className="flex gap-2.5 overflow-x-auto snap-x snap-mandatory"
+                      style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
+                    >
+                      {/* Main item card */}
+                      <motion.div
+                        ref={lootCardRef}
+                        onMouseMove={handleLootMouseMove}
+                        onMouseEnter={() => setHovering(true)}
+                        onMouseLeave={() => { setHovering(false); setTilt({ x: 0, y: 0 }) }}
+                        className="rounded-xl border p-3.5 relative overflow-hidden cursor-default snap-start flex-none"
+                        style={{
+                          width: (goldDropped > 0 || seedZipTier) ? '220px' : '100%',
+                          borderColor: rarityTheme.border,
+                          background: `linear-gradient(135deg, ${rarityTheme.glow}18 0%, rgba(8,8,16,0.95) 60%)`,
+                          transform: hovering
+                            ? `perspective(600px) rotateY(${tilt.x * 3.5}deg) rotateX(${tilt.y * -3.5}deg)`
+                            : undefined,
+                          transition: hovering ? 'transform 0.07s ease-out' : 'transform 0.45s ease-out',
+                          boxShadow: `0 0 16px ${rarityTheme.glow}44`,
+                        }}
+                      >
+                        <div
+                          className="absolute inset-0 pointer-events-none rounded-xl"
+                          style={{
+                            background: `radial-gradient(circle at ${glowX}% ${glowY}%, ${rarityTheme.glow} 0%, transparent 55%)`,
+                            opacity: hovering ? 0.45 : 0.28,
+                            transition: hovering ? 'opacity 0.08s' : 'opacity 0.5s',
+                          }}
+                        />
+                        <motion.div
+                          className="absolute inset-0 pointer-events-none rounded-xl"
+                          animate={{ opacity: [0.25, 0.5, 0.28] }}
+                          transition={{ duration: 1.9, repeat: Infinity, ease: 'easeInOut' }}
+                          style={{ boxShadow: `inset 0 0 18px ${rarityTheme.glow}` }}
+                        />
+                        <motion.div
+                          className="flex justify-center"
+                          animate={{ x: itemX, y: itemY }}
+                          transition={{ type: 'spring', stiffness: 220, damping: 22 }}
+                        >
+                          {item.image ? (
+                            <img src={item.image} alt="" className="w-[60px] h-[60px] object-contain select-none" style={{ imageRendering: 'pixelated' }} draggable={false} />
+                          ) : (
+                            <p className="text-4xl">{item.icon}</p>
+                          )}
+                        </motion.div>
+                        <motion.p
+                          className="text-sm text-white font-semibold mt-2 leading-tight"
+                          animate={{ x: tilt.x * 1.8, y: tilt.y * -1.2 }}
+                          transition={{ type: 'spring', stiffness: 220, damping: 22 }}
+                        >
+                          {item.name}
+                        </motion.p>
+                        <p className="text-[10px] font-mono uppercase tracking-wider mt-0.5" style={{ color: rarityTheme.color }}>
+                          {item.rarity}
+                        </p>
+                        <p className="text-[10px] text-gray-400 mt-1 leading-snug">{getItemPerkDescription(item)}</p>
+                      </motion.div>
+
+                      {/* Gold bonus card */}
+                      {goldDropped > 0 && (
+                        <div
+                          className="flex-none w-[130px] snap-start rounded-xl border border-amber-500/25 flex flex-col items-center justify-center gap-2 py-4 relative overflow-hidden"
+                          style={{ background: 'linear-gradient(160deg, rgba(245,158,11,0.10) 0%, rgba(8,8,16,0.95) 65%)' }}
+                        >
+                          <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 50% 35%, rgba(245,158,11,0.18) 0%, transparent 65%)' }} />
+                          <span className="text-3xl relative">🪙</span>
+                          <span className="text-xl font-bold text-amber-400 tabular-nums relative">+{goldDropped}</span>
+                          <span className="text-[9px] font-mono text-amber-500/60 uppercase tracking-widest relative">Gold</span>
+                        </div>
+                      )}
+
+                      {/* Seed Zip bonus card */}
+                      {seedZipTier && (() => {
+                        const zipTheme = getRarityTheme(seedZipTier)
+                        const zipDisplay = getSeedZipDisplay(seedZipTier)
+                        return (
+                          <div
+                            className="flex-none w-[130px] snap-start rounded-xl border flex flex-col items-center justify-center gap-2 py-4 relative overflow-hidden"
+                            style={{ borderColor: zipTheme.border, background: `linear-gradient(160deg, ${zipTheme.glow}18 0%, rgba(8,8,16,0.95) 65%)` }}
+                          >
+                            <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(circle at 50% 35%, ${zipTheme.glow}30 0%, transparent 65%)` }} />
+                            {zipDisplay.image
+                              ? <img src={zipDisplay.image} className="w-10 h-10 object-contain relative" />
+                              : <span className="text-3xl relative">{zipDisplay.icon}</span>}
+                            <span className="text-sm font-semibold text-center leading-tight px-2 relative" style={{ color: zipTheme.color }}>{zipDisplay.name}</span>
+                            <span className="text-[9px] font-mono uppercase tracking-widest relative" style={{ color: `${zipTheme.color}88` }}>Seed Zip</span>
+                          </div>
+                        )
+                      })()}
+
+                      {(goldDropped > 0 || seedZipTier) && <div className="flex-none w-5" aria-hidden />}
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* ── Buttons ── */}
+                <motion.div
+                  className="flex gap-2 mt-4"
+                  animate={{ opacity: isRevealed ? 1 : 0, y: isRevealed ? 0 : 8 }}
+                  transition={{ duration: 0.28, delay: isRevealed ? 0.18 : 0, ease: 'easeOut' }}
+                  style={{ pointerEvents: isRevealed ? 'auto' : 'none' }}
+                >
+                  {nextAvailable ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => { playClickSound(); onOpenNext?.() }}
+                        className="flex-1 h-10 rounded-xl text-[13px] font-semibold transition-all active:scale-[0.97]"
+                        style={{ color: chestTheme.color, border: `1px solid ${chestTheme.border}`, background: `${chestTheme.color}22` }}
+                      >
+                        Open more
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { playClickSound(); onClose() }}
+                        className="flex-1 h-10 rounded-xl text-[13px] font-semibold text-white/40 border border-white/10 bg-white/[0.04] hover:text-white/60 hover:bg-white/[0.07] transition-all active:scale-[0.97]"
+                      >
+                        Done
+                      </button>
+                    </>
                   ) : (
-                    <p className="text-4xl">{item.icon}</p>
+                    <button
+                      type="button"
+                      onClick={() => { playClickSound(); onClose() }}
+                      className="flex-1 h-10 rounded-xl text-[13px] font-semibold transition-all active:scale-[0.97]"
+                      style={{ color: chestTheme.color, border: `1px solid ${chestTheme.border}`, background: `${chestTheme.color}22` }}
+                    >
+                      Done
+                    </button>
                   )}
                 </motion.div>
 
-                <motion.p
-                  className="text-sm text-white font-semibold mt-2 leading-tight"
-                  animate={{ x: tilt.x * 1.8, y: tilt.y * -1.2 }}
-                  transition={{ type: 'spring', stiffness: 220, damping: 22 }}
-                >
-                  {item.name}
-                </motion.p>
-                <p
-                  className="text-[10px] font-mono uppercase tracking-wider mt-0.5"
-                  style={{ color: rarityTheme.color }}
-                >
-                  {item.rarity}
-                </p>
-                <p className="text-[10px] text-gray-400 mt-1 leading-snug">{getItemPerkDescription(item)}</p>
+                {/* Chain message */}
+                <AnimatePresence>
+                  {chainMessage && (
+                    <motion.p
+                      key={chainMessage}
+                      className="text-[10px] text-center text-orange-300/90 font-medium mt-2"
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {chainMessage}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
               </motion.div>
-            </motion.div>
-
-            {/* ── Bonus drops ── */}
-            <motion.div
-              className="flex flex-col items-center gap-1.5 mt-3 min-h-[36px] justify-center"
-              animate={{ opacity: isRevealed ? 1 : 0, y: isRevealed ? 0 : 6 }}
-              transition={{ duration: 0.28, delay: isRevealed ? 0.12 : 0 }}
-              style={{ pointerEvents: isRevealed ? 'auto' : 'none' }}
-            >
-              {goldDropped > 0 && (
-                <div className="flex items-center justify-center gap-1.5 py-1.5 px-3.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                  <span className="text-amber-400" aria-hidden>🪙</span>
-                  <span className="text-sm font-bold text-amber-400 tabular-nums">+{goldDropped}</span>
-                </div>
-              )}
-              {seedZipTier && (
-                <div className="flex items-center justify-center gap-1.5 py-1.5 px-3.5 rounded-lg bg-green-500/10 border border-green-500/20">
-                  <span aria-hidden>🎒</span>
-                  <span className="text-sm font-semibold text-green-300">+ {SEED_ZIP_LABELS[seedZipTier]} Seed Zip</span>
-                </div>
-              )}
-            </motion.div>
-
-            {/* ── Buttons ── */}
-            <motion.div
-              className="flex gap-2 mt-3"
-              animate={{ opacity: isRevealed ? 1 : 0, y: isRevealed ? 0 : 8 }}
-              transition={{ duration: 0.28, delay: isRevealed ? 0.18 : 0, ease: 'easeOut' }}
-              style={{ pointerEvents: isRevealed ? 'auto' : 'none' }}
-            >
-              {nextAvailable && (
-                <button
-                  type="button"
-                  onClick={() => { playClickSound(); onOpenNext?.() }}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.97]"
-                  style={{
-                    color: chestTheme.color,
-                    border: `1px solid ${chestTheme.border}`,
-                    backgroundColor: `${chestTheme.color}1E`,
-                  }}
-                >
-                  Open more
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => { playClickSound(); onClose() }}
-                className={`py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.97] ${nextAvailable ? 'px-5' : 'flex-1'}`}
-                style={nextAvailable
-                  ? { color: 'rgba(156,163,175,0.65)', border: '1px solid rgba(255,255,255,0.09)', backgroundColor: 'rgba(255,255,255,0.04)' }
-                  : { color: chestTheme.color, border: `1px solid ${chestTheme.border}`, backgroundColor: `${chestTheme.color}1E` }
-                }
-              >
-                Done
-              </button>
-            </motion.div>
-
-            {/* Chain message */}
-            <AnimatePresence>
-              {chainMessage && (
-                <motion.p
-                  key={chainMessage}
-                  className="text-[10px] text-center text-orange-300/90 font-medium mt-2"
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {chainMessage}
-                </motion.p>
-              )}
             </AnimatePresence>
           </motion.div>
         </motion.div>

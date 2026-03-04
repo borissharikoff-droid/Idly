@@ -3,6 +3,7 @@
  * Applied at app startup to patch LOOT_ITEMS and BOSSES in place.
  */
 import { CHEST_DEFS, type LootItemDef, type LootItemPerk, type LootRarity, type LootSlot, type ChestType } from './loot'
+import { SEED_ZIP_LABELS, SEED_ZIP_ICONS, SEED_ZIP_IMAGES, type SeedZipTier } from './farming'
 import type { BossDef } from './combat'
 
 const STORAGE_KEY = 'grindly_admin_config'
@@ -57,6 +58,7 @@ export interface AdminConfig {
   bossOverrides?: Record<string, BossOverride>
   chestWeightOverrides?: Record<string, ChestWeightEntry[]>
   chestOverrides?: Record<string, { icon?: string; image?: string }>
+  seedZipOverrides?: Record<string, { name?: string; icon?: string; image?: string }>
 }
 
 export function loadAdminConfig(): AdminConfig {
@@ -110,10 +112,14 @@ export function applyAdminConfig(items: LootItemDef[], bosses: BossDef[]): void 
     for (let i = toRemove.length - 1; i >= 0; i--) items.splice(toRemove[i], 1)
   }
 
-  // Append custom items (skip duplicates)
+  // Append or update custom items
   const existingIds = new Set(items.map((x) => x.id))
   for (const custom of cfg.customItems ?? []) {
-    if (!existingIds.has(custom.id)) {
+    if (existingIds.has(custom.id)) {
+      // Update existing entry so dashboard edits take effect without restart
+      const idx = items.findIndex((x) => x.id === custom.id)
+      if (idx !== -1) Object.assign(items[idx], custom)
+    } else {
       items.push(custom as unknown as LootItemDef)
       existingIds.add(custom.id)
     }
@@ -130,6 +136,22 @@ export function applyAdminConfig(items: LootItemDef[], bosses: BossDef[]): void 
       if (overrides.atk !== undefined) boss.atk = overrides.atk
       if (overrides.rewards) Object.assign(boss.rewards, overrides.rewards)
     }
+  }
+
+  // Apply seed zip overrides (name/icon/image per tier)
+  const ZIP_TIERS: SeedZipTier[] = ['common', 'rare', 'epic', 'legendary']
+  // Reset to defaults first so stale overrides don't linger
+  for (const tier of ZIP_TIERS) {
+    SEED_ZIP_LABELS[tier] = tier.charAt(0).toUpperCase() + tier.slice(1)
+    SEED_ZIP_ICONS[tier]  = '🎒'
+    SEED_ZIP_IMAGES[tier] = ''
+  }
+  for (const [tier, ov] of Object.entries(cfg.seedZipOverrides ?? {})) {
+    if (!ZIP_TIERS.includes(tier as SeedZipTier)) continue
+    const t = tier as SeedZipTier
+    if (ov.name)  SEED_ZIP_LABELS[t] = ov.name
+    if (ov.icon)  SEED_ZIP_ICONS[t]  = ov.icon
+    if (ov.image) SEED_ZIP_IMAGES[t] = ov.image
   }
 
   // Apply chest weight overrides (custom item drop tables from dashboard)

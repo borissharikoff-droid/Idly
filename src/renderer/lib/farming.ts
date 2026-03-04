@@ -188,6 +188,23 @@ export const SEED_ZIP_ICONS: Record<SeedZipTier, string> = {
   legendary: '🎒',
 }
 
+/** Custom images per tier — populated by applyAdminConfig when overrides exist */
+export const SEED_ZIP_IMAGES: Record<SeedZipTier, string> = {
+  common: '',
+  rare: '',
+  epic: '',
+  legendary: '',
+}
+
+/** Returns effective display info for a seed zip tier (respects admin overrides). */
+export function getSeedZipDisplay(tier: SeedZipTier): { name: string; icon: string; image: string } {
+  return {
+    name: `${SEED_ZIP_LABELS[tier]} Seed Zip`,
+    icon: SEED_ZIP_ICONS[tier],
+    image: SEED_ZIP_IMAGES[tier] ?? '',
+  }
+}
+
 /** Map chest type → Seed Zip tier */
 export const CHEST_TO_ZIP_TIER: Record<ChestType, SeedZipTier> = {
   common_chest: 'common',
@@ -317,10 +334,11 @@ export function formatCountdown(remainingSeconds: number): string {
 }
 
 /** Returns display info for farm-specific item IDs (seed zips) not found in LOOT_ITEMS. */
-export function getFarmItemDisplay(itemId: string): { name: string; icon: string; rarity: LootRarity } | null {
+export function getFarmItemDisplay(itemId: string): { name: string; icon: string; image?: string; rarity: LootRarity } | null {
   const tier = seedZipTierFromItemId(itemId)
   if (tier) {
-    return { name: `${SEED_ZIP_LABELS[tier]} Seed Zip`, icon: SEED_ZIP_ICONS[tier], rarity: tier }
+    const d = getSeedZipDisplay(tier)
+    return { name: d.name, icon: d.icon, image: d.image || undefined, rarity: tier }
   }
   return null
 }
