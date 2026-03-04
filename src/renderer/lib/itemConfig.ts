@@ -132,6 +132,12 @@ export function applyAdminConfig(items: LootItemDef[], bosses: BossDef[]): void 
     }
   }
 
+  // Apply chest weight overrides (custom item drop tables from dashboard)
+  for (const [id, weights] of Object.entries(cfg.chestWeightOverrides ?? {})) {
+    const chest = CHEST_DEFS[id as ChestType]
+    if (chest) chest.itemWeights = weights
+  }
+
   // Patch chest icon/image
   for (const [id, ov] of Object.entries(cfg.chestOverrides ?? {})) {
     const chest = CHEST_DEFS[id as ChestType]
