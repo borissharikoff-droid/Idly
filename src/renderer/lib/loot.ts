@@ -324,7 +324,7 @@ export const CHEST_DEFS: Record<ChestType, ChestDef> = {
     id: 'common_chest',
     name: 'Common Bag',
     icon: '📦',
-    image: 'loot/chest_t1_user.png',
+    image: 'loot/chest_common.png',
     rarity: 'common',
     itemWeights: [
       { itemId: 'ore_iron',     weight: 5 },
@@ -335,7 +335,7 @@ export const CHEST_DEFS: Record<ChestType, ChestDef> = {
     id: 'rare_chest',
     name: 'Rare Bag',
     icon: '🎁',
-    image: 'loot/chest_t2_user.png',
+    image: 'loot/chest_rare.png',
     rarity: 'rare',
     itemWeights: [
       { itemId: 'ore_iron',      weight: 3 },
@@ -347,7 +347,7 @@ export const CHEST_DEFS: Record<ChestType, ChestDef> = {
     id: 'epic_chest',
     name: 'Epic Bag',
     icon: '🪙',
-    image: 'loot/chest_bw_test.png',
+    image: 'loot/chest_epic.png',
     rarity: 'epic',
     itemWeights: [
       { itemId: 'magic_essence', weight: 3 },
@@ -361,7 +361,7 @@ export const CHEST_DEFS: Record<ChestType, ChestDef> = {
     id: 'legendary_chest',
     name: 'Legendary Bag',
     icon: '💎',
-    image: 'loot/chest_bw_test.png',
+    image: 'loot/chest_epic.png',
     rarity: 'legendary',
     // ~93% legendary · ~4% mythic potions · ~2% mythic gear
     itemWeights: [

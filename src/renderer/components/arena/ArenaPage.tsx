@@ -209,10 +209,13 @@ function ZoneCard({
                   </div>
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <span
-                      className="inline-flex items-center gap-0.5 text-[9px] font-mono px-1.5 py-0.5 rounded-md border"
+                      className="inline-flex items-center gap-1 text-[9px] font-mono px-1.5 py-0.5 rounded-md border"
                       style={{ color: rarityTheme.color, borderColor: rarityTheme.border, background: `${rarityTheme.color}10` }}
                     >
-                      {chest.icon} {chest.name}
+                      {chest.image
+                        ? <img src={chest.image} alt={chest.name} className="w-4 h-4 object-contain" style={{ imageRendering: 'pixelated' }} />
+                        : chest.icon}
+                      {chest.name}
                     </span>
                     {bossMat && (
                       <span className="text-[9px] text-gray-400 font-mono">
