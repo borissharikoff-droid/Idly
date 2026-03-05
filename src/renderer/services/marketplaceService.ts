@@ -138,8 +138,12 @@ export interface CancelListingResult {
   quantity?: number
 }
 
+/** IDs the current user just cancelled — prevents the global sale notifier from misfiring them. */
+export const recentlyCancelledListingIds = new Set<string>()
+
 export async function cancelListing(listingId: string): Promise<CancelListingResult> {
   if (!supabase) return { ok: false, error: 'Supabase not configured' }
+  recentlyCancelledListingIds.add(listingId)
   const { data, error } = await supabase.rpc('cancel_listing', { p_listing_id: listingId })
   if (error) return { ok: false, error: error.message }
   const result = data as { ok?: boolean; error?: string; item_id?: string; quantity?: number }

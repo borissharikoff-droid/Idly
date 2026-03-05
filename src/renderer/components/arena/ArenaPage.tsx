@@ -1,57 +1,529 @@
 import { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { BOSSES, computeBattleOutcome, computePlayerStats, meetsBossRequirements, getDailyBossId } from '../../lib/combat'
-import { LOOT_ITEMS, LOOT_SLOTS, POTION_MAX, getItemPower, CHEST_DEFS, type LootSlot, type ChestType, getItemPerkDescription } from '../../lib/loot'
+import {
+  ZONES,
+  isZoneUnlocked, getMissingGateItems, getDailyBossId, type ZoneDef,
+} from '../../lib/combat'
+import { LOOT_ITEMS, CHEST_DEFS, RARITY_COLORS } from '../../lib/loot'
+import { useInventoryStore } from '../../stores/inventoryStore'
 import { useArenaStore } from '../../stores/arenaStore'
 import { useAdminConfigStore } from '../../stores/adminConfigStore'
-import { useInventoryStore } from '../../stores/inventoryStore'
 import { SKILLS, skillLevelFromXP } from '../../lib/skills'
-import { SLOT_META, SLOT_LABEL, LootVisual, RARITY_THEME, normalizeRarity } from '../loot/LootUI'
+import { CharacterCard } from '../character/CharacterCard'
 import { PageHeader } from '../shared/PageHeader'
 import { GoldDisplay } from '../marketplace/GoldDisplay'
 import { InventoryPage } from '../inventory/InventoryPage'
-import { BuffTooltip } from '../shared/BuffTooltip'
 import { MOTION } from '../../lib/motion'
 import { playClickSound } from '../../lib/sounds'
 
 
 function formatShort(n: number): string {
   if (!Number.isFinite(n) || n < 0) return '0'
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
   if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
   return Math.floor(n).toString()
 }
 
+// ─── Zone card ───────────────────────────────────────────────────────────────
+
+function ZoneCard({
+  zone,
+  skillLevels,
+  clearedZones,
+  ownedItems,
+  killCount,
+  activeDungeon,
+  activeBattle,
+  battleState,
+  playerFlash,
+  bossFlash,
+  confirmForfeit,
+  setConfirmForfeit,
+  onEnter,
+}: {
+  zone: ZoneDef
+  skillLevels: Record<string, number>
+  clearedZones: string[]
+  ownedItems: Record<string, number>
+  killCount: number
+  activeDungeon: ReturnType<typeof useArenaStore.getState>['activeDungeon']
+  activeBattle: ReturnType<typeof useArenaStore.getState>['activeBattle']
+  battleState: ReturnType<typeof useArenaStore.getState>['getBattleState'] extends () => infer R ? R : never
+  playerFlash: boolean
+  bossFlash: boolean
+  confirmForfeit: boolean
+  setConfirmForfeit: (v: boolean) => void
+  onEnter: (zoneId: string) => void
+}) {
+  const unlocked = isZoneUnlocked(zone, skillLevels, clearedZones, ownedItems)
+  const cleared = clearedZones.includes(zone.id)
+  const isActive = activeDungeon?.zoneId === zone.id
+  const endBattle = useArenaStore((s) => s.endBattle)
+  const setResultModal = useArenaStore((s) => s.setResultModal)
+  const forfeitDungeon = useArenaStore((s) => s.forfeitDungeon)
+
+  const mobIndex = isActive ? (activeDungeon?.mobIndex ?? 0) : 0
+  const isBossFight = isActive && mobIndex === 3
+  const currentEnemy = isActive ? (isBossFight ? zone.boss : zone.mobs[mobIndex]) : null
+  const battleComplete = isActive && battleState?.isComplete === true
+
+  const reqTexts: string[] = []
+  if (zone.prevZoneId && !clearedZones.includes(zone.prevZoneId)) {
+    const prevZone = ZONES.find((z) => z.id === zone.prevZoneId)
+    reqTexts.push(`Clear ${prevZone?.name ?? zone.prevZoneId}`)
+  }
+  if (zone.warriorLevelRequired && (skillLevels['warrior'] ?? 0) < zone.warriorLevelRequired) {
+    reqTexts.push(`Warrior Lv.${zone.warriorLevelRequired}`)
+  }
+  const missingGate = getMissingGateItems(zone, ownedItems)
+  for (const itemId of missingGate) {
+    const item = LOOT_ITEMS.find((x) => x.id === itemId)
+    reqTexts.push(`Need ${item?.icon ?? '📦'} ${item?.name ?? itemId}`)
+  }
+
+  const tc = zone.themeColor
+
+  // Material drop for current mob
+  const mobDef = isActive && !isBossFight ? zone.mobs[mobIndex] : null
+  const matDef = mobDef?.materialDropId ? LOOT_ITEMS.find((x) => x.id === mobDef.materialDropId) : null
+
+  // ── Floating damage numbers ──────────────────────────────────────────────
+  const [dmgNumbers, setDmgNumbers] = useState<Array<{ id: string; value: number; target: 'player' | 'boss' }>>([])
+  const prevPlayerHpZoneRef = useRef<number | null>(null)
+  const prevBossHpZoneRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (!battleState || battleState.isComplete || !isActive) {
+      prevPlayerHpZoneRef.current = null
+      prevBossHpZoneRef.current = null
+      return
+    }
+    const pp = prevPlayerHpZoneRef.current
+    const pb = prevBossHpZoneRef.current
+    if (pp !== null && battleState.playerHp < pp) {
+      const dmg = Math.round(pp - battleState.playerHp)
+      if (dmg > 0) {
+        const id = crypto.randomUUID()
+        setDmgNumbers((ns) => [...ns.slice(-5), { id, value: dmg, target: 'player' }])
+        setTimeout(() => setDmgNumbers((ns) => ns.filter((n) => n.id !== id)), 850)
+      }
+    }
+    if (pb !== null && battleState.bossHp < pb) {
+      const dmg = Math.round(pb - battleState.bossHp)
+      if (dmg > 0) {
+        const id = crypto.randomUUID()
+        setDmgNumbers((ns) => [...ns.slice(-5), { id, value: dmg, target: 'boss' }])
+        setTimeout(() => setDmgNumbers((ns) => ns.filter((n) => n.id !== id)), 850)
+      }
+    }
+    prevPlayerHpZoneRef.current = battleState.playerHp
+    prevBossHpZoneRef.current = battleState.bossHp
+  }, [battleState, isActive])
+
+  // ── Derived ──────────────────────────────────────────────────────────────
+  const playerPct = battleState && activeBattle
+    ? Math.max(0, (battleState.playerHp / activeBattle.playerSnapshot.hp) * 100)
+    : 100
+  const playerDanger = isActive && !battleComplete && playerPct < 30
+
+  return (
+    <div>
+      {/* Zone header */}
+      <motion.div
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: MOTION.duration.base, ease: MOTION.easing }}
+        className={`rounded-2xl border p-3.5 transition-all ${
+          isActive
+            ? 'rounded-b-none border-b-0'
+            : !unlocked
+              ? 'border-white/[0.10] bg-discord-card/70'
+              : 'border-white/[0.12] bg-discord-card hover:border-white/[0.22]'
+        }`}
+        style={isActive ? {
+          borderColor: `${tc}55`,
+          background: `linear-gradient(135deg, ${tc}0d 0%, rgba(14,14,22,0.95) 60%)`,
+        } : undefined}
+      >
+        <div className="flex items-center gap-3">
+          {/* Zone icon */}
+          <div
+            className="shrink-0 w-12 h-12 rounded-xl border flex items-center justify-center text-2xl"
+            style={isActive
+              ? { borderColor: `${tc}40`, background: `${tc}18` }
+              : { borderColor: 'rgba(255,255,255,0.14)', background: 'rgba(255,255,255,0.07)' }}
+          >
+            {zone.icon}
+          </div>
+
+          {/* Zone info */}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <p className="text-[13px] font-semibold text-white leading-tight">{zone.name}</p>
+              {cleared && !isActive && killCount > 0 && (
+                <span className="text-[8px] border border-amber-500/60 text-amber-400 font-mono px-1.5 py-0.5 rounded-md">×{killCount}</span>
+              )}
+              {isActive && (
+                <span className="text-[8px] font-semibold font-mono px-1.5 py-0.5 rounded-md animate-pulse" style={{ color: tc, borderColor: `${tc}40`, border: `1px solid ${tc}40`, background: `${tc}15` }}>
+                  ● ACTIVE
+                </span>
+              )}
+            </div>
+
+            {/* Mob chain — compact step indicator */}
+            <div className="flex items-center gap-0.5 mt-1.5">
+              {zone.mobs.map((mob, i) => {
+                const done = isActive && i < mobIndex
+                const current = isActive && i === mobIndex && !isBossFight
+                return (
+                  <span key={mob.id} className={`text-sm leading-none transition-all ${done ? 'opacity-40' : current ? '' : 'opacity-60'}`}
+                    style={current ? { filter: `drop-shadow(0 0 4px ${tc})` } : undefined}
+                  >
+                    {mob.icon}
+                  </span>
+                )
+              })}
+              <span className="text-[8px] text-gray-500 font-mono mx-0.5">›</span>
+              <span className={`text-sm leading-none transition-all ${isBossFight ? '' : 'opacity-50'}`}
+                style={isBossFight ? { filter: 'drop-shadow(0 0 4px gold)' } : undefined}>
+                👑
+              </span>
+              {!unlocked && reqTexts.length > 0 && (
+                <span className="ml-2 text-[9px] text-amber-400/80 font-mono">{reqTexts.join(' · ')}</span>
+              )}
+            </div>
+
+            {unlocked && !isActive && (() => {
+              const chest = CHEST_DEFS[zone.boss.rewards.chestTier]
+              const rarityTheme = RARITY_COLORS[chest.rarity]
+              const bossMat = zone.boss.materialDropId ? LOOT_ITEMS.find((x) => x.id === zone.boss.materialDropId) : null
+              return (
+                <>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-[9px] text-gray-400 font-mono">
+                      <span className="text-red-400/70">♥</span> {formatShort(zone.mobs[0].hp)}–{formatShort(zone.boss.hp)}
+                    </span>
+                    <span className="text-[9px] text-gray-400 font-mono">
+                      <span className="text-orange-400/70">⚔</span> {zone.mobs[0].atk}–{zone.boss.atk}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span
+                      className="inline-flex items-center gap-0.5 text-[9px] font-mono px-1.5 py-0.5 rounded-md border"
+                      style={{ color: rarityTheme.color, borderColor: rarityTheme.border, background: `${rarityTheme.color}10` }}
+                    >
+                      {chest.icon} {chest.name}
+                    </span>
+                    {bossMat && (
+                      <span className="text-[9px] text-gray-400 font-mono">
+                        + {bossMat.icon} {bossMat.name}
+                      </span>
+                    )}
+                  </div>
+                </>
+              )
+            })()}
+          </div>
+
+          {/* Enter / locked button */}
+          {!isActive && (
+            <button
+              type="button"
+              disabled={!unlocked || !!activeBattle}
+              onClick={() => { playClickSound(); onEnter(zone.id) }}
+              className="shrink-0 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all active:scale-95"
+              style={unlocked && !activeBattle
+                ? { color: tc, borderColor: `${tc}60`, border: `1px solid ${tc}60`, background: `${tc}20` }
+                : { color: 'rgba(156,163,175,0.6)', border: '1px solid rgba(255,255,255,0.10)', background: 'transparent', cursor: 'not-allowed' }}
+            >
+              {!unlocked ? '🔒 Locked' : activeBattle ? 'Busy' : 'Enter →'}
+            </button>
+          )}
+        </div>
+      </motion.div>
+
+      {/* Battle panel — attached below header */}
+      <AnimatePresence>
+        {isActive && activeBattle && (
+          <motion.div
+            key="dungeon-panel"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="overflow-hidden rounded-b-2xl border border-t-0"
+            style={{ borderColor: `${tc}55`, background: `linear-gradient(180deg, ${tc}12 0%, rgba(12,12,20,0.95) 100%)` }}
+          >
+            {battleComplete ? (
+              /* ── Battle resolved ── */
+              <button
+                type="button"
+                onClick={() => {
+                  playClickSound()
+                  const victory = battleState?.victory ?? false
+                  const enemyName = currentEnemy?.name ?? 'Enemy'
+                  const { goldLost, chest, lostItem } = endBattle()
+                  if (!activeBattle.isMob) {
+                    setResultModal({ victory, gold: 0, goldAlreadyAdded: true, bossName: enemyName, goldLost, chest, lostItemName: lostItem?.name, lostItemIcon: lostItem?.icon })
+                  }
+                }}
+                className="w-full px-4 py-5 flex items-center justify-center gap-2.5 hover:bg-white/[0.03] active:bg-white/[0.06] transition-colors"
+              >
+                <span className="text-2xl">{battleState?.victory ? (activeBattle.isMob ? currentEnemy?.icon ?? '⚔️' : '🏆') : '💀'}</span>
+                <div className="text-left">
+                  <p className={`text-sm font-bold leading-tight ${battleState?.victory ? 'text-white' : 'text-red-400'}`}>
+                    {battleState?.victory
+                      ? (activeBattle.isMob ? `${currentEnemy?.name ?? 'Mob'} slain!` : 'Boss defeated!')
+                      : 'You were defeated'}
+                  </p>
+                  <p className="text-[10px] font-mono mt-0.5" style={{ color: battleState?.victory ? tc : 'rgba(248,113,113,0.9)' }}>
+                    {battleState?.victory ? 'Tap to continue →' : 'Tap to see result'}
+                  </p>
+                </div>
+              </button>
+            ) : battleState && currentEnemy ? (
+              /* ── Active battle ── */
+              <div className="flex">
+
+                {/* Enemy portrait */}
+                <div
+                  className="shrink-0 w-[70px] flex flex-col items-center justify-center gap-1.5 border-r"
+                  style={{
+                    borderColor: isBossFight ? 'rgba(251,191,36,0.28)' : `${tc}28`,
+                    background: isBossFight
+                      ? 'radial-gradient(ellipse at 50% 60%, rgba(251,191,36,0.15) 0%, rgba(5,5,10,0.97) 70%)'
+                      : `radial-gradient(ellipse at 50% 60%, ${tc}1c 0%, rgba(5,5,10,0.97) 70%)`,
+                  }}
+                >
+                  {isBossFight && (
+                    <span className="text-[7px] font-mono uppercase tracking-widest text-amber-400/55 leading-none">boss</span>
+                  )}
+                  <span
+                    className="text-5xl leading-none select-none"
+                    style={{
+                      filter: `drop-shadow(0 0 8px ${isBossFight ? 'rgba(251,191,36,0.5)' : `${tc}66`})`,
+                    }}
+                  >
+                    {currentEnemy.icon}
+                  </span>
+                  <span
+                    className="text-[8px] font-mono tabular-nums leading-none"
+                    style={{ color: bossFlash ? '#fed7aa' : `${tc}88` }}
+                  >
+                    {Math.max(0, Math.round((battleState.bossHp / activeBattle.bossSnapshot.hp) * 100))}%
+                  </span>
+                </div>
+
+                {/* Battle info */}
+                <div className="flex-1 min-w-0 px-3 pt-2.5 pb-3 space-y-2.5">
+
+                {/* Enemy name + dungeon step */}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[12px] font-semibold text-white leading-tight">{currentEnemy.name}</p>
+                    <p className="text-[9px] font-mono" style={{ color: `${tc}aa` }}>
+                      {isBossFight ? 'Boss' : `Mob ${mobIndex + 1} of 3`}
+                      {!isBossFight && activeBattle.mobDef?.xpReward ? ` · +${formatShort(activeBattle.mobDef.xpReward)} XP` : ''}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-0.5">
+                      {zone.mobs.map((_, i) => (
+                        <div key={i} className="w-2 h-2 rounded-full border"
+                          style={{
+                            borderColor: i <= mobIndex && !isBossFight ? `${tc}80` : 'rgba(255,255,255,0.12)',
+                            background: i < mobIndex ? `${tc}60` : i === mobIndex && !isBossFight ? tc : 'transparent',
+                          }}
+                        />
+                      ))}
+                      <div className="w-2 h-2 rounded-full border ml-0.5"
+                        style={{
+                          borderColor: isBossFight ? 'rgba(251,191,36,0.8)' : 'rgba(255,255,255,0.12)',
+                          background: isBossFight ? 'rgba(251,191,36,0.7)' : 'transparent',
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* HP bars */}
+                <div className="space-y-2">
+                  {/* Player HP */}
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className={`text-[10px] font-semibold transition-colors duration-100 ${playerFlash ? 'text-red-300' : playerDanger ? 'text-yellow-400' : 'text-green-400'}`}>
+                        You {playerDanger && <span className="text-[8px]">⚠</span>}
+                      </span>
+                      <span className="text-[10px] text-gray-400 font-mono tabular-nums">
+                        {formatShort(battleState.playerHp)} / {formatShort(activeBattle.playerSnapshot.hp)}
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <div
+                        className="h-3 rounded-full overflow-hidden"
+                        style={{
+                          background: 'rgba(9,9,17,0.8)',
+                          boxShadow: playerDanger
+                            ? 'inset 0 1px 2px rgba(0,0,0,0.5), 0 0 8px rgba(239,68,68,0.35)'
+                            : 'inset 0 1px 2px rgba(0,0,0,0.5)',
+                        }}
+                      >
+                        <motion.div
+                          className="h-full rounded-full"
+                          style={{ background: playerFlash ? '#fca5a5' : playerDanger ? 'linear-gradient(90deg, #b91c1c, #ef4444)' : 'linear-gradient(90deg, #22c55e, #4ade80)' }}
+                          animate={{
+                            width: `${playerPct}%`,
+                            ...(playerDanger && !playerFlash ? { opacity: [1, 0.65, 1] } : { opacity: 1 }),
+                          }}
+                          transition={{
+                            width: { duration: 0.4, ease: 'easeOut' },
+                            opacity: playerDanger ? { duration: 1.1, repeat: Infinity, ease: 'easeInOut' } : { duration: 0 },
+                          }}
+                        />
+                      </div>
+                      {/* Floating damage — player */}
+                      <AnimatePresence>
+                        {dmgNumbers.filter((n) => n.target === 'player').map((n) => (
+                          <motion.span
+                            key={n.id}
+                            initial={{ opacity: 1, y: 0, x: 0 }}
+                            animate={{ opacity: 0, y: -18 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.75, ease: 'easeOut' }}
+                            className="absolute right-1 top-0 pointer-events-none text-[10px] font-bold font-mono tabular-nums"
+                            style={{ color: '#fca5a5', textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}
+                          >
+                            -{formatShort(n.value)}
+                          </motion.span>
+                        ))}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+
+                  {/* Enemy HP */}
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className={`text-[10px] font-semibold transition-colors duration-100 ${bossFlash ? 'text-orange-200' : 'text-red-400'}`}>
+                        {currentEnemy.name}
+                      </span>
+                      <span className="text-[10px] text-gray-400 font-mono tabular-nums">
+                        {formatShort(battleState.bossHp)} / {formatShort(activeBattle.bossSnapshot.hp)}
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <div className="h-3 rounded-full overflow-hidden" style={{ background: 'rgba(9,9,17,0.8)', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.5)' }}>
+                        <motion.div
+                          className="h-full rounded-full"
+                          style={{
+                            background: bossFlash ? '#fed7aa' : `linear-gradient(90deg, ${tc}cc, ${tc})`,
+                          }}
+                          animate={{
+                            width: `${Math.max(0, (battleState.bossHp / activeBattle.bossSnapshot.hp) * 100)}%`,
+                          }}
+                          transition={{
+                            width: { duration: 0.4, ease: 'easeOut' },
+                          }}
+                        />
+                      </div>
+                      {/* Floating damage — boss */}
+                      <AnimatePresence>
+                        {dmgNumbers.filter((n) => n.target === 'boss').map((n) => (
+                          <motion.span
+                            key={n.id}
+                            initial={{ opacity: 1, y: 0 }}
+                            animate={{ opacity: 0, y: -18 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.75, ease: 'easeOut' }}
+                            className="absolute right-1 top-0 pointer-events-none text-[10px] font-bold font-mono tabular-nums"
+                            style={{ color: tc, textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}
+                          >
+                            -{formatShort(n.value)}
+                          </motion.span>
+                        ))}
+                      </AnimatePresence>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Loot + footer row */}
+                <div className="flex items-center justify-between gap-2">
+                  {/* Loot preview */}
+                  {matDef ? (
+                    <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/[0.04] border border-white/[0.07]">
+                      <span className="text-sm leading-none">{matDef.icon}</span>
+                      <span className="text-[9px] text-gray-400 font-mono">{matDef.name}</span>
+                      <span className="text-[8px] text-gray-400 font-mono ml-0.5">{Math.round((mobDef?.materialDropChance ?? 0) * 100)}%</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2.5 text-[9px] text-gray-400 font-mono">
+                      <span style={{ color: '#4ade80bb' }}>⚔ {activeBattle.playerSnapshot.atk}/s</span>
+                      <span className="text-gray-600">vs</span>
+                      <span style={{ color: '#f87171bb' }}>♥ −{Math.max(0, activeBattle.bossSnapshot.atk - activeBattle.playerSnapshot.hpRegen).toFixed(1)}/s</span>
+                    </div>
+                  )}
+
+                  {/* Forfeit */}
+                  {confirmForfeit ? (
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => { forfeitDungeon(); setConfirmForfeit(false) }}
+                        className="text-[10px] font-semibold text-red-200 border border-red-500/40 bg-red-500/15 hover:bg-red-500/25 px-2.5 py-1 rounded-lg transition-colors"
+                      >
+                        Abandon
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { playClickSound(); setConfirmForfeit(false) }}
+                        className="text-[10px] font-semibold text-gray-400 hover:text-gray-300 border border-white/10 px-2 py-1 rounded-lg transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => { playClickSound(); setConfirmForfeit(true) }}
+                      className="text-[9px] text-gray-400 hover:text-red-400 transition-colors font-mono underline-offset-2 hover:underline"
+                    >
+                      forfeit
+                    </button>
+                  )}
+                </div>
+
+                </div>
+              </div>
+            ) : null}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+// ─── Main page ───────────────────────────────────────────────────────────────
 
 export function ArenaPage() {
-  useAdminConfigStore((s) => s.rev) // re-render when admin config updates (boss skins etc.)
+  useAdminConfigStore((s) => s.rev)
   const [showBackpack, setShowBackpack] = useState(false)
-  const [inspectItemId, setInspectItemId] = useState<string | null>(null)
-  const equippedBySlot = useInventoryStore((s) => s.equippedBySlot)
-  const permanentStats = useInventoryStore((s) => s.permanentStats)
-  const unequipSlot = useInventoryStore((s) => s.unequipSlot)
-  const deleteItem = useInventoryStore((s) => s.deleteItem)
-  const playerStats = computePlayerStats(equippedBySlot, permanentStats)
+
   const activeBattle = useArenaStore((s) => s.activeBattle)
-  const startBattle = useArenaStore((s) => s.startBattle)
+  const activeDungeon = useArenaStore((s) => s.activeDungeon)
+  const clearedZones = useArenaStore((s) => s.clearedZones)
   const getBattleState = useArenaStore((s) => s.getBattleState)
   const endBattle = useArenaStore((s) => s.endBattle)
   const setResultModal = useArenaStore((s) => s.setResultModal)
-  const forfeitBattle = useArenaStore((s) => s.forfeitBattle)
-  const killCounts = useArenaStore((s) => s.killCounts)
-  const dailyBossClaimedDate = useArenaStore((s) => s.dailyBossClaimedDate)
-  const today = new Date().toLocaleDateString('sv-SE')
-  const dailyBossId = getDailyBossId()
-
+  const startDungeon = useArenaStore((s) => s.startDungeon)
   const [battleState, setBattleState] = useState<ReturnType<typeof getBattleState>>(null)
   const [skillLevels, setSkillLevels] = useState<Record<string, number>>({})
   const [confirmForfeit, setConfirmForfeit] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
   const [playerFlash, setPlayerFlash] = useState(false)
   const [bossFlash, setBossFlash] = useState(false)
   const prevPlayerHpRef = useRef<number | null>(null)
   const prevBossHpRef = useRef<number | null>(null)
   const flashTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+
+  const dailyBossId = getDailyBossId()
 
   useEffect(() => {
     const buildLevels = (rows: { skill_id: string; total_xp: number }[]): Record<string, number> => {
@@ -90,7 +562,7 @@ export function ArenaPage() {
     return () => clearInterval(interval)
   }, [activeBattle, getBattleState])
 
-  // Hit flash: compare consecutive HP values to detect damage events
+  // Hit flash
   useEffect(() => {
     if (!battleState) {
       prevBossHpRef.current = null
@@ -117,27 +589,32 @@ export function ArenaPage() {
     return () => { flashTimersRef.current.forEach(clearTimeout) }
   }, [])
 
-  useEffect(() => { setConfirmDelete(false) }, [inspectItemId])
   useEffect(() => { setConfirmForfeit(false) }, [activeBattle])
 
-  // Battle outcome used for the active battle panel HP bar progress
-  const activeBattleOutcome = activeBattle
-    ? computeBattleOutcome(activeBattle.playerSnapshot, activeBattle.bossSnapshot)
-    : null
+  // Auto-resolve completed mob battle → pushes toast via arenaStore → toastStore
+  useEffect(() => {
+    if (!battleState?.isComplete || !activeBattle?.isMob) return
+    const victory = battleState.victory
+    const t = setTimeout(() => {
+      const { goldLost, lostItem } = endBattle()
+      if (!victory && lostItem) {
+        // Died to a mob in a dungeon — show result modal so player sees what they lost
+        setResultModal({ victory: false, gold: 0, goldAlreadyAdded: true, goldLost, lostItemName: lostItem.name, lostItemIcon: lostItem.icon })
+      }
+    }, 600)
+    return () => clearTimeout(t)
+  }, [battleState, activeBattle, endBattle, setResultModal])
+
+  const killCounts = useArenaStore((s) => s.killCounts)
+  const ownedItems = useInventoryStore((s) => s.items)
+  const equippedBySlot = useInventoryStore((s) => s.equippedBySlot)
+  // Merge owned + equipped into a single lookup for gate checks
+  const ownedOrEquipped = { ...ownedItems }
+  for (const itemId of Object.values(equippedBySlot)) {
+    if (itemId) ownedOrEquipped[itemId] = (ownedOrEquipped[itemId] ?? 0) + 1
+  }
 
   const inBattle = Boolean(activeBattle)
-
-  const handleStartBattle = (bossId: string) => {
-    playClickSound()
-    startBattle(bossId)
-  }
-
-  const handleForfeit = () => {
-    playClickSound()
-    forfeitBattle()
-  }
-
-  const inspectItem = inspectItemId ? LOOT_ITEMS.find((x) => x.id === inspectItemId) ?? null : null
 
   if (showBackpack) {
     return <InventoryPage onBack={() => setShowBackpack(false)} />
@@ -172,510 +649,38 @@ export function ArenaPage() {
         }
       />
 
-      {/* ── Character (1:1 from InventoryPage) ── */}
-      <div className="rounded-xl border border-white/[0.09] bg-discord-card/80 p-3 space-y-2">
-        <div className="flex items-center justify-between">
-          <p className="text-[10px] uppercase tracking-widest text-gray-500 font-mono font-semibold">Character</p>
-          {inBattle && <p className="text-[9px] text-amber-400/70 font-mono">⚔ locked in battle</p>}
-        </div>
+      {/* ── Character Panel ── */}
+      <CharacterCard locked={inBattle} />
 
-        {(() => {
-          const renderRowSlot = (slot: LootSlot) => {
-            const meta = SLOT_META[slot]
-            const equippedItem = LOOT_ITEMS.find((item) => item.id === equippedBySlot[slot])
-            const theme = equippedItem ? RARITY_THEME[normalizeRarity(equippedItem.rarity)] : null
-            const row = (
-              <div
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl border overflow-hidden h-full relative"
-                style={theme
-                  ? { borderColor: theme.border, background: `linear-gradient(100deg, ${theme.glow}20 0%, rgba(10,10,18,0.96) 50%)` }
-                  : { borderColor: 'rgba(255,255,255,0.07)', background: 'rgba(10,10,18,0.70)' }}
-              >
-                <div className="w-[3px] rounded-full self-stretch flex-shrink-0" style={{ background: theme ? theme.color : 'rgba(255,255,255,0.07)', minHeight: 36 }} />
-                <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden"
-                  style={theme
-                    ? { background: `radial-gradient(circle at 50% 40%, ${theme.glow}55 0%, rgba(9,9,17,0.95) 65%)`, border: `1px solid ${theme.border}66` }
-                    : { background: 'rgba(9,9,17,0.80)', border: '1px solid rgba(255,255,255,0.06)' }}
-                >
-                  {equippedItem
-                    ? <LootVisual icon={equippedItem.icon} image={equippedItem.image} className="w-6 h-6 object-contain" scale={equippedItem.renderScale ?? 1} />
-                    : <span className="text-lg" style={{ opacity: 0.15 }}>{meta.icon}</span>}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[9px] font-mono uppercase tracking-widest leading-none" style={{ color: 'rgba(156,163,175,0.4)' }}>{meta.label}</p>
-                  <p className={`text-[12px] font-semibold mt-1 truncate leading-tight ${equippedItem ? 'text-white' : 'italic'}`}
-                    style={equippedItem ? undefined : { color: 'rgba(255,255,255,0.18)' }}>
-                    {equippedItem ? equippedItem.name : 'empty'}
-                  </p>
-                </div>
-                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: theme ? theme.color : 'rgba(255,255,255,0.08)', boxShadow: theme ? `0 0 6px ${theme.color}88` : 'none' }} />
-              </div>
-            )
-            return (
-              <BuffTooltip key={slot} item={equippedItem ?? null} placement="bottom" stretch>
-                {equippedItem
-                  ? <button type="button" onClick={() => { playClickSound(); setInspectItemId(equippedItem.id) }} className="w-full h-full text-left hover:brightness-110 active:scale-[0.99] transition-all">{row}</button>
-                  : <div className="h-full">{row}</div>}
-              </BuffTooltip>
-            )
-          }
-
-          const renderSquareSlot = (slot: LootSlot) => {
-            const meta = SLOT_META[slot]
-            const equippedItem = LOOT_ITEMS.find((item) => item.id === equippedBySlot[slot])
-            const theme = equippedItem ? RARITY_THEME[normalizeRarity(equippedItem.rarity)] : null
-            const sq = (
-              <div
-                className="rounded-xl border overflow-hidden h-full"
-                style={theme
-                  ? { borderColor: theme.border, background: `linear-gradient(160deg, ${theme.glow}18 0%, rgba(10,10,18,0.96) 65%)` }
-                  : { borderColor: 'rgba(255,255,255,0.07)', background: 'rgba(10,10,18,0.70)' }}
-              >
-                <div className="flex flex-col items-center justify-center gap-1.5 w-full h-full py-2.5 px-2">
-                  <p className="text-[8px] font-mono uppercase tracking-widest leading-none" style={{ color: 'rgba(156,163,175,0.35)' }}>
-                    {meta.label}
-                  </p>
-                  <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden"
-                    style={theme
-                      ? { background: `radial-gradient(circle at 50% 40%, ${theme.glow}60 0%, rgba(9,9,17,0.95) 70%)`, border: `1px solid ${theme.border}55` }
-                      : { background: 'rgba(9,9,17,0.85)', border: '1px solid rgba(255,255,255,0.06)' }}
-                  >
-                    {equippedItem
-                      ? <LootVisual icon={equippedItem.icon} image={equippedItem.image} className="w-6 h-6 object-contain" scale={equippedItem.renderScale ?? 1} />
-                      : <span className="text-lg" style={{ opacity: 0.15 }}>{meta.icon}</span>}
-                  </div>
-                  <p className="text-[8px] font-mono leading-none text-center w-full truncate"
-                    style={{ color: equippedItem ? 'rgba(255,255,255,0.70)' : 'rgba(156,163,175,0.3)' }}>
-                    {equippedItem ? equippedItem.name : '—'}
-                  </p>
-                  {theme && <div className="w-1.5 h-1.5 rounded-full" style={{ background: theme.color, boxShadow: `0 0 5px ${theme.color}99` }} />}
-                </div>
-              </div>
-            )
-            return (
-              <BuffTooltip key={slot} item={equippedItem ?? null} placement="bottom" stretch>
-                {equippedItem
-                  ? <button type="button" onClick={() => { playClickSound(); setInspectItemId(equippedItem.id) }} className="w-full h-full hover:brightness-110 transition-all">{sq}</button>
-                  : <div className="h-full">{sq}</div>}
-              </BuffTooltip>
-            )
-          }
-
-          const ip = LOOT_SLOTS.reduce((sum, s) => {
-            const id = equippedBySlot[s]; if (!id) return sum
-            const it = LOOT_ITEMS.find((x) => x.id === id)
-            return sum + (it ? getItemPower(it) : 0)
-          }, 0)
-          const statRows = [
-            { icon: '⚔️', value: playerStats.atk,    label: 'ATK', unit: '/s', color: '#f87171', maxed: permanentStats.atk >= POTION_MAX },
-            { icon: '❤️', value: playerStats.hp,      label: 'HP',  unit: '',   color: '#4ade80', maxed: permanentStats.hp >= POTION_MAX },
-            { icon: '💧', value: playerStats.hpRegen, label: 'REG', unit: '/s', color: '#22d3ee', maxed: permanentStats.hpRegen >= POTION_MAX },
-            { icon: '✨', value: ip,                  label: 'IP',  unit: '',   color: '#fcd34d', maxed: false },
-          ]
-
-          return (
-            <div className="space-y-2">
-              <div className="flex gap-2">
-                <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                  {(['head', 'body', 'legs'] as LootSlot[]).map((s) => (
-                    <div key={s}>{renderRowSlot(s)}</div>
-                  ))}
-                </div>
-                <div className="flex flex-col gap-1.5" style={{ width: 76 }}>
-                  <div style={{ flex: 1 }}>{renderSquareSlot('ring')}</div>
-                  <div style={{ flex: 2 }}>{renderSquareSlot('weapon')}</div>
-                </div>
-              </div>
-              <div className="grid grid-cols-4 gap-1.5">
-                {statRows.map(({ icon, value, label, unit, color, maxed }) => {
-                  const c = maxed ? '#f59e0b' : color
-                  return (
-                    <div
-                      key={label}
-                      className="flex flex-col items-center justify-center gap-1 rounded-xl border py-3"
-                      style={{ borderColor: `${c}22`, background: `linear-gradient(160deg, ${c}0d 0%, rgba(8,8,16,0.80) 70%)` }}
-                    >
-                      <span className="text-base leading-none">{icon}</span>
-                      <span className="text-[17px] font-mono font-bold tabular-nums leading-none" style={{ color: c, textShadow: `0 0 10px ${c}66` }}>
-                        {value}
-                      </span>
-                      <span className="text-[8px] font-mono uppercase tracking-widest leading-none" style={{ color: `${c}88` }}>
-                        {label}{unit}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )
-        })()}
-      </div>
-
-      {/* ── Boss list ── */}
+      {/* ── Zone Map ── */}
       <div className="space-y-2.5">
-        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-mono px-0.5">Bosses</p>
-        {BOSSES.map((boss, i) => {
-          const meetsReqs = meetsBossRequirements(playerStats, skillLevels, boss)
-          const isCurrentBoss = activeBattle?.bossSnapshot.id === boss.id
-          const canStart = meetsReqs && !inBattle
-          const isLocked = !meetsReqs
-          const req = boss.requirements
-          const battlePanelOpen = isCurrentBoss && !!activeBattle
-          const battleComplete = battlePanelOpen && battleState?.isComplete === true
-          const killCount = killCounts[boss.id] ?? 0
-          const isDaily = boss.id === dailyBossId
-          const dailyClaimed = isDaily && dailyBossClaimedDate === today
-
-          const reqTexts: string[] = []
-          if (req) {
-            if (req.minAtk != null) reqTexts.push(`${req.minAtk} ATK`)
-            if (req.minHp != null) reqTexts.push(`${req.minHp} HP`)
-            if (req.minHpRegen != null) reqTexts.push(`${req.minHpRegen} Regen`)
-            if (req.minSkillLevel) {
-              for (const [skillId, minLevel] of Object.entries(req.minSkillLevel)) {
-                const skillName = SKILLS.find((s) => s.id === skillId)?.name ?? skillId
-                reqTexts.push(`${minLevel} lvl ${skillName}`)
-              }
-            }
-          }
-
-          return (
-            // Outer wrapper — clips the sliding battle panel so it looks glued to the card
-            <div key={boss.id} className="space-y-0">
-              {/* Boss card */}
-              <motion.div
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.04, duration: MOTION.duration.base, ease: MOTION.easing }}
-                className={`rounded-2xl border p-3.5 flex items-center gap-3 transition-colors ${
-                  battlePanelOpen
-                    ? 'rounded-b-none border-b-0 border-cyber-neon/40 bg-cyber-neon/5'
-                    : isCurrentBoss
-                      ? 'border-cyber-neon/30 bg-cyber-neon/5'
-                      : isLocked
-                        ? 'border-white/[0.05] bg-[#1a1a28]/50 opacity-60'
-                        : 'border-white/[0.08] bg-[#1e1e2e]/90'
-                }`}
-              >
-                {/* Boss avatar */}
-                <div
-                  className={`shrink-0 w-11 h-11 rounded-xl border flex items-center justify-center ${
-                    isCurrentBoss
-                      ? 'border-cyber-neon/40 bg-cyber-neon/10'
-                      : 'border-white/10 bg-discord-darker/60'
-                  }`}
-                >
-                  <LootVisual icon={boss.icon} image={boss.image} className="w-7 h-7 object-contain" scale={1.1} />
-                </div>
-
-                {/* Boss info */}
-                <div className="min-w-0 flex-1">
-                  {/* Row 1: name + badges */}
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <p className="text-sm font-semibold text-white leading-tight">{boss.name}</p>
-                    {isDaily && (
-                      <span className={`text-[9px] font-mono px-1 rounded border leading-[1.4] ${dailyClaimed ? 'border-gray-700 text-gray-600' : 'border-amber-400/50 text-amber-300'}`}>
-                        {dailyClaimed ? '✓ daily' : '⭐ daily'}
-                      </span>
-                    )}
-                    {killCount > 0 && (
-                      <span className="text-[9px] text-gray-500 font-mono">⚔ ×{killCount}</span>
-                    )}
-                    {isCurrentBoss && (
-                      <span className="text-[9px] text-cyber-neon font-mono animate-pulse">● FIGHTING</span>
-                    )}
-                    {isLocked && !isCurrentBoss && (
-                      <span className="text-[9px] text-gray-500 font-mono">🔒</span>
-                    )}
-                  </div>
-
-                  {/* Row 2: stat chips — HP / ATK */}
-                  <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                    <span className="inline-flex items-center gap-0.5 text-[10px] font-mono font-semibold text-red-300 bg-red-500/10 border border-red-500/25 px-1.5 py-0.5 rounded">
-                      ❤️ {formatShort(boss.hp)}
-                    </span>
-                    <span className="inline-flex items-center gap-0.5 text-[10px] font-mono font-semibold text-orange-300 bg-orange-500/10 border border-orange-500/25 px-1.5 py-0.5 rounded">
-                      ⚔️ {boss.atk}<span className="text-[8px] text-orange-400/60">/s</span>
-                    </span>
-                  </div>
-
-                  {/* Row 3: guaranteed chest drop */}
-                  {(() => {
-                    const chestTier = isDaily && !dailyClaimed
-                      ? ({ common_chest: 'rare_chest', rare_chest: 'epic_chest', epic_chest: 'legendary_chest', legendary_chest: 'legendary_chest' } as Record<string, string>)[boss.rewards.chestTier] ?? boss.rewards.chestTier
-                      : boss.rewards.chestTier
-                    const chestDef = CHEST_DEFS[chestTier as ChestType]
-                    if (!chestDef) return null
-                    return (
-                      <div className="flex items-center gap-1 mt-1.5">
-                        <img src={chestDef.image} alt={chestDef.name} className="w-4 h-4 object-contain" />
-                        <span className="text-[10px] text-gray-300 font-medium">{chestDef.name}{isDaily && !dailyClaimed ? ' ⭐' : ''}</span>
-                      </div>
-                    )
-                  })()}
-
-                  {/* Row 4: requirements if locked */}
-                  {isLocked && reqTexts.length > 0 && (
-                    <p className="text-[10px] text-amber-400/60 mt-1">
-                      <span className="text-gray-600">Requires:</span> {reqTexts.join(' · ')}
-                    </p>
-                  )}
-                </div>
-
-                {/* Action button */}
-                <button
-                  type="button"
-                  onClick={() => handleStartBattle(boss.id)}
-                  disabled={!canStart}
-                  className={`shrink-0 min-w-[56px] px-3 py-2 rounded-xl text-xs font-semibold transition-all text-center ${
-                    isCurrentBoss
-                      ? 'bg-cyber-neon/10 border border-cyber-neon/30 text-cyber-neon/80 cursor-default'
-                      : canStart
-                        ? 'bg-cyber-neon/20 border border-cyber-neon/40 text-cyber-neon hover:bg-cyber-neon/30 active:scale-95'
-                        : 'bg-transparent border border-white/[0.07] text-gray-600 cursor-not-allowed'
-                  }`}
-                >
-                  {isCurrentBoss ? '⚔' : canStart ? 'Fight' : isLocked ? '🔒' : 'Busy'}
-                </button>
-              </motion.div>
-
-              {/* Battle progress panel — glued to the bottom of the boss card */}
-              <AnimatePresence>
-                {battlePanelOpen && activeBattle && activeBattleOutcome && (
-                  <motion.div
-                    key="battle-panel"
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: MOTION.duration.base, ease: MOTION.easing }}
-                    className="overflow-hidden rounded-b-2xl border border-t-0 border-cyber-neon/40 bg-cyber-neon/5"
-                  >
-                    {battleComplete ? (
-                      /* Tap to collect — also auto-resolves via useArenaBattleTick after 1.2s */
-                      <button
-                        type="button"
-                        onClick={() => {
-                          playClickSound()
-                          const victory = battleState?.victory ?? false
-                          const bossName = activeBattle.bossSnapshot.name
-                          const { goldLost, chest } = endBattle()
-                          setResultModal({ victory, gold: 0, goldAlreadyAdded: true, bossName, goldLost, chest })
-                        }}
-                        className="w-full px-3.5 py-5 flex items-center justify-center gap-2 hover:bg-white/5 transition-colors"
-                      >
-                        <span className="text-xl">{battleState?.victory ? '🏆' : '💀'}</span>
-                        <p className={`text-sm font-bold ${battleState?.victory ? 'text-cyber-neon' : 'text-red-400'}`}>
-                          {battleState?.victory ? 'Boss Slain! — Tap to collect' : 'Defeated — Tap to continue'}
-                        </p>
-                      </button>
-                    ) : battleState ? (
-                      <div className="px-3.5 pt-3 pb-3.5 space-y-3">
-                        {/* HP bars */}
-                        <div className="space-y-2.5">
-                          {/* Player HP */}
-                          <div>
-                            <div className="flex justify-between items-baseline mb-1">
-                              <span className={`text-[11px] font-medium transition-colors duration-150 ${playerFlash ? 'text-red-300' : 'text-green-400'}`}>Your HP</span>
-                              <span className="text-[10px] text-gray-400 font-mono tabular-nums">
-                                {formatShort(battleState.playerHp)} / {formatShort(activeBattle.playerSnapshot.hp)}
-                              </span>
-                            </div>
-                            <div className="h-2.5 rounded-full bg-discord-darker overflow-hidden border border-white/[0.05]">
-                              <motion.div
-                                className={`h-full rounded-full transition-colors duration-150 ${playerFlash ? 'bg-red-300' : 'bg-green-500'}`}
-                                animate={{ width: `${Math.max(0, (battleState.playerHp / activeBattle.playerSnapshot.hp) * 100)}%` }}
-                                transition={{ duration: 0.35 }}
-                              />
-                            </div>
-                          </div>
-
-                          {/* Boss HP */}
-                          <div>
-                            <div className="flex justify-between items-baseline mb-1">
-                              <span className={`text-[11px] font-medium transition-colors duration-150 ${bossFlash ? 'text-orange-200' : 'text-red-400'}`}>{boss.name} HP</span>
-                              <span className="text-[10px] text-gray-400 font-mono tabular-nums">
-                                {formatShort(battleState.bossHp)} / {formatShort(activeBattle.bossSnapshot.hp)}
-                              </span>
-                            </div>
-                            <div className="h-2.5 rounded-full bg-discord-darker overflow-hidden border border-white/[0.05]">
-                              <motion.div
-                                className={`h-full rounded-full transition-colors duration-150 ${bossFlash ? 'bg-orange-200' : 'bg-red-500'}`}
-                                animate={{ width: `${Math.max(0, (battleState.bossHp / activeBattle.bossSnapshot.hp) * 100)}%` }}
-                                transition={{ duration: 0.35 }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Footer: damage rates + forfeit */}
-                        <div className="flex items-center justify-between">
-                          <p className="text-[10px] text-gray-500 font-mono">
-                            <span className="text-green-500/70">You: {activeBattle.playerSnapshot.atk}/s</span>
-                            {' · '}
-                            <span className="text-red-500/70">Boss: {Math.max(0, activeBattle.bossSnapshot.atk - activeBattle.playerSnapshot.hpRegen)}/s</span>
-                          </p>
-                          {confirmForfeit ? (
-                            <div className="flex items-center gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => { handleForfeit(); setConfirmForfeit(false) }}
-                                className="text-[10px] font-semibold text-red-200 border border-red-500/40 bg-red-500/15 hover:bg-red-500/25 px-2.5 py-1 rounded-lg transition-colors"
-                              >
-                                Yes
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => { playClickSound(); setConfirmForfeit(false) }}
-                                className="text-[10px] font-semibold text-gray-400 hover:text-gray-300 border border-white/10 px-2 py-1 rounded-lg transition-colors"
-                              >
-                                No
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => { playClickSound(); setConfirmForfeit(true) }}
-                              className="text-[10px] font-semibold text-red-400/60 hover:text-red-300 border border-red-500/25 hover:border-red-400/40 px-2.5 py-1 rounded-lg transition-colors"
-                            >
-                              Forfeit
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ) : null}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )
-        })}
+        <p className="text-[10px] uppercase tracking-wider text-gray-400 font-mono px-0.5">Zones</p>
+        {ZONES.map((zone) => (
+          <ZoneCard
+            key={zone.id}
+            zone={zone}
+            skillLevels={skillLevels}
+            clearedZones={clearedZones}
+            ownedItems={ownedOrEquipped}
+            killCount={killCounts[zone.boss.id] ?? 0}
+            activeDungeon={activeDungeon}
+            activeBattle={activeBattle}
+            battleState={battleState}
+            playerFlash={playerFlash}
+            bossFlash={bossFlash}
+            confirmForfeit={confirmForfeit}
+            setConfirmForfeit={setConfirmForfeit}
+            onEnter={(zoneId) => { startDungeon(zoneId) }}
+          />
+        ))}
       </div>
 
-      {/* ── Item inspect portal ── */}
-      {createPortal(
-        <AnimatePresence>
-          {inspectItem && (() => {
-            const item = inspectItem
-            const slot = item.slot
-            const inspectRarity = normalizeRarity(item.rarity)
-            const inspectTheme = RARITY_THEME[inspectRarity]
-            return (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: MOTION.duration.fast }}
-                className="fixed inset-0 z-[85] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
-                onClick={() => setInspectItemId(null)}
-              >
-                <motion.div
-                  initial={{ scale: 0.92, opacity: 0, y: 12 }}
-                  animate={{ scale: 1, opacity: 1, y: 0 }}
-                  exit={{ scale: 0.95, opacity: 0, y: 8 }}
-                  transition={MOTION.spring.pop}
-                  className="w-[300px] rounded-xl border p-4 relative overflow-hidden"
-                  style={{
-                    borderColor: inspectTheme.border,
-                    background: inspectTheme.panel,
-                    boxShadow: `0 0 24px ${inspectTheme.glow}`,
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <motion.div
-                    aria-hidden
-                    className="absolute inset-0 pointer-events-none"
-                    style={{ background: `radial-gradient(circle at 50% 18%, ${inspectTheme.glow} 0%, transparent 58%)` }}
-                    animate={{ opacity: [0.3, 0.5, 0.3] }}
-                    transition={{ duration: 2.2, repeat: Infinity }}
-                  />
-                  <div className="flex items-start gap-3 relative">
-                    <LootVisual
-                      icon={item.icon}
-                      image={item.image}
-                      className="w-12 h-12 object-contain shrink-0"
-                      scale={item.renderScale ?? 1}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm text-white font-semibold leading-tight">{item.name}</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">{SLOT_LABEL[slot]}</p>
-                      <span
-                        className="inline-flex mt-1.5 text-[10px] px-1.5 py-0.5 rounded border font-mono uppercase tracking-wide"
-                        style={{
-                          color: inspectTheme.color,
-                          borderColor: inspectTheme.border,
-                          backgroundColor: `${inspectTheme.color}1A`,
-                        }}
-                      >
-                        {inspectRarity}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="mt-3 rounded-lg border border-white/10 bg-discord-darker/40 p-2.5 relative">
-                    <p className="text-[11px] text-gray-300 leading-relaxed">{getItemPerkDescription(item)}</p>
-                  </div>
-                  <div className="mt-3 flex gap-2 relative">
-                    <button
-                      type="button"
-                      disabled={inBattle}
-                      onClick={() => { if (!inBattle) { playClickSound(); unequipSlot(slot); setInspectItemId(null) } }}
-                      className={`flex-1 text-[11px] py-2 rounded-lg border font-semibold transition-colors ${
-                        inBattle ? 'border-white/10 text-gray-600 cursor-not-allowed' : ''
-                      }`}
-                      style={
-                        inBattle
-                          ? undefined
-                          : { color: inspectTheme.color, borderColor: inspectTheme.border, backgroundColor: `${inspectTheme.color}22` }
-                      }
-                      title={inBattle ? 'Gear is locked during battle' : undefined}
-                    >
-                      {inBattle ? '⚔ Locked' : 'Unequip'}
-                    </button>
-                    {inBattle ? (
-                      <button
-                        type="button"
-                        disabled
-                        className="flex-1 text-[11px] py-2 rounded-lg border border-white/10 text-gray-600 cursor-not-allowed"
-                        title="Can't delete gear during battle"
-                      >
-                        ⚔ Locked
-                      </button>
-                    ) : confirmDelete ? (
-                      <div className="flex gap-1.5 flex-1">
-                        <button
-                          type="button"
-                          onClick={() => { playClickSound(); unequipSlot(slot); deleteItem(item.id, 1); setInspectItemId(null) }}
-                          className="flex-1 text-[11px] py-2 rounded-lg border border-red-400/50 bg-red-500/15 text-red-200 hover:bg-red-400/25 transition-colors"
-                        >
-                          Delete!
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { playClickSound(); setConfirmDelete(false) }}
-                          className="flex-1 text-[11px] py-2 rounded-lg border border-white/10 text-gray-400 hover:text-gray-300 transition-colors"
-                        >
-                          Keep
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => { playClickSound(); setConfirmDelete(true) }}
-                        className="flex-1 text-[11px] py-2 rounded-lg border border-red-400/35 text-red-300 hover:bg-red-400/10 transition-colors"
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </div>
-                </motion.div>
-              </motion.div>
-            )
-          })()}
-        </AnimatePresence>,
-        document.body,
-      )}
+      <div className="text-center">
+        <p className="text-[9px] text-gray-400 font-mono">
+          Daily zone boss: {ZONES.find((z) => z.boss.id === dailyBossId)?.name ?? '—'}
+        </p>
+      </div>
+
     </motion.div>
   )
 }

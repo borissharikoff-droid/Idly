@@ -703,6 +703,10 @@ export function categorizeMultiple(appName: string, windowTitle: string): Activi
 export function categorizeDetailed(appName: string, windowTitle: string): ClassificationResult {
   const lowerApp = appName.toLowerCase().replace(/\.(exe|app)$/i, '')
   const lowerTitle = windowTitle.toLowerCase()
+  // Grindly's own window — never award XP for sitting in the app itself
+  if (lowerApp === 'electron' || lowerApp === 'grindly') {
+    return { categories: ['idle'], contextTag: 'self', confidence: 1 }
+  }
   // When process name is unknown (e.g. protected), infer from window title
   if (lowerApp === 'unknown' && lowerTitle) {
     if (/cursor|visual studio|\.tsx?|\.jsx?|\.py\b|\.rs\b|\.go\b|code\s*\-/i.test(lowerTitle) || CODING_TITLE.test(lowerTitle)) return { categories: ['coding'], contextTag: 'unknown_title_coding', confidence: 0.85 }

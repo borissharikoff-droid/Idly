@@ -3,9 +3,8 @@ import { motion } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
 import type { FriendProfile as FriendProfileType } from '../../hooks/useFriends'
 import { BADGES, FRAMES } from '../../lib/cosmetics'
-import { LOOT_ITEMS, LOOT_SLOTS, normalizeEquippedLoot, getItemPower, type LootSlot, getItemPerkDescription } from '../../lib/loot'
-import { computePlayerStats } from '../../lib/combat'
-import { RARITY_THEME, normalizeRarity } from '../loot/LootUI'
+import { normalizeEquippedLoot, type LootSlot } from '../../lib/loot'
+import { CharacterPanel } from '../character/CharacterPanel'
 import { getSkillByName, SKILLS, computeTotalSkillLevelFromLevels, MAX_TOTAL_SKILL_LEVEL, normalizeSkillId, skillLevelFromXP, skillXPProgress } from '../../lib/skills'
 import { ACHIEVEMENTS, checkSkillAchievements } from '../../lib/xp'
 import { MOTION } from '../../lib/motion'
@@ -13,7 +12,6 @@ import { formatSessionDurationCompact, parseFriendPresence } from '../../lib/fri
 import { PageHeader } from '../shared/PageHeader'
 import { fetchUserPublicProgressHistory, type SocialFeedEvent } from '../../services/socialFeed'
 import { AvatarWithFrame } from '../shared/AvatarWithFrame'
-import { BuffTooltip } from '../shared/BuffTooltip'
 
 interface FriendProfileProps {
   profile: FriendProfileType
@@ -36,31 +34,6 @@ interface FriendSkillRow {
   total_xp: number
 }
 
-const FRIEND_LOOT_SLOT_META: Record<LootSlot, { label: string; icon: string }> = {
-  head: { label: 'Head', icon: '🪖' },
-  body: { label: 'Body', icon: '👕' },
-  legs: { label: 'Legs', icon: '🦵' },
-  ring: { label: 'Ring', icon: '💍' },
-  weapon: { label: 'Weapon', icon: '⚔️' },
-  consumable: { label: 'Consumable', icon: '⚗️' },
-  plant: { label: 'Plant', icon: '🌿' },
-}
-
-
-function LootVisual({ icon, image, className }: { icon: string; image?: string; className?: string }) {
-  if (image) {
-    return (
-      <img
-        src={image}
-        alt=""
-        className={className ?? 'w-7 h-7 object-contain'}
-        style={{ imageRendering: 'pixelated' }}
-        draggable={false}
-      />
-    )
-  }
-  return <span className={className}>{icon}</span>
-}
 
 function formatXp(xp: number): string {
   return Math.max(0, Math.floor(xp)).toLocaleString()
@@ -76,6 +49,15 @@ function mapAllSkillsToRows(profile: FriendProfileType): FriendSkillRow[] {
       total_xp: row?.total_xp ?? 0,
     }
   })
+}
+
+function formatDuration(s: number): string {
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = Math.floor(s % 60)
+  if (h > 0) return `${h}h ${m}m`
+  if (m > 0) return `${m}m`
+  return `${sec}s`
 }
 
 export function FriendProfile({ profile, onBack, onMessage, onRetrySync }: FriendProfileProps) {
@@ -234,14 +216,6 @@ export function FriendProfile({ profile, onBack, onMessage, onRetrySync }: Frien
     }
   }, [profile.id])
 
-  const formatDuration = (s: number) => {
-    const h = Math.floor(s / 3600)
-    const m = Math.floor((s % 3600) / 60)
-    const sec = Math.floor(s % 60)
-    if (h > 0) return `${h}h ${m}m`
-    if (m > 0) return `${m}m`
-    return `${sec}s`
-  }
   const effectiveFrame = profileCosmetics?.equipped_frame ?? profile.equipped_frame
   const effectiveBadges = profileCosmetics?.equipped_badges ?? profile.equipped_badges ?? []
   const fromCosmetics = normalizeEquippedLoot(profileCosmetics?.equipped_loot)
@@ -252,7 +226,6 @@ export function FriendProfile({ profile, onBack, onMessage, onRetrySync }: Frien
     .map((bId) => BADGES.find((b) => b.id === bId))
     .filter(Boolean)
   const equippedLootBySlot = effectiveEquippedLoot
-  const friendPlayerStats = computePlayerStats(equippedLootBySlot as Partial<Record<LootSlot, string>>)
   const { activityLabel, appName, sessionStartMs } = parseFriendPresence(profile.current_activity ?? null)
   const isLeveling = profile.is_online && activityLabel.startsWith('Leveling ')
   const levelingSkill = isLeveling ? activityLabel.replace('Leveling ', '') : null
@@ -399,116 +372,12 @@ export function FriendProfile({ profile, onBack, onMessage, onRetrySync }: Frien
         )}
       </div>
 
-      {/* Loadout */}
-      <div className="rounded-xl border border-white/10 bg-discord-card/80 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-mono mb-2">Loadout</p>
-        <div className="flex gap-2">
-          {/* Gear slots */}
-          <div className="flex flex-col gap-1" style={{ flex: '2', minWidth: 0 }}>
-            {(['head', 'body', 'ring', 'legs'] as LootSlot[]).map((slot) => {
-              const meta = FRIEND_LOOT_SLOT_META[slot]
-              const item = equippedLootBySlot[slot] ? LOOT_ITEMS.find((x) => x.id === equippedLootBySlot[slot]) ?? null : null
-              const theme = item ? RARITY_THEME[normalizeRarity(item.rarity)] : null
-              const inner = (
-                <>
-                  <div
-                    className="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden"
-                    style={theme
-                      ? { background: `radial-gradient(circle at 50% 40%, ${theme.glow}55 0%, rgba(9,9,17,0.95) 70%)` }
-                      : { background: 'rgba(9,9,17,0.85)' }}
-                  >
-                    {item
-                      ? <LootVisual icon={item.icon} image={item.image} className="w-6 h-6 object-contain" />
-                      : <span className="text-[13px] opacity-[0.13]">{meta.icon}</span>}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[7px] text-gray-500 font-mono uppercase tracking-wider leading-none">{meta.label}</p>
-                    <p className={`text-[10px] font-medium truncate mt-0.5 leading-tight ${item ? 'text-white/85' : 'text-gray-600'}`}>
-                      {item ? item.name : 'Empty'}
-                    </p>
-                  </div>
-                  {theme && <div className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: theme.color }} />}
-                </>
-              )
-              return (
-                <div key={slot} className="flex-1 min-h-0">
-                  <BuffTooltip item={item} placement="right" stretch>
-                    <div
-                      className="rounded-md border overflow-hidden h-full"
-                      style={theme
-                        ? { borderColor: theme.border, background: `linear-gradient(135deg, ${theme.glow}10 0%, rgba(12,12,20,0.95) 55%)` }
-                        : { borderColor: 'rgba(255,255,255,0.06)', background: 'rgba(12,12,20,0.70)' }}
-                    >
-                      <div className="h-full px-2 py-3 flex items-center gap-2">{inner}</div>
-                    </div>
-                  </BuffTooltip>
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Stats + Buffs */}
-          <div className="flex-1 min-w-0 rounded-lg border border-white/10 bg-discord-darker/40 p-2 flex flex-col gap-2">
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-gray-500 font-mono mb-1.5">Stats</p>
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-gray-400">ATK <span className="text-[9px] text-gray-600">/s</span></span>
-                  <span className="text-[12px] font-mono font-bold text-red-400">{friendPlayerStats.atk}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-gray-400">HP</span>
-                  <span className="text-[12px] font-mono font-bold text-green-400">{friendPlayerStats.hp}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-[10px] text-gray-400">Regen <span className="text-[9px] text-gray-600">/s</span></span>
-                  <span className="text-[12px] font-mono font-bold text-cyan-400">{friendPlayerStats.hpRegen}</span>
-                </div>
-                <div className="flex items-center justify-between" title="Total Item Power from equipped gear">
-                  <span className="text-[10px] text-gray-400">IP</span>
-                  <span className="text-[12px] font-mono font-bold text-amber-300">
-                    {LOOT_SLOTS.reduce((sum, s) => {
-                      const id = equippedLootBySlot[s]
-                      if (!id) return sum
-                      const it = LOOT_ITEMS.find((x) => x.id === id)
-                      return sum + (it ? getItemPower(it.rarity) : 0)
-                    }, 0)}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-gray-500 font-mono mb-1.5">Buffs</p>
-              {(() => {
-                const equipped = (LOOT_SLOTS as LootSlot[]).map((s) => {
-                  const id = equippedLootBySlot[s]
-                  if (!id) return null
-                  const it = LOOT_ITEMS.find((x) => x.id === id)
-                  if (!it) return null
-                  return { slot: s, item: it }
-                }).filter((e): e is { slot: LootSlot; item: (typeof LOOT_ITEMS)[number] } => Boolean(e))
-                if (equipped.length === 0) return <p className="text-[10px] text-gray-600">No gear equipped.</p>
-                return (
-                  <div className="space-y-1.5">
-                    {equipped.map(({ slot, item }) => (
-                      <div key={slot} className="rounded-md border border-white/10 bg-discord-card/60 p-1.5">
-                        <div className="flex items-center gap-1.5 mb-0.5">
-                          <span className="text-[8px] font-mono uppercase tracking-wide px-1 py-px rounded border border-white/10 text-gray-500 leading-none flex-shrink-0">
-                            {FRIEND_LOOT_SLOT_META[slot]?.label ?? slot}
-                          </span>
-                          <p className={`text-[9px] font-mono truncate ${item.perkType !== 'cosmetic' ? 'text-cyber-neon' : 'text-gray-400'}`}>
-                            {item.name}
-                          </p>
-                        </div>
-                        <p className="text-[9px] text-gray-300 leading-snug">{getItemPerkDescription(item)}</p>
-                      </div>
-                    ))}
-                  </div>
-                )
-              })()}
-            </div>
-          </div>
-        </div>
+      {/* Character — shared CharacterPanel */}
+      <div className="rounded-xl border border-white/[0.09] bg-discord-card/80 p-3 space-y-2">
+        <p className="text-[10px] uppercase tracking-widest text-gray-500 font-mono font-semibold">Character</p>
+        <CharacterPanel
+          equippedBySlot={equippedLootBySlot as Partial<Record<LootSlot, string>>}
+        />
       </div>
 
       {/* Quick Stats */}
@@ -664,7 +533,7 @@ export function FriendProfile({ profile, onBack, onMessage, onRetrySync }: Frien
         <p className="text-xs uppercase tracking-wider text-gray-500 font-mono">Recent Sessions</p>
         {sessions.length > 0 ? (
           <div className="space-y-1.5">
-            {sessions.slice(0, 3).map((s) => (
+            {sessions.map((s) => (
               <div key={s.id} className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-discord-darker/40 border border-white/5">
                 <span className="text-sm text-gray-400">
                   {new Date(s.start_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })},{' '}

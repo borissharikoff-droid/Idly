@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CHEST_DEFS, LOOT_ITEMS, LOOT_SLOTS, MARKETPLACE_BLOCKED_ITEMS, POTION_IDS, POTION_MAX, estimateLootDropRate, getItemPower, type ChestType, type LootSlot, getItemPerkDescription } from '../../lib/loot'
-import { computePlayerStats } from '../../lib/combat'
+import { CHEST_DEFS, ITEM_POWER_BY_RARITY, LOOT_ITEMS, MARKETPLACE_BLOCKED_ITEMS, POTION_IDS, POTION_MAX, estimateLootDropRate, getItemPower, getItemPerks, type ChestType, getItemPerkDescription } from '../../lib/loot'
 import { ensureInventoryHydrated, useInventoryStore } from '../../stores/inventoryStore'
 import { useArenaStore } from '../../stores/arenaStore'
 import { useAdminConfigStore } from '../../stores/adminConfigStore'
@@ -13,15 +12,71 @@ import { playClickSound, playPotionSound } from '../../lib/sounds'
 import { syncInventoryToSupabase } from '../../services/supabaseSync'
 import { useNotificationStore } from '../../stores/notificationStore'
 import { useFarmStore } from '../../stores/farmStore'
-import { SLOT_META, SLOT_LABEL, LootVisual, RARITY_THEME, normalizeRarity } from '../loot/LootUI'
-import { BuffTooltip } from '../shared/BuffTooltip'
+import { SEED_DEFS, formatGrowTime } from '../../lib/farming'
+import { useGoldStore } from '../../stores/goldStore'
+import { SLOT_LABEL, LootVisual, RARITY_THEME, normalizeRarity } from '../loot/LootUI'
+import { CharacterCard } from '../character/CharacterCard'
+
+const SEED_SELL_PRICE: Record<string, number> = {
+  common: 5,
+  rare: 20,
+  epic: 80,
+  legendary: 250,
+  mythic: 500,
+}
 
 type SlotEntry =
   | { id: string; kind: 'pending'; icon: string; image?: string; title: string; subtitle: string; quantity: number; rewardIds: string[]; chestType: ChestType }
   | { id: string; kind: 'chest'; icon: string; image?: string; title: string; subtitle: string; quantity: number; chestType: ChestType }
   | { id: string; kind: 'item'; icon: string; image?: string; title: string; subtitle: string; quantity: number; itemId: string; equipped: boolean }
+  | { id: string; kind: 'seed'; icon: string; title: string; subtitle: string; quantity: number; seedId: string }
 
-export function InventoryPage({ onBack }: { onBack: () => void }) {
+// ─── Module-level constants (stable references, never recreated per render) ──
+
+const RARITY_ORDER: Record<string, number> = { mythic: 5, legendary: 4, epic: 3, rare: 2, common: 1 }
+
+const SLOT_SORT_ORDER: Record<string, number> = {
+  weapon: 0, head: 1, body: 2, legs: 3, ring: 4, consumable: 5, plant: 6,
+}
+
+const FILTERS = [
+  { id: 'all',      label: 'All',      icon: '🎒' },
+  { id: 'weapons',  label: 'Weapons',  icon: '⚔️' },
+  { id: 'combat',   label: 'Combat',   icon: '🛡️' },
+  { id: 'xp',       label: 'XP',       icon: '📈' },
+  { id: 'drops',    label: 'Drops',    icon: '🎁' },
+  { id: 'potions',  label: 'Potions',  icon: '⚗️' },
+  { id: 'chests',   label: 'Bags',     icon: '📦' },
+  { id: 'cosmetic', label: 'Cosmetic', icon: '✨' },
+  { id: 'plants',   label: 'Plants',   icon: '🌿' },
+  { id: 'seeds',    label: 'Seeds',    icon: '🌱' },
+] as const
+
+function getSlotRarity(slot: SlotEntry): string {
+  if (slot.kind === 'item') return LOOT_ITEMS.find((x) => x.id === slot.itemId)?.rarity ?? 'common'
+  if (slot.kind === 'chest' || slot.kind === 'pending') return CHEST_DEFS[slot.chestType].rarity
+  if (slot.kind === 'seed') return SEED_DEFS.find((x) => x.id === slot.seedId)?.rarity ?? 'common'
+  return 'common'
+}
+
+function slotMatchesFilter(slot: SlotEntry, fid: string): boolean {
+  if (fid === 'all') return true
+  if (fid === 'seeds') return slot.kind === 'seed'
+  if (fid === 'chests') return slot.kind === 'chest' || slot.kind === 'pending'
+  if (slot.kind !== 'item') return false
+  const item = LOOT_ITEMS.find((x) => x.id === slot.itemId)
+  if (!item) return false
+  if (fid === 'weapons')  return item.slot === 'weapon'
+  if (fid === 'combat')   return ['atk_boost', 'hp_boost', 'hp_regen_boost'].includes(item.perkType as string)
+  if (fid === 'xp')       return ['xp_skill_boost', 'xp_global_boost', 'focus_boost'].includes(item.perkType as string)
+  if (fid === 'drops')    return (item.perkType as string) === 'chest_drop_boost'
+  if (fid === 'potions')  return item.slot === 'consumable'
+  if (fid === 'cosmetic') return ['cosmetic', 'status_title', 'streak_shield'].includes(item.perkType as string)
+  if (fid === 'plants')   return item.slot === 'plant'
+  return true
+}
+
+export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; onNavigateFarm?: () => void }) {
   useAdminConfigStore((s) => s.rev) // re-render when admin config updates (item skins etc.)
   const items = useInventoryStore((s) => s.items)
   const chests = useInventoryStore((s) => s.chests)
@@ -37,9 +92,23 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
   const deleteItem = useInventoryStore((s) => s.deleteItem)
   const consumePotion = useInventoryStore((s) => s.consumePotion)
   const inBattle = Boolean(useArenaStore((s) => s.activeBattle))
-  const [sortBy, setSortBy] = useState<'rarity' | 'name' | 'slot'>('rarity')
-  const [viewMode, setViewMode] = useState<'list' | 'grid' | 'compact'>('grid')
-  const [filterBy, setFilterBy] = useState<'all' | 'combat' | 'weapons' | 'xp' | 'drops' | 'potions' | 'chests' | 'cosmetic' | 'plants'>('all')
+  const farmSeeds = useFarmStore((s) => s.seeds)
+  const seedCabinetUnlocked = useFarmStore((s) => s.seedCabinetUnlocked)
+  const removeSeed = useFarmStore((s) => s.removeSeed)
+  const addGold = useGoldStore((s) => s.addGold)
+  const [sortBy, setSortByRaw] = useState<'rarity' | 'name' | 'slot'>(() => {
+    try { return (localStorage.getItem('inv_sortBy') as 'rarity' | 'name' | 'slot') || 'rarity' } catch { return 'rarity' }
+  })
+  const [viewMode, setViewModeRaw] = useState<'list' | 'grid' | 'compact'>(() => {
+    try { return (localStorage.getItem('inv_viewMode') as 'list' | 'grid' | 'compact') || 'grid' } catch { return 'grid' }
+  })
+  type FilterById = 'all' | 'combat' | 'weapons' | 'xp' | 'drops' | 'potions' | 'chests' | 'cosmetic' | 'plants' | 'seeds'
+  const [filterBy, setFilterByRaw] = useState<FilterById>(() => {
+    try { return (localStorage.getItem('inv_filterBy') as FilterById) || 'all' } catch { return 'all' }
+  })
+  const setSortBy = (v: typeof sortBy) => { setSortByRaw(v); try { localStorage.setItem('inv_sortBy', v) } catch {} }
+  const setViewMode = (v: typeof viewMode) => { setViewModeRaw(v); try { localStorage.setItem('inv_viewMode', v) } catch {} }
+  const setFilterBy = (v: FilterById) => { setFilterByRaw(v); try { localStorage.setItem('inv_filterBy', v) } catch {} }
   const [inspectSlotId, setInspectSlotId] = useState<string | null>(null)
   const [listForSaleTarget, setListForSaleTarget] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; slotId: string } | null>(null)
@@ -100,64 +169,38 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
         equipped: equippedBySlot[item.slot] === item.id,
       })
     }
+    for (const seed of SEED_DEFS) {
+      // Seeds from inventory (new flow) + seeds still in farmStore when cabinet not unlocked (backwards compat)
+      const invQty = items[seed.id] ?? 0
+      const farmQty = seedCabinetUnlocked ? 0 : (farmSeeds[seed.id] ?? 0)
+      const qty = invQty + farmQty
+      if (qty <= 0) continue
+      out.push({
+        id: `seed:${seed.id}`,
+        kind: 'seed',
+        icon: seed.icon,
+        title: seed.name + 's',
+        subtitle: `${seed.rarity} · ${formatGrowTime(seed.growTimeSeconds)} · ${seed.yieldMin}–${seed.yieldMax} yield`,
+        quantity: qty,
+        seedId: seed.id,
+      })
+    }
     return out
-  }, [pendingRewards, chests, items, equippedBySlot])
-
-  const RARITY_ORDER: Record<string, number> = { mythic: 5, legendary: 4, epic: 3, rare: 2, common: 1 }
-  const getSlotRarity = (slot: SlotEntry) => {
-    if (slot.kind === 'item') return LOOT_ITEMS.find((x) => x.id === slot.itemId)?.rarity ?? 'common'
-    if (slot.kind === 'chest' || slot.kind === 'pending') return CHEST_DEFS[slot.chestType].rarity
-    return 'common'
-  }
-
-  const FILTERS = [
-    { id: 'all',     label: 'All',      icon: '🎒' },
-    { id: 'weapons', label: 'Weapons',  icon: '⚔️' },
-    { id: 'combat',  label: 'Combat',   icon: '🛡️' },
-    { id: 'xp',      label: 'XP',       icon: '📈' },
-    { id: 'drops',   label: 'Drops',    icon: '🎁' },
-    { id: 'potions', label: 'Potions',  icon: '⚗️' },
-    { id: 'chests',  label: 'Bags',     icon: '📦' },
-    { id: 'cosmetic',label: 'Cosmetic', icon: '✨' },
-    { id: 'plants',  label: 'Plants',   icon: '🌿' },
-  ] as const
-
-  const slotMatchesFilterId = (slot: SlotEntry, fid: string): boolean => {
-    if (fid === 'all') return true
-    if (fid === 'chests') return slot.kind === 'chest' || slot.kind === 'pending'
-    if (slot.kind !== 'item') return false
-    const item = LOOT_ITEMS.find((x) => x.id === slot.itemId)
-    if (!item) return false
-    if (fid === 'weapons')  return item.slot === 'weapon'
-    if (fid === 'combat')   return ['atk_boost', 'hp_boost', 'hp_regen_boost'].includes(item.perkType as string)
-    if (fid === 'xp')       return ['xp_skill_boost', 'xp_global_boost', 'focus_boost'].includes(item.perkType as string)
-    if (fid === 'drops')    return (item.perkType as string) === 'chest_drop_boost'
-    if (fid === 'potions')  return item.slot === 'consumable'
-    if (fid === 'cosmetic') return ['cosmetic', 'status_title', 'streak_shield'].includes(item.perkType as string)
-    if (fid === 'plants')   return item.slot === 'plant'
-    return true
-  }
-
-  const slotMatchesFilter = (slot: SlotEntry) => slotMatchesFilterId(slot, filterBy)
+  }, [pendingRewards, chests, items, equippedBySlot, farmSeeds, seedCabinetUnlocked])
 
   const filterCounts = useMemo(() => {
     const counts: Partial<Record<string, number>> = {}
     for (const f of FILTERS) {
       if (f.id === 'all') { counts[f.id] = slots.length; continue }
-      counts[f.id] = slots.filter((s) => slotMatchesFilterId(s, f.id)).length
+      counts[f.id] = slots.filter((s) => slotMatchesFilter(s, f.id)).length
     }
     return counts
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slots])
-
-  const SLOT_SORT_ORDER: Record<string, number> = {
-    weapon: 0, head: 1, body: 2, legs: 3, ring: 4, consumable: 5, plant: 6,
-  }
 
   const sortedSlots = useMemo(() => {
     const kindOrder = (s: SlotEntry) => (s.kind === 'pending' ? 0 : s.kind === 'chest' ? 1 : 2)
     return [...slots]
-      .filter(slotMatchesFilter)
+      .filter((s) => slotMatchesFilter(s, filterBy))
       .sort((a, b) => {
         const kd = kindOrder(a) - kindOrder(b)
         if (kd !== 0) return kd
@@ -169,7 +212,6 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
         }
         return a.title.localeCompare(b.title)
       })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slots, sortBy, filterBy])
 
   const groupedSlots = useMemo(() => {
@@ -192,38 +234,19 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
     () => (inspectSlot?.kind === 'item' ? (LOOT_ITEMS.find((x) => x.id === inspectSlot.itemId) ?? null) : null),
     [inspectSlot],
   )
+  const inspectSeed = useMemo(
+    () => (inspectSlot?.kind === 'seed' ? (SEED_DEFS.find((x) => x.id === inspectSlot.seedId) ?? null) : null),
+    [inspectSlot],
+  )
   const inspectRarity = useMemo(() => {
     if (inspectItem) return normalizeRarity(inspectItem.rarity)
     if (inspectSlot?.kind === 'chest' || inspectSlot?.kind === 'pending') {
       return normalizeRarity(CHEST_DEFS[inspectSlot.chestType].rarity)
     }
+    if (inspectSeed) return normalizeRarity(inspectSeed.rarity)
     return 'common'
-  }, [inspectItem, inspectSlot])
+  }, [inspectItem, inspectSlot, inspectSeed])
   const inspectTheme = RARITY_THEME[inspectRarity]
-  const equippedItems = useMemo(
-    () =>
-      LOOT_SLOTS
-        .map((slot) => {
-          const id = equippedBySlot[slot]
-          if (!id) return null
-          const item = LOOT_ITEMS.find((x) => x.id === id)
-          if (!item) return null
-          return { slot, item }
-        })
-        .filter((entry): entry is { slot: LootSlot; item: (typeof LOOT_ITEMS)[number] } => Boolean(entry)),
-    [equippedBySlot],
-  )
-  const activeBuffs = useMemo(
-    () =>
-      equippedItems.map(({ slot, item }) => ({
-        key: `${slot}:${item.id}`,
-        slotLabel: SLOT_LABEL[slot],
-        name: item.name,
-        description: getItemPerkDescription(item),
-        isGameplay: item.perkType !== 'cosmetic',
-      })),
-    [equippedItems],
-  )
 
   useEffect(() => {
     ensureInventoryHydrated()
@@ -324,24 +347,14 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
   const openNextChest = (chestType: ChestType) => {
     setChestChainMessage(null)
     const pending = pendingRewards.find((r) => !r.claimed && r.chestType === chestType)
-    if (pending) {
-      claimPendingReward(pending.id)
-      const result = openChestAndGrantItem(chestType, { source: 'session_complete' })
-      if (!result) return false
-      const seedZipTier = useFarmStore.getState().rollSeedDrop(chestType)
-      setChestModalAnimSeed((v) => v + 1)
-      setOpenChestModal({ chestType, itemId: result.itemId, seedZipTier: seedZipTier ?? null, goldDropped: result.goldDropped })
-      return true
-    }
-    if ((chests[chestType] ?? 0) > 0) {
-      const result = openChestAndGrantItem(chestType, { source: 'session_complete' })
-      if (!result) return false
-      const seedZipTier = useFarmStore.getState().rollSeedDrop(chestType)
-      setChestModalAnimSeed((v) => v + 1)
-      setOpenChestModal({ chestType, itemId: result.itemId, seedZipTier: seedZipTier ?? null, goldDropped: result.goldDropped })
-      return true
-    }
-    return false
+    if (pending) claimPendingReward(pending.id)
+    else if ((chests[chestType] ?? 0) <= 0) return false
+    const result = openChestAndGrantItem(chestType, { source: 'session_complete' })
+    if (!result) return false
+    const seedZipTier = useFarmStore.getState().rollSeedDrop(chestType)
+    setChestModalAnimSeed((v) => v + 1)
+    setOpenChestModal({ chestType, itemId: result.itemId, seedZipTier: seedZipTier ?? null, goldDropped: result.goldDropped })
+    return true
   }
 
   return (
@@ -353,162 +366,10 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
     >
       <PageHeader title="Inventory" onBack={onBack} />
 
-      <div className="rounded-xl border border-white/[0.09] bg-discord-card/80 p-3 space-y-2">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <p className="text-[10px] uppercase tracking-widest text-gray-500 font-mono font-semibold">Character</p>
-          {inBattle && <p className="text-[9px] text-amber-400/70 font-mono">⚔ locked in battle</p>}
-        </div>
-
-        {/* 3-column layout: gear rows | ring+weapon squares | stats */}
-        {(() => {
-          const renderRowSlot = (slot: LootSlot) => {
-            const meta = SLOT_META[slot]
-            const equippedItem = LOOT_ITEMS.find((item) => item.id === equippedBySlot[slot])
-            const theme = equippedItem ? RARITY_THEME[normalizeRarity(equippedItem.rarity)] : null
-            const row = (
-              <div
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl border overflow-hidden h-full relative"
-                style={theme
-                  ? { borderColor: theme.border, background: `linear-gradient(100deg, ${theme.glow}20 0%, rgba(10,10,18,0.96) 50%)` }
-                  : { borderColor: 'rgba(255,255,255,0.07)', background: 'rgba(10,10,18,0.70)' }}
-              >
-                {/* Rarity accent bar */}
-                <div className="w-[3px] rounded-full self-stretch flex-shrink-0" style={{ background: theme ? theme.color : 'rgba(255,255,255,0.07)', minHeight: 36 }} />
-                {/* Item icon */}
-                <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden"
-                  style={theme
-                    ? { background: `radial-gradient(circle at 50% 40%, ${theme.glow}55 0%, rgba(9,9,17,0.95) 65%)`, border: `1px solid ${theme.border}66` }
-                    : { background: 'rgba(9,9,17,0.80)', border: '1px solid rgba(255,255,255,0.06)' }}
-                >
-                  {equippedItem
-                    ? <LootVisual icon={equippedItem.icon} image={equippedItem.image} className="w-6 h-6 object-contain" scale={equippedItem.renderScale ?? 1} />
-                    : <span className="text-lg" style={{ opacity: 0.15 }}>{meta.icon}</span>}
-                </div>
-                {/* Text */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-[9px] font-mono uppercase tracking-widest leading-none" style={{ color: 'rgba(156,163,175,0.4)' }}>{meta.label}</p>
-                  <p className={`text-[12px] font-semibold mt-1 truncate leading-tight ${equippedItem ? 'text-white' : 'italic'}`}
-                    style={equippedItem ? undefined : { color: 'rgba(255,255,255,0.18)' }}>
-                    {equippedItem ? equippedItem.name : 'empty'}
-                  </p>
-                </div>
-                {/* Rarity dot */}
-                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: theme ? theme.color : 'rgba(255,255,255,0.08)', boxShadow: theme ? `0 0 6px ${theme.color}88` : 'none' }} />
-              </div>
-            )
-            return (
-              <BuffTooltip key={slot} item={equippedItem ?? null} placement="bottom" stretch>
-                {equippedItem
-                  ? <button type="button" onClick={() => { playClickSound(); setInspectSlotId(`item:${equippedItem.id}`) }} onContextMenu={(e) => { e.preventDefault(); unequipSlot(slot) }} className="w-full h-full text-left hover:brightness-110 active:scale-[0.99] transition-all">{row}</button>
-                  : <div className="h-full">{row}</div>}
-              </BuffTooltip>
-            )
-          }
-
-          const renderSquareSlot = (slot: LootSlot) => {
-            const meta = SLOT_META[slot]
-            const equippedItem = LOOT_ITEMS.find((item) => item.id === equippedBySlot[slot])
-            const theme = equippedItem ? RARITY_THEME[normalizeRarity(equippedItem.rarity)] : null
-            const sq = (
-              <div
-                className="rounded-xl border overflow-hidden h-full"
-                style={theme
-                  ? { borderColor: theme.border, background: `linear-gradient(160deg, ${theme.glow}18 0%, rgba(10,10,18,0.96) 65%)` }
-                  : { borderColor: 'rgba(255,255,255,0.07)', background: 'rgba(10,10,18,0.70)' }}
-              >
-                <div className="flex flex-col items-center justify-center gap-1.5 w-full h-full py-2.5 px-2">
-                  {/* Slot label above icon */}
-                  <p className="text-[8px] font-mono uppercase tracking-widest leading-none" style={{ color: 'rgba(156,163,175,0.35)' }}>
-                    {meta.label}
-                  </p>
-                  {/* Icon */}
-                  <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center overflow-hidden"
-                    style={theme
-                      ? { background: `radial-gradient(circle at 50% 40%, ${theme.glow}60 0%, rgba(9,9,17,0.95) 70%)`, border: `1px solid ${theme.border}55` }
-                      : { background: 'rgba(9,9,17,0.85)', border: '1px solid rgba(255,255,255,0.06)' }}
-                  >
-                    {equippedItem
-                      ? <LootVisual icon={equippedItem.icon} image={equippedItem.image} className="w-6 h-6 object-contain" scale={equippedItem.renderScale ?? 1} />
-                      : <span className="text-lg" style={{ opacity: 0.15 }}>{meta.icon}</span>}
-                  </div>
-                  {/* Item name or empty */}
-                  <p className="text-[8px] font-mono leading-none text-center w-full truncate"
-                    style={{ color: equippedItem ? 'rgba(255,255,255,0.70)' : 'rgba(156,163,175,0.3)' }}>
-                    {equippedItem ? equippedItem.name : '—'}
-                  </p>
-                  {/* Rarity dot */}
-                  {theme && <div className="w-1.5 h-1.5 rounded-full" style={{ background: theme.color, boxShadow: `0 0 5px ${theme.color}99` }} />}
-                </div>
-              </div>
-            )
-            return (
-              <BuffTooltip key={slot} item={equippedItem ?? null} placement="bottom" stretch>
-                {equippedItem
-                  ? <button type="button" onClick={() => { playClickSound(); setInspectSlotId(`item:${equippedItem.id}`) }} onContextMenu={(e) => { e.preventDefault(); unequipSlot(slot) }} className="w-full h-full hover:brightness-110 transition-all">{sq}</button>
-                  : <div className="h-full">{sq}</div>}
-              </BuffTooltip>
-            )
-          }
-
-          const stats = computePlayerStats(equippedBySlot, permanentStats)
-          const ip = LOOT_SLOTS.reduce((sum, s) => {
-            const id = equippedBySlot[s]; if (!id) return sum
-            const it = LOOT_ITEMS.find((x) => x.id === id)
-            return sum + (it ? getItemPower(it) : 0)
-          }, 0)
-          const statRows = [
-            { icon: '⚔️', value: stats.atk,    label: 'ATK', unit: '/s', color: '#f87171', maxed: permanentStats.atk >= POTION_MAX },
-            { icon: '❤️', value: stats.hp,      label: 'HP',  unit: '',   color: '#4ade80', maxed: permanentStats.hp >= POTION_MAX },
-            { icon: '💧', value: stats.hpRegen, label: 'REG', unit: '/s', color: '#22d3ee', maxed: permanentStats.hpRegen >= POTION_MAX },
-            { icon: '✨', value: ip,            label: 'IP',  unit: '',   color: '#fcd34d', maxed: false },
-          ]
-
-          return (
-            <div className="space-y-2">
-              {/* Gear: left column (head/body/legs) + right column (ring/weapon) */}
-              <div className="flex gap-2">
-                {/* Col 1: Head / Body / Legs */}
-                <div className="flex flex-col gap-1.5 flex-1 min-w-0">
-                  {(['head', 'body', 'legs'] as LootSlot[]).map((s) => (
-                    <div key={s}>{renderRowSlot(s)}</div>
-                  ))}
-                </div>
-
-                {/* Col 2: Ring (top, smaller) + Weapon (bottom, bigger) */}
-                <div className="flex flex-col gap-1.5" style={{ width: 76 }}>
-                  <div style={{ flex: 1 }}>{renderSquareSlot('ring')}</div>
-                  <div style={{ flex: 2 }}>{renderSquareSlot('weapon')}</div>
-                </div>
-              </div>
-
-              {/* Stats row — full width, 4 cards */}
-              <div className="grid grid-cols-4 gap-1.5">
-                {statRows.map(({ icon, value, label, unit, color, maxed }) => {
-                  const c = maxed ? '#f59e0b' : color
-                  return (
-                    <div
-                      key={label}
-                      className="flex flex-col items-center justify-center gap-1 rounded-xl border py-3"
-                      style={{ borderColor: `${c}22`, background: `linear-gradient(160deg, ${c}0d 0%, rgba(8,8,16,0.80) 70%)` }}
-                    >
-                      <span className="text-base leading-none">{icon}</span>
-                      <span className="text-[17px] font-mono font-bold tabular-nums leading-none" style={{ color: c, textShadow: `0 0 10px ${c}66` }}>
-                        {value}
-                      </span>
-                      <span className="text-[8px] font-mono uppercase tracking-widest leading-none" style={{ color: `${c}88` }}>
-                        {label}{unit}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )
-        })()}
-      </div>
+      <CharacterCard
+        locked={inBattle}
+        onSlotInspect={(itemId) => setInspectSlotId(`item:${itemId}`)}
+      />
 
       <div className="rounded-xl border border-white/[0.08] bg-discord-card/80 p-3 space-y-2.5">
         {/* Header */}
@@ -542,7 +403,7 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
             {/* Sort cycle button */}
             <button
               type="button"
-              onClick={() => setSortBy((s) => s === 'rarity' ? 'name' : s === 'name' ? 'slot' : 'rarity')}
+              onClick={() => setSortBy(sortBy === 'rarity' ? 'name' : sortBy === 'name' ? 'slot' : 'rarity')}
               className="text-[9px] font-mono px-2 py-0.5 rounded border border-white/[0.07] text-gray-500 hover:text-gray-300 hover:border-white/15 transition-colors"
             >
               {sortBy === 'rarity' ? '▼ Rarity' : sortBy === 'name' ? '▼ A–Z' : '▼ Slot'}
@@ -597,12 +458,14 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
             const slotTheme = RARITY_THEME[normalizeRarity(slotRarity)]
             const isEquipped = slot.kind === 'item' && slot.equipped
             const isPending = slot.kind === 'pending'
+            const slotImage = slot.kind !== 'seed' ? slot.image : undefined
             const lootItem = slot.kind === 'item' ? LOOT_ITEMS.find((x) => x.id === slot.itemId) : null
             const perkChip = lootItem && lootItem.perkType !== 'cosmetic' && lootItem.slot !== 'consumable' && lootItem.slot !== 'plant'
               ? getItemPerkDescription(lootItem)
               : null
             const rarityNorm = normalizeRarity(slotRarity)
-            const typeLabel = slot.kind === 'chest' || slot.kind === 'pending'
+            const typeLabel = slot.kind === 'seed' ? 'SEED'
+              : slot.kind === 'chest' || slot.kind === 'pending'
               ? (isPending ? 'INBOX' : 'BAG')
               : lootItem?.slot === 'consumable' ? 'POTION'
               : lootItem?.slot === 'plant' ? 'PLANT'
@@ -635,7 +498,7 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
                   <div className="w-[3px] self-stretch rounded-full flex-shrink-0" style={{ background: slotTheme.color }} />
                   {/* Icon */}
                   <div className="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden relative" style={{ background: 'rgba(9,9,17,0.85)' }}>
-                    <LootVisual icon={slot.icon} image={slot.image} className="w-6 h-6 object-contain" scale={lootItem?.renderScale ?? 1} />
+                    <LootVisual icon={slot.icon} image={slotImage} className="w-6 h-6 object-contain" scale={lootItem?.renderScale ?? 1} />
                     {isEquipped && <span className="absolute bottom-0 right-0 text-[6px] font-bold font-mono px-0.5 rounded-tl leading-tight" style={{ background: slotTheme.color, color: '#000' }}>EQ</span>}
                   </div>
                   {/* Text */}
@@ -673,7 +536,7 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
                     >×{slot.quantity}</span>
                   )}
                   <div className="w-9 h-9 rounded-md flex items-center justify-center overflow-hidden relative" style={{ background: 'rgba(9,9,17,0.85)' }}>
-                    <LootVisual icon={slot.icon} image={slot.image} className="w-6 h-6 object-contain" scale={lootItem?.renderScale ?? 1} />
+                    <LootVisual icon={slot.icon} image={slotImage} className="w-6 h-6 object-contain" scale={lootItem?.renderScale ?? 1} />
                     {isEquipped && <span className="absolute bottom-0 right-0 text-[6px] font-bold font-mono px-0.5 rounded-tl leading-tight" style={{ background: slotTheme.color, color: '#000' }}>EQ</span>}
                   </div>
                   <p className="text-[9px] font-semibold text-white leading-tight w-full truncate text-center">{slot.title}</p>
@@ -722,7 +585,7 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
                       ? { background: `radial-gradient(circle at 50% 40%, ${slotTheme.glow}55 0%, rgba(9,9,17,0.95) 70%)` }
                       : { background: 'rgba(9,9,17,0.85)' }}
                   >
-                    <LootVisual icon={slot.icon} image={slot.image} className="w-7 h-7 object-contain" scale={lootItem?.renderScale ?? 1} />
+                    <LootVisual icon={slot.icon} image={slotImage} className="w-7 h-7 object-contain" scale={lootItem?.renderScale ?? 1} />
                     {isEquipped && (
                       <span className="absolute bottom-0 right-0 text-[7px] font-bold font-mono px-0.5 rounded-tl rounded-br leading-tight" style={{ background: slotTheme.color, color: '#000' }}>EQ</span>
                     )}
@@ -775,148 +638,270 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[85] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4"
+              className="fixed inset-0 z-[85] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
               onClick={() => setInspectSlotId(null)}
             >
             <motion.div
-              initial={{ scale: 0.92, opacity: 0, y: 12 }}
+              initial={{ scale: 0.94, opacity: 0, y: 10 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 8 }}
-              className="w-[320px] rounded-xl border p-4 relative overflow-hidden"
+              exit={{ scale: 0.96, opacity: 0, y: 6 }}
+              transition={{ type: 'spring', stiffness: 360, damping: 28 }}
+              className="w-full max-w-[370px] rounded-2xl border overflow-hidden relative flex"
               style={{
                 borderColor: inspectTheme.border,
-                background: inspectTheme.panel,
-                boxShadow: `0 0 24px ${inspectTheme.glow}`,
+                background: 'rgba(8,8,16,0.98)',
+                boxShadow: `0 0 40px ${inspectTheme.glow}55, 0 8px 32px rgba(0,0,0,0.7)`,
+                minHeight: 220,
               }}
               onClick={(e) => e.stopPropagation()}
             >
-              <motion.div
-                aria-hidden
-                className="absolute inset-0 pointer-events-none"
-                style={{ background: `radial-gradient(circle at 50% 18%, ${inspectTheme.glow} 0%, transparent 58%)` }}
-                initial={{ opacity: 0.35, scale: 0.98 }}
-                animate={{ opacity: [0.3, 0.55, 0.35], scale: [0.98, 1.02, 1] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              />
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="h-10 flex items-center">
-                    <LootVisual
-                      icon={inspectSlot.icon}
-                      image={inspectSlot.image}
-                      className="w-12 h-12 object-contain"
-                      scale={inspectItem?.renderScale ?? 1}
-                    />
-                  </div>
-                  <p className="text-sm text-white font-semibold mt-1">{inspectSlot.title}</p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">{inspectSlot.subtitle}</p>
+              {/* LEFT — item art panel, full height */}
+              <div
+                className="relative flex-shrink-0 flex flex-col items-center justify-center"
+                style={{
+                  width: 130,
+                  background: `radial-gradient(ellipse at 50% 44%, ${inspectTheme.glow}50 0%, ${inspectTheme.glow}18 42%, rgba(5,5,12,0.97) 75%)`,
+                  borderRight: `1px solid ${inspectTheme.border}66`,
+                }}
+              >
+                {/* Animated glow orb */}
+                <motion.div
+                  aria-hidden
+                  className="absolute inset-0 pointer-events-none"
+                  style={{ background: `radial-gradient(circle at 50% 45%, ${inspectTheme.glow}30 0%, transparent 65%)` }}
+                  animate={{ opacity: [0.5, 0.85, 0.5] }}
+                  transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+                />
+                {/* Large item visual */}
+                <div className="relative z-10 flex items-center justify-center" style={{ width: 80, height: 80 }}>
+                  <LootVisual
+                    icon={inspectSlot.icon}
+                    image={inspectSlot.kind !== 'seed' ? inspectSlot.image : undefined}
+                    className="w-full h-full object-contain drop-shadow-lg"
+                    scale={(inspectItem?.renderScale ?? 1) * 1.3}
+                  />
                 </div>
-                <p className="text-[10px] text-gray-500 font-mono">qty x{inspectSlot.quantity}</p>
-              </div>
-              {/* Pills: rarity + slot + equipped */}
-              <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                <span
-                  className="text-[9px] px-2 py-0.5 rounded border font-mono uppercase"
-                  style={{ color: inspectTheme.color, borderColor: inspectTheme.border, background: `${inspectTheme.color}1a` }}
-                >
+                {/* Rarity label */}
+                <div className="relative z-10 mt-3 px-2.5 py-0.5 rounded-full border text-[8px] font-mono font-bold uppercase tracking-widest"
+                  style={{ color: inspectTheme.color, borderColor: `${inspectTheme.border}99`, background: `${inspectTheme.color}18` }}>
                   {inspectRarity}
-                </span>
-                {inspectItem && (
-                  <span className="text-[9px] px-2 py-0.5 rounded border border-white/15 text-gray-400 font-mono uppercase">
-                    {SLOT_LABEL[inspectItem.slot]}
-                  </span>
-                )}
-                {(inspectSlot.kind === 'chest' || inspectSlot.kind === 'pending') && (
-                  <span className="text-[9px] px-2 py-0.5 rounded border border-white/15 text-gray-400 font-mono uppercase">
-                    {inspectSlot.kind === 'pending' ? 'Inbox' : 'Bag'}
-                  </span>
-                )}
-                {inspectSlot.kind === 'item' && inspectSlot.equipped && (
-                  <span className="text-[9px] px-2 py-0.5 rounded border border-cyber-neon/40 text-cyber-neon font-mono">
-                    equipped
-                  </span>
+                </div>
+                {/* Qty badge */}
+                {inspectSlot.quantity > 1 && (
+                  <div className="relative z-10 mt-1.5 text-[9px] font-mono" style={{ color: `${inspectTheme.color}99` }}>
+                    ×{inspectSlot.quantity}
+                  </div>
                 )}
               </div>
-              <div className="mt-3 rounded-lg border border-white/10 bg-discord-darker/40 p-2.5 space-y-1">
-                {inspectSlot.kind === 'item' && (() => {
-                  if (!inspectItem) return <p className="text-[10px] text-gray-500">Unknown item.</p>
+
+              {/* RIGHT — item details panel */}
+              <div className="flex-1 min-w-0 flex flex-col p-3.5 gap-0">
+                {/* Close button */}
+                <button
+                  type="button"
+                  onClick={() => setInspectSlotId(null)}
+                  className="absolute top-2.5 right-2.5 w-6 h-6 flex items-center justify-center rounded-full text-gray-500 hover:text-white hover:bg-white/10 transition-colors text-[14px] leading-none z-20"
+                >×</button>
+
+                {/* Name + slot pill */}
+                <div className="pr-6">
+                  <p className="text-[14px] font-bold text-white leading-tight">{inspectSlot.title}</p>
+                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    {inspectItem && (
+                      <span className="text-[8px] px-1.5 py-0.5 rounded border border-white/15 text-gray-400 font-mono uppercase tracking-wide">
+                        {SLOT_LABEL[inspectItem.slot]}
+                      </span>
+                    )}
+                    {(inspectSlot.kind === 'chest' || inspectSlot.kind === 'pending') && (
+                      <span className="text-[8px] px-1.5 py-0.5 rounded border border-white/15 text-gray-400 font-mono uppercase tracking-wide">
+                        {inspectSlot.kind === 'pending' ? 'Inbox' : 'Bag'}
+                      </span>
+                    )}
+                    {inspectSlot.kind === 'item' && inspectSlot.equipped && (
+                      <span className="text-[8px] px-1.5 py-0.5 rounded border border-cyber-neon/50 text-cyber-neon font-mono tracking-wide"
+                        style={{ background: 'rgba(0,255,200,0.07)' }}>
+                        equipped
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Perk stats — prominent */}
+                {inspectItem && (() => {
+                  const ip = getItemPower(inspectItem)
+                  const baseWt = ITEM_POWER_BY_RARITY[inspectItem.rarity] ?? 100
                   const isPlant = inspectItem.slot === 'plant'
                   const isPotion = (POTION_IDS as readonly string[]).includes(inspectItem.id)
+                  const rate = !isPotion && !isPlant ? estimateLootDropRate(inspectItem.id, { source: 'skill_grind', focusCategory: 'coding' }) : null
                   const consumed = isPotion
                     ? inspectItem.id === 'atk_potion' ? permanentStats.atk
                       : inspectItem.id === 'hp_potion' ? permanentStats.hp
                       : permanentStats.hpRegen
                     : 0
-                  const rate = estimateLootDropRate(inspectItem.id, { source: 'skill_grind', focusCategory: 'coding' })
+
+                  type PerkDisplay = { value: string; unit: string; desc: string; color: string }
+                  const perkDisplays: PerkDisplay[] = getItemPerks(inspectItem).flatMap((p): PerkDisplay[] => {
+                    const v = typeof p.perkValue === 'number' ? p.perkValue : parseFloat(String(p.perkValue)) || 0
+                    const pct = (n: number) => `+${Math.round((n - 1) * 100)}%`
+                    switch (p.perkType) {
+                      case 'atk_boost':        return [{ value: `+${v}`, unit: 'ATK/s',   desc: 'Attack',                color: '#f87171' }]
+                      case 'hp_boost':         return [{ value: `+${v}`, unit: 'HP',      desc: 'Max health',            color: '#4ade80' }]
+                      case 'hp_regen_boost':   return [{ value: `+${v}`, unit: 'HP/s',    desc: 'Health regen',          color: '#22d3ee' }]
+                      case 'xp_skill_boost':   return [{ value: pct(v),  unit: 'XP',      desc: p.perkTarget ?? 'Skill', color: '#a78bfa' }]
+                      case 'xp_global_boost':  return [{ value: pct(v),  unit: 'XP',      desc: 'All skills',            color: '#a78bfa' }]
+                      case 'chest_drop_boost': return [{ value: `+${Math.round(v * 100)}%`, unit: 'Drop', desc: p.perkTarget ?? 'Chests', color: '#fbbf24' }]
+                      case 'focus_boost':      return [{ value: pct(v),  unit: 'Focus',   desc: 'Focus sessions',        color: '#38bdf8' }]
+                      case 'streak_shield':    return [{ value: '1×',    unit: 'Shield',  desc: 'Streak protect',        color: '#f97316' }]
+                      case 'status_title':     return [{ value: '✦',     unit: String(p.perkValue || 'Title'), desc: 'Status title', color: inspectTheme.color }]
+                      default: return []
+                    }
+                  })
+
                   return (
-                    <>
-                      {isPlant && (
-                        <p className="text-[10px] text-lime-400/80 font-mono">🌾 Farm harvest · sell on Marketplace</p>
+                    <div className="mt-2.5 space-y-2">
+                      {perkDisplays.length > 0 && (
+                        <div className={`grid gap-1.5 ${perkDisplays.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                          {perkDisplays.map((pd, i) => (
+                            <div key={i} className="rounded-lg px-2.5 py-2 border flex flex-col gap-0.5"
+                              style={{ borderColor: `${pd.color}35`, background: `${pd.color}0e` }}>
+                              <div className="flex items-baseline gap-1.5">
+                                <span className="font-bold font-mono tabular-nums leading-none"
+                                  style={{ fontSize: perkDisplays.length === 1 ? 22 : 18, color: pd.color, textShadow: `0 0 14px ${pd.color}55` }}>
+                                  {pd.value}
+                                </span>
+                                <span className="text-[10px] font-mono font-semibold" style={{ color: `${pd.color}cc` }}>{pd.unit}</span>
+                              </div>
+                              <span className="text-[9px] text-gray-400 capitalize leading-none">{pd.desc}</span>
+                            </div>
+                          ))}
+                        </div>
                       )}
-                      {!isPotion && !isPlant && <p className="text-[10px] text-gray-300"><span className="text-gray-500">Drop rate:</span> ~{rate}%</p>}
-                      <p className="text-[10px] text-gray-300"><span className="text-gray-500">Effect:</span> {getItemPerkDescription(inspectItem)}</p>
+
+                      {isPlant && <p className="text-[10px] text-lime-400/80 font-mono">🌾 Farm harvest · sell on Marketplace</p>}
+                      {inspectItem.perkType === 'cosmetic' && <p className="text-[10px] text-gray-400">Visual cosmetic — no gameplay effect.</p>}
+
                       {isPotion && (
-                        <p className={`text-[10px] font-mono ${consumed >= POTION_MAX ? 'text-amber-400' : 'text-gray-400'}`}>
-                          Consumed: {consumed}/{POTION_MAX}{consumed >= POTION_MAX ? ' — MAXED' : ''}
-                        </p>
+                        <div>
+                          <div className="flex items-center justify-between text-[8px] font-mono mb-1">
+                            <span className="text-gray-500">Consumed</span>
+                            <span className={consumed >= POTION_MAX ? 'text-amber-400' : 'text-gray-400'}>
+                              {consumed}/{POTION_MAX}{consumed >= POTION_MAX ? ' · MAXED' : ''}
+                            </span>
+                          </div>
+                          <div className="h-[3px] rounded-full bg-white/[0.07] overflow-hidden">
+                            <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, (consumed / POTION_MAX) * 100)}%`, background: consumed >= POTION_MAX ? '#f59e0b' : inspectTheme.color }} />
+                          </div>
+                        </div>
                       )}
+
+                      <div className="flex items-center gap-2 text-[9px] font-mono pt-0.5 border-t border-white/[0.05]">
+                        <span className="text-gray-500">IP</span>
+                        <span style={{ color: inspectTheme.color }}>{ip}</span>
+                        <span className="text-white/20">·</span>
+                        <span className="text-gray-500">Wt</span>
+                        <span className="text-gray-300">{baseWt}</span>
+                        {rate !== null && <>
+                          <span className="text-white/20">·</span>
+                          <span className="text-gray-500">~{rate}% drop</span>
+                        </>}
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {/* Seed stats */}
+                {inspectSeed && (
+                  <div className="mt-2.5 space-y-1.5">
+                    <div className="grid grid-cols-2 gap-1.5">
+                      <div className="rounded-lg px-2.5 py-2 border flex flex-col gap-0.5" style={{ borderColor: `${inspectTheme.color}35`, background: `${inspectTheme.color}0e` }}>
+                        <span className="text-[11px] font-mono font-bold" style={{ color: inspectTheme.color }}>{formatGrowTime(inspectSeed.growTimeSeconds)}</span>
+                        <span className="text-[9px] text-gray-400">Grow time</span>
+                      </div>
+                      <div className="rounded-lg px-2.5 py-2 border flex flex-col gap-0.5" style={{ borderColor: `${inspectTheme.color}35`, background: `${inspectTheme.color}0e` }}>
+                        <span className="text-[11px] font-mono font-bold" style={{ color: inspectTheme.color }}>{inspectSeed.yieldMin}–{inspectSeed.yieldMax}</span>
+                        <span className="text-[9px] text-gray-400">Yield</span>
+                      </div>
+                    </div>
+                    <p className="text-[9px] text-gray-500 font-mono">Sell value: {SEED_SELL_PRICE[inspectSeed.rarity] ?? 5}g each</p>
+                  </div>
+                )}
+
+                {/* Chest / pending description */}
+                <div className="mt-2 flex-1">
+                  {inspectSlot.kind === 'chest' && (
+                    <p className="text-[10px] text-gray-400">Open to roll a random item from this bag's loot pool.</p>
+                  )}
+                  {inspectSlot.kind === 'pending' && (
+                    <p className="text-[10px] text-gray-400">Activity drop waiting in inbox. Claim to open.</p>
+                  )}
+                </div>
+
+                {/* Action buttons */}
+                <div className="mt-3 flex gap-1.5">
+                  {inspectSlot.kind === 'seed' && inspectSeed ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => { playClickSound(); setInspectSlotId(null); onNavigateFarm?.() }}
+                        className="flex-1 text-[10px] py-1.5 rounded-lg border font-semibold transition-all active:scale-[0.97] hover:brightness-110"
+                        style={{ color: inspectTheme.color, borderColor: inspectTheme.border, backgroundColor: `${inspectTheme.color}1e` }}
+                      >
+                        Plant
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          playClickSound()
+                          const price = SEED_SELL_PRICE[inspectSeed.rarity] ?? 5
+                          addGold(price)
+                          removeSeed(inspectSeed.id, 1)
+                          if ((farmSeeds[inspectSeed.id] ?? 0) <= 1) setInspectSlotId(null)
+                        }}
+                        className="flex-1 text-[10px] py-1.5 rounded-lg border border-amber-500/35 text-amber-300 hover:bg-amber-500/12 font-semibold transition-all active:scale-[0.97]"
+                      >
+                        Sell ({SEED_SELL_PRICE[inspectSeed.rarity] ?? 5}g)
+                      </button>
                     </>
-                  )
-                })()}
-                {inspectSlot.kind === 'chest' && (
-                  <p className="text-[10px] text-gray-300">Bag can be opened to roll a random item.</p>
-                )}
-                {inspectSlot.kind === 'pending' && (
-                  <p className="text-[10px] text-gray-300">Pending drop from activity. Claim it first.</p>
-                )}
-              </div>
-              <div className="mt-3 flex gap-2 flex-wrap">
-                {(() => {
-                  const isPlant = inspectSlot.kind === 'item' && LOOT_ITEMS.find((x) => x.id === inspectSlot.itemId)?.slot === 'plant'
-                  const isConsumable = inspectSlot.kind === 'item' && LOOT_ITEMS.find((x) => x.id === inspectSlot.itemId)?.slot === 'consumable'
-                  const isMaxed = isConsumable && isPotionMaxed(inspectSlot.kind === 'item' ? inspectSlot.itemId : '')
-                  const isGearLocked = inBattle && inspectSlot.kind === 'item' && !isConsumable
-                  const disabled = isPlant || isMaxed
-                  return (
-                    <button
-                      type="button"
-                      disabled={disabled}
-                      onClick={() => {
-                        playClickSound()
-                        runPrimaryAction(inspectSlot)
-                      }}
-                      className={`flex-1 min-w-0 text-[10px] py-1.5 rounded border font-semibold transition-colors ${
-                        disabled || isGearLocked ? 'border-white/10 text-gray-600 cursor-not-allowed' : ''
-                      }`}
-                      style={disabled || isGearLocked ? undefined : { color: inspectTheme.color, borderColor: inspectTheme.border, backgroundColor: `${inspectTheme.color}22` }}
-                    >
-                      {getPrimaryActionLabel(inspectSlot)}
-                    </button>
-                  )
-                })()}
-                {inspectSlot.kind === 'item' && !inspectSlot.equipped && !MARKETPLACE_BLOCKED_ITEMS.includes(inspectSlot.itemId) && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      playClickSound()
-                      setListForSaleTarget(inspectSlot.itemId)
-                      setInspectSlotId(null)
-                    }}
-                    className="flex-1 min-w-0 text-[10px] py-1.5 rounded border border-amber-500/40 text-amber-300 hover:bg-amber-500/15 font-semibold"
-                  >
-                    List for sale
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    playClickSound()
-                    runDeleteAction(inspectSlot)
-                  }}
-                  className="flex-1 min-w-0 text-[10px] py-1.5 rounded border border-red-400/35 text-red-300 hover:bg-red-400/10"
-                >
-                  Delete
-                </button>
+                  ) : (
+                    <>
+                      {(() => {
+                        const isPlant = inspectSlot.kind === 'item' && LOOT_ITEMS.find((x) => x.id === inspectSlot.itemId)?.slot === 'plant'
+                        const isConsumable = inspectSlot.kind === 'item' && LOOT_ITEMS.find((x) => x.id === inspectSlot.itemId)?.slot === 'consumable'
+                        const isMaxed = isConsumable && isPotionMaxed(inspectSlot.kind === 'item' ? inspectSlot.itemId : '')
+                        const isGearLocked = inBattle && inspectSlot.kind === 'item' && !isConsumable
+                        const disabled = isPlant || isMaxed
+                        return (
+                          <button
+                            type="button"
+                            disabled={disabled}
+                            onClick={() => { playClickSound(); runPrimaryAction(inspectSlot) }}
+                            className={`flex-1 text-[10px] py-1.5 rounded-lg border font-semibold transition-all active:scale-[0.97] ${
+                              disabled || isGearLocked ? 'border-white/[0.08] text-gray-600 cursor-not-allowed bg-transparent' : 'hover:brightness-110'
+                            }`}
+                            style={disabled || isGearLocked ? undefined : { color: inspectTheme.color, borderColor: inspectTheme.border, backgroundColor: `${inspectTheme.color}1e` }}
+                          >
+                            {getPrimaryActionLabel(inspectSlot)}
+                          </button>
+                        )
+                      })()}
+                      {inspectSlot.kind === 'item' && !inspectSlot.equipped && !MARKETPLACE_BLOCKED_ITEMS.includes(inspectSlot.itemId) && (
+                        <button
+                          type="button"
+                          onClick={() => { playClickSound(); setListForSaleTarget(inspectSlot.itemId); setInspectSlotId(null) }}
+                          className="flex-1 text-[10px] py-1.5 rounded-lg border border-amber-500/35 text-amber-300 hover:bg-amber-500/12 font-semibold transition-all active:scale-[0.97]"
+                        >
+                          Sell
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => { playClickSound(); runDeleteAction(inspectSlot) }}
+                        className="w-8 h-full flex items-center justify-center rounded-lg border border-red-400/25 text-red-400/70 hover:text-red-300 hover:bg-red-400/10 transition-all active:scale-[0.97] text-[12px]"
+                        title="Delete"
+                      >🗑</button>
+                    </>
+                  )}
+                </div>
               </div>
             </motion.div>
           </motion.div>
@@ -934,53 +919,80 @@ export function InventoryPage({ onBack }: { onBack: () => void }) {
               style={{ left: contextMenu.x, top: contextMenu.y }}
               onClick={(e) => e.stopPropagation()}
             >
-              {(() => {
-                const isPlant = slot.kind === 'item' && LOOT_ITEMS.find((x) => x.id === slot.itemId)?.slot === 'plant'
-                const isConsumable = slot.kind === 'item' && LOOT_ITEMS.find((x) => x.id === slot.itemId)?.slot === 'consumable'
-                const isMaxed = isConsumable && isPotionMaxed(slot.kind === 'item' ? slot.itemId : '')
-                const isGearLocked = inBattle && slot.kind === 'item' && !isConsumable
-                const disabled = isPlant || isMaxed
+              {slot.kind === 'seed' ? (() => {
+                const seedDef = SEED_DEFS.find((x) => x.id === slot.seedId)
                 return (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => { playClickSound(); setContextMenu(null); onNavigateFarm?.() }}
+                      className="block w-full text-left text-[11px] px-2 py-1 rounded text-cyber-neon hover:bg-cyber-neon/15"
+                    >Plant</button>
+                    {seedDef && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          playClickSound()
+                          addGold(SEED_SELL_PRICE[seedDef.rarity] ?? 5)
+                          removeSeed(seedDef.id, 1)
+                          setContextMenu(null)
+                        }}
+                        className="block w-full text-left text-[11px] px-2 py-1 rounded text-amber-300 hover:bg-amber-500/15"
+                      >Sell ({SEED_SELL_PRICE[seedDef.rarity] ?? 5}g)</button>
+                    )}
+                  </>
+                )
+              })() : (
+                <>
+                  {(() => {
+                    const isPlant = slot.kind === 'item' && LOOT_ITEMS.find((x) => x.id === slot.itemId)?.slot === 'plant'
+                    const isConsumable = slot.kind === 'item' && LOOT_ITEMS.find((x) => x.id === slot.itemId)?.slot === 'consumable'
+                    const isMaxed = isConsumable && isPotionMaxed(slot.kind === 'item' ? slot.itemId : '')
+                    const isGearLocked = inBattle && slot.kind === 'item' && !isConsumable
+                    const disabled = isPlant || isMaxed
+                    return (
+                      <button
+                        type="button"
+                        disabled={disabled}
+                        onClick={() => {
+                          playClickSound()
+                          runPrimaryAction(slot)
+                          if (!isGearLocked) setContextMenu(null)
+                        }}
+                        className={`block w-full text-left text-[11px] px-2 py-1 rounded ${
+                          disabled || isGearLocked ? 'text-gray-600 cursor-not-allowed' : 'text-cyber-neon hover:bg-cyber-neon/15'
+                        }`}
+                      >
+                        {getPrimaryActionLabel(slot)}
+                      </button>
+                    )
+                  })()}
+                  {slot.kind === 'item' && !slot.equipped && !MARKETPLACE_BLOCKED_ITEMS.includes(slot.itemId) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        playClickSound()
+                        setListForSaleTarget(slot.itemId)
+                        setContextMenu(null)
+                      }}
+                      className="block w-full text-left text-[11px] px-2 py-1 rounded text-amber-300 hover:bg-amber-500/15"
+                    >
+                      List for sale
+                    </button>
+                  )}
                   <button
                     type="button"
-                    disabled={disabled}
                     onClick={() => {
                       playClickSound()
-                      runPrimaryAction(slot)
-                      if (!isGearLocked) setContextMenu(null)
+                      runDeleteAction(slot)
+                      setContextMenu(null)
                     }}
-                    className={`block w-full text-left text-[11px] px-2 py-1 rounded ${
-                      disabled || isGearLocked ? 'text-gray-600 cursor-not-allowed' : 'text-cyber-neon hover:bg-cyber-neon/15'
-                    }`}
+                    className="block w-full text-left text-[11px] px-2 py-1 rounded text-red-300 hover:bg-red-400/10"
                   >
-                    {getPrimaryActionLabel(slot)}
+                    Delete
                   </button>
-                )
-              })()}
-              {slot.kind === 'item' && !slot.equipped && !MARKETPLACE_BLOCKED_ITEMS.includes(slot.itemId) && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    playClickSound()
-                    setListForSaleTarget(slot.itemId)
-                    setContextMenu(null)
-                  }}
-                  className="block w-full text-left text-[11px] px-2 py-1 rounded text-amber-300 hover:bg-amber-500/15"
-                >
-                  List for sale
-                </button>
+                </>
               )}
-              <button
-                type="button"
-                onClick={() => {
-                  playClickSound()
-                  runDeleteAction(slot)
-                  setContextMenu(null)
-                }}
-                className="block w-full text-left text-[11px] px-2 py-1 rounded text-red-300 hover:bg-red-400/10"
-              >
-                Delete
-              </button>
             </div>
           )
         })()}

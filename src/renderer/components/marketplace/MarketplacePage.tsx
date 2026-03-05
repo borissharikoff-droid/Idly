@@ -9,7 +9,7 @@ import { useGoldStore } from '../../stores/goldStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useInventoryStore } from '../../stores/inventoryStore'
 import { useNavBadgeStore } from '../../stores/navBadgeStore'
-import { useNotificationStore } from '../../stores/notificationStore'
+
 import { syncInventoryToSupabase } from '../../services/supabaseSync'
 import { supabase } from '../../lib/supabase'
 import { useFarmStore } from '../../stores/farmStore'
@@ -60,7 +60,7 @@ function ListingCard({
       >
         <LootVisualShared
           icon={item?.icon ?? farmDisplay?.icon ?? '📦'}
-          image={item?.image}
+          image={item?.image ?? farmDisplay?.image}
           className="w-9 h-9 object-contain"
           scale={item?.renderScale ?? 1}
         />
@@ -134,7 +134,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
   const [buyConfirmTarget, setBuyConfirmTarget] = useState<ListingWithSeller | null>(null)
   const [buyQty, setBuyQty] = useState(1)
   const [noGoldAlert, setNoGoldAlert] = useState<ListingWithSeller | null>(null)
-  const [noGoldTimer, setNoGoldTimer] = useState<ReturnType<typeof setTimeout> | null>(null)
+  const noGoldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [cancellingId, setCancellingId] = useState<string | null>(null)
   const [cancelConfirmTarget, setCancelConfirmTarget] = useState<ListingWithSeller | null>(null)
   const [cancelError, setCancelError] = useState<string | null>(null)
@@ -264,33 +264,8 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
     const channel = supabase
       .channel('marketplace-listings-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'marketplace_listings' }, async () => {
-        // Snapshot my active listing IDs before refresh
-        const prevMyIds = new Set(
-          listingsRef.current.filter((l) => l.seller_id === user.id).map((l) => l.id)
-        )
-        const newListings = await loadListings(false)
+        await loadListings(false)
         syncFromSupabase(user.id).catch(() => {})
-        // Detect sold listings (disappeared without being cancelled by me)
-        if (prevMyIds.size > 0) {
-          const newIds = new Set(newListings.map((l) => l.id))
-          for (const prevId of prevMyIds) {
-            if (!newIds.has(prevId) && !cancelledListingIdsRef.current.has(prevId)) {
-              const sold = listingsRef.current.find((l) => l.id === prevId)
-              if (sold) {
-                const soldItem = LOOT_ITEMS.find((x) => x.id === sold.item_id)
-                const soldFarm = !soldItem ? getFarmItemDisplay(sold.item_id) : null
-                const soldName = soldItem?.name ?? soldFarm?.name ?? sold.item_id
-                useNotificationStore.getState().push({
-                  type: 'marketplace_sale',
-                  icon: '🛒',
-                  title: 'Item sold!',
-                  body: `${soldName}${sold.quantity > 1 ? ` ×${sold.quantity}` : ''} — ${sold.price_gold} 🪙`,
-                })
-                useNavBadgeStore.getState().addMarketplaceSale()
-              }
-            }
-          }
-        }
       })
       .subscribe()
     return () => { supabase.removeChannel(channel).catch(() => {}) }
@@ -324,10 +299,9 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
   }, [buyConfirmTarget, cancelConfirmTarget, noGoldAlert])
 
   const showNoGoldAlert = (listing: ListingWithSeller) => {
-    if (noGoldTimer) clearTimeout(noGoldTimer)
+    if (noGoldTimerRef.current) clearTimeout(noGoldTimerRef.current)
     setNoGoldAlert(listing)
-    const t = setTimeout(() => setNoGoldAlert(null), 4000)
-    setNoGoldTimer(t)
+    noGoldTimerRef.current = setTimeout(() => setNoGoldAlert(null), 4000)
   }
 
   const handleBuyClick = (listing: ListingWithSeller) => {
@@ -401,7 +375,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
     for (const id of ids) cancelledListingIdsRef.current.add(id)
     setCancellingId(ids[0] ?? null)
     setCancelGroupTarget(null)
-    for (const id of ids) await cancelListing(id).catch(() => {})
+    await Promise.all(ids.map((id) => cancelListing(id).catch(() => {})))
     setCancellingId(null)
     playClickSound()
     const { items, chests } = useInventoryStore.getState()
@@ -719,7 +693,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                         >
                           <LootVisualShared
                             icon={item?.icon ?? farmDisplay?.icon ?? '📦'}
-                            image={item?.image}
+                            image={item?.image ?? farmDisplay?.image}
                             className="w-6 h-6 object-contain"
                             scale={item?.renderScale ?? 1}
                           />
@@ -834,7 +808,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                     >
                       <LootVisualShared
                         icon={alertItem?.icon ?? alertFarm?.icon ?? '📦'}
-                        image={alertItem?.image}
+                        image={alertItem?.image ?? alertFarm?.image}
                         className="w-14 h-14 object-contain"
                         scale={alertItem?.renderScale ?? 1}
                       />
@@ -919,7 +893,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                       >
                         <LootVisualShared
                           icon={item?.icon ?? confirmFarm?.icon ?? '📦'}
-                          image={item?.image}
+                          image={item?.image ?? confirmFarm?.image}
                           className="w-11 h-11 object-contain"
                           scale={item?.renderScale ?? 1}
                         />

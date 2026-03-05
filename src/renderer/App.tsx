@@ -12,8 +12,7 @@ import { SkillsPage } from './components/skills/SkillsPage'
 import { StreakOverlay } from './components/animations/StreakOverlay'
 import { LootDrop } from './components/alerts/LootDrop'
 import { ChestDrop } from './components/alerts/ChestDrop'
-import { FriendToasts } from './components/alerts/FriendToasts'
-import { ArenaToasts } from './components/alerts/ArenaToasts'
+import { ToastStack } from './components/alerts/ToastStack'
 import { VictoryResultModal } from './components/arena/VictoryResultModal'
 import { useArenaBattleTick } from './hooks/useArenaBattleTick'
 import { useArenaStore } from './stores/arenaStore'
@@ -23,6 +22,8 @@ import { InventoryPage } from './components/inventory/InventoryPage'
 import { useFriends } from './hooks/useFriends'
 import { useMessageNotifier } from './hooks/useMessageNotifier'
 import { useAnnouncements } from './hooks/useAnnouncements'
+import { useMarketplaceSaleNotifier } from './hooks/useMarketplaceSaleNotifier'
+import { useCraftTick } from './hooks/useCraftTick'
 import { UpdateBanner } from './components/UpdateBanner'
 import { useSessionStore } from './stores/sessionStore'
 import { useChatTargetStore } from './stores/chatTargetStore'
@@ -75,6 +76,7 @@ const FriendsPage = lazy(() => import('./components/friends/FriendsPage').then((
 const MarketplacePage = lazy(() => import('./components/marketplace/MarketplacePage').then((m) => ({ default: m.MarketplacePage })))
 const ArenaPage = lazy(() => import('./components/arena/ArenaPage').then((m) => ({ default: m.ArenaPage })))
 const FarmPage = lazy(() => import('./components/farm/FarmPage').then((m) => ({ default: m.FarmPage })))
+const CraftPage = lazy(() => import('./components/craft/CraftPage').then((m) => ({ default: m.CraftPage })))
 
 function PageFallback() {
   return (
@@ -114,8 +116,8 @@ function MarketplaceFallback() {
   )
 }
 
-export type TabId = 'home' | 'inventory' | 'skills' | 'stats' | 'profile' | 'friends' | 'marketplace' | 'arena' | 'farm' | 'settings'
-const TAB_ORDER: TabId[] = ['home', 'inventory', 'skills', 'stats', 'profile', 'friends', 'marketplace', 'arena', 'farm', 'settings']
+export type TabId = 'home' | 'inventory' | 'skills' | 'stats' | 'profile' | 'friends' | 'marketplace' | 'arena' | 'farm' | 'craft' | 'settings'
+const TAB_ORDER: TabId[] = ['home', 'inventory', 'skills', 'stats', 'profile', 'friends', 'marketplace', 'arena', 'farm', 'craft', 'settings']
 
 const PAGE_SLIDE = {
   initial: (dir: number) => ({ opacity: 0, x: dir * 16 }),
@@ -162,6 +164,7 @@ export default function App() {
   const [isBackground, setIsBackground] = useState(false)
   const lastHiddenActivityPushRef = useRef(0)
   const healthCheckDoneRef = useRef(false)
+  const isBackgroundRef = useRef(false)
   const { user } = useAuthStore()
   const handleEscapeToHome = useCallback(() => {
     if (activeTab !== 'home') navigateTo('home')
@@ -183,7 +186,9 @@ export default function App() {
   const friendsModel = useFriends() // single orchestrator for friends/presence/notifications
   useMessageNotifier() // sound, taskbar badge, toasts on new messages
   useAnnouncements()   // fetch missed + realtime announcements → notification bell
+  useMarketplaceSaleNotifier() // bell notification when someone buys the user's listing
   useArenaBattleTick(activeTab) // battle completion: toast+bell when off Arena, modal when on Arena
+  useCraftTick()                // crafting job queue — runs on all tabs
   const arenaResultModal = useArenaStore((s) => s.resultModal)
   const setArenaResultModal = useArenaStore((s) => s.setResultModal)
 
@@ -300,6 +305,7 @@ export default function App() {
 
   const handleNavigateProfile = useCallback(() => navigateTo('profile'), [navigateTo])
   const handleNavigateInventory = useCallback(() => navigateTo('inventory'), [navigateTo])
+  const handleNavigateFarm = useCallback(() => navigateTo('farm'), [navigateTo])
 
   const handleNavigateToChat = useCallback((friendId: string) => {
     useChatTargetStore.getState().setFriendId(friendId)
@@ -309,7 +315,11 @@ export default function App() {
   // Activity update listener — must live at App level so it works on ALL tabs
   const setCurrentActivity = useSessionStore((s) => s.setCurrentActivity)
   useEffect(() => {
-    const onVisibility = () => setIsBackground(typeof document !== 'undefined' ? document.hidden : false)
+    const onVisibility = () => {
+      const hidden = typeof document !== 'undefined' ? document.hidden : false
+      setIsBackground(hidden)
+      isBackgroundRef.current = hidden
+    }
     onVisibility()
     document.addEventListener('visibilitychange', onVisibility)
     return () => document.removeEventListener('visibilitychange', onVisibility)
@@ -319,7 +329,7 @@ export default function App() {
     const api = typeof window !== 'undefined' ? window.electronAPI : null
     if (!api?.tracker?.onActivityUpdate) return
     const unsub = api.tracker.onActivityUpdate((a) => {
-      if (isBackground) {
+      if (isBackgroundRef.current) {
         const now = Date.now()
         // Eco mode: throttle foreground-window UI updates while app is hidden.
         if (now - lastHiddenActivityPushRef.current < 5000) return
@@ -331,7 +341,7 @@ export default function App() {
       if (a) setCurrentActivity(a as Parameters<typeof setCurrentActivity>[0])
     }).catch(() => {})
     return unsub
-  }, [setCurrentActivity, isBackground])
+  }, [setCurrentActivity])
 
   useEffect(() => {
     // Allow grind/XP/drop ticks on any foreground tab (home, inventory, friends, etc.).
@@ -390,7 +400,7 @@ export default function App() {
               )}
               {activeTab === 'inventory' && (
                 <motion.div key="inventory" custom={slideDir} variants={PAGE_SLIDE} initial="initial" animate="animate" exit="exit">
-                  <InventoryPage onBack={() => navigateTo('home')} />
+                  <InventoryPage onBack={() => navigateTo('home')} onNavigateFarm={handleNavigateFarm} />
                 </motion.div>
               )}
               {activeTab === 'skills' && (
@@ -440,6 +450,13 @@ export default function App() {
                   </Suspense>
                 </motion.div>
               )}
+              {activeTab === 'craft' && (
+                <motion.div key="craft" custom={slideDir} variants={PAGE_SLIDE} initial="initial" animate="animate" exit="exit">
+                  <Suspense fallback={<PageFallback />}>
+                    <CraftPage />
+                  </Suspense>
+                </motion.div>
+              )}
               {activeTab === 'settings' && (
                 <motion.div key="settings" custom={slideDir} variants={PAGE_SLIDE} initial="initial" animate="animate" exit="exit">
                   <SettingsPage />
@@ -455,8 +472,7 @@ export default function App() {
           </AnimatePresence>
           <LootDrop />
           <ChestDrop />
-          <FriendToasts />
-          <ArenaToasts />
+          <ToastStack />
           <VictoryResultModal
             open={Boolean(arenaResultModal)}
             victory={arenaResultModal?.victory ?? false}
@@ -465,6 +481,8 @@ export default function App() {
             bossName={arenaResultModal?.bossName}
             goldLost={arenaResultModal?.goldLost}
             chest={arenaResultModal?.chest}
+            lostItemName={arenaResultModal?.lostItemName}
+            lostItemIcon={arenaResultModal?.lostItemIcon}
             onClose={() => setArenaResultModal(null)}
           />
           <MessageBanner onNavigateToChat={handleNavigateToChat} />

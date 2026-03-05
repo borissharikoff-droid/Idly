@@ -7,7 +7,7 @@ import { getSeedZipDisplay, type SeedZipTier } from '../../lib/farming'
 import { useAdminConfigStore } from '../../stores/adminConfigStore'
 import { MOTION } from '../../lib/motion'
 import { PixelConfetti } from '../home/PixelConfetti'
-import { playClickSound, playLootRaritySound } from '../../lib/sounds'
+import { playClickSound, playLootRaritySound, playChestOpeningSound } from '../../lib/sounds'
 import { track } from '../../lib/analytics'
 
 // ─── Per-rarity config ───────────────────────────────────────────────────────
@@ -79,6 +79,14 @@ const ANIM: Record<string, {
 }
 
 function getAnim(rarity: string) { return ANIM[rarity] ?? ANIM.common }
+
+// Pre-computed per rarity — never recreated on render
+const SHAKE_FRAMES: Record<string, number[]> = Object.fromEntries(
+  Object.entries(ANIM).map(([k, cfg]) => [k, makeShakeFrames(cfg.shakeMag, cfg.shakeCount)]),
+)
+const SCALE_FRAMES: Record<string, number[]> = Object.fromEntries(
+  Object.entries(ANIM).map(([k, cfg]) => [k, makeScaleFrames(cfg.shakeCount)]),
+)
 
 /** Build rotation keyframe array: [0, +mag, -mag, +mag, -mag, ..., 0] */
 function makeShakeFrames(mag: number, count: number): number[] {
@@ -160,14 +168,15 @@ export function ChestOpenModal({
     scrollRef.current?.scrollBy({ left: dir === 'right' ? 160 : -160, behavior: 'smooth' })
   }, [])
 
-  const shakeFrames = makeShakeFrames(animCfg.shakeMag, animCfg.shakeCount)
-  const scaleFrames = makeScaleFrames(animCfg.shakeCount)
+  const shakeFrames = SHAKE_FRAMES[chestRarity] ?? SHAKE_FRAMES.common
+  const scaleFrames = SCALE_FRAMES[chestRarity] ?? SCALE_FRAMES.common
 
   useEffect(() => {
     if (!open) { setPhase('opening'); return }
     setPhase('opening')
     setScrollPos('start')
     if (scrollRef.current) scrollRef.current.scrollLeft = 0
+    playChestOpeningSound(chestRarity)
     const t = setTimeout(() => setPhase('revealed'), animCfg.openMs)
     return () => clearTimeout(t)
   }, [open, revealKey, animCfg.openMs])
@@ -208,10 +217,10 @@ export function ChestOpenModal({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2, ease: 'easeOut' }}
           className="fixed inset-0 z-[120] flex items-center justify-center p-4"
-          onClick={onClose}
+          onClick={isRevealed ? onClose : undefined}
         >
           {/* ── Backdrop — stable, never re-animates on chain-open ── */}
-          <div className="absolute inset-0 bg-black/85" />
+          <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" />
 
           {/* Confetti — keyed so it re-fires on each open */}
           {isRevealed && (
@@ -345,18 +354,27 @@ export function ChestOpenModal({
                 >
                   <motion.div
                     animate={!isRevealed
-                      ? { rotate: shakeFrames, scale: scaleFrames }
-                      : { rotate: 0, scale: 1.08 }
+                      ? {
+                          rotate: shakeFrames,
+                          scale: scaleFrames,
+                          boxShadow: isLegendary
+                            ? [`0 0 18px ${chestTheme.glow}88, 0 0 38px ${chestTheme.glow}44`, `0 0 28px ${chestTheme.glow}CC, 0 0 52px ${chestTheme.glow}66`]
+                            : `0 0 18px ${chestTheme.glow}88`,
+                        }
+                      : { rotate: 0, scale: 1.08, boxShadow: `0 0 32px ${chestTheme.glow}CC` }
                     }
                     transition={!isRevealed
-                      ? { duration: animCfg.chestDur, ease: 'easeInOut', times: shakeFrames.map((_, i) => i / (shakeFrames.length - 1)) }
+                      ? {
+                          rotate: { duration: animCfg.chestDur, ease: 'easeInOut', times: shakeFrames.map((_, i) => i / (shakeFrames.length - 1)) },
+                          scale: { duration: animCfg.chestDur, ease: 'easeInOut', times: scaleFrames.map((_, i) => i / (scaleFrames.length - 1)) },
+                          boxShadow: isLegendary ? { duration: 0.7, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' } : { duration: 0.5 },
+                        }
                       : { type: 'spring', stiffness: 220, damping: 16 }
                     }
                     className="w-[76px] h-[76px] rounded-2xl border flex items-center justify-center relative overflow-hidden"
                     style={{
                       borderColor: chestTheme.border,
                       background: `radial-gradient(circle at 50% 35%, ${chestTheme.glow}55 0%, rgba(8,8,16,0.92) 70%)`,
-                      boxShadow: `0 0 18px ${chestTheme.glow}88`,
                     }}
                   >
                     {chest.image ? (
@@ -379,7 +397,9 @@ export function ChestOpenModal({
                       exit={{ opacity: 0, y: -6 }}
                       transition={{ duration: 0.2, ease: 'easeOut' }}
                     >
-                      {isRevealed ? 'Bag opened' : 'Opening\u2026'}
+                      {isRevealed
+                        ? ({ common: 'Bag opened', rare: 'Rare drop!', epic: 'Epic drop!', legendary: 'Legendary!!', mythic: 'Mythic!!' } as Record<string, string>)[item.rarity] ?? 'Bag opened'
+                        : 'Opening\u2026'}
                     </motion.p>
                   </AnimatePresence>
                 </div>
@@ -482,11 +502,21 @@ export function ChestOpenModal({
                           animate={{ x: itemX, y: itemY }}
                           transition={{ type: 'spring', stiffness: 220, damping: 22 }}
                         >
-                          {item.image ? (
-                            <img src={item.image} alt="" className="w-[60px] h-[60px] object-contain select-none" style={{ imageRendering: 'pixelated' }} draggable={false} />
-                          ) : (
-                            <p className="text-4xl">{item.icon}</p>
-                          )}
+                          <motion.div
+                            key={`icon:${revealKey}`}
+                            initial={{ scale: 0.6, opacity: 0 }}
+                            animate={isRevealed
+                              ? { scale: ({ common: 1.0, rare: 1.04, epic: 1.08, legendary: 1.14, mythic: 1.18 } as Record<string, number>)[item.rarity] ?? 1.0, opacity: 1 }
+                              : { scale: 0.6, opacity: 0 }
+                            }
+                            transition={{ type: 'spring', stiffness: ({ common: 300, rare: 320, epic: 350, legendary: 400, mythic: 450 } as Record<string, number>)[item.rarity] ?? 300, damping: 18 }}
+                          >
+                            {item.image ? (
+                              <img src={item.image} alt="" className="w-[60px] h-[60px] object-contain select-none" style={{ imageRendering: 'pixelated' }} draggable={false} />
+                            ) : (
+                              <p className="text-4xl">{item.icon}</p>
+                            )}
+                          </motion.div>
                         </motion.div>
                         <motion.p
                           className="text-sm text-white font-semibold mt-2 leading-tight"
@@ -495,23 +525,32 @@ export function ChestOpenModal({
                         >
                           {item.name}
                         </motion.p>
-                        <p className="text-[10px] font-mono uppercase tracking-wider mt-0.5" style={{ color: rarityTheme.color }}>
+                        <motion.p
+                          key={`rarity:${revealKey}`}
+                          className="text-[10px] font-mono uppercase tracking-wider mt-0.5"
+                          style={{ color: rarityTheme.color }}
+                          animate={isRevealed && item.rarity !== 'common' ? { scale: [1, 1.22, 1] } : {}}
+                          transition={{ duration: 0.38, delay: 0.1 }}
+                        >
                           {item.rarity}
-                        </p>
+                        </motion.p>
                         <p className="text-[10px] text-gray-400 mt-1 leading-snug">{getItemPerkDescription(item)}</p>
                       </motion.div>
 
                       {/* Gold bonus card */}
                       {goldDropped > 0 && (
-                        <div
+                        <motion.div
                           className="flex-none w-[130px] snap-start rounded-xl border border-amber-500/25 flex flex-col items-center justify-center gap-2 py-4 relative overflow-hidden"
                           style={{ background: 'linear-gradient(160deg, rgba(245,158,11,0.10) 0%, rgba(8,8,16,0.95) 65%)' }}
+                          initial={{ opacity: 0, x: 20, scale: 0.88 }}
+                          animate={{ opacity: isRevealed ? 1 : 0, x: isRevealed ? 0 : 20, scale: isRevealed ? 1 : 0.88 }}
+                          transition={{ type: 'spring', stiffness: 280, damping: 24, delay: 0.07 }}
                         >
                           <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 50% 35%, rgba(245,158,11,0.18) 0%, transparent 65%)' }} />
                           <span className="text-3xl relative">🪙</span>
                           <span className="text-xl font-bold text-amber-400 tabular-nums relative">+{goldDropped}</span>
                           <span className="text-[9px] font-mono text-amber-500/60 uppercase tracking-widest relative">Gold</span>
-                        </div>
+                        </motion.div>
                       )}
 
                       {/* Seed Zip bonus card */}
@@ -519,9 +558,12 @@ export function ChestOpenModal({
                         const zipTheme = getRarityTheme(seedZipTier)
                         const zipDisplay = getSeedZipDisplay(seedZipTier)
                         return (
-                          <div
+                          <motion.div
                             className="flex-none w-[130px] snap-start rounded-xl border flex flex-col items-center justify-center gap-2 py-4 relative overflow-hidden"
                             style={{ borderColor: zipTheme.border, background: `linear-gradient(160deg, ${zipTheme.glow}18 0%, rgba(8,8,16,0.95) 65%)` }}
+                            initial={{ opacity: 0, x: 20, scale: 0.88 }}
+                            animate={{ opacity: isRevealed ? 1 : 0, x: isRevealed ? 0 : 20, scale: isRevealed ? 1 : 0.88 }}
+                            transition={{ type: 'spring', stiffness: 280, damping: 24, delay: 0.14 }}
                           >
                             <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(circle at 50% 35%, ${zipTheme.glow}30 0%, transparent 65%)` }} />
                             {zipDisplay.image
@@ -529,7 +571,7 @@ export function ChestOpenModal({
                               : <span className="text-3xl relative">{zipDisplay.icon}</span>}
                             <span className="text-sm font-semibold text-center leading-tight px-2 relative" style={{ color: zipTheme.color }}>{zipDisplay.name}</span>
                             <span className="text-[9px] font-mono uppercase tracking-widest relative" style={{ color: `${zipTheme.color}88` }}>Seed Zip</span>
-                          </div>
+                          </motion.div>
                         )
                       })()}
 

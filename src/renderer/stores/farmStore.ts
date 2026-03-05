@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware'
 import {
   SLOT_UNLOCK_COSTS,
   MAX_FARM_SLOTS,
+  SEED_DEFS,
   getSeedById,
   rollSeedZipFromChest,
   rollSeedFromZip,
@@ -36,16 +37,22 @@ interface FarmState {
   planted: Partial<Record<number, PlantedSlot>>   // slot index → planted info
   seeds: Record<string, number>                   // seedId → count in storage
   seedZips: Record<SeedZipTier, number>           // tier → Seed Zip count
+  seedCabinetUnlocked: boolean
 
   unlockNextSlot: () => boolean
   plantSeed: (slotIndex: number, seedId: string) => void
+  cancelPlanting: (slotIndex: number) => boolean
   harvestSlot: (slotIndex: number) => HarvestResult | null
   harvestAll: () => HarvestResult[]
   rollSeedDrop: (chestType: ChestType) => SeedZipTier | null
   addSeed: (seedId: string, qty: number) => void
+  removeSeed: (seedId: string, qty: number) => void
+  unlockSeedCabinet: () => void
   addSeedZip: (tier: SeedZipTier, qty?: number) => void
   removeSeedZip: (tier: SeedZipTier, qty?: number) => void
   openSeedZip: (tier: SeedZipTier) => string | null
+  /** Transfer seeds from inventory into the cabinet (farmStore.seeds). Called when cabinet opens. */
+  transferSeedsFromInventory: () => void
   /** Merge cloud seeds into local (takes max). Used after sync. */
   mergeSeedsFromCloud: (cloudSeeds: Record<string, number>) => void
   /** Merge cloud seed zips into local (takes max). Used after sync. */
@@ -68,6 +75,7 @@ export const useFarmStore = create<FarmState>()(
       planted: {},
       seeds: {},
       seedZips: { common: 0, rare: 0, epic: 0, legendary: 0 },
+      seedCabinetUnlocked: false,
 
       unlockNextSlot() {
         const { unlockedSlots } = get()
@@ -111,8 +119,19 @@ export const useFarmStore = create<FarmState>()(
         grantFarmerXP(seed.xpOnPlant).catch(() => undefined)
       },
 
-      harvestSlot(slotIndex) {
+      cancelPlanting(slotIndex) {
         const { planted } = get()
+        const slot = planted[slotIndex]
+        if (!slot) return false
+        if (isSlotReady(slot)) return false
+        const newPlanted = { ...planted }
+        delete newPlanted[slotIndex]
+        set({ planted: newPlanted })
+        return true
+      },
+
+      harvestSlot(slotIndex) {
+        const { planted, seedZips } = get()
         const slot = planted[slotIndex]
         if (!slot || !isSlotReady(slot)) return null
 
@@ -126,7 +145,7 @@ export const useFarmStore = create<FarmState>()(
         delete newPlanted[slotIndex]
 
         // Bonus: chance to drop a Seed Zip on harvest
-        const newZips = { ...get().seedZips }
+        const newZips = { ...seedZips }
         let seedZipTier: SeedZipTier | null = null
         if (Math.random() < HARVEST_SEED_ZIP_CHANCE) {
           seedZipTier = rollHarvestSeedZipTier()
@@ -140,9 +159,9 @@ export const useFarmStore = create<FarmState>()(
       },
 
       harvestAll() {
-        const { planted } = get()
+        const { planted, seedZips } = get()
         const newPlanted = { ...planted }
-        const newZips = { ...get().seedZips }
+        const newZips = { ...seedZips }
         const results: HarvestResult[] = []
 
         for (const [idxStr, slot] of Object.entries(planted)) {
@@ -177,8 +196,22 @@ export const useFarmStore = create<FarmState>()(
       },
 
       addSeed(seedId, qty) {
+        // Seeds land in inventory; cabinet pulls them when opened
+        useInventoryStore.getState().addItem(seedId, qty)
+      },
+
+      removeSeed(seedId, qty) {
         const { seeds } = get()
-        set({ seeds: { ...seeds, [seedId]: (seeds[seedId] ?? 0) + qty } })
+        const current = seeds[seedId] ?? 0
+        const next = Math.max(0, current - qty)
+        const updated = { ...seeds }
+        if (next === 0) delete updated[seedId]
+        else updated[seedId] = next
+        set({ seeds: updated })
+      },
+
+      unlockSeedCabinet() {
+        set({ seedCabinetUnlocked: true })
       },
 
       addSeedZip(tier, qty = 1) {
@@ -192,24 +225,45 @@ export const useFarmStore = create<FarmState>()(
       },
 
       openSeedZip(tier) {
-        const { seedZips, seeds } = get()
+        const { seedZips } = get()
         if ((seedZips[tier] ?? 0) <= 0) return null
         const seedId = rollSeedFromZip(tier)
         const newZips = { ...seedZips, [tier]: seedZips[tier] - 1 }
         if (!seedId) { set({ seedZips: newZips }); return null }
-        set({ seedZips: newZips, seeds: { ...seeds, [seedId]: (seeds[seedId] ?? 0) + 1 } })
+        set({ seedZips: newZips })
+        // Seeds go to inventory first; cabinet pulls them when opened
+        useInventoryStore.getState().addItem(seedId, 1)
         return seedId
       },
 
-      mergeSeedsFromCloud(cloudSeeds) {
+      transferSeedsFromInventory() {
+        const invStore = useInventoryStore.getState()
         const { seeds } = get()
-        const merged: Record<string, number> = { ...seeds }
-        for (const [seedId, cloudQty] of Object.entries(cloudSeeds)) {
-          if (getSeedById(seedId) && (cloudQty ?? 0) > 0) {
-            merged[seedId] = Math.max(merged[seedId] ?? 0, cloudQty)
+        const newSeeds = { ...seeds }
+        let changed = false
+        for (const seed of SEED_DEFS) {
+          const qty = invStore.items[seed.id] ?? 0
+          if (qty > 0) {
+            newSeeds[seed.id] = (newSeeds[seed.id] ?? 0) + qty
+            invStore.deleteItem(seed.id, qty)
+            changed = true
           }
         }
-        set({ seeds: merged })
+        if (changed) set({ seeds: newSeeds })
+      },
+
+      mergeSeedsFromCloud(cloudSeeds) {
+        const invStore = useInventoryStore.getState()
+        const { seeds } = get()
+        for (const [seedId, cloudQty] of Object.entries(cloudSeeds)) {
+          if (!getSeedById(seedId) || !(cloudQty ?? 0)) continue
+          const cabinetQty = seeds[seedId] ?? 0
+          const inventoryQty = invStore.items[seedId] ?? 0
+          const totalLocal = cabinetQty + inventoryQty
+          if (cloudQty > totalLocal) {
+            invStore.addItem(seedId, cloudQty - totalLocal)
+          }
+        }
       },
 
       mergeSeedZipsFromCloud(cloudSeedZips) {
@@ -231,6 +285,7 @@ export const useFarmStore = create<FarmState>()(
         planted: s.planted,
         seeds: s.seeds,
         seedZips: s.seedZips,
+        seedCabinetUnlocked: s.seedCabinetUnlocked,
       }),
     },
   ),

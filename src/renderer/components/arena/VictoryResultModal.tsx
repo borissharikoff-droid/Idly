@@ -22,6 +22,8 @@ interface VictoryResultModalProps {
   bossName?: string
   goldLost?: number
   chest?: { type: string; name: string; icon: string; image?: string } | null
+  lostItemName?: string
+  lostItemIcon?: string
   onClose: () => void
 }
 
@@ -33,6 +35,8 @@ export function VictoryResultModal({
   bossName,
   goldLost = 0,
   chest,
+  lostItemName,
+  lostItemIcon,
   onClose,
 }: VictoryResultModalProps) {
   const [progress, setProgress] = useState(100)
@@ -162,14 +166,23 @@ export function VictoryResultModal({
                 </p>
               )}
 
+              {!victory && lostItemName && (
+                <div className="mt-2 flex items-center justify-center gap-1.5 rounded-lg bg-red-500/10 border border-red-500/25 px-3 py-1.5">
+                  <span className="text-base">{lostItemIcon}</span>
+                  <p className="text-[11px] text-red-300 font-semibold">{lostItemName} destroyed</p>
+                </div>
+              )}
+
               <p className="text-[11px] text-gray-500 mt-1.5">
                 {victory
                   ? gold > 0
                     ? 'Gold added to your wallet.'
                     : 'The boss has been defeated.'
-                  : goldLost > 0
-                    ? 'Gold lost. Gear up and try again.'
-                    : 'Gear up and try again.'}
+                  : lostItemName
+                    ? 'Item lost. Craft or buy gear and try again.'
+                    : goldLost > 0
+                      ? 'Gold lost. Gear up and try again.'
+                      : 'Gear up and try again.'}
               </p>
 
               {victory && chest && (() => {
