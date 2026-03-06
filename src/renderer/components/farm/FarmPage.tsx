@@ -594,19 +594,10 @@ function SeedZipRevealModal({ tier, seedId, onClose }: { tier: SeedZipTier; seed
 
 const ZIP_TIER_ORDER: SeedZipTier[] = ['common', 'rare', 'epic', 'legendary']
 
-const SEED_SELL_PRICE: Record<string, number> = {
-  common: 5,
-  rare: 20,
-  epic: 80,
-  legendary: 250,
-  mythic: 500,
-}
-
 function SeedCabinetSection() {
   const seeds = useFarmStore((s) => s.seeds)
   const seedCabinetUnlocked = useFarmStore((s) => s.seedCabinetUnlocked)
   const unlockSeedCabinet = useFarmStore((s) => s.unlockSeedCabinet)
-  const removeSeed = useFarmStore((s) => s.removeSeed)
   const transferSeedsFromInventory = useFarmStore((s) => s.transferSeedsFromInventory)
   const gold = useGoldStore((s) => s.gold)
   const addGold = useGoldStore((s) => s.addGold)
@@ -723,19 +714,6 @@ function SeedCabinetSection() {
                 <span className="text-sm font-mono font-bold shrink-0 mr-1" style={{ color: t.color }}>
                   ×{seeds[seed.id]}
                 </span>
-                <div className="flex gap-1 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      playClickSound()
-                      addGold(SEED_SELL_PRICE[seed.rarity] ?? 5)
-                      removeSeed(seed.id, 1)
-                    }}
-                    className="text-[9px] px-1.5 py-0.5 rounded border border-amber-500/35 text-amber-300 hover:bg-amber-500/15 transition-colors font-mono"
-                  >
-                    {SEED_SELL_PRICE[seed.rarity] ?? 5}g
-                  </button>
-                </div>
               </div>
             )
           })}

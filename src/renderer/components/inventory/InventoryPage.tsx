@@ -13,18 +13,9 @@ import { syncInventoryToSupabase } from '../../services/supabaseSync'
 import { useNotificationStore } from '../../stores/notificationStore'
 import { useFarmStore } from '../../stores/farmStore'
 import { SEED_DEFS, formatGrowTime } from '../../lib/farming'
-import { useGoldStore } from '../../stores/goldStore'
 import { SLOT_LABEL, LootVisual, RARITY_THEME, normalizeRarity } from '../loot/LootUI'
 import { CharacterCard } from '../character/CharacterCard'
 import { MOTION } from '../../lib/motion'
-
-const SEED_SELL_PRICE: Record<string, number> = {
-  common: 5,
-  rare: 20,
-  epic: 80,
-  legendary: 250,
-  mythic: 500,
-}
 
 type SlotEntry =
   | { id: string; kind: 'pending'; icon: string; image?: string; title: string; subtitle: string; quantity: number; rewardIds: string[]; chestType: ChestType }
@@ -97,8 +88,6 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
   const inBattle = Boolean(useArenaStore((s) => s.activeBattle))
   const farmSeeds = useFarmStore((s) => s.seeds)
   const seedCabinetUnlocked = useFarmStore((s) => s.seedCabinetUnlocked)
-  const removeSeed = useFarmStore((s) => s.removeSeed)
-  const addGold = useGoldStore((s) => s.addGold)
   const [sortBy, setSortByRaw] = useState<'rarity' | 'name' | 'slot'>(() => {
     try { return (localStorage.getItem('inv_sortBy') as 'rarity' | 'name' | 'slot') || 'rarity' } catch { return 'rarity' }
   })
@@ -822,7 +811,6 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                         <span className="text-[9px] text-gray-400">Yield</span>
                       </div>
                     </div>
-                    <p className="text-[9px] text-gray-500 font-mono">Sell value: {SEED_SELL_PRICE[inspectSeed.rarity] ?? 5}g each</p>
                   </div>
                 )}
 
@@ -839,29 +827,14 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                 {/* Action buttons */}
                 <div className="mt-3 flex gap-1.5">
                   {inspectSlot.kind === 'seed' && inspectSeed ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => { playClickSound(); setInspectSlotId(null); onNavigateFarm?.() }}
-                        className="flex-1 text-[10px] py-1.5 rounded-lg border font-semibold transition-all active:scale-[0.97] hover:brightness-110"
-                        style={{ color: inspectTheme.color, borderColor: inspectTheme.border, backgroundColor: `${inspectTheme.color}1e` }}
-                      >
-                        Plant
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          playClickSound()
-                          const price = SEED_SELL_PRICE[inspectSeed.rarity] ?? 5
-                          addGold(price)
-                          removeSeed(inspectSeed.id, 1)
-                          if ((farmSeeds[inspectSeed.id] ?? 0) <= 1) setInspectSlotId(null)
-                        }}
-                        className="flex-1 text-[10px] py-1.5 rounded-lg border border-amber-500/35 text-amber-300 hover:bg-amber-500/12 font-semibold transition-all active:scale-[0.97]"
-                      >
-                        Sell ({SEED_SELL_PRICE[inspectSeed.rarity] ?? 5}g)
-                      </button>
-                    </>
+                    <button
+                      type="button"
+                      onClick={() => { playClickSound(); setInspectSlotId(null); onNavigateFarm?.() }}
+                      className="flex-1 text-[10px] py-1.5 rounded-lg border font-semibold transition-all active:scale-[0.97] hover:brightness-110"
+                      style={{ color: inspectTheme.color, borderColor: inspectTheme.border, backgroundColor: `${inspectTheme.color}1e` }}
+                    >
+                      Plant
+                    </button>
                   ) : (
                     <>
                       {(() => {
@@ -928,18 +901,6 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                       onClick={() => { playClickSound(); setContextMenu(null); onNavigateFarm?.() }}
                       className="block w-full text-left text-[11px] px-2 py-1 rounded text-cyber-neon hover:bg-cyber-neon/15"
                     >Plant</button>
-                    {seedDef && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          playClickSound()
-                          addGold(SEED_SELL_PRICE[seedDef.rarity] ?? 5)
-                          removeSeed(seedDef.id, 1)
-                          setContextMenu(null)
-                        }}
-                        className="block w-full text-left text-[11px] px-2 py-1 rounded text-amber-300 hover:bg-amber-500/15"
-                      >Sell ({SEED_SELL_PRICE[seedDef.rarity] ?? 5}g)</button>
-                    )}
                   </>
                 )
               })() : (
