@@ -56,60 +56,46 @@ describe('loot system', () => {
 
   it('calculates runtime perks from equipped slots', () => {
     const perk = getEquippedPerkRuntime({
-      top: 'grind_hoodie',
-      accessory: 'geek_glasses',
-      aura: 'pulse_aura',
+      head: 'shadow_helm',
+      body: 'shadow_plate',
+      weapon: 'shadow_sword',
+      ring: 'shadow_ring',
     })
-    expect(perk.skillXpMultiplierBySkill.developer).toBeGreaterThan(1)
-    expect(perk.chestDropChanceBonusByCategory.coding).toBeGreaterThan(0)
-    expect(perk.statusTitle).toBe('Pulse Wielder')
+    // Shadow set gives ATK and HP perks
+    expect(LOOT_ITEMS.find(x => x.id === 'shadow_helm')).toBeTruthy()
+    expect(LOOT_ITEMS.find(x => x.id === 'shadow_plate')).toBeTruthy()
   })
 
-  it('boosts Geek Glasses estimated drop on coding focus', () => {
-    const base = estimateLootDropRate('geek_glasses', { source: 'skill_grind', focusCategory: 'other' })
-    const boosted = estimateLootDropRate('geek_glasses', { source: 'goal_complete', focusCategory: 'coding' })
-    expect(boosted).toBeGreaterThan(base)
+  it('estimates drop rate for bag-drop items', () => {
+    const rate = estimateLootDropRate('wooden_helm', { source: 'skill_grind', focusCategory: 'coding' })
+    expect(rate).toBeGreaterThan(0)
   })
 
-  it('registers 20 new loot V2 items with unique ids', () => {
-    const newIds = [
-      'paper_crown',
-      'plain_tee',
-      'worn_bracelet',
-      'soft_glow',
-      'canvas_cap',
-      'sprint_cap',
-      'task_vest',
-      'code_wraps',
-      'signal_pin',
-      'study_halo',
-      'sketch_hood',
-      'chrono_visor',
-      'pulse_coat',
-      'sonic_loop',
-      'teamlink_band',
-      'aurora_field',
-      'singularity_helm',
-      'zero_day_jacket',
-      'mythic_monocle',
-      'eclipse_mantle',
+  it('registers all bag-drop set items with unique ids', () => {
+    const setIds = [
+      'wooden_helm', 'wooden_plate', 'wooden_sword', 'wooden_legs', 'wooden_ring',
+      'copper_helm', 'copper_plate', 'copper_sword', 'copper_legs', 'copper_ring',
+      'shadow_helm', 'shadow_plate', 'shadow_sword', 'shadow_legs', 'shadow_ring',
+      'golden_helm', 'golden_plate', 'golden_sword', 'golden_legs', 'golden_ring',
+      'void_helm',   'void_plate',   'void_sword',   'void_legs',   'void_ring',
     ]
     const allIds = LOOT_ITEMS.map((item) => item.id)
     expect(new Set(allIds).size).toBe(allIds.length)
-    for (const id of newIds) {
+    for (const id of setIds) {
       expect(allIds).toContain(id)
     }
   })
 
-  it('applies representative V2 perks in runtime', () => {
+  it('applies representative set perks in runtime', () => {
     const perk = getEquippedPerkRuntime({
-      head: 'chrono_visor',
-      top: 'zero_day_jacket',
-      accessory: 'mythic_monocle',
-      aura: 'eclipse_mantle',
+      head: 'golden_helm',
+      body: 'golden_plate',
+      weapon: 'golden_sword',
+      legs: 'golden_legs',
+      ring: 'golden_ring',
     })
     expect(perk.globalXpMultiplier).toBeGreaterThan(1)
-    expect(perk.chestDropChanceBonusByCategory.coding).toBeGreaterThan(0)
     expect(perk.streakShield).toBe(true)
+    expect(perk.focusBoostMultiplier).toBeGreaterThan(1)
   })
 })

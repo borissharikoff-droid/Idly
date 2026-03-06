@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Grindly — Asset List</title>
+<style>
+  @page { margin: 12mm 10mm; size: A4; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; font-size: 9px; color: #e2e2e2; background: #0d0d14; line-height: 1.4; padding: 16px; }
+  h1 { font-size: 20px; color: #00ff88; margin-bottom: 4px; letter-spacing: 2px; }
+  h1 small { font-size: 10px; color: #666; font-weight: normal; letter-spacing: 0; }
+  h2 { font-size: 12px; color: #fff; margin: 14px 0 4px; padding: 3px 8px; background: rgba(255,255,255,0.06); border-left: 3px solid #00ff88; border-radius: 0 4px 4px 0; }
+  h3 { font-size: 10px; color: #aaa; margin: 8px 0 3px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 8px; }
+  th { text-align: left; font-size: 7px; text-transform: uppercase; letter-spacing: 1px; color: #666; padding: 3px 5px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  td { padding: 3px 5px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+  tr:hover td { background: rgba(255,255,255,0.03); }
+  .icon { font-size: 12px; text-align: center; width: 22px; }
+  .id { font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: 8px; color: #888; }
+  .rarity-common { color: #9CA3AF; }
+  .rarity-rare { color: #60A5FA; }
+  .rarity-epic { color: #A78BFA; }
+  .rarity-legendary { color: #FBBF24; }
+  .rarity-mythic { color: #F472B6; }
+  .perk { font-family: monospace; font-size: 8px; color: #4ade80; }
+  .slot { font-size: 7px; text-transform: uppercase; letter-spacing: 0.5px; color: #888; background: rgba(255,255,255,0.06); padding: 1px 4px; border-radius: 3px; display: inline-block; }
+  .num { font-family: 'Cascadia Code', monospace; font-size: 8px; text-align: right; }
+  .zone-color { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .section { page-break-inside: avoid; }
+  .cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .footer { margin-top: 16px; text-align: center; font-size: 8px; color: #444; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 6px; }
+</style>
+</head>
+<body>
+
+<h1>GRINDLY <small>Asset List &mdash; March 2026</small></h1>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>Consumables (Potions)</h2>
+<div class="section">
+<table>
+  <tr><th>Icon</th><th>ID</th><th>Name</th><th>Rarity</th><th>Perk</th></tr>
+  <tr><td class="icon">&#9879;&#65039;</td><td class="id">atk_potion</td><td>Attack Potion</td><td class="rarity-mythic">mythic</td><td class="perk">+1 permanent ATK (max 50)</td></tr>
+  <tr><td class="icon">&#128138;</td><td class="id">hp_potion</td><td>Vitality Potion</td><td class="rarity-mythic">mythic</td><td class="perk">+1 permanent HP (max 50)</td></tr>
+  <tr><td class="icon">&#128137;</td><td class="id">regen_potion</td><td>Regen Potion</td><td class="rarity-mythic">mythic</td><td class="perk">+1 permanent HP Regen/s (max 50)</td></tr>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>Harvested Plants (Farm Yield)</h2>
+<div class="section">
+<table>
+  <tr><th>Icon</th><th>ID</th><th>Name</th><th>Rarity</th></tr>
+  <tr><td class="icon">&#127806;</td><td class="id">wheat</td><td>Wheat</td><td class="rarity-common">common</td></tr>
+  <tr><td class="icon">&#127807;</td><td class="id">herbs</td><td>Herbs</td><td class="rarity-common">common</td></tr>
+  <tr><td class="icon">&#127822;</td><td class="id">apples</td><td>Apples</td><td class="rarity-rare">rare</td></tr>
+  <tr><td class="icon">&#127800;</td><td class="id">blossoms</td><td>Blossoms</td><td class="rarity-rare">rare</td></tr>
+  <tr><td class="icon">&#127808;</td><td class="id">clovers</td><td>Clovers</td><td class="rarity-epic">epic</td></tr>
+  <tr><td class="icon">&#127802;</td><td class="id">orchids</td><td>Orchids</td><td class="rarity-epic">epic</td></tr>
+  <tr><td class="icon">&#127775;</td><td class="id">star_bloom</td><td>Star Bloom</td><td class="rarity-legendary">legendary</td></tr>
+  <tr><td class="icon">&#128142;</td><td class="id">crystal_root</td><td>Crystal Root</td><td class="rarity-legendary">legendary</td></tr>
+  <tr><td class="icon">&#128302;</td><td class="id">void_blossom</td><td>Void Blossom</td><td class="rarity-mythic">mythic</td></tr>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>Arena Mob Materials</h2>
+<div class="section">
+<table>
+  <tr><th>Icon</th><th>ID</th><th>Name</th><th>Rarity</th><th>Source Zone</th></tr>
+  <tr><td class="icon">&#129531;</td><td class="id">slime_gel</td><td>Slime Gel</td><td class="rarity-common">common</td><td>Slime Cavern</td></tr>
+  <tr><td class="icon">&#129463;</td><td class="id">goblin_tooth</td><td>Goblin Tooth</td><td class="rarity-common">common</td><td>Goblin Outpost</td></tr>
+  <tr><td class="icon">&#128058;</td><td class="id">wolf_fang</td><td>Wolf Fang</td><td class="rarity-rare">rare</td><td>Wild Forest</td></tr>
+  <tr><td class="icon">&#129704;</td><td class="id">orc_shard</td><td>Orc Shard</td><td class="rarity-rare">rare</td><td>Orc Stronghold</td></tr>
+  <tr><td class="icon">&#129500;</td><td class="id">troll_hide</td><td>Troll Hide</td><td class="rarity-epic">epic</td><td>Troll Bridge</td></tr>
+  <tr><td class="icon">&#128009;</td><td class="id">dragon_scale</td><td>Dragon Scale</td><td class="rarity-legendary">legendary</td><td>Dragon Lair</td></tr>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>Boss-Exclusive Materials</h2>
+<div class="section">
+<table>
+  <tr><th>Icon</th><th>ID</th><th>Name</th><th>Rarity</th><th>Source Boss</th></tr>
+  <tr><td class="icon">&#128305;</td><td class="id">warlord_sigil</td><td>Warlord Sigil</td><td class="rarity-epic">epic</td><td>Orc Warlord</td></tr>
+  <tr><td class="icon">&#128156;</td><td class="id">troll_heart</td><td>Troll Heart</td><td class="rarity-legendary">legendary</td><td>Troll Overlord</td></tr>
+  <tr><td class="icon">&#10084;&#65039;&#8205;&#128293;</td><td class="id">dragon_heart</td><td>Dragon Heart</td><td class="rarity-legendary">legendary</td><td>Ancient Dragon</td></tr>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>Raw Crafting Materials (Chest/Boss Drops)</h2>
+<div class="section">
+<table>
+  <tr><th>Icon</th><th>ID</th><th>Name</th><th>Rarity</th></tr>
+  <tr><td class="icon">&#129704;</td><td class="id">ore_iron</td><td>Iron Ore</td><td class="rarity-common">common</td></tr>
+  <tr><td class="icon">&#129463;</td><td class="id">monster_fang</td><td>Monster Fang</td><td class="rarity-common">common</td></tr>
+  <tr><td class="icon">&#128167;</td><td class="id">magic_essence</td><td>Magic Essence</td><td class="rarity-rare">rare</td></tr>
+  <tr><td class="icon">&#128009;</td><td class="id">ancient_scale</td><td>Ancient Scale</td><td class="rarity-rare">rare</td></tr>
+  <tr><td class="icon">&#128302;</td><td class="id">void_crystal</td><td>Void Crystal</td><td class="rarity-epic">epic</td></tr>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>Intermediate Crafting Materials (Smelted)</h2>
+<div class="section">
+<table>
+  <tr><th>Icon</th><th>ID</th><th>Name</th><th>Rarity</th></tr>
+  <tr><td class="icon">&#11036;</td><td class="id">iron_bar</td><td>Iron Bar</td><td class="rarity-common">common</td></tr>
+  <tr><td class="icon">&#129460;</td><td class="id">fang_shard</td><td>Fang Shard</td><td class="rarity-common">common</td></tr>
+  <tr><td class="icon">&#129514;</td><td class="id">essence_vial</td><td>Essence Vial</td><td class="rarity-rare">rare</td></tr>
+  <tr><td class="icon">&#128168;</td><td class="id">ancient_dust</td><td>Ancient Dust</td><td class="rarity-rare">rare</td></tr>
+  <tr><td class="icon">&#128160;</td><td class="id">void_fragment</td><td>Void Fragment</td><td class="rarity-epic">epic</td></tr>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>Bag-Drop Gear (Equippable, from Chests)</h2>
+<div class="section">
+<table>
+  <tr><th>Icon</th><th>ID</th><th>Name</th><th>Slot</th><th>Rarity</th><th>Perks</th></tr>
+  <!-- Wooden Set (Common) -->
+  <tr><td class="icon">&#129686;</td><td class="id">wooden_helm</td><td>Wooden Helm</td><td><span class="slot">head</span></td><td class="rarity-common">common</td><td class="perk">+2 ATK</td></tr>
+  <tr><td class="icon">&#129717;</td><td class="id">wooden_plate</td><td>Wooden Plate</td><td><span class="slot">body</span></td><td class="rarity-common">common</td><td class="perk">+15 HP</td></tr>
+  <tr><td class="icon">&#128481;&#65039;</td><td class="id">wooden_sword</td><td>Wooden Sword</td><td><span class="slot">weapon</span></td><td class="rarity-common">common</td><td class="perk">+3 ATK</td></tr>
+  <tr><td class="icon">&#129471;</td><td class="id">wooden_legs</td><td>Wooden Legs</td><td><span class="slot">legs</span></td><td class="rarity-common">common</td><td class="perk">+1 ATK</td></tr>
+  <tr><td class="icon">&#128255;</td><td class="id">wooden_ring</td><td>Wooden Ring</td><td><span class="slot">ring</span></td><td class="rarity-common">common</td><td class="perk">+0.5 HP Regen</td></tr>
+  <!-- Copper Set (Rare) -->
+  <tr><td class="icon">&#9937;&#65039;</td><td class="id">copper_helm</td><td>Copper Helm</td><td><span class="slot">head</span></td><td class="rarity-rare">rare</td><td class="perk">+4 ATK</td></tr>
+  <tr><td class="icon">&#128737;&#65039;</td><td class="id">copper_plate</td><td>Copper Plate</td><td><span class="slot">body</span></td><td class="rarity-rare">rare</td><td class="perk">+35 HP</td></tr>
+  <tr><td class="icon">&#9876;&#65039;</td><td class="id">copper_sword</td><td>Copper Sword</td><td><span class="slot">weapon</span></td><td class="rarity-rare">rare</td><td class="perk">+6 ATK</td></tr>
+  <tr><td class="icon">&#129471;</td><td class="id">copper_legs</td><td>Copper Legs</td><td><span class="slot">legs</span></td><td class="rarity-rare">rare</td><td class="perk">+2 ATK</td></tr>
+  <tr><td class="icon">&#128141;</td><td class="id">copper_ring</td><td>Copper Ring</td><td><span class="slot">ring</span></td><td class="rarity-rare">rare</td><td class="perk">+1.5 HP Regen</td></tr>
+  <!-- Shadow Set (Epic) -->
+  <tr><td class="icon">&#129686;</td><td class="id">shadow_helm</td><td>Shadow Helm</td><td><span class="slot">head</span></td><td class="rarity-epic">epic</td><td class="perk">+7 ATK &middot; +15 HP</td></tr>
+  <tr><td class="icon">&#128737;&#65039;</td><td class="id">shadow_plate</td><td>Shadow Plate</td><td><span class="slot">body</span></td><td class="rarity-epic">epic</td><td class="perk">+50 HP &middot; +3 ATK</td></tr>
+  <tr><td class="icon">&#9876;&#65039;</td><td class="id">shadow_sword</td><td>Shadow Sword</td><td><span class="slot">weapon</span></td><td class="rarity-epic">epic</td><td class="perk">+10 ATK &middot; +2 HP Regen</td></tr>
+  <tr><td class="icon">&#129471;</td><td class="id">shadow_legs</td><td>Shadow Legs</td><td><span class="slot">legs</span></td><td class="rarity-epic">epic</td><td class="perk">+5 ATK &middot; +20 HP</td></tr>
+  <tr><td class="icon">&#128279;</td><td class="id">shadow_ring</td><td>Shadow Ring</td><td><span class="slot">ring</span></td><td class="rarity-epic">epic</td><td class="perk">+5 ATK &middot; +2 HP Regen</td></tr>
+  <!-- Golden Set (Legendary) -->
+  <tr><td class="icon">&#128081;</td><td class="id">golden_helm</td><td>Golden Helm</td><td><span class="slot">head</span></td><td class="rarity-legendary">legendary</td><td class="perk">+8 ATK &middot; +30 HP &middot; +5% Global XP</td></tr>
+  <tr><td class="icon">&#128737;&#65039;</td><td class="id">golden_plate</td><td>Golden Plate</td><td><span class="slot">body</span></td><td class="rarity-legendary">legendary</td><td class="perk">+80 HP &middot; +5 ATK &middot; Streak Shield</td></tr>
+  <tr><td class="icon">&#9876;&#65039;</td><td class="id">golden_sword</td><td>Golden Sword</td><td><span class="slot">weapon</span></td><td class="rarity-legendary">legendary</td><td class="perk">+12 ATK &middot; +3 HP Regen</td></tr>
+  <tr><td class="icon">&#129471;</td><td class="id">golden_legs</td><td>Golden Legs</td><td><span class="slot">legs</span></td><td class="rarity-legendary">legendary</td><td class="perk">+7 ATK &middot; +40 HP</td></tr>
+  <tr><td class="icon">&#128141;</td><td class="id">golden_ring</td><td>Golden Ring</td><td><span class="slot">ring</span></td><td class="rarity-legendary">legendary</td><td class="perk">+6 ATK &middot; +15% Focus</td></tr>
+  <!-- Void Set (Mythic) -->
+  <tr><td class="icon">&#127744;</td><td class="id">void_helm</td><td>Void Helm</td><td><span class="slot">head</span></td><td class="rarity-mythic">mythic</td><td class="perk">+12 ATK &middot; +50 HP &middot; +8% Global XP</td></tr>
+  <tr><td class="icon">&#128123;</td><td class="id">void_plate</td><td>Void Plate</td><td><span class="slot">body</span></td><td class="rarity-mythic">mythic</td><td class="perk">+120 HP &middot; +8 ATK &middot; Streak Shield</td></tr>
+  <tr><td class="icon">&#9876;&#65039;</td><td class="id">void_sword</td><td>Void Sword</td><td><span class="slot">weapon</span></td><td class="rarity-mythic">mythic</td><td class="perk">+15 ATK &middot; +5 HP Regen</td></tr>
+  <tr><td class="icon">&#129471;</td><td class="id">void_legs</td><td>Void Legs</td><td><span class="slot">legs</span></td><td class="rarity-mythic">mythic</td><td class="perk">+10 ATK &middot; +60 HP</td></tr>
+  <tr><td class="icon">&#127744;</td><td class="id">void_ring</td><td>Void Ring</td><td><span class="slot">ring</span></td><td class="rarity-mythic">mythic</td><td class="perk">+10 ATK &middot; +4 HP Regen &middot; +8% Global XP</td></tr>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>Crafted Gear (from Craft Recipes)</h2>
+<div class="section">
+<table>
+  <tr><th>Icon</th><th>ID</th><th>Name</th><th>Slot</th><th>Rarity</th><th>Perks</th></tr>
+  <tr><td class="icon">&#9937;&#65039;</td><td class="id">craft_iron_helm</td><td>Iron Helm</td><td><span class="slot">head</span></td><td class="rarity-common">common</td><td class="perk">+2 ATK</td></tr>
+  <tr><td class="icon">&#128481;&#65039;</td><td class="id">craft_fang_dagger</td><td>Fang Dagger</td><td><span class="slot">weapon</span></td><td class="rarity-common">common</td><td class="perk">+3 ATK</td></tr>
+  <tr><td class="icon">&#128737;&#65039;</td><td class="id">craft_slime_shield</td><td>Slime Shield</td><td><span class="slot">body</span></td><td class="rarity-common">common</td><td class="perk">+8 HP</td></tr>
+  <tr><td class="icon">&#128298;</td><td class="id">craft_goblin_blade</td><td>Goblin Blade</td><td><span class="slot">weapon</span></td><td class="rarity-common">common</td><td class="perk">+4 ATK</td></tr>
+  <tr><td class="icon">&#128141;</td><td class="id">craft_essence_ring</td><td>Essence Ring</td><td><span class="slot">ring</span></td><td class="rarity-rare">rare</td><td class="perk">+8% XP all skills</td></tr>
+  <tr><td class="icon">&#129355;</td><td class="id">craft_scale_robe</td><td>Scale Robe</td><td><span class="slot">body</span></td><td class="rarity-rare">rare</td><td class="perk">+20 HP</td></tr>
+  <tr><td class="icon">&#128058;</td><td class="id">craft_wolf_pendant</td><td>Wolf Fang Pendant</td><td><span class="slot">ring</span></td><td class="rarity-rare">rare</td><td class="perk">+3 HP Regen/s</td></tr>
+  <tr><td class="icon">&#129704;</td><td class="id">craft_orc_plate</td><td>Orc Plate</td><td><span class="slot">body</span></td><td class="rarity-rare">rare</td><td class="perk">+15 HP &middot; +3 ATK</td></tr>
+  <tr><td class="icon">&#9876;&#65039;</td><td class="id">craft_void_blade</td><td>Void Blade</td><td><span class="slot">weapon</span></td><td class="rarity-epic">epic</td><td class="perk">+12 ATK</td></tr>
+  <tr><td class="icon">&#129500;</td><td class="id">craft_troll_cloak</td><td>Troll Cloak</td><td><span class="slot">body</span></td><td class="rarity-epic">epic</td><td class="perk">+25 HP &middot; +5 HP Regen/s</td></tr>
+  <tr><td class="icon">&#128305;</td><td class="id">craft_warlord_gauntlets</td><td>Warlord Gauntlets</td><td><span class="slot">ring</span></td><td class="rarity-epic">epic</td><td class="perk">+6 ATK &middot; +10 HP</td></tr>
+  <tr><td class="icon">&#128081;</td><td class="id">craft_dragon_crown</td><td>Dragon Crown</td><td><span class="slot">head</span></td><td class="rarity-legendary">legendary</td><td class="perk">+8 ATK &middot; +30 HP</td></tr>
+  <tr><td class="icon">&#128156;</td><td class="id">craft_troll_aegis</td><td>Troll Aegis</td><td><span class="slot">body</span></td><td class="rarity-legendary">legendary</td><td class="perk">+40 HP &middot; +8 HP Regen/s</td></tr>
+  <tr><td class="icon">&#128293;</td><td class="id">craft_dragonfire_blade</td><td>Dragonfire Blade</td><td><span class="slot">weapon</span></td><td class="rarity-mythic">mythic</td><td class="perk">+20 ATK &middot; +15 HP &middot; +5 HP Regen/s</td></tr>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>Chests (Bags)</h2>
+<div class="section">
+<table>
+  <tr><th>Icon</th><th>ID</th><th>Name</th><th>Rarity</th><th>Image</th></tr>
+  <tr><td class="icon">&#128230;</td><td class="id">common_chest</td><td>Common Bag</td><td class="rarity-common">common</td><td class="id">loot/chest_common.png</td></tr>
+  <tr><td class="icon">&#127873;</td><td class="id">rare_chest</td><td>Rare Bag</td><td class="rarity-rare">rare</td><td class="id">loot/chest_rare.png</td></tr>
+  <tr><td class="icon">&#129689;</td><td class="id">epic_chest</td><td>Epic Bag</td><td class="rarity-epic">epic</td><td class="id">loot/chest_epic.png</td></tr>
+  <tr><td class="icon">&#128142;</td><td class="id">legendary_chest</td><td>Legendary Bag</td><td class="rarity-legendary">legendary</td><td class="id">loot/chest_epic.png</td></tr>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>Seeds (Farm)</h2>
+<div class="section">
+<table>
+  <tr><th>Icon</th><th>ID</th><th>Name</th><th>Rarity</th><th>Grow</th><th>Yield</th><th>XP (plant/harvest)</th></tr>
+  <tr><td class="icon">&#127806;</td><td class="id">wheat_seed</td><td>Wheat Seed</td><td class="rarity-common">common</td><td class="num">5m</td><td class="num">1&ndash;3</td><td class="num">10 / 50</td></tr>
+  <tr><td class="icon">&#127807;</td><td class="id">herb_seed</td><td>Herb Seed</td><td class="rarity-common">common</td><td class="num">8m</td><td class="num">1&ndash;2</td><td class="num">10 / 50</td></tr>
+  <tr><td class="icon">&#127822;</td><td class="id">apple_seed</td><td>Apple Seed</td><td class="rarity-rare">rare</td><td class="num">20m</td><td class="num">1&ndash;4</td><td class="num">20 / 100</td></tr>
+  <tr><td class="icon">&#127800;</td><td class="id">blossom_seed</td><td>Blossom Seed</td><td class="rarity-rare">rare</td><td class="num">25m</td><td class="num">1&ndash;3</td><td class="num">20 / 100</td></tr>
+  <tr><td class="icon">&#127808;</td><td class="id">clover_seed</td><td>Clover Seed</td><td class="rarity-epic">epic</td><td class="num">1h</td><td class="num">1&ndash;5</td><td class="num">40 / 200</td></tr>
+  <tr><td class="icon">&#127802;</td><td class="id">orchid_seed</td><td>Orchid Seed</td><td class="rarity-epic">epic</td><td class="num">1.5h</td><td class="num">1&ndash;3</td><td class="num">40 / 200</td></tr>
+  <tr><td class="icon">&#127775;</td><td class="id">starbloom_seed</td><td>Star Bloom Seed</td><td class="rarity-legendary">legendary</td><td class="num">3h</td><td class="num">1&ndash;4</td><td class="num">80 / 400</td></tr>
+  <tr><td class="icon">&#128142;</td><td class="id">crystal_seed</td><td>Crystal Root Seed</td><td class="rarity-legendary">legendary</td><td class="num">4h</td><td class="num">1&ndash;3</td><td class="num">80 / 400</td></tr>
+  <tr><td class="icon">&#128302;</td><td class="id">void_spore</td><td>Void Spore</td><td class="rarity-mythic">mythic</td><td class="num">8h</td><td class="num">1&ndash;6</td><td class="num">160 / 800</td></tr>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>Arena Zones &amp; Enemies</h2>
+<div class="section">
+<table>
+  <tr><th>Zone</th><th>Name</th><th>Icon</th><th>Requirements</th><th>Mobs (3)</th><th>Boss</th><th>Boss HP</th><th>ATK</th><th>Reward</th><th>Warrior XP</th></tr>
+  <tr>
+    <td class="id">zone1</td><td>Slime Cavern</td><td class="icon">&#127754;</td>
+    <td>&mdash;</td>
+    <td>Scout / Guard / Brute</td>
+    <td>Slime King &#128167;</td><td class="num">14,400</td><td class="num">1.5</td><td>Common Bag</td><td class="num">120</td>
+  </tr>
+  <tr>
+    <td class="id">zone2</td><td>Goblin Outpost</td><td class="icon">&#127961;&#65039;</td>
+    <td>zone1 + Warrior Lvl.3</td>
+    <td>Scout / Warrior / Shaman</td>
+    <td>Goblin Chief &#128122;</td><td class="num">21,600</td><td class="num">3</td><td>Rare Bag</td><td class="num">400</td>
+  </tr>
+  <tr>
+    <td class="id">zone3</td><td>Wild Forest</td><td class="icon">&#127794;</td>
+    <td>zone2 + Warrior Lvl.8 + Slime Shield</td>
+    <td>Young / Pack / Alpha Wolf</td>
+    <td>Forest Wolf &#128058;</td><td class="num">52,800</td><td class="num">5</td><td>Rare Bag</td><td class="num">900</td>
+  </tr>
+  <tr>
+    <td class="id">zone4</td><td>Orc Stronghold</td><td class="icon">&#129704;</td>
+    <td>zone3 + Warrior Lvl.15 + Goblin Blade</td>
+    <td>Grunt / Brute / Shaman</td>
+    <td>Orc Warlord &#128121;</td><td class="num">129,600</td><td class="num">8</td><td>Epic Bag</td><td class="num">2,500</td>
+  </tr>
+  <tr>
+    <td class="id">zone5</td><td>Troll Bridge</td><td class="icon">&#127753;</td>
+    <td>zone4 + Warrior Lvl.25 + Wolf Pendant + Orc Plate</td>
+    <td>Bridge / Stone / Ancient Troll</td>
+    <td>Troll Overlord &#129500;</td><td class="num">270,000</td><td class="num">13</td><td>Epic Bag</td><td class="num">6,000</td>
+  </tr>
+  <tr>
+    <td class="id">zone6</td><td>Dragon Lair</td><td class="icon">&#128293;</td>
+    <td>zone5 + Warrior Lvl.40 + Troll Cloak</td>
+    <td>Whelp / Guard / Elder Dragon</td>
+    <td>Ancient Dragon &#128009;</td><td class="num">567,000</td><td class="num">20</td><td>Legendary Bag</td><td class="num">15,000</td>
+  </tr>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>Bonus Material Drops per Chest Tier</h2>
+<div class="section">
+<table>
+  <tr><th>Chest</th><th>Materials</th></tr>
+  <tr><td class="rarity-common">Common Bag</td><td class="perk">Iron Ore (1-2) &middot; Monster Fang (1-2)</td></tr>
+  <tr><td class="rarity-rare">Rare Bag</td><td class="perk">Iron Ore (1-3) &middot; Monster Fang (1-3) &middot; Magic Essence (1-2)</td></tr>
+  <tr><td class="rarity-epic">Epic Bag</td><td class="perk">Iron Ore (2-4) &middot; Monster Fang (2-4) &middot; Magic Essence (1-3) &middot; Ancient Scale (1-2) &middot; Void Crystal (1)</td></tr>
+  <tr><td class="rarity-legendary">Legendary Bag</td><td class="perk">Magic Essence (2-4) &middot; Ancient Scale (2-3) &middot; Void Crystal (1-2)</td></tr>
+</table>
+</div>
+
+<div class="footer">
+  Grindly &mdash; Generated from codebase &mdash; Total items: 53 &middot; Zones: 6 &middot; Seeds: 9 &middot; Chests: 4
+</div>
+
+</body>
+</html>
