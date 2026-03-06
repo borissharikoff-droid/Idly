@@ -101,6 +101,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
   const setSortBy = (v: typeof sortBy) => { setSortByRaw(v); try { localStorage.setItem('inv_sortBy', v) } catch {} }
   const setViewMode = (v: typeof viewMode) => { setViewModeRaw(v); try { localStorage.setItem('inv_viewMode', v) } catch {} }
   const setFilterBy = (v: FilterById) => { setFilterByRaw(v); try { localStorage.setItem('inv_filterBy', v) } catch {} }
+  const [searchQuery, setSearchQuery] = useState('')
   const [inspectSlotId, setInspectSlotId] = useState<string | null>(null)
   const [listForSaleTarget, setListForSaleTarget] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; slotId: string } | null>(null)
@@ -192,8 +193,10 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
 
   const sortedSlots = useMemo(() => {
     const kindOrder = (s: SlotEntry) => (s.kind === 'pending' ? 0 : s.kind === 'chest' ? 1 : 2)
+    const q = searchQuery.trim().toLowerCase()
     return [...slots]
       .filter((s) => slotMatchesFilter(s, filterBy))
+      .filter((s) => !q || s.title.toLowerCase().includes(q) || s.subtitle.toLowerCase().includes(q))
       .sort((a, b) => {
         const kd = kindOrder(a) - kindOrder(b)
         if (kd !== 0) return kd
@@ -205,7 +208,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
         }
         return a.title.localeCompare(b.title)
       })
-  }, [slots, sortBy, filterBy])
+  }, [slots, sortBy, filterBy, searchQuery])
 
   const groupedSlots = useMemo(() => {
     if (filterBy !== 'all') return null
@@ -403,6 +406,25 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
               {sortBy === 'rarity' ? '▼ Rarity' : sortBy === 'name' ? '▼ A–Z' : '▼ Slot'}
             </button>
           </div>
+        </div>
+
+        {/* Search */}
+        <div className="relative">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search items..."
+            className="w-full text-[10px] font-mono px-2.5 py-1.5 pl-7 rounded-lg border border-white/[0.08] bg-discord-darker/40 text-gray-200 placeholder-gray-500 outline-none focus:border-cyber-neon/40 focus:bg-discord-darker/60 transition-colors"
+          />
+          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 pointer-events-none">🔍</span>
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 hover:text-gray-300 px-1"
+            >✕</button>
+          )}
         </div>
 
         {/* Filter pills — two-row wrap */}
@@ -713,6 +735,11 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                   </div>
                 </div>
 
+                {/* Flavor description */}
+                {inspectItem?.description && (
+                  <p className="text-[10px] text-gray-400 italic mt-1.5 leading-snug">{inspectItem.description}</p>
+                )}
+
                 {/* Perk stats — prominent */}
                 {inspectItem && (() => {
                   const ip = getItemPower(inspectItem)
@@ -892,18 +919,13 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
               style={{ left: contextMenu.x, top: contextMenu.y }}
               onClick={(e) => e.stopPropagation()}
             >
-              {slot.kind === 'seed' ? (() => {
-                const seedDef = SEED_DEFS.find((x) => x.id === slot.seedId)
-                return (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => { playClickSound(); setContextMenu(null); onNavigateFarm?.() }}
-                      className="block w-full text-left text-[11px] px-2 py-1 rounded text-cyber-neon hover:bg-cyber-neon/15"
-                    >Plant</button>
-                  </>
-                )
-              })() : (
+              {slot.kind === 'seed' ? (
+                <button
+                  type="button"
+                  onClick={() => { playClickSound(); setContextMenu(null); onNavigateFarm?.() }}
+                  className="block w-full text-left text-[11px] px-2 py-1 rounded text-cyber-neon hover:bg-cyber-neon/15"
+                >Plant</button>
+              ) : (
                 <>
                   {(() => {
                     const isPlant = slot.kind === 'item' && LOOT_ITEMS.find((x) => x.id === slot.itemId)?.slot === 'plant'
