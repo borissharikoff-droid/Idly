@@ -14,15 +14,7 @@ const CARD_STAGGER_MS = 190
 const XP_COUNT_MS = 950
 const CARDS_START_MS = 480
 
-function isNewbiePackClaimed(userId: string): boolean {
-  return (
-    localStorage.getItem(`grindly_newbie_pack_claimed_${userId}`) === '1' ||
-    localStorage.getItem(`grindly_test_starter_pack_${userId}_v2`) === '1'
-  )
-}
-
 interface SessionCompleteProps {
-  onNavigateInventory?: () => void
   onNavigateFriends?: () => void
 }
 
@@ -136,7 +128,7 @@ function SkillXPCard({ gain, index }: { gain: SkillXPGain; index: number }) {
           {/* Level / percent */}
           <div className="flex justify-between items-center mt-1">
             <span className="text-[9px] font-mono text-gray-600">
-              {leveledUp ? `Lv.${gain.levelBefore} → Lv.${gain.levelAfter}` : `Lv.${gain.levelAfter}`}
+              {leveledUp ? `Lvl.${gain.levelBefore} → Lvl.${gain.levelAfter}` : `Lvl.${gain.levelAfter}`}
             </span>
             <span className="text-[9px] font-mono text-gray-600">{Math.round(widthAfter)}%</span>
           </div>
@@ -146,13 +138,12 @@ function SkillXPCard({ gain, index }: { gain: SkillXPGain; index: number }) {
   )
 }
 
-export function SessionComplete({ onNavigateInventory, onNavigateFriends }: SessionCompleteProps = {}) {
+export function SessionComplete({ onNavigateFriends }: SessionCompleteProps = {}) {
   const { lastSessionSummary, skillXPGains, streakMultiplier, sessionSkillXPEarned, sessionRewards, dismissComplete } =
     useSessionStore()
   const hasLootOpen = useAlertStore((s) => s.currentAlert !== null)
   const user = useAuthStore((s) => s.user)
   const { friends } = useFriends()
-  const showInventoryCTA = useMemo(() => user && !isNewbiePackClaimed(user.id), [user])
   const showFriendsCTA = useMemo(
     () => user && friends.length === 0 && onNavigateFriends,
     [user, friends.length, onNavigateFriends],
@@ -285,29 +276,19 @@ export function SessionComplete({ onNavigateInventory, onNavigateFriends }: Sess
             )}
 
             {/* CTAs */}
-            {(showInventoryCTA || showFriendsCTA) && (
+            {showFriendsCTA && (
               <motion.div
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.9 }}
                 className="flex flex-wrap justify-center gap-2"
               >
-                {showInventoryCTA && onNavigateInventory && (
-                  <button
-                    onClick={() => handleCTAClick(onNavigateInventory)}
-                    className="px-3 py-1.5 rounded-lg bg-cyber-neon/10 border border-cyber-neon/25 text-cyber-neon text-[11px] font-medium hover:bg-cyber-neon/20 transition-colors"
-                  >
-                    🎁 Claim Newbie Pack
-                  </button>
-                )}
-                {showFriendsCTA && (
-                  <button
-                    onClick={() => handleCTAClick(onNavigateFriends)}
-                    className="px-3 py-1.5 rounded-lg bg-cyber-neon/10 border border-cyber-neon/25 text-cyber-neon text-[11px] font-medium hover:bg-cyber-neon/20 transition-colors"
-                  >
-                    👥 Add a friend
-                  </button>
-                )}
+                <button
+                  onClick={() => handleCTAClick(onNavigateFriends)}
+                  className="px-3 py-1.5 rounded-lg bg-cyber-neon/10 border border-cyber-neon/25 text-cyber-neon text-[11px] font-medium hover:bg-cyber-neon/20 transition-colors"
+                >
+                  👥 Add a friend
+                </button>
               </motion.div>
             )}
 

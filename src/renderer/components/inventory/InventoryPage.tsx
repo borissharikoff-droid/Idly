@@ -16,6 +16,7 @@ import { SEED_DEFS, formatGrowTime } from '../../lib/farming'
 import { useGoldStore } from '../../stores/goldStore'
 import { SLOT_LABEL, LootVisual, RARITY_THEME, normalizeRarity } from '../loot/LootUI'
 import { CharacterCard } from '../character/CharacterCard'
+import { MOTION } from '../../lib/motion'
 
 const SEED_SELL_PRICE: Record<string, number> = {
   common: 5,
@@ -40,16 +41,17 @@ const SLOT_SORT_ORDER: Record<string, number> = {
 }
 
 const FILTERS = [
-  { id: 'all',      label: 'All',      icon: '🎒' },
-  { id: 'weapons',  label: 'Weapons',  icon: '⚔️' },
-  { id: 'combat',   label: 'Combat',   icon: '🛡️' },
-  { id: 'xp',       label: 'XP',       icon: '📈' },
-  { id: 'drops',    label: 'Drops',    icon: '🎁' },
-  { id: 'potions',  label: 'Potions',  icon: '⚗️' },
-  { id: 'chests',   label: 'Bags',     icon: '📦' },
-  { id: 'cosmetic', label: 'Cosmetic', icon: '✨' },
-  { id: 'plants',   label: 'Plants',   icon: '🌿' },
-  { id: 'seeds',    label: 'Seeds',    icon: '🌱' },
+  { id: 'all',       label: 'All',       icon: '🎒' },
+  { id: 'weapons',   label: 'Weapons',   icon: '⚔️' },
+  { id: 'combat',    label: 'Combat',    icon: '🛡️' },
+  { id: 'xp',        label: 'XP',        icon: '📈' },
+  { id: 'drops',     label: 'Drops',     icon: '🎁' },
+  { id: 'potions',   label: 'Potions',   icon: '⚗️' },
+  { id: 'resources', label: 'Resources', icon: '🪨' },
+  { id: 'chests',    label: 'Bags',      icon: '📦' },
+  { id: 'cosmetic',  label: 'Cosmetic',  icon: '✨' },
+  { id: 'plants',    label: 'Plants',    icon: '🌿' },
+  { id: 'seeds',     label: 'Seeds',     icon: '🌱' },
 ] as const
 
 function getSlotRarity(slot: SlotEntry): string {
@@ -70,9 +72,10 @@ function slotMatchesFilter(slot: SlotEntry, fid: string): boolean {
   if (fid === 'combat')   return ['atk_boost', 'hp_boost', 'hp_regen_boost'].includes(item.perkType as string)
   if (fid === 'xp')       return ['xp_skill_boost', 'xp_global_boost', 'focus_boost'].includes(item.perkType as string)
   if (fid === 'drops')    return (item.perkType as string) === 'chest_drop_boost'
-  if (fid === 'potions')  return item.slot === 'consumable'
-  if (fid === 'cosmetic') return ['cosmetic', 'status_title', 'streak_shield'].includes(item.perkType as string)
-  if (fid === 'plants')   return item.slot === 'plant'
+  if (fid === 'potions')   return item.slot === 'consumable'
+  if (fid === 'resources') return item.slot === 'material'
+  if (fid === 'cosmetic')  return ['cosmetic', 'status_title', 'streak_shield'].includes(item.perkType as string) && item.slot !== 'material'
+  if (fid === 'plants')    return item.slot === 'plant'
   return true
 }
 
@@ -102,7 +105,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
   const [viewMode, setViewModeRaw] = useState<'list' | 'grid' | 'compact'>(() => {
     try { return (localStorage.getItem('inv_viewMode') as 'list' | 'grid' | 'compact') || 'grid' } catch { return 'grid' }
   })
-  type FilterById = 'all' | 'combat' | 'weapons' | 'xp' | 'drops' | 'potions' | 'chests' | 'cosmetic' | 'plants' | 'seeds'
+  type FilterById = 'all' | 'combat' | 'weapons' | 'xp' | 'drops' | 'potions' | 'resources' | 'chests' | 'cosmetic' | 'plants' | 'seeds'
   const [filterBy, setFilterByRaw] = useState<FilterById>(() => {
     try { return (localStorage.getItem('inv_filterBy') as FilterById) || 'all' } catch { return 'all' }
   })
@@ -112,7 +115,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
   const [inspectSlotId, setInspectSlotId] = useState<string | null>(null)
   const [listForSaleTarget, setListForSaleTarget] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; slotId: string } | null>(null)
-  const [openChestModal, setOpenChestModal] = useState<{ chestType: ChestType; itemId: string; seedZipTier: import('../../lib/farming').SeedZipTier | null; goldDropped: number } | null>(null)
+  const [openChestModal, setOpenChestModal] = useState<{ chestType: ChestType; itemId: string; seedZipTier: import('../../lib/farming').SeedZipTier | null; goldDropped: number; bonusMaterials: import('../../lib/loot').BonusMaterial[] } | null>(null)
   const [chestModalAnimSeed, setChestModalAnimSeed] = useState(0)
   const [chestChainMessage, setChestChainMessage] = useState<string | null>(null)
 
@@ -281,7 +284,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
     setContextMenu(null)
     setChestChainMessage(null)
     setChestModalAnimSeed((v) => v + 1)
-    setOpenChestModal({ chestType, itemId: result.itemId, seedZipTier: seedZipTier ?? null, goldDropped: result.goldDropped })
+    setOpenChestModal({ chestType, itemId: result.itemId, seedZipTier: seedZipTier ?? null, goldDropped: result.goldDropped, bonusMaterials: result.bonusMaterials })
   }
 
   const isPotionMaxed = (itemId: string) => {
@@ -302,7 +305,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
     if (slot.kind === 'item') {
       const item = LOOT_ITEMS.find((x) => x.id === slot.itemId)
       if (!item) return
-      if (item.slot === 'plant') return  // plants are not equippable
+      if (item.slot === 'plant' || item.slot === 'material') return
       if (item.slot === 'consumable') {
         if (isPotionMaxed(slot.itemId)) return
         const ok = consumePotion(slot.itemId)
@@ -333,7 +336,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
     if (slot.kind === 'chest') return 'Open'
     if (slot.kind === 'item') {
       const item = LOOT_ITEMS.find((x) => x.id === slot.itemId)
-      if (item?.slot === 'plant') return '—'
+      if (item?.slot === 'plant' || item?.slot === 'material') return '—'
       if (item?.slot === 'consumable') return isPotionMaxed(slot.itemId) ? 'Maxed' : 'Drink'
       if (inBattle) return '⚔ Locked'
       return slot.equipped ? 'Unequip' : 'Equip'
@@ -353,15 +356,16 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
     if (!result) return false
     const seedZipTier = useFarmStore.getState().rollSeedDrop(chestType)
     setChestModalAnimSeed((v) => v + 1)
-    setOpenChestModal({ chestType, itemId: result.itemId, seedZipTier: seedZipTier ?? null, goldDropped: result.goldDropped })
+    setOpenChestModal({ chestType, itemId: result.itemId, seedZipTier: seedZipTier ?? null, goldDropped: result.goldDropped, bonusMaterials: result.bonusMaterials })
     return true
   }
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      initial={MOTION.subPage.initial}
+      animate={MOTION.subPage.animate}
+      exit={MOTION.subPage.exit}
+      transition={{ duration: MOTION.duration.base, ease: MOTION.easingSoft }}
       className="p-4 pb-20 space-y-3"
     >
       <PageHeader title="Inventory" onBack={onBack} />
@@ -411,37 +415,30 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
           </div>
         </div>
 
-        {/* Filter pills — single scrollable row */}
-        <div className="relative overflow-hidden">
-          <div
-            className="flex gap-1 overflow-x-auto [&::-webkit-scrollbar]:hidden"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-          >
-            {FILTERS.map((f) => {
-              const active = filterBy === f.id
-              const count = filterCounts[f.id] ?? 0
-              return (
-                <button
-                  key={f.id}
-                  type="button"
-                  onClick={() => { playClickSound(); setFilterBy(f.id) }}
-                  className={`flex items-center gap-1 px-2 py-0.5 rounded-md border text-[9px] font-medium transition-all flex-shrink-0 ${
-                    active
-                      ? 'border-cyber-neon/40 bg-cyber-neon/10 text-cyber-neon'
-                      : 'border-white/[0.08] bg-discord-darker/30 text-gray-400 hover:text-gray-200 hover:border-white/20'
-                  }`}
-                >
-                  <span className="text-[10px] leading-none">{f.icon}</span>
-                  <span>{f.label}</span>
-                  {!active && count > 0 && (
-                    <span className="ml-0.5 text-[8px] font-mono opacity-50">{count}</span>
-                  )}
-                </button>
-              )
-            })}
-          </div>
-          {/* Right fade mask */}
-          <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-discord-card/80 to-transparent" />
+        {/* Filter pills — two-row wrap */}
+        <div className="flex flex-wrap gap-1">
+          {FILTERS.map((f) => {
+            const active = filterBy === f.id
+            const count = filterCounts[f.id] ?? 0
+            return (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => { playClickSound(); setFilterBy(f.id) }}
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-md border text-[9px] font-medium transition-all ${
+                  active
+                    ? 'border-cyber-neon/40 bg-cyber-neon/10 text-cyber-neon'
+                    : 'border-white/[0.08] bg-discord-darker/30 text-gray-400 hover:text-gray-200 hover:border-white/20'
+                }`}
+              >
+                <span className="text-[10px] leading-none">{f.icon}</span>
+                <span>{f.label}</span>
+                {!active && count > 0 && (
+                  <span className="ml-0.5 text-[8px] font-mono opacity-50">{count}</span>
+                )}
+              </button>
+            )
+          })}
         </div>
 
         {/* Divider */}
@@ -794,17 +791,19 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                         </div>
                       )}
 
-                      <div className="flex items-center gap-2 text-[9px] font-mono pt-0.5 border-t border-white/[0.05]">
-                        <span className="text-gray-500">IP</span>
-                        <span style={{ color: inspectTheme.color }}>{ip}</span>
-                        <span className="text-white/20">·</span>
-                        <span className="text-gray-500">Wt</span>
-                        <span className="text-gray-300">{baseWt}</span>
-                        {rate !== null && <>
+                      {(['head', 'body', 'legs', 'ring', 'weapon'] as const).includes(inspectItem.slot as never) && (
+                        <div className="flex items-center gap-2 text-[9px] font-mono pt-0.5 border-t border-white/[0.05]">
+                          <span className="text-gray-500">IP</span>
+                          <span style={{ color: inspectTheme.color }}>{ip}</span>
                           <span className="text-white/20">·</span>
-                          <span className="text-gray-500">~{rate}% drop</span>
-                        </>}
-                      </div>
+                          <span className="text-gray-500">Wt</span>
+                          <span className="text-gray-300">{baseWt}</span>
+                          {rate !== null && <>
+                            <span className="text-white/20">·</span>
+                            <span className="text-gray-500">~{rate}% drop</span>
+                          </>}
+                        </div>
+                      )}
                     </div>
                   )
                 })()}
@@ -1019,6 +1018,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
         chestType={openChestModal?.chestType ?? null}
         item={openChestModal ? (LOOT_ITEMS.find((x) => x.id === openChestModal.itemId) ?? null) : null}
         goldDropped={openChestModal?.goldDropped}
+        bonusMaterials={openChestModal?.bonusMaterials}
         seedZipTier={openChestModal?.seedZipTier}
         onClose={() => {
           setOpenChestModal(null)

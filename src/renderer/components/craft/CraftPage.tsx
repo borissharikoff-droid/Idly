@@ -4,6 +4,7 @@ import {
   CRAFT_RECIPES,
   CRAFT_ITEM_MAP,
   canAffordRecipe,
+  maxAffordableQty,
   craftDuration,
   formatCraftTime,
   type CraftRecipe,
@@ -13,6 +14,10 @@ import { skillLevelFromXP } from '../../lib/skills'
 import { useCraftingStore } from '../../stores/craftingStore'
 import { useInventoryStore } from '../../stores/inventoryStore'
 import { playClickSound, playLootRaritySound } from '../../lib/sounds'
+import { MOTION } from '../../lib/motion'
+import { PageHeader } from '../shared/PageHeader'
+import { BackpackButton } from '../shared/BackpackButton'
+import { InventoryPage } from '../inventory/InventoryPage'
 
 const CRAFT_COLOR = '#f97316'
 const QTY_PRESETS = [1, 10, 50, 100, 500]
@@ -31,7 +36,7 @@ function ActiveJob({ onCancel }: { onCancel: (id: string) => void }) {
 
   useEffect(() => {
     if (!activeJob) return
-    const id = setInterval(() => setNow(Date.now()), 500)
+    const id = setInterval(() => setNow(Date.now()), 250)
     return () => clearInterval(id)
   }, [activeJob?.id])
 
@@ -40,16 +45,17 @@ function ActiveJob({ onCancel }: { onCancel: (id: string) => void }) {
   const output = CRAFT_ITEM_MAP[activeJob.outputItemId]
   const theme = getRarityTheme(output?.rarity ?? 'common')
   const done = computeActiveDone(now)
-  const pct = (done / activeJob.totalQty) * 100
   const secsInCurrentItem = ((now - activeJob.startedAt) / 1000) % activeJob.secPerItem
+  const subProgress = done < activeJob.totalQty ? secsInCurrentItem / activeJob.secPerItem : 0
+  const pct = ((done + subProgress) / activeJob.totalQty) * 100
   const remaining = Math.max(0, (activeJob.totalQty - done) * activeJob.secPerItem - secsInCurrentItem)
   const totalXp = done * activeJob.xpPerItem
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: -8 }}
+      initial={MOTION.entry.standard}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
+      exit={MOTION.entry.standard}
       className="rounded-2xl border p-3.5 space-y-2.5"
       style={{ borderColor: theme.border, background: `linear-gradient(145deg, ${theme.glow}28 0%, rgba(22,22,38,0.95) 65%)` }}
     >
@@ -114,13 +120,13 @@ function RecipeCard({
   return (
     <div className="rounded-xl border transition-all"
       style={{
-        borderColor: expanded ? theme.border : locked ? 'rgba(255,255,255,0.10)' : `${theme.border}66`,
+        borderColor: expanded ? theme.border : 'rgba(255,255,255,0.10)',
         background: expanded ? `linear-gradient(145deg, ${theme.glow}22 0%, rgba(22,22,38,0.95) 65%)` : 'rgba(255,255,255,0.04)',
         opacity: locked ? 0.4 : 1,
       }}
     >
       {/* Row */}
-      <button type="button" className="w-full flex items-center gap-3 p-3 text-left"
+      <button type="button" className="w-full flex items-center gap-3 p-3 text-left focus:outline-none"
         onClick={locked ? undefined : onToggle}>
         {/* Output icon */}
         <div className="w-10 h-10 rounded-lg border flex items-center justify-center text-xl shrink-0"
@@ -137,7 +143,7 @@ function RecipeCard({
             </span>
           </div>
           <div className="flex items-center gap-2 mt-0.5 text-[10px] font-mono text-gray-400">
-            <span>Lv {recipe.levelRequired}</span>
+            <span>Lvl {recipe.levelRequired}</span>
             <span>·</span>
             <span style={{ color: CRAFT_COLOR }}>{recipe.xpPerItem} xp</span>
           </div>
@@ -146,11 +152,8 @@ function RecipeCard({
         {/* Status */}
         {locked
           ? <span className="text-[9px] text-gray-500 shrink-0 font-mono">🔒{recipe.levelRequired}</span>
-          : hasAll1
-            ? <span className="text-[10px] text-lime-400 shrink-0">✓</span>
-            : <span className="text-[10px] text-gray-500 shrink-0">✗</span>
+          : <span className="text-[9px] text-gray-500 shrink-0">{expanded ? '▲' : '▼'}</span>
         }
-        {!locked && <span className="text-[9px] text-gray-500 shrink-0 ml-1">{expanded ? '▲' : '▼'}</span>}
       </button>
 
       {/* Expanded */}
@@ -160,7 +163,7 @@ function RecipeCard({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.16, ease: 'easeOut' }}
+            transition={{ duration: MOTION.duration.fast, ease: MOTION.easing }}
             className="overflow-hidden"
           >
             <div className="border-t border-white/[0.10] px-3 pt-3 pb-3 space-y-3">
@@ -214,6 +217,20 @@ function RecipeCard({
                       {p}
                     </button>
                   ))}
+                  {(() => {
+                    const max = maxAffordableQty(recipe, items)
+                    return (
+                      <button type="button"
+                        onClick={() => { if (max > 0) setQty(max) }}
+                        className="text-[11px] font-mono px-2.5 py-1 rounded-lg border transition-colors"
+                        style={max > 0
+                          ? { borderColor: `${CRAFT_COLOR}77`, background: `${CRAFT_COLOR}28`, color: CRAFT_COLOR }
+                          : { borderColor: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.25)', cursor: 'not-allowed' }
+                        }>
+                        Max{max > 0 ? ` (${max})` : ''}
+                      </button>
+                    )
+                  })()}
                   <input type="number" min={1} value={qty}
                     onChange={(e) => setQty(Math.max(1, parseInt(e.target.value) || 1))}
                     className="w-16 text-[11px] font-mono px-2 py-1 rounded-lg border border-white/[0.16] bg-white/[0.06] text-gray-200 text-center focus:outline-none focus:border-orange-500/50"
@@ -268,6 +285,7 @@ export function CraftPage() {
   const addItem = useInventoryStore((s) => s.addItem)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [category, setCategory] = useState<CraftCategory>('all')
+  const [showBackpack, setShowBackpack] = useState(false)
 
   useEffect(() => { hydrate() }, [hydrate])
 
@@ -305,10 +323,24 @@ export function CraftPage() {
     return CRAFT_RECIPES.some((r) => CRAFT_ITEM_MAP[r.outputItemId]?.slot === id)
   })
 
+  if (showBackpack) {
+    return <InventoryPage onBack={() => setShowBackpack(false)} />
+  }
+
   return (
     <div className="pb-24">
+      {/* Header */}
+      <div className="px-4 pt-4 pb-2">
+        <PageHeader
+          title="Craft"
+          rightSlot={
+            <BackpackButton onClick={() => setShowBackpack(true)} />
+          }
+        />
+      </div>
+
       {/* Category tabs */}
-      <div className="flex flex-wrap gap-1 px-4 pt-4 pb-2">
+      <div className="flex flex-wrap gap-1 px-4 pb-2">
         {availableCategories.map(({ id, label, icon }) => {
           const active = category === id
           return (
@@ -316,7 +348,7 @@ export function CraftPage() {
               key={id}
               type="button"
               onClick={() => { playClickSound(); setCategory(id); setExpandedId(null) }}
-              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all"
+              className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold transition-all focus:outline-none"
               style={active
                 ? { background: `${CRAFT_COLOR}28`, border: `1px solid ${CRAFT_COLOR}77`, color: CRAFT_COLOR }
                 : { background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.55)' }}
@@ -371,7 +403,7 @@ export function CraftPage() {
           if (!output) return null
           return (
             <p className="text-center text-[10px] text-gray-500 pt-1">
-              Next unlock at Lv {next.levelRequired}: {output.icon} {output.name}
+              Next unlock at Lvl {next.levelRequired}: {output.icon} {output.name}
             </p>
           )
         })()}

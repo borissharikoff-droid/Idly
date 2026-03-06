@@ -1,8 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import type { ChestType, LootItemDef } from '../../lib/loot'
-import { CHEST_DEFS, getRarityTheme, getItemPerkDescription } from '../../lib/loot'
+import type { BonusMaterial, ChestType, LootItemDef } from '../../lib/loot'
+import { CHEST_DEFS, LOOT_ITEMS, getRarityTheme, getItemPerkDescription } from '../../lib/loot'
 import { getSeedZipDisplay, type SeedZipTier } from '../../lib/farming'
 import { useAdminConfigStore } from '../../stores/adminConfigStore'
 import { MOTION } from '../../lib/motion'
@@ -117,6 +117,7 @@ interface ChestOpenModalProps {
   chestType: ChestType | null
   item: LootItemDef | null
   goldDropped?: number
+  bonusMaterials?: BonusMaterial[]
   seedZipTier?: SeedZipTier | null
   onClose: () => void
   nextAvailable?: boolean
@@ -130,6 +131,7 @@ export function ChestOpenModal({
   chestType,
   item,
   goldDropped = 0,
+  bonusMaterials = [],
   seedZipTier,
   onClose,
   nextAvailable = false,
@@ -408,7 +410,7 @@ export function ChestOpenModal({
 
                 {/* Drop count */}
                 {isRevealed && (() => {
-                  const count = 1 + (goldDropped > 0 ? 1 : 0) + (seedZipTier ? 1 : 0)
+                  const count = 1 + (goldDropped > 0 ? 1 : 0) + (seedZipTier ? 1 : 0) + (bonusMaterials.length > 0 ? 1 : 0)
                   if (count < 2) return null
                   return (
                     <motion.p
@@ -439,7 +441,7 @@ export function ChestOpenModal({
                   style={{ pointerEvents: isRevealed ? 'auto' : 'none' }}
                 >
                   <div className="relative">
-                    {(goldDropped > 0 || seedZipTier) && scrollPos !== 'start' && (
+                    {(goldDropped > 0 || seedZipTier || bonusMaterials.length > 0) && scrollPos !== 'start' && (
                       <button
                         type="button"
                         onClick={() => scrollBy('left')}
@@ -449,7 +451,7 @@ export function ChestOpenModal({
                         <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 2L4 6l3.5 4" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                       </button>
                     )}
-                    {(goldDropped > 0 || seedZipTier) && scrollPos !== 'end' && (
+                    {(goldDropped > 0 || seedZipTier || bonusMaterials.length > 0) && scrollPos !== 'end' && (
                       <button
                         type="button"
                         onClick={() => scrollBy('right')}
@@ -473,7 +475,7 @@ export function ChestOpenModal({
                         onMouseLeave={() => { setHovering(false); setTilt({ x: 0, y: 0 }) }}
                         className="rounded-xl border p-3.5 relative overflow-hidden cursor-default snap-start flex-none"
                         style={{
-                          width: (goldDropped > 0 || seedZipTier) ? '220px' : '100%',
+                          width: (goldDropped > 0 || seedZipTier || bonusMaterials.length > 0) ? '220px' : '100%',
                           borderColor: rarityTheme.border,
                           background: `linear-gradient(135deg, ${rarityTheme.glow}18 0%, rgba(8,8,16,0.95) 60%)`,
                           transform: hovering
@@ -553,6 +555,33 @@ export function ChestOpenModal({
                         </motion.div>
                       )}
 
+                      {/* Bonus materials card */}
+                      {bonusMaterials.length > 0 && (
+                        <motion.div
+                          className="flex-none w-[130px] snap-start rounded-xl border border-emerald-500/25 flex flex-col items-center justify-center gap-1.5 py-3 px-2 relative overflow-hidden"
+                          style={{ background: 'linear-gradient(160deg, rgba(16,185,129,0.10) 0%, rgba(8,8,16,0.95) 65%)' }}
+                          initial={{ opacity: 0, x: 20, scale: 0.88 }}
+                          animate={{ opacity: isRevealed ? 1 : 0, x: isRevealed ? 0 : 20, scale: isRevealed ? 1 : 0.88 }}
+                          transition={{ type: 'spring', stiffness: 280, damping: 24, delay: 0.1 }}
+                        >
+                          <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 50% 35%, rgba(16,185,129,0.18) 0%, transparent 65%)' }} />
+                          <span className="text-[9px] font-mono text-emerald-500/60 uppercase tracking-widest relative">Materials</span>
+                          {bonusMaterials.map((mat) => {
+                            const matDef = LOOT_ITEMS.find((x) => x.id === mat.itemId)
+                            if (!matDef) return null
+                            const matTheme = getRarityTheme(matDef.rarity)
+                            return (
+                              <div key={mat.itemId} className="flex items-center gap-1.5 relative">
+                                <span className="text-base">{matDef.icon}</span>
+                                <span className="text-[11px] font-medium" style={{ color: matTheme.color }}>
+                                  {mat.qty}x {matDef.name}
+                                </span>
+                              </div>
+                            )
+                          })}
+                        </motion.div>
+                      )}
+
                       {/* Seed Zip bonus card */}
                       {seedZipTier && (() => {
                         const zipTheme = getRarityTheme(seedZipTier)
@@ -575,7 +604,7 @@ export function ChestOpenModal({
                         )
                       })()}
 
-                      {(goldDropped > 0 || seedZipTier) && <div className="flex-none w-5" aria-hidden />}
+                      {(goldDropped > 0 || seedZipTier || bonusMaterials.length > 0) && <div className="flex-none w-5" aria-hidden />}
                     </div>
                   </div>
                 </motion.div>

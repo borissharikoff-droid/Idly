@@ -55,7 +55,7 @@ export function CharacterCard({ locked = false, onSlotInspect }: CharacterCardPr
           <div className="flex items-center gap-2">
             {warriorLevel > 0 && (
               <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-md" style={{ color: '#EF4444', background: '#EF444415', border: '1px solid #EF444430' }}>
-                ⚔ Lv.{warriorLevel}
+                ⚔ Lvl.{warriorLevel}
               </span>
             )}
             {locked && <span className="text-[9px] text-amber-400/90 font-mono">locked</span>}

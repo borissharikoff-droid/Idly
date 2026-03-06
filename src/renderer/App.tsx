@@ -121,8 +121,8 @@ const TAB_ORDER: TabId[] = ['home', 'inventory', 'skills', 'stats', 'profile', '
 
 const PAGE_SLIDE = {
   initial: (dir: number) => ({ opacity: 0, x: dir * 16 }),
-  animate: { opacity: 1, x: 0, transition: { duration: 0.2, ease: [0.22, 1, 0.36, 1] } },
-  exit: (dir: number) => ({ opacity: 0, x: dir * -12, transition: { duration: 0.15, ease: [0.22, 1, 0.36, 1] } }),
+  animate: { opacity: 1, x: 0, transition: { duration: 0.2, ease: MOTION.easingSoft } },
+  exit: (dir: number) => ({ opacity: 0, x: dir * -12, transition: { duration: 0.15, ease: MOTION.easingSoft } }),
 }
 
 function migrateLegacyLocalStorage(): void {

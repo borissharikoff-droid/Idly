@@ -6,6 +6,7 @@ import { track } from '../../lib/analytics'
 import { useAlertStore } from '../../stores/alertStore'
 import { useNavBadgeStore } from '../../stores/navBadgeStore'
 import { useArenaStore } from '../../stores/arenaStore'
+import { useCraftingStore } from '../../stores/craftingStore'
 import { useFarmStore } from '../../stores/farmStore'
 import { MOTION } from '../../lib/motion'
 
@@ -38,6 +39,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   const { queue, currentAlert } = useAlertStore()
   const { incomingRequestsCount, unreadMessagesCount, marketplaceSaleCount } = useNavBadgeStore()
   const isArenaBattleActive = useArenaStore((s) => !!s.activeBattle)
+  const isCraftingActive = useCraftingStore((s) => !!s.activeJob)
   const planted = useFarmStore((s) => s.planted)
   const badgeHome = (currentAlert && !currentAlert.claimed ? 1 : 0) + queue.length
   const badgeFriends = incomingRequestsCount + unreadMessagesCount
@@ -54,7 +56,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   ).length
 
   const secondaryIsActive = SECONDARY_IDS.has(activeTab)
-  const secondaryHasBadge = badgeFarm > 0 || isArenaBattleActive || marketplaceSaleCount > 0
+  const secondaryHasBadge = badgeFarm > 0 || isArenaBattleActive || isCraftingActive || marketplaceSaleCount > 0
 
   const navigate = (id: TabId) => {
     playTabSound()
@@ -84,13 +86,13 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 8, scale: 0.96 }}
-              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+              transition={{ duration: MOTION.duration.fast, ease: MOTION.easingSoft }}
             >
               <div className="p-1.5 grid grid-cols-3 gap-0.5">
                 {SECONDARY_TABS.map((tab) => {
                   const isActive = activeTab === tab.id
                   const tabBadge = tab.id === 'farm' ? badgeFarm : tab.id === 'marketplace' ? marketplaceSaleCount : 0
-                  const tabPulse = tab.id === 'arena' && isArenaBattleActive
+                  const tabPulse = (tab.id === 'arena' && isArenaBattleActive) || (tab.id === 'craft' && isCraftingActive)
                   return (
                     <motion.button
                       key={tab.id}

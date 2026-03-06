@@ -8,6 +8,7 @@ export const SLOT_META: Record<LootSlot, { label: string; icon: string }> = {
   weapon: { label: 'Weapon', icon: '⚔️' },
   consumable: { label: 'Consumable', icon: '⚗️' },
   plant: { label: 'Plant', icon: '🌿' },
+  material: { label: 'Material', icon: '🪨' },
 }
 
 export const SLOT_LABEL: Record<LootSlot, string> = {
@@ -18,6 +19,7 @@ export const SLOT_LABEL: Record<LootSlot, string> = {
   weapon: 'Weapon',
   consumable: 'Consumable',
   plant: 'Plant',
+  material: 'Material',
 }
 
 export type InspectRarity = 'common' | 'rare' | 'epic' | 'legendary' | 'mythical'

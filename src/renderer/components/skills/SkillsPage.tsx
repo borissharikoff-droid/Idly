@@ -305,7 +305,7 @@ export function SkillsPage() {
                               {bonusParts.length > 0 && (
                                 <p className="mt-1.5 text-[10px] font-mono" style={{ color: '#EF4444' }}>Bonuses: {bonusParts.join(' · ')}</p>
                               )}
-                              <p className="mt-0.5 text-[9px] text-gray-600 font-mono">Next milestone: Lv.{[5,15,20,30,40,60,75].find((m) => m > wLevel) ?? 'MAX'}</p>
+                              <p className="mt-0.5 text-[9px] text-gray-600 font-mono">Next milestone: Lvl.{[5,15,20,30,40,60,75].find((m) => m > wLevel) ?? 'MAX'}</p>
                             </>
                           )
                         })() : (
@@ -487,7 +487,7 @@ export function SkillsPage() {
                               {bonusParts.length > 0 && (
                                 <p className="mt-1.5 text-[10px] font-mono" style={{ color: '#EF4444' }}>Bonuses: {bonusParts.join(' · ')}</p>
                               )}
-                              <p className="mt-0.5 text-[9px] text-gray-600 font-mono">Next milestone: Lv.{[5,15,20,30,40,60,75].find((m) => m > wLevel) ?? 'MAX'}</p>
+                              <p className="mt-0.5 text-[9px] text-gray-600 font-mono">Next milestone: Lvl.{[5,15,20,30,40,60,75].find((m) => m > wLevel) ?? 'MAX'}</p>
                             </>
                           )
                         })() : (

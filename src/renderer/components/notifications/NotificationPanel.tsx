@@ -37,7 +37,7 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
   const claimPendingReward = useInventoryStore((s) => s.claimPendingReward)
   const openChestAndGrantItem = useInventoryStore((s) => s.openChestAndGrantItem)
   const [filter, setFilter] = useState<'all' | 'update' | 'friend_levelup' | 'progression' | 'arena_result' | 'marketplace_sale'>('all')
-  const [openedChest, setOpenedChest] = useState<{ chestType: ChestType; itemId: string; goldDropped?: number } | null>(null)
+  const [openedChest, setOpenedChest] = useState<{ chestType: ChestType; itemId: string; goldDropped?: number; bonusMaterials?: import('../../lib/loot').BonusMaterial[] } | null>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const filteredItems = items.filter((i) => (filter === 'all' ? true : i.type === filter))
 
@@ -52,7 +52,7 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
     const result = openChestAndGrantItem(chestType as ChestType, { source: 'session_complete' })
     useFarmStore.getState().rollSeedDrop(chestType as ChestType)
     dismiss(notifId)
-    if (result) setOpenedChest({ chestType: chestType as ChestType, itemId: result.itemId, goldDropped: result.goldDropped })
+    if (result) setOpenedChest({ chestType: chestType as ChestType, itemId: result.itemId, goldDropped: result.goldDropped, bonusMaterials: result.bonusMaterials })
   }
 
   useEffect(() => {
@@ -237,6 +237,7 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
       chestType={openedChest?.chestType ?? null}
       item={openedItem}
       goldDropped={openedChest?.goldDropped}
+      bonusMaterials={openedChest?.bonusMaterials}
       onClose={() => setOpenedChest(null)}
     />
     </>

@@ -204,9 +204,15 @@ export interface ChestRollResult {
   estimatedDropRate: number
 }
 
+export interface BonusMaterial {
+  itemId: string
+  qty: number
+}
+
 export interface ChestOpenResult {
   item: LootItemDef
   estimatedDropRate: number
+  bonusMaterials: BonusMaterial[]
 }
 
 const INLINE_LOOT_IMAGES = {
@@ -293,13 +299,13 @@ export const LOOT_ITEMS: LootItemDef[] = [
   { id: 'crystal_root', name: 'Crystal Root', slot: 'plant', rarity: 'legendary', icon: '💎', description: 'A crystalline root pulsing with energy.',        perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Farm harvest. Sell on the Marketplace.' },
   { id: 'void_blossom', name: 'Void Blossom', slot: 'plant', rarity: 'mythic',   icon: '🔮', description: 'A flower from beyond — grown from a Void Spore.', perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Farm harvest. Sell on the Marketplace.' },
 
-  // Arena materials (dropped by dungeon mobs)
-  { id: 'slime_gel',    name: 'Slime Gel',    slot: 'plant', rarity: 'common',    icon: '🫧', description: 'Dropped by slimes. Sell on the Marketplace.',    perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Dropped by slimes. Sell on the Marketplace.' },
-  { id: 'goblin_tooth', name: 'Goblin Tooth', slot: 'plant', rarity: 'common',    icon: '🦷', description: 'Dropped by goblins. Sell on the Marketplace.',  perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Dropped by goblins. Sell on the Marketplace.' },
-  { id: 'wolf_fang',    name: 'Wolf Fang',    slot: 'plant', rarity: 'rare',      icon: '🐺', description: 'Dropped by wolves. Sell on the Marketplace.',   perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Dropped by wolves. Sell on the Marketplace.' },
-  { id: 'orc_shard',    name: 'Orc Shard',    slot: 'plant', rarity: 'rare',      icon: '🪨', description: 'Dropped by orcs. Sell on the Marketplace.',     perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Dropped by orcs. Sell on the Marketplace.' },
-  { id: 'troll_hide',   name: 'Troll Hide',   slot: 'plant', rarity: 'epic',      icon: '🧌', description: 'Dropped by trolls. Sell on the Marketplace.',   perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Dropped by trolls. Sell on the Marketplace.' },
-  { id: 'dragon_scale', name: 'Dragon Scale', slot: 'plant', rarity: 'legendary', icon: '🐉', description: 'Dropped by dragons. Sell on the Marketplace.',  perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Dropped by dragons. Sell on the Marketplace.' },
+  // Arena materials (dropped by dungeon mobs & bosses, used in crafting)
+  { id: 'slime_gel',    name: 'Slime Gel',    slot: 'plant', rarity: 'common',    icon: '🫧', description: 'Dropped by slimes. Craft into Slime Shield.',       perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Crafting material — Slime Cavern' },
+  { id: 'goblin_tooth', name: 'Goblin Tooth', slot: 'plant', rarity: 'common',    icon: '🦷', description: 'Dropped by goblins. Craft into Goblin Blade.',     perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Crafting material — Goblin Outpost' },
+  { id: 'wolf_fang',    name: 'Wolf Fang',    slot: 'plant', rarity: 'rare',      icon: '🐺', description: 'Dropped by wolves. Craft into Wolf Fang Pendant.',  perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Crafting material — Wild Forest' },
+  { id: 'orc_shard',    name: 'Orc Shard',    slot: 'plant', rarity: 'rare',      icon: '🪨', description: 'Dropped by orcs. Craft into Orc Plate.',            perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Crafting material — Orc Stronghold' },
+  { id: 'troll_hide',   name: 'Troll Hide',   slot: 'plant', rarity: 'epic',      icon: '🧌', description: 'Dropped by trolls. Craft into Troll Cloak.',        perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Crafting material — Troll Bridge' },
+  { id: 'dragon_scale', name: 'Dragon Scale', slot: 'plant', rarity: 'legendary', icon: '🐉', description: 'Dropped by dragons. Craft into Dragon Crown.',      perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Crafting material — Dragon Lair' },
 
   // Boss-exclusive materials (guaranteed drop from specific bosses)
   { id: 'warlord_sigil', name: 'Warlord Sigil', slot: 'material', rarity: 'epic',      icon: '🔱', description: 'Torn from the Orc Warlord. Pulses with brutal energy.',   perkType: 'cosmetic', perkValue: 0, perkDescription: 'Boss material — Orc Warlord' },
@@ -312,6 +318,35 @@ export const LOOT_ITEMS: LootItemDef[] = [
   { id: 'magic_essence', name: 'Magic Essence', slot: 'material', rarity: 'rare',      icon: '💧', description: 'Distilled magical residue from powerful creatures.',       perkType: 'cosmetic', perkValue: 0, perkDescription: 'Crafting material' },
   { id: 'ancient_scale', name: 'Ancient Scale', slot: 'material', rarity: 'rare',      icon: '🐉', description: 'A scale shed by an ancient beast. Tough and magical.',    perkType: 'cosmetic', perkValue: 0, perkDescription: 'Crafting material' },
   { id: 'void_crystal',  name: 'Void Crystal',  slot: 'material', rarity: 'epic',      icon: '🔮', description: 'A crystallised fragment of the void. Immense power.',     perkType: 'cosmetic', perkValue: 0, perkDescription: 'Crafting material' },
+
+  // ── Bag-drop gear (equippable items that drop directly from chests) ────────
+  // Common
+  { id: 'canvas_cap',     name: 'Canvas Cap',     slot: 'head',   rarity: 'common', icon: '🧢', image: INLINE_LOOT_IMAGES.canvas_cap,     description: 'A simple cap. Better than nothing.',              perkType: 'atk_boost',      perkValue: 2,   perkDescription: '+2 ATK' },
+  { id: 'plain_tee',      name: 'Plain Tee',      slot: 'body',   rarity: 'common', icon: '👕', image: INLINE_LOOT_IMAGES.plain_tee,      description: 'A plain cotton shirt. Offers minor protection.',  perkType: 'hp_boost',       perkValue: 15,  perkDescription: '+15 HP' },
+  { id: 'worn_bracelet',  name: 'Worn Bracelet',  slot: 'ring',   rarity: 'common', icon: '📿', image: INLINE_LOOT_IMAGES.worn_bracelet,  description: 'A worn leather bracelet with a faint hum.',       perkType: 'hp_regen_boost', perkValue: 0.5, perkDescription: '+0.5 HP Regen' },
+  { id: 'code_wraps',     name: 'Code Wraps',     slot: 'legs',   rarity: 'common', icon: '🩹', image: INLINE_LOOT_IMAGES.code_wraps,     description: 'Tape-wrapped leg guards. Surprisingly comfy.',    perkType: 'atk_boost',      perkValue: 1,   perkDescription: '+1 ATK' },
+  // Rare
+  { id: 'zen_beanie',     name: 'Zen Beanie',     slot: 'head',   rarity: 'rare',   icon: '🎿', image: INLINE_LOOT_IMAGES.zen_beanie,     description: 'A calm-inducing knit beanie. Sharpens focus.',    perkType: 'atk_boost',      perkValue: 4,   perkDescription: '+4 ATK' },
+  { id: 'cozy_sweater',   name: 'Cozy Sweater',   slot: 'body',   rarity: 'rare',   icon: '🧥', image: INLINE_LOOT_IMAGES.cozy_sweater,   description: 'Thick wool sweater. Warm and protective.',        perkType: 'hp_boost',       perkValue: 35,  perkDescription: '+35 HP' },
+  { id: 'social_ring',    name: 'Social Ring',    slot: 'ring',   rarity: 'rare',   icon: '💍', image: INLINE_LOOT_IMAGES.social_ring,    description: 'A ring that glows when friends are near.',        perkType: 'hp_regen_boost', perkValue: 1.5, perkDescription: '+1.5 HP Regen' },
+  { id: 'task_vest',      name: 'Task Vest',      slot: 'body',   rarity: 'rare',   icon: '🦺', image: INLINE_LOOT_IMAGES.task_vest,      description: 'Utility vest with many pockets. Boosts XP gain.', perkType: 'xp_skill_boost', perkValue: 0.05, perkTarget: 'developer', perkDescription: '+5% Developer XP' },
+  // Epic
+  { id: 'neon_visor',     name: 'Neon Visor',     slot: 'head',   rarity: 'epic',   icon: '🥽', image: INLINE_LOOT_IMAGES.neon_visor,     description: 'A glowing visor pulsing with data streams.',      perkType: 'atk_boost', perkValue: 7, perkDescription: '+7 ATK',
+    perks: [{ perkType: 'atk_boost', perkValue: 7, perkDescription: '+7 ATK' }, { perkType: 'chest_drop_boost', perkValue: 0.05, perkTarget: 'coding', perkDescription: '+5% chest chance (coding)' }] },
+  { id: 'hacker_jacket',  name: 'Hacker Jacket',  slot: 'body',   rarity: 'epic',   icon: '🧥', image: INLINE_LOOT_IMAGES.hacker_jacket,  description: 'Reinforced jacket with hidden circuitry.',        perkType: 'hp_boost', perkValue: 50, perkDescription: '+50 HP',
+    perks: [{ perkType: 'hp_boost', perkValue: 50, perkDescription: '+50 HP' }, { perkType: 'atk_boost', perkValue: 3, perkDescription: '+3 ATK' }] },
+  { id: 'scholar_cape',   name: 'Scholar Cape',   slot: 'body',   rarity: 'epic',   icon: '🧣', image: INLINE_LOOT_IMAGES.scholar_cape,   description: 'A flowing cape favored by knowledge seekers.',    perkType: 'xp_skill_boost', perkValue: 0.08, perkTarget: 'researcher', perkDescription: '+8% Researcher XP',
+    perks: [{ perkType: 'xp_skill_boost', perkValue: 0.08, perkTarget: 'researcher', perkDescription: '+8% Researcher XP' }, { perkType: 'hp_boost', perkValue: 30, perkDescription: '+30 HP' }] },
+  { id: 'sonic_loop',     name: 'Sonic Loop',     slot: 'ring',   rarity: 'epic',   icon: '🔗', image: INLINE_LOOT_IMAGES.sonic_loop,     description: 'Vibrating loop that accelerates reflexes.',       perkType: 'atk_boost', perkValue: 5, perkDescription: '+5 ATK',
+    perks: [{ perkType: 'atk_boost', perkValue: 5, perkDescription: '+5 ATK' }, { perkType: 'hp_regen_boost', perkValue: 2, perkDescription: '+2 HP Regen' }] },
+  // Legendary
+  { id: 'phantom_cloak',  name: 'Phantom Cloak',  slot: 'body',   rarity: 'legendary', icon: '👻', image: INLINE_LOOT_IMAGES.phantom_cloak, description: 'A cloak that phases between realities.',  perkType: 'hp_boost', perkValue: 80, perkDescription: '+80 HP',
+    perks: [{ perkType: 'hp_boost', perkValue: 80, perkDescription: '+80 HP' }, { perkType: 'atk_boost', perkValue: 5, perkDescription: '+5 ATK' }, { perkType: 'streak_shield', perkValue: 1, perkDescription: 'Streak Shield' }] },
+  { id: 'chrono_visor',   name: 'Chrono Visor',   slot: 'head',   rarity: 'legendary', icon: '⏱️', image: INLINE_LOOT_IMAGES.chrono_visor, description: 'Bends time around the wearer. Legendary focus.', perkType: 'atk_boost', perkValue: 8, perkDescription: '+8 ATK',
+    perks: [{ perkType: 'atk_boost', perkValue: 8, perkDescription: '+8 ATK' }, { perkType: 'focus_boost', perkValue: 0.15, perkDescription: '+15% Focus Boost' }, { perkType: 'xp_global_boost', perkValue: 0.05, perkDescription: '+5% Global XP' }] },
+  // Mythic
+  { id: 'void_aura',      name: 'Void Aura',      slot: 'ring',   rarity: 'mythic', icon: '🌀', image: INLINE_LOOT_IMAGES.void_aura,     description: 'An aura forged from pure void energy.',           perkType: 'atk_boost', perkValue: 10, perkDescription: '+10 ATK',
+    perks: [{ perkType: 'atk_boost', perkValue: 10, perkDescription: '+10 ATK' }, { perkType: 'hp_regen_boost', perkValue: 4, perkDescription: '+4 HP Regen' }, { perkType: 'xp_global_boost', perkValue: 0.08, perkDescription: '+8% Global XP' }] },
 
   // Intermediate crafting materials (smelted/refined from raw drops, used in gear recipes)
   ...CRAFT_INTERMEDIATE_ITEMS,
@@ -327,8 +362,10 @@ export const CHEST_DEFS: Record<ChestType, ChestDef> = {
     image: 'loot/chest_common.png',
     rarity: 'common',
     itemWeights: [
-      { itemId: 'ore_iron',     weight: 5 },
-      { itemId: 'monster_fang', weight: 4 },
+      { itemId: 'canvas_cap',    weight: 3 },
+      { itemId: 'plain_tee',     weight: 3 },
+      { itemId: 'worn_bracelet', weight: 3 },
+      { itemId: 'code_wraps',    weight: 3 },
     ],
   },
   rare_chest: {
@@ -338,9 +375,14 @@ export const CHEST_DEFS: Record<ChestType, ChestDef> = {
     image: 'loot/chest_rare.png',
     rarity: 'rare',
     itemWeights: [
-      { itemId: 'ore_iron',      weight: 3 },
-      { itemId: 'monster_fang',  weight: 3 },
-      { itemId: 'magic_essence', weight: 3 },
+      { itemId: 'canvas_cap',    weight: 2 },
+      { itemId: 'plain_tee',     weight: 2 },
+      { itemId: 'worn_bracelet', weight: 2 },
+      { itemId: 'code_wraps',    weight: 2 },
+      { itemId: 'zen_beanie',    weight: 3 },
+      { itemId: 'cozy_sweater',  weight: 3 },
+      { itemId: 'social_ring',   weight: 3 },
+      { itemId: 'task_vest',     weight: 3 },
     ],
   },
   epic_chest: {
@@ -350,8 +392,12 @@ export const CHEST_DEFS: Record<ChestType, ChestDef> = {
     image: 'loot/chest_epic.png',
     rarity: 'epic',
     itemWeights: [
-      { itemId: 'magic_essence', weight: 3 },
-      { itemId: 'ancient_scale', weight: 3 },
+      { itemId: 'zen_beanie',    weight: 2 },
+      { itemId: 'cozy_sweater',  weight: 2 },
+      { itemId: 'neon_visor',    weight: 3 },
+      { itemId: 'hacker_jacket', weight: 3 },
+      { itemId: 'scholar_cape',  weight: 3 },
+      { itemId: 'sonic_loop',    weight: 3 },
       { itemId: 'atk_potion',    weight: 1 },
       { itemId: 'hp_potion',     weight: 1 },
       { itemId: 'regen_potion',  weight: 1 },
@@ -363,13 +409,16 @@ export const CHEST_DEFS: Record<ChestType, ChestDef> = {
     icon: '💎',
     image: 'loot/chest_epic.png',
     rarity: 'legendary',
-    // ~93% legendary · ~4% mythic potions · ~2% mythic gear
     itemWeights: [
-      { itemId: 'ancient_scale', weight: 2 },
-      { itemId: 'void_crystal',  weight: 2 },
-      { itemId: 'atk_potion',    weight: 3 },
-      { itemId: 'hp_potion',     weight: 3 },
-      { itemId: 'regen_potion',  weight: 3 },
+      { itemId: 'neon_visor',    weight: 2 },
+      { itemId: 'hacker_jacket', weight: 2 },
+      { itemId: 'sonic_loop',    weight: 2 },
+      { itemId: 'phantom_cloak', weight: 3 },
+      { itemId: 'chrono_visor',  weight: 3 },
+      { itemId: 'void_aura',     weight: 1 },
+      { itemId: 'atk_potion',    weight: 2 },
+      { itemId: 'hp_potion',     weight: 2 },
+      { itemId: 'regen_potion',  weight: 2 },
     ],
   },
 }
@@ -481,6 +530,52 @@ export function nextPityAfterChestRoll(chestType: ChestType, pity: LootRollPity)
   }
 }
 
+// ── Bonus material drops per chest tier ──────────────────────────────────────
+const BONUS_MATERIAL_POOL: Record<ChestType, Array<{ itemId: string; weight: number; minQty: number; maxQty: number }>> = {
+  common_chest: [
+    { itemId: 'ore_iron',     weight: 5, minQty: 1, maxQty: 2 },
+    { itemId: 'monster_fang', weight: 5, minQty: 1, maxQty: 2 },
+  ],
+  rare_chest: [
+    { itemId: 'ore_iron',      weight: 4, minQty: 1, maxQty: 3 },
+    { itemId: 'monster_fang',  weight: 4, minQty: 1, maxQty: 3 },
+    { itemId: 'magic_essence', weight: 2, minQty: 1, maxQty: 2 },
+  ],
+  epic_chest: [
+    { itemId: 'ore_iron',      weight: 2, minQty: 2, maxQty: 4 },
+    { itemId: 'monster_fang',  weight: 2, minQty: 2, maxQty: 4 },
+    { itemId: 'magic_essence', weight: 3, minQty: 1, maxQty: 3 },
+    { itemId: 'ancient_scale', weight: 2, minQty: 1, maxQty: 2 },
+    { itemId: 'void_crystal',  weight: 1, minQty: 1, maxQty: 1 },
+  ],
+  legendary_chest: [
+    { itemId: 'magic_essence', weight: 3, minQty: 2, maxQty: 4 },
+    { itemId: 'ancient_scale', weight: 3, minQty: 2, maxQty: 3 },
+    { itemId: 'void_crystal',  weight: 2, minQty: 1, maxQty: 2 },
+  ],
+}
+
+const BONUS_ROLLS: Record<ChestType, number> = {
+  common_chest: 1,
+  rare_chest: 2,
+  epic_chest: 2,
+  legendary_chest: 3,
+}
+
+export function rollBonusMaterials(chestType: ChestType): BonusMaterial[] {
+  const pool = BONUS_MATERIAL_POOL[chestType]
+  if (!pool.length) return []
+  const rolls = BONUS_ROLLS[chestType]
+  const result: Record<string, number> = {}
+  for (let i = 0; i < rolls; i++) {
+    const pick = randomPickByWeight(pool.map(p => ({ value: p, weight: p.weight })))
+    if (!pick) continue
+    const qty = pick.minQty + Math.floor(Math.random() * (pick.maxQty - pick.minQty + 1))
+    result[pick.itemId] = (result[pick.itemId] ?? 0) + qty
+  }
+  return Object.entries(result).map(([itemId, qty]) => ({ itemId, qty }))
+}
+
 export function openChest(chestType: ChestType, context: LootDropContext): ChestOpenResult | null {
   const chest = CHEST_DEFS[chestType]
   const itemId = randomPickByWeight(chest.itemWeights.map((entry) => ({ value: entry.itemId, weight: entry.weight })))
@@ -489,6 +584,7 @@ export function openChest(chestType: ChestType, context: LootDropContext): Chest
   return {
     item,
     estimatedDropRate: estimateLootDropRate(item.id, context),
+    bonusMaterials: rollBonusMaterials(chestType),
   }
 }
 

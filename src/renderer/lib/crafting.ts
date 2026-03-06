@@ -292,9 +292,9 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     outputQty: 1,
     isIntermediate: true,
     ingredients: [{ id: 'ore_iron', qty: 5 }],
-    levelRequired: 1,
-    xpPerItem: 8,
-    secPerItem: 60,
+    levelRequired: 0,
+    xpPerItem: 45,
+    secPerItem: 8,
   },
   {
     id: 'recipe_fang_shard',
@@ -302,9 +302,9 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     outputQty: 1,
     isIntermediate: true,
     ingredients: [{ id: 'monster_fang', qty: 4 }],
-    levelRequired: 5,
-    xpPerItem: 12,
-    secPerItem: 90,
+    levelRequired: 0,
+    xpPerItem: 55,
+    secPerItem: 10,
   },
   {
     id: 'recipe_essence_vial',
@@ -347,9 +347,9 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'iron_bar', qty: 2 },
       { id: 'wheat',    qty: 3 },
     ],
-    levelRequired: 5,
+    levelRequired: 3,
     xpPerItem: 40,
-    secPerItem: 180,
+    secPerItem: 20,
   },
   {
     // Fang Shard × 2 + Herbs × 3 → Fang Dagger
@@ -414,9 +414,9 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'slime_gel', qty: 5 },
       { id: 'wheat',     qty: 3 },
     ],
-    levelRequired: 3,
+    levelRequired: 0,
     xpPerItem: 25,
-    secPerItem: 120,
+    secPerItem: 15,
   },
   {
     // Goblin Tooth × 4 + Herbs × 3 → Goblin Blade
@@ -427,9 +427,9 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'goblin_tooth', qty: 4 },
       { id: 'herbs',        qty: 3 },
     ],
-    levelRequired: 10,
+    levelRequired: 5,
     xpPerItem: 50,
-    secPerItem: 240,
+    secPerItem: 25,
   },
   {
     // Wolf Fang × 3 + Iron Bar × 1 + Blossoms × 2 → Wolf Fang Pendant
@@ -546,6 +546,16 @@ export function canAffordRecipe(
   items: Record<string, number>,
 ): boolean {
   return recipe.ingredients.every((ing) => (items[ing.id] ?? 0) >= ing.qty * qty)
+}
+
+/** Max number of times the recipe can be crafted with current inventory. */
+export function maxAffordableQty(recipe: CraftRecipe, items: Record<string, number>): number {
+  let max = Infinity
+  for (const ing of recipe.ingredients) {
+    const owned = items[ing.id] ?? 0
+    max = Math.min(max, Math.floor(owned / ing.qty))
+  }
+  return max === Infinity ? 0 : max
 }
 
 /**

@@ -28,7 +28,7 @@ function ChestVisual({ name, icon, image }: { name: string; icon: string; image?
 export function DailyMissionsWidget() {
   const [tick, setTick] = useState(0)
   const [expanded, setExpanded] = useState(true)
-  const [opened, setOpened] = useState<{ chestType: ChestType; itemId: string; goldDropped?: number } | null>(null)
+  const [opened, setOpened] = useState<{ chestType: ChestType; itemId: string; goldDropped?: number; bonusMaterials?: import('../../lib/loot').BonusMaterial[] } | null>(null)
   const missions = useMemo(() => getDailyActivities(), [tick])
   const addChest = useInventoryStore((s) => s.addChest)
   const claimPendingReward = useInventoryStore((s) => s.claimPendingReward)
@@ -42,7 +42,7 @@ export function DailyMissionsWidget() {
     const rewardId = addChest(chestType, 'daily_activity', 100)
     claimPendingReward(rewardId)
     const result = openChestAndGrantItem(chestType, { source: 'daily_activity' })
-    if (result) setOpened({ chestType, itemId: result.itemId, goldDropped: result.goldDropped })
+    if (result) setOpened({ chestType, itemId: result.itemId, goldDropped: result.goldDropped, bonusMaterials: result.bonusMaterials })
     setTick((v) => v + 1)
   }
 
@@ -135,6 +135,7 @@ export function DailyMissionsWidget() {
       chestType={opened?.chestType ?? null}
       item={openedItem}
       goldDropped={opened?.goldDropped}
+      bonusMaterials={opened?.bonusMaterials}
       onClose={() => setOpened(null)}
     />
     </>

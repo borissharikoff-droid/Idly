@@ -150,7 +150,6 @@ export function HomePage({ onNavigateProfile, onNavigateInventory, onNavigateFri
       <AnimatePresence>
         {showComplete && (
           <SessionComplete
-            onNavigateInventory={onNavigateInventory}
             onNavigateFriends={onNavigateFriends}
           />
         )}

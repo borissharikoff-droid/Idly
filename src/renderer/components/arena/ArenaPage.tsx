@@ -11,6 +11,7 @@ import { useAdminConfigStore } from '../../stores/adminConfigStore'
 import { SKILLS, skillLevelFromXP } from '../../lib/skills'
 import { CharacterCard } from '../character/CharacterCard'
 import { PageHeader } from '../shared/PageHeader'
+import { BackpackButton } from '../shared/BackpackButton'
 import { GoldDisplay } from '../marketplace/GoldDisplay'
 import { InventoryPage } from '../inventory/InventoryPage'
 import { MOTION } from '../../lib/motion'
@@ -73,7 +74,7 @@ function ZoneCard({
     reqTexts.push(`Clear ${prevZone?.name ?? zone.prevZoneId}`)
   }
   if (zone.warriorLevelRequired && (skillLevels['warrior'] ?? 0) < zone.warriorLevelRequired) {
-    reqTexts.push(`Warrior Lv.${zone.warriorLevelRequired}`)
+    reqTexts.push(`Warrior Lvl.${zone.warriorLevelRequired}`)
   }
   const missingGate = getMissingGateItems(zone, ownedItems)
   for (const itemId of missingGate) {
@@ -197,9 +198,13 @@ function ZoneCard({
               const chest = CHEST_DEFS[zone.boss.rewards.chestTier]
               const rarityTheme = RARITY_COLORS[chest.rarity]
               const bossMat = zone.boss.materialDropId ? LOOT_ITEMS.find((x) => x.id === zone.boss.materialDropId) : null
+              const mobMat = zone.mobs[0].materialDropId ? LOOT_ITEMS.find((x) => x.id === zone.mobs[0].materialDropId) : null
+              const goldMin = zone.mobs.reduce((s, m) => s + m.goldMin, 0)
+              const goldMax = zone.mobs.reduce((s, m) => s + m.goldMax, 0)
               return (
-                <>
-                  <div className="flex items-center gap-2 mt-1">
+                <div className="mt-1.5 space-y-1">
+                  {/* Stats row */}
+                  <div className="flex items-center gap-2">
                     <span className="text-[9px] text-gray-400 font-mono">
                       <span className="text-red-400/70">♥</span> {formatShort(zone.mobs[0].hp)}–{formatShort(zone.boss.hp)}
                     </span>
@@ -207,23 +212,31 @@ function ZoneCard({
                       <span className="text-orange-400/70">⚔</span> {zone.mobs[0].atk}–{zone.boss.atk}
                     </span>
                   </div>
-                  <div className="flex items-center gap-1.5 mt-0.5">
+                  {/* Drops row */}
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <span className="text-[8px] text-gray-500 font-mono uppercase tracking-wider">Drops</span>
+                    <span className="text-[9px] text-amber-400/80 font-mono">{formatShort(goldMin)}–{formatShort(goldMax)}g</span>
+                    {mobMat && (
+                      <span className="text-[9px] text-gray-400 font-mono">{mobMat.icon} {mobMat.name}</span>
+                    )}
+                  </div>
+                  {/* Boss reward row */}
+                  <div className="flex items-center gap-1 flex-wrap">
+                    <span className="text-[8px] text-gray-500 font-mono uppercase tracking-wider">Boss</span>
                     <span
-                      className="inline-flex items-center gap-1 text-[9px] font-mono px-1.5 py-0.5 rounded-md border"
+                      className="inline-flex items-center gap-0.5 text-[9px] font-mono px-1 py-0.5 rounded border"
                       style={{ color: rarityTheme.color, borderColor: rarityTheme.border, background: `${rarityTheme.color}10` }}
                     >
                       {chest.image
-                        ? <img src={chest.image} alt={chest.name} className="w-4 h-4 object-contain" style={{ imageRendering: 'pixelated' }} />
+                        ? <img src={chest.image} alt={chest.name} className="w-3.5 h-3.5 object-contain" style={{ imageRendering: 'pixelated' }} />
                         : chest.icon}
                       {chest.name}
                     </span>
                     {bossMat && (
-                      <span className="text-[9px] text-gray-400 font-mono">
-                        + {bossMat.icon} {bossMat.name}
-                      </span>
+                      <span className="text-[9px] text-gray-400 font-mono">{bossMat.icon} ×{zone.boss.materialDropQty ?? 1}</span>
                     )}
                   </div>
-                </>
+                </div>
               )
             })()}
           </div>
@@ -594,6 +607,15 @@ export function ArenaPage() {
 
   useEffect(() => { setConfirmForfeit(false) }, [activeBattle])
 
+  // Safety net: if dungeon is active but no battle, auto-advance (e.g. toast dismissed early)
+  const advanceDungeon = useArenaStore((s) => s.advanceDungeon)
+  useEffect(() => {
+    if (activeDungeon && !activeBattle) {
+      const t = setTimeout(() => advanceDungeon(), 400)
+      return () => clearTimeout(t)
+    }
+  }, [activeDungeon, activeBattle, advanceDungeon])
+
   // Auto-resolve completed mob battle → pushes toast via arenaStore → toastStore
   useEffect(() => {
     if (!battleState?.isComplete || !activeBattle?.isMob) return
@@ -635,18 +657,7 @@ export function ArenaPage() {
         title="Arena"
         rightSlot={
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => { playClickSound(); setShowBackpack(true) }}
-              className="w-8 h-8 rounded-lg bg-discord-card/60 border border-white/[0.06] flex items-center justify-center text-gray-400 hover:text-white hover:border-white/10 transition-colors"
-              title="Backpack"
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M8 7V6a4 4 0 0 1 8 0v1" />
-                <path d="M6 7h12a1 1 0 0 1 1 1v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V8a1 1 0 0 1 1-1z" />
-                <path d="M9 12h6" />
-              </svg>
-            </button>
+            <BackpackButton onClick={() => setShowBackpack(true)} />
             <GoldDisplay />
           </div>
         }

@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import {
-  CHEST_DEFS,
   LOOT_ITEMS,
+  LOOT_SLOTS,
   POTION_IDS,
   POTION_MAX,
   estimateLootDropRate,
@@ -10,6 +10,7 @@ import {
   nextPityAfterChestRoll,
   openChest,
   rollChestDrop,
+  type BonusMaterial,
   type ChestType,
   type LootDropContext,
   type LootRollPity,
@@ -48,7 +49,7 @@ interface InventoryState {
   claimAllPendingRewards: () => void
   rollSkillGrindDrop: (context: LootDropContext, elapsedSeconds: number) => PendingReward | null
   rollSessionChestDrop: (context: LootDropContext) => { rewardId: string; chestType: ChestType; estimatedDropRate: number }
-  openChestAndGrantItem: (chestType: ChestType, context: LootDropContext) => { itemId: string; estimatedDropRate: number; goldDropped: number } | null
+  openChestAndGrantItem: (chestType: ChestType, context: LootDropContext) => { itemId: string; estimatedDropRate: number; goldDropped: number; bonusMaterials: BonusMaterial[] } | null
   deleteChest: (chestType: ChestType, amount?: number) => void
   equipItem: (itemId: string) => void
   deleteItem: (itemId: string, amount?: number) => void
@@ -289,6 +290,9 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     const goldAmount = getChestGoldDrop(chestType)
     const nextChests = { ...state.chests, [chestType]: Math.max(0, state.chests[chestType] - 1) }
     const nextItems = { ...state.items, [result.item.id]: (state.items[result.item.id] ?? 0) + 1 }
+    for (const mat of result.bonusMaterials) {
+      nextItems[mat.itemId] = (nextItems[mat.itemId] ?? 0) + mat.qty
+    }
     const nextState: InventoryState = {
       ...state,
       chests: nextChests,
@@ -299,7 +303,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     useGoldStore.getState().addGold(goldAmount)
     const user = useAuthStore.getState().user
     if (user) useGoldStore.getState().syncToSupabase(user.id).catch(() => {})
-    return { itemId: result.item.id, estimatedDropRate: estimateLootDropRate(result.item.id, context), goldDropped: goldAmount }
+    return { itemId: result.item.id, estimatedDropRate: estimateLootDropRate(result.item.id, context), goldDropped: goldAmount, bonusMaterials: result.bonusMaterials }
   },
 
   deleteChest(chestType, amount = 1) {
@@ -346,7 +350,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     const qty = state.items[itemId] ?? 0
     if (qty <= 0) return
     const item = LOOT_ITEMS.find((x) => x.id === itemId)
-    if (!item || item.slot === 'consumable' || item.slot === 'plant') return
+    if (!item || !LOOT_SLOTS.includes(item.slot)) return
     set((prev) => {
       const next: InventoryState = {
         ...prev,

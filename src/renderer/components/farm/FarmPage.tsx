@@ -125,99 +125,196 @@ function HarvestAllBanner({ results, onDone }: { results: HarvestResult[]; onDon
 
 // ─── Plot unlock celebration overlay ─────────────────────────────────────────
 
+const PLOT_UNLOCK_SLAM_MS  = 480
+const PLOT_UNLOCK_TOTAL_MS = 4000
+
+const PLOT_PARTICLES = Array.from({ length: 24 }, (_, i) => ({
+  id: i,
+  angle: (i / 24) * 360 + Math.random() * 15,
+  dist:  55 + Math.random() * 90,
+  size:  10 + Math.random() * 14,
+  dur:   0.55 + Math.random() * 0.55,
+  delay: Math.random() * 0.12,
+  icon:  (['🌱', '🌿', '🍀', '🌾', '🪙'] as const)[Math.floor(Math.random() * 5)],
+}))
+
 function PlotUnlockCelebration({ slotIndex, onDone }: { slotIndex: number; onDone: () => void }) {
+  const [revealed, setRevealed] = useState(false)
+
   useEffect(() => {
-    const id = setTimeout(onDone, 2800)
-    return () => clearTimeout(id)
+    const t1 = setTimeout(() => setRevealed(true), PLOT_UNLOCK_SLAM_MS)
+    const t2 = setTimeout(onDone, PLOT_UNLOCK_TOTAL_MS)
+    return () => { clearTimeout(t1); clearTimeout(t2) }
   }, [onDone])
 
   return (
-    <>
-      {/* Confetti burst — full viewport, pointer-events-none */}
-      <div className="fixed inset-0 z-[199] pointer-events-none">
-        <PixelConfetti originX={0.5} originY={0.4} accentColor="#FBBF24" count={28} duration={2.4} />
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={onDone}
+      className="fixed inset-0 z-[200] flex items-center justify-center cursor-pointer select-none"
+      style={{ background: 'rgba(2,6,2,0.82)', backdropFilter: 'blur(3px)' }}
+    >
+      {/* Screen flash on enter */}
+      <motion.div
+        initial={{ opacity: 0.5 }}
+        animate={{ opacity: 0 }}
+        transition={{ duration: 0.55, ease: 'easeOut' }}
+        className="fixed inset-0 pointer-events-none"
+        style={{ background: 'radial-gradient(ellipse at 50% 48%, rgba(132,204,22,0.22) 0%, transparent 70%)' }}
+      />
+
+      {/* Soil/leaf particle burst — fires once on reveal */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+        {revealed && PLOT_PARTICLES.map(p => (
+          <motion.span
+            key={p.id}
+            initial={{ x: 0, y: 0, opacity: 1, scale: 1 }}
+            animate={{
+              x: Math.cos(p.angle * Math.PI / 180) * p.dist,
+              y: Math.sin(p.angle * Math.PI / 180) * p.dist,
+              opacity: 0,
+              scale: 0.25,
+            }}
+            transition={{ duration: p.dur, delay: p.delay, ease: 'easeOut' }}
+            style={{ position: 'absolute', fontSize: p.size, lineHeight: 1 }}
+          >
+            {p.icon}
+          </motion.span>
+        ))}
       </div>
 
-      {/* Toast card — centered, non-blocking */}
+      {/* Main card */}
       <motion.div
-        initial={{ scale: 0.65, opacity: 0, y: 32 }}
-        animate={{ scale: 1, opacity: 1, y: 0 }}
-        exit={{ scale: 0.85, opacity: 0, y: -12 }}
-        transition={{ type: 'spring', stiffness: 360, damping: 22, mass: 0.75 }}
-        onClick={onDone}
-        className="fixed inset-0 z-[200] flex items-center justify-center cursor-pointer"
-        style={{ background: 'transparent' }}
+        initial={{ scale: 0.38, opacity: 0, y: 48, rotateX: 18 }}
+        animate={{ scale: 1, opacity: 1, y: 0, rotateX: 0 }}
+        exit={{ scale: 0.88, opacity: 0, y: -20 }}
+        transition={{ type: 'spring', stiffness: 420, damping: 26, mass: 0.65 }}
+        onClick={e => e.stopPropagation()}
+        className="relative flex flex-col items-center gap-4 px-12 py-9 rounded-2xl border overflow-hidden"
+        style={{
+          background: 'linear-gradient(160deg, #060f06 0%, #0b1a0b 60%, #0e200e 100%)',
+          borderColor: 'rgba(132,204,22,0.38)',
+          boxShadow: '0 0 0 1px rgba(132,204,22,0.08), 0 0 70px rgba(132,204,22,0.28), 0 0 160px rgba(132,204,22,0.10), 0 16px 48px rgba(0,0,0,0.75)',
+        }}
       >
-        <div
-          className="flex flex-col items-center gap-3 px-10 py-8 rounded-2xl border border-amber-400/45 bg-[#0e0e18]/95 select-none"
-          style={{ boxShadow: '0 0 56px rgba(251,191,36,0.28), 0 0 120px rgba(251,191,36,0.10), 0 8px 32px rgba(0,0,0,0.6)' }}
-          onClick={(e) => e.stopPropagation()}
+        {/* Shimmer sweep */}
+        <motion.div
+          animate={{ x: ['-100%', '220%'] }}
+          transition={{ duration: 1.6, ease: 'linear', repeat: Infinity, repeatDelay: 0.8, delay: 0.25 }}
+          className="absolute top-0 left-0 w-2/5 h-full pointer-events-none"
+          style={{ background: 'linear-gradient(90deg, transparent, rgba(132,204,22,0.12), transparent)', zIndex: 1 }}
+        />
+
+        {/* Plot number badge */}
+        <motion.div
+          initial={{ scale: 1.6, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 500, damping: 22, delay: 0.05 }}
+          className="text-[9px] font-black tracking-[0.25em] px-3 py-1 rounded-full border"
+          style={{ color: '#84cc16', borderColor: 'rgba(132,204,22,0.3)', background: 'rgba(132,204,22,0.09)', zIndex: 2 }}
         >
-          {/* Icon with pulse ring */}
-          <div className="relative flex items-center justify-center">
+          PLOT {slotIndex + 1}
+        </motion.div>
+
+        {/* Icon with triple pulse rings */}
+        <div className="relative flex items-center justify-center" style={{ zIndex: 2 }}>
+          {[0, 1, 2].map(ring => (
             <motion.div
-              animate={{ scale: [1, 2.2], opacity: [0.45, 0] }}
-              transition={{ duration: 0.65, ease: 'easeOut' }}
-              className="absolute w-12 h-12 rounded-full bg-amber-400/30"
+              key={ring}
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: [0.8, 2.8 + ring * 0.5], opacity: [0.5, 0] }}
+              transition={{
+                duration: 0.9,
+                delay: ring * 0.12,
+                ease: 'easeOut',
+                repeat: 1,
+                repeatDelay: 1.5,
+              }}
+              className="absolute rounded-full"
+              style={{
+                width: 44, height: 44,
+                border: '1.5px solid rgba(132,204,22,0.55)',
+              }}
             />
-            <motion.span
-              initial={{ rotate: -25, scale: 0.6 }}
-              animate={{ rotate: 0, scale: 1 }}
-              transition={{ type: 'spring', stiffness: 280, damping: 13, delay: 0.04 }}
-              className="text-5xl leading-none"
-            >
-              🔓
-            </motion.span>
-          </div>
-
-          {/* Text */}
-          <div className="flex flex-col items-center gap-1 text-center">
-            <motion.p
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1, duration: 0.2 }}
-              className="text-lg font-bold text-amber-400 tracking-wide"
-            >
-              Plot {slotIndex + 1} Unlocked!
-            </motion.p>
-            <motion.p
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.18, duration: 0.18 }}
-              className="text-[11px] text-gray-400 font-mono"
-            >
-              New farm plot ready to plant
-            </motion.p>
-          </div>
-
-          {/* Coin row */}
-          <motion.div
-            className="flex items-center gap-1 text-[13px]"
+          ))}
+          <motion.span
+            initial={{ scale: 0.2, rotate: -40, opacity: 0 }}
+            animate={{ scale: 1, rotate: 0, opacity: 1 }}
+            transition={{ type: 'spring', stiffness: 340, damping: 13, delay: 0.03 }}
+            className="text-[64px] leading-none relative"
           >
-            {['🪙', '🌱', '🪙', '🌱', '🪙'].map((icon, i) => (
-              <motion.span
-                key={i}
-                initial={{ y: 10, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.14 + i * 0.06, type: 'spring', stiffness: 360, damping: 18 }}
-              >
-                {icon}
-              </motion.span>
-            ))}
-          </motion.div>
-
-          {/* Tap hint */}
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.4 }}
-            transition={{ delay: 0.5 }}
-            className="text-[9px] font-mono text-gray-500"
-          >
-            tap to dismiss
-          </motion.p>
+            🌱
+          </motion.span>
         </div>
+
+        {/* "UNLOCKED" stamp */}
+        <motion.p
+          initial={{ scale: 2.2, opacity: 0, rotate: -6 }}
+          animate={{ scale: 1, opacity: 1, rotate: 0 }}
+          transition={{ type: 'spring', stiffness: 650, damping: 24, delay: 0.06 }}
+          className="text-2xl font-black tracking-[0.18em]"
+          style={{
+            color: '#84cc16',
+            textShadow: '0 0 28px rgba(132,204,22,0.65), 0 0 8px rgba(132,204,22,0.4)',
+            zIndex: 2,
+          }}
+        >
+          UNLOCKED
+        </motion.p>
+
+        <motion.p
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.22 }}
+          className="text-[11px] text-gray-400 font-mono -mt-2"
+          style={{ zIndex: 2 }}
+        >
+          New plot ready to plant
+        </motion.p>
+
+        {/* Floating icons row */}
+        <div className="flex items-center gap-2" style={{ zIndex: 2 }}>
+          {['🌾', '🌿', '🌱', '🌿', '🌾'].map((icon, i) => (
+            <motion.span
+              key={i}
+              initial={{ y: 14, opacity: 0, scale: 0.5 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              transition={{ delay: 0.18 + i * 0.07, type: 'spring', stiffness: 380, damping: 16 }}
+              className="text-base leading-none"
+            >
+              {icon}
+            </motion.span>
+          ))}
+        </div>
+
+        {/* Countdown bar */}
+        <div className="w-full h-[2px] rounded-full overflow-hidden bg-white/[0.06]" style={{ zIndex: 2 }}>
+          <motion.div
+            initial={{ width: '100%' }}
+            animate={{ width: '0%' }}
+            transition={{
+              duration: (PLOT_UNLOCK_TOTAL_MS - PLOT_UNLOCK_SLAM_MS) / 1000,
+              ease: 'linear',
+            }}
+            className="h-full rounded-full"
+            style={{ background: 'rgba(132,204,22,0.55)' }}
+          />
+        </div>
+
+        {/* Tap hint */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.32 }}
+          transition={{ delay: 0.7 }}
+          className="text-[9px] font-mono text-gray-500 -mt-2"
+          style={{ zIndex: 2 }}
+        >
+          tap anywhere to dismiss
+        </motion.p>
       </motion.div>
-    </>
+    </motion.div>
   )
 }
 

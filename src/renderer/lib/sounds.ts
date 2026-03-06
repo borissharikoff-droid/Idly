@@ -237,6 +237,17 @@ export function playResumeSound() {
   setTimeout(() => playTone(554, 0.15, 'sine', cachedVolume), 80)
 }
 
+export function playCraftCompleteSound() {
+  loadSettings()
+  if (cachedMuted) return
+  // Anvil strike → ascending chime: metallic hit + bright resolution
+  const vol = cachedVolume
+  playTone(220, 0.08, 'square', vol * 0.6)
+  setTimeout(() => playTone(440, 0.12, 'triangle', vol * 0.8), 60)
+  setTimeout(() => playTone(660, 0.15, 'triangle', vol * 0.9), 140)
+  setTimeout(() => playTone(880, 0.2, 'sine', vol), 230)
+}
+
 export function playChestOpeningSound(rarity: string) {
   loadSettings()
   if (cachedMuted) return

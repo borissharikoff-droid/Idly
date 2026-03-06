@@ -9,6 +9,7 @@ import { ensureInventoryHydrated, useInventoryStore } from '../../stores/invento
 import { ChestOpenModal } from '../animations/ChestOpenModal'
 import { playClickSound } from '../../lib/sounds'
 import { useFarmStore } from '../../stores/farmStore'
+import { MOTION } from '../../lib/motion'
 
 interface BackpackPanelProps {
   open: boolean
@@ -29,7 +30,7 @@ export function BackpackPanel({ open, onClose, backpackRef }: BackpackPanelProps
   const equipItem = useInventoryStore((s) => s.equipItem)
   const deleteItem = useInventoryStore((s) => s.deleteItem)
 
-  const [openChestModal, setOpenChestModal] = useState<{ chestType: ChestType; itemId: string; goldDropped?: number } | null>(null)
+  const [openChestModal, setOpenChestModal] = useState<{ chestType: ChestType; itemId: string; goldDropped?: number; bonusMaterials?: import('../../lib/loot').BonusMaterial[] } | null>(null)
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; slotId: string } | null>(null)
   const [deleteConfirmTarget, setDeleteConfirmTarget] = useState<SlotEntry | null>(null)
@@ -133,7 +134,7 @@ export function BackpackPanel({ open, onClose, backpackRef }: BackpackPanelProps
       const eventType = item.rarity === 'legendary' || item.rarity === 'mythic' ? 'legendary_unlock' : 'loot_drop'
       publishSocialFeedEvent(eventType, { itemId: item.id, itemName: item.name, rarity: item.rarity, chestType, chestName: CHEST_DEFS[chestType].name }, { dedupeKey: `loot:${item.id}:${Date.now()}` }).catch(() => {})
     }
-    setOpenChestModal({ chestType, itemId: result.itemId, goldDropped: result.goldDropped })
+    setOpenChestModal({ chestType, itemId: result.itemId, goldDropped: result.goldDropped, bonusMaterials: result.bonusMaterials })
   }
 
   const runPrimaryAction = (slot: SlotEntry) => {
@@ -158,7 +159,7 @@ export function BackpackPanel({ open, onClose, backpackRef }: BackpackPanelProps
             initial={{ opacity: 0, y: -8, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.96 }}
-            transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: MOTION.duration.fast, ease: MOTION.easingSoft }}
             className="absolute top-full right-0 mt-1.5 w-[min(340px,calc(100vw-16px))] rounded-xl bg-discord-card border border-white/10 shadow-xl z-50 overflow-hidden flex flex-col"
           >
             {/* Header */}
@@ -364,6 +365,7 @@ export function BackpackPanel({ open, onClose, backpackRef }: BackpackPanelProps
         chestType={openChestModal?.chestType ?? null}
         item={openChestModal ? (LOOT_ITEMS.find((x) => x.id === openChestModal.itemId) ?? null) : null}
         goldDropped={openChestModal?.goldDropped}
+        bonusMaterials={openChestModal?.bonusMaterials}
         onClose={() => setOpenChestModal(null)}
       />
 

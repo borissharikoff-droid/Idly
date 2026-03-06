@@ -16,10 +16,11 @@ function formatShort(n: number): string {
 // ─── accent color per kind ───────────────────────────────────────────────────
 function accentFor(t: Toast): string {
   switch (t.data.kind) {
-    case 'arena_boss':    return t.data.victory ? '#fbbf24' : '#f87171'
-    case 'mob_kill':      return '#22c55e'
-    case 'friend_online': return '#22c55e'
-    case 'friend_message':return '#60a5fa'
+    case 'arena_boss':     return t.data.victory ? '#fbbf24' : '#f87171'
+    case 'mob_kill':       return '#22c55e'
+    case 'craft_complete': return '#f97316'
+    case 'friend_online':  return '#22c55e'
+    case 'friend_message': return '#60a5fa'
   }
 }
 
@@ -45,6 +46,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
   const icon = (() => {
     if (d.kind === 'arena_boss')     return d.victory ? '🏆' : '💀'
     if (d.kind === 'mob_kill')       return '⚔️'
+    if (d.kind === 'craft_complete') return d.itemIcon
     if (d.kind === 'friend_online')  return '🟢'
     if (d.kind === 'friend_message') return '💬'
   })()
@@ -52,6 +54,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
   const title = (() => {
     if (d.kind === 'arena_boss')     return d.victory ? `${d.bossName} slain!` : `Fell vs ${d.bossName}`
     if (d.kind === 'mob_kill')       return `${d.mobName} slain!`
+    if (d.kind === 'craft_complete') return `${d.itemName} crafted!`
     if (d.kind === 'friend_online')  return `${d.friendName} is online`
     if (d.kind === 'friend_message') return `${d.friendName}`
   })()
@@ -62,6 +65,11 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
       const matDef = d.material ? LOOT_ITEMS.find((x) => x.id === d.material) : null
       const parts = [`+${d.gold}🪙`, `+${formatShort(d.xp)} ⚔ XP`]
       if (matDef) parts.push(`${matDef.icon} ${matDef.name}`)
+      return parts.join('  ·  ')
+    }
+    if (d.kind === 'craft_complete') {
+      const parts = [`×${d.qty}`]
+      if (d.xp > 0) parts.push(`+${formatShort(d.xp)} craft XP`)
       return parts.join('  ·  ')
     }
     if (d.kind === 'friend_message') return d.messagePreview ?? 'sent a message'

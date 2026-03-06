@@ -3,6 +3,7 @@ import { create } from 'zustand'
 export type ToastKind =
   | { kind: 'arena_boss'; victory: boolean; bossName: string; gold: number; notificationId: string }
   | { kind: 'mob_kill'; mobName: string; gold: number; xp: number; material: string | null }
+  | { kind: 'craft_complete'; itemName: string; itemIcon: string; qty: number; xp: number }
   | { kind: 'friend_online'; friendName: string }
   | { kind: 'friend_message'; friendName: string; messagePreview?: string }
 
@@ -17,6 +18,7 @@ export interface Toast {
 const TTL: Record<ToastKind['kind'], number> = {
   arena_boss:      6000,
   mob_kill:        3000,
+  craft_complete:  3500,
   friend_online:   4500,
   friend_message:  4500,
 }
@@ -30,7 +32,7 @@ const ONLINE_DEDUPE_MS = 12_000
 interface ToastStore {
   toasts: Toast[]
   push: (data: ToastKind, onExpire?: () => void) => string
-  dismiss: (id: string, expired?: boolean) => void
+  dismiss: (id: string) => void
   dismissAll: () => void
 }
 
@@ -50,22 +52,29 @@ export const useToastStore = create<ToastStore>((set, get) => ({
     const ttlMs = TTL[data.kind]
     const toast: Toast = { id, createdAt: Date.now(), ttlMs, data, onExpire }
 
-    set((s) => ({ toasts: [...s.toasts, toast].slice(-MAX_TOASTS) }))
+    set((s) => {
+      const next = [...s.toasts, toast]
+      const dropped = next.slice(0, Math.max(0, next.length - MAX_TOASTS))
+      for (const t of dropped) { if (t.onExpire) t.onExpire() }
+      return { toasts: next.slice(-MAX_TOASTS) }
+    })
 
     setTimeout(() => {
-      get().dismiss(id, true)
+      get().dismiss(id)
     }, ttlMs)
 
     return id
   },
 
-  dismiss(id, expired = false) {
+  dismiss(id) {
     const toast = get().toasts.find((t) => t.id === id)
-    if (toast?.onExpire && expired) toast.onExpire()
+    if (toast?.onExpire) toast.onExpire()
     set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }))
   },
 
   dismissAll() {
+    const { toasts } = get()
+    for (const t of toasts) { if (t.onExpire) t.onExpire() }
     set({ toasts: [] })
   },
 }))

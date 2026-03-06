@@ -70,6 +70,7 @@ export const ZONES: ZoneDef[] = [
     boss: {
       id: 'slime', name: 'Slime King', icon: '💧', hp: 14400, atk: 1.5,
       rewards: { chestTier: 'common_chest' },
+      materialDropId: 'slime_gel', materialDropQty: 5,
     },
   },
   {
@@ -88,6 +89,7 @@ export const ZONES: ZoneDef[] = [
       id: 'goblin', name: 'Goblin Chief', icon: '👺', hp: 21600, atk: 3,
       rewards: { chestTier: 'rare_chest' },
       requirements: { minAtk: 9, minHpRegen: 3 },
+      materialDropId: 'goblin_tooth', materialDropQty: 4,
     },
   },
   {
@@ -107,6 +109,7 @@ export const ZONES: ZoneDef[] = [
       id: 'wolf', name: 'Forest Wolf', icon: '🐺', hp: 52800, atk: 5,
       rewards: { chestTier: 'rare_chest' },
       requirements: { minAtk: 11, minHp: 200, minHpRegen: 5 },
+      materialDropId: 'wolf_fang', materialDropQty: 3,
     },
   },
   {

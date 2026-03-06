@@ -174,17 +174,19 @@ export function ItemInspectModal({ item, locked = false, onClose }: ItemInspectM
                 </div>
               )}
 
-              <div className="flex items-center gap-2 text-[9px] font-mono pt-0.5 border-t border-white/[0.05]">
-                <span className="text-gray-500">IP</span>
-                <span style={{ color: theme.color }}>{ip}</span>
-                <span className="text-white/20">-</span>
-                <span className="text-gray-500">Wt</span>
-                <span className="text-gray-300">{baseWt}</span>
-                {rate !== null && <>
+              {(['head', 'body', 'legs', 'ring', 'weapon'] as const).includes(item.slot as never) && (
+                <div className="flex items-center gap-2 text-[9px] font-mono pt-0.5 border-t border-white/[0.05]">
+                  <span className="text-gray-500">IP</span>
+                  <span style={{ color: theme.color }}>{ip}</span>
                   <span className="text-white/20">-</span>
-                  <span className="text-gray-500">~{rate}% drop</span>
-                </>}
-              </div>
+                  <span className="text-gray-500">Wt</span>
+                  <span className="text-gray-300">{baseWt}</span>
+                  {rate !== null && <>
+                    <span className="text-white/20">-</span>
+                    <span className="text-gray-500">~{rate}% drop</span>
+                  </>}
+                </div>
+              )}
             </div>
 
             {/* Action buttons */}
