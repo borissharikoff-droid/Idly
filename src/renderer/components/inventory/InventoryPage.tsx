@@ -30,7 +30,7 @@ type SlotEntry =
   | { id: string; kind: 'pending'; icon: string; image?: string; title: string; subtitle: string; quantity: number; rewardIds: string[]; chestType: ChestType }
   | { id: string; kind: 'chest'; icon: string; image?: string; title: string; subtitle: string; quantity: number; chestType: ChestType }
   | { id: string; kind: 'item'; icon: string; image?: string; title: string; subtitle: string; quantity: number; itemId: string; equipped: boolean }
-  | { id: string; kind: 'seed'; icon: string; title: string; subtitle: string; quantity: number; seedId: string }
+  | { id: string; kind: 'seed'; icon: string; image?: string; title: string; subtitle: string; quantity: number; seedId: string }
 
 // ─── Module-level constants (stable references, never recreated per render) ──
 
@@ -182,6 +182,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
         id: `seed:${seed.id}`,
         kind: 'seed',
         icon: seed.icon,
+        image: seed.image,
         title: seed.name + 's',
         subtitle: `${seed.rarity} · ${formatGrowTime(seed.growTimeSeconds)} · ${seed.yieldMin}–${seed.yieldMax} yield`,
         quantity: qty,
@@ -455,7 +456,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
             const slotTheme = RARITY_THEME[normalizeRarity(slotRarity)]
             const isEquipped = slot.kind === 'item' && slot.equipped
             const isPending = slot.kind === 'pending'
-            const slotImage = slot.kind !== 'seed' ? slot.image : undefined
+            const slotImage = slot.image
             const lootItem = slot.kind === 'item' ? LOOT_ITEMS.find((x) => x.id === slot.itemId) : null
             const perkChip = lootItem && lootItem.perkType !== 'cosmetic' && lootItem.slot !== 'consumable' && lootItem.slot !== 'plant'
               ? getItemPerkDescription(lootItem)
@@ -673,7 +674,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                 <div className="relative z-10 flex items-center justify-center" style={{ width: 80, height: 80 }}>
                   <LootVisual
                     icon={inspectSlot.icon}
-                    image={inspectSlot.kind !== 'seed' ? inspectSlot.image : undefined}
+                    image={inspectSlot.image}
                     className="w-full h-full object-contain drop-shadow-lg"
                     scale={(inspectItem?.renderScale ?? 1) * 1.3}
                   />
