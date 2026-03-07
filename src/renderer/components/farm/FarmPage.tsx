@@ -675,6 +675,13 @@ function SeedZipSection() {
     const seedId = openSeedZip(tier)
     if (seedId) {
       setLastOpened({ tier, seedId })
+      // Immediately sync to Supabase so periodic Math.max merge doesn't restore the zip
+      const user = useAuthStore.getState().user
+      if (supabase && user) {
+        const { items, chests } = useInventoryStore.getState()
+        const { seeds, seedZips: sz } = useFarmStore.getState()
+        syncInventoryToSupabase(items, chests, { merge: false, seeds, seedZips: sz }).catch(() => {})
+      }
     }
   }, [openSeedZip, lastOpened])
 
@@ -1278,6 +1285,13 @@ function SeedPicker({ slotIndex, seeds, onClose }: { slotIndex: number; seeds: R
                       useFarmStore.getState().transferSeedsFromInventory()
                     }
                     plantSeed(slotIndex, seed.id)
+                    // Sync consumed seed to Supabase immediately
+                    const user = useAuthStore.getState().user
+                    if (supabase && user) {
+                      const { items: itm, chests: ch } = useInventoryStore.getState()
+                      const { seeds: sd, seedZips: sz } = useFarmStore.getState()
+                      syncInventoryToSupabase(itm, ch, { merge: false, seeds: sd, seedZips: sz }).catch(() => {})
+                    }
                     onClose()
                   }}
                   className="w-full rounded-xl border p-3 flex items-center gap-3 text-left transition-opacity hover:opacity-90"
