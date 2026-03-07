@@ -317,12 +317,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
         try {
           const { items, chests } = useInventoryStore.getState()
           const { seeds, seedZips } = useFarmStore.getState()
-          const merged = await syncInventoryToSupabase(items, chests, { merge: true, seeds, seedZips })
-          if (merged.ok && merged.mergedChests) {
-            if (merged.mergedItems) useInventoryStore.getState().mergeFromCloud(merged.mergedItems, merged.mergedChests)
-            if (merged.mergedSeeds) useFarmStore.getState().mergeSeedsFromCloud(merged.mergedSeeds)
-            if (merged.mergedSeedZips) useFarmStore.getState().mergeSeedZipsFromCloud(merged.mergedSeedZips)
-          }
+          await syncInventoryToSupabase(items, chests, { merge: false, seeds, seedZips })
         } catch {
           // Sync failure is non-fatal — local state already updated by Supabase RPC
         }
@@ -351,12 +346,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
         try {
           const { items, chests } = useInventoryStore.getState()
           const { seeds, seedZips } = useFarmStore.getState()
-          const merged = await syncInventoryToSupabase(items, chests, { merge: true, seeds, seedZips })
-          if (merged.ok && merged.mergedChests) {
-            if (merged.mergedItems) useInventoryStore.getState().mergeFromCloud(merged.mergedItems, merged.mergedChests)
-            if (merged.mergedSeeds) useFarmStore.getState().mergeSeedsFromCloud(merged.mergedSeeds)
-            if (merged.mergedSeedZips) useFarmStore.getState().mergeSeedZipsFromCloud(merged.mergedSeedZips)
-          }
+          await syncInventoryToSupabase(items, chests, { merge: false, seeds, seedZips })
         } catch {
           // Sync failure is non-fatal — listing already cancelled server-side
         }
@@ -385,12 +375,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
     try {
       const { items, chests } = useInventoryStore.getState()
       const { seeds, seedZips } = useFarmStore.getState()
-      const merged = await syncInventoryToSupabase(items, chests, { merge: true, seeds, seedZips })
-      if (merged.ok && merged.mergedChests) {
-        if (merged.mergedItems) useInventoryStore.getState().mergeFromCloud(merged.mergedItems, merged.mergedChests)
-        if (merged.mergedSeeds) useFarmStore.getState().mergeSeedsFromCloud(merged.mergedSeeds)
-        if (merged.mergedSeedZips) useFarmStore.getState().mergeSeedZipsFromCloud(merged.mergedSeedZips)
-      }
+      await syncInventoryToSupabase(items, chests, { merge: false, seeds, seedZips })
     } catch {
       // Sync failure is non-fatal
     }

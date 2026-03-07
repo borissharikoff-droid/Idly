@@ -7,7 +7,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { useArenaStore } from '../../stores/arenaStore'
 import { skillLevelFromXP } from '../../lib/skills'
 import { supabase } from '../../lib/supabase'
-import { syncInventoryToSupabase, fetchFarmFromCloud } from '../../services/supabaseSync'
+import { syncInventoryToSupabase } from '../../services/supabaseSync'
 import { ensureInventoryHydrated, useInventoryStore } from '../../stores/inventoryStore'
 import { SEED_DEFS, SLOT_UNLOCK_COSTS, MAX_FARM_SLOTS, getSeedById, formatGrowTime, SEED_ZIP_ITEM_IDS, getSeedZipDisplay, type SeedZipTier } from '../../lib/farming'
 import { useAdminConfigStore } from '../../stores/adminConfigStore'
@@ -1356,20 +1356,10 @@ export function FarmPage() {
   const runSync = useCallback(async () => {
     if (!supabase || !user) return
     try {
-      const cloud = await fetchFarmFromCloud()
-      if (cloud && !cloud.error) {
-        useFarmStore.getState().mergeSeedsFromCloud(cloud.seeds)
-        useFarmStore.getState().mergeSeedZipsFromCloud(cloud.seedZips)
-      }
       ensureInventoryHydrated()
       const { items, chests } = useInventoryStore.getState()
       const { seeds: s, seedZips } = useFarmStore.getState()
-      const res = await syncInventoryToSupabase(items, chests, { merge: true, seeds: s, seedZips })
-      if (res.ok && res.mergedChests) {
-        if (res.mergedItems) useInventoryStore.getState().mergeFromCloud(res.mergedItems, res.mergedChests)
-        if (res.mergedSeeds) useFarmStore.getState().mergeSeedsFromCloud(res.mergedSeeds)
-        if (res.mergedSeedZips) useFarmStore.getState().mergeSeedZipsFromCloud(res.mergedSeedZips)
-      }
+      await syncInventoryToSupabase(items, chests, { merge: false, seeds: s, seedZips })
     } catch { /* ignore */ }
   }, [user?.id])
 

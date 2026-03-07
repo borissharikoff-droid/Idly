@@ -46,7 +46,7 @@ export async function sendGiftToFriend(
   store.deleteItem(itemId, quantity)
   const { items, chests } = useInventoryStore.getState()
   const { seeds, seedZips } = useFarmStore.getState()
-  syncInventoryToSupabase(items, chests, { merge: true, seeds, seedZips }).catch(() => {})
+  syncInventoryToSupabase(items, chests, { merge: false, seeds, seedZips }).catch(() => {})
   return { ok: true }
 }
 
@@ -116,7 +116,7 @@ export async function claimGift(giftId: string): Promise<{ ok: boolean; itemId?:
   }
   const { items, chests } = useInventoryStore.getState()
   const { seeds, seedZips } = useFarmStore.getState()
-  syncInventoryToSupabase(items, chests, { merge: true, seeds, seedZips }).catch(() => {})
+  syncInventoryToSupabase(items, chests, { merge: false, seeds, seedZips }).catch(() => {})
 
   return { ok: true, itemId: g.item_id, quantity: g.quantity }
 }

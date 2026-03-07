@@ -1,3 +1,13 @@
+## What's new in v3.2.1
+
+### Fixed
+- Items, chests, seed zips, and seeds no longer reappear after switching tabs or re-opening the app
+- Removed Math.max cloud merge strategy that was restoring consumed/opened items from stale Supabase data
+- Local inventory is now always authoritative — cloud sync is push-only
+
+---
+Released: 2026-03-07
+
 ## What's new in v3.2.0
 
 ### New

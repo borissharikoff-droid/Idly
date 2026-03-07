@@ -29,14 +29,7 @@ export function useProfileSync() {
       ensureInventoryHydrated()
       const { items, chests } = useInventoryStore.getState()
       const { seeds, seedZips } = useFarmStore.getState()
-      syncInventoryToSupabase(items, chests, { merge: true, seeds, seedZips })
-        .then((res) => {
-          if (res.ok && res.mergedChests) {
-            if (res.mergedItems) useInventoryStore.getState().mergeFromCloud(res.mergedItems, res.mergedChests)
-            if (res.mergedSeeds) useFarmStore.getState().mergeSeedsFromCloud(res.mergedSeeds)
-            if (res.mergedSeedZips) useFarmStore.getState().mergeSeedZipsFromCloud(res.mergedSeedZips)
-          }
-        })
+      syncInventoryToSupabase(items, chests, { merge: false, seeds, seedZips })
         .catch(() => {})
 
       if (!window.electronAPI?.db?.getStreak) return
