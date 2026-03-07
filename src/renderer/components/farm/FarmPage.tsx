@@ -1,7 +1,7 @@
-import { useEffect, useState, useCallback, useRef, useReducer } from 'react'
+import { useEffect, useMemo, useState, useCallback, useRef, useReducer } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useFarmStore, type HarvestResult } from '../../stores/farmStore'
+import { useFarmStore, COMPOST_PER_PLOT, type HarvestResult } from '../../stores/farmStore'
 import { useGoldStore } from '../../stores/goldStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useArenaStore } from '../../stores/arenaStore'
@@ -802,6 +802,7 @@ function SeedZipSection() {
           itemId={SEED_ZIP_ITEM_IDS[sellTarget]}
           maxQty={seedZips[sellTarget] ?? 1}
           onDeductItem={(qty) => removeSeedZip(sellTarget, qty)}
+          onRollbackDeduct={(qty) => useFarmStore.getState().addSeedZip(sellTarget, qty)}
           onClose={() => setSellTarget(null)}
           onListed={() => setSellTarget(null)}
         />
@@ -1034,7 +1035,16 @@ function HarvestClaimModal({ results, onClose }: { results: HarvestResult[]; onC
                         : <span className="text-3xl relative">{plant?.icon ?? '🌱'}</span>}
                       <p className="text-[11px] text-white font-semibold relative leading-tight">{plant?.name ?? r.yieldPlantId}</p>
                       <p className="text-xl font-bold relative" style={{ color: pt.color }}>×{r.qty}</p>
+                      {r.composted && (
+                        <p className="text-[8px] font-mono text-amber-400 relative">🧪 +20%</p>
+                      )}
                       <p className="text-[9px] font-mono text-lime-400 relative">+{r.xpGained} XP</p>
+                      {r.compostDrop && (
+                        <div className="flex items-center gap-0.5 mt-0.5 px-1.5 py-0.5 rounded-md border border-amber-500/25 bg-amber-500/10 relative">
+                          <span className="text-[10px]">🧪</span>
+                          <span className="text-[8px] font-mono text-amber-400">+1</span>
+                        </div>
+                      )}
                       {r.seedZipTier && (() => {
                         const zt = getRarityTheme(r.seedZipTier!)
                         const zd = getSeedZipDisplay(r.seedZipTier!)
@@ -1191,11 +1201,30 @@ function HarvestRevealModal({ result, onClose }: { result: HarvestResult; onClos
             style={{ boxShadow: `0 0 20px ${t.glow}` }}
           />
 
+          {/* Composted bonus indicator */}
+          {result.composted && (
+            <div className="flex items-center justify-between relative">
+              <span className="text-[10px] text-amber-400 font-mono">🧪 Composted</span>
+              <span className="text-[10px] font-bold text-amber-400">+20% yield · +5% XP</span>
+            </div>
+          )}
+
           {/* XP */}
           <div className="flex items-center justify-between relative">
             <span className="text-[10px] text-gray-400 font-mono">Farmer XP</span>
             <span className="text-sm font-bold text-lime-400">+{result.xpGained}</span>
           </div>
+
+          {/* Compost drop */}
+          {result.compostDrop && (
+            <div className="flex items-center gap-2 rounded-lg border border-amber-500/25 px-2.5 py-1.5 bg-amber-500/8 relative">
+              <span className="text-base">🧪</span>
+              <div className="flex-1 text-left">
+                <p className="text-[10px] font-bold text-amber-400 leading-none">Bonus drop!</p>
+                <p className="text-[9px] text-gray-400 font-mono mt-0.5">Compost ×1</p>
+              </div>
+            </div>
+          )}
 
           {/* Seed Zip bonus */}
           {result.seedZipTier && zipT && (
@@ -1237,8 +1266,12 @@ function FarmSlot({
   onHarvested: (result: HarvestResult) => void
 }) {
   const planted = useFarmStore((s) => s.planted[slotIndex])
+  const slotComposted = useFarmStore((s) => !!s.compostedSlots[slotIndex])
   const harvestSlot = useFarmStore((s) => s.harvestSlot)
+  const compostSlot = useFarmStore((s) => s.compostSlot)
   const cancelPlanting = useFarmStore((s) => s.cancelPlanting)
+  const compostCount = useInventoryStore((s) => s.items['compost'] ?? 0)
+  const isComposted = !!planted?.composted || slotComposted
   const seed = planted ? getSeedById(planted.seedId) : null
   const remaining = useCountdown(planted?.plantedAt ?? 0, planted?.growTimeSeconds ?? 0)
   const isReady = !!planted && remaining <= 0
@@ -1268,20 +1301,47 @@ function FarmSlot({
     <AnimatePresence mode="wait">
       {!planted ? (
         // ── Empty ──
-        <motion.button
+        <motion.div
           key="empty"
-          type="button"
           initial={{ opacity: 0, scale: 0.93 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.93 }}
           transition={{ duration: 0.18, ease: MOTION.easing }}
-          whileTap={MOTION.interactive.tap}
-          onClick={() => { playClickSound(); onOpenSeedPicker(slotIndex) }}
-          className="w-full min-h-[116px] rounded-xl border border-dashed border-white/[0.09] bg-discord-card/30 flex flex-col items-center justify-center gap-2 hover:border-lime-400/30 hover:bg-lime-400/[0.04] transition-all group"
+          className={`w-full min-h-[116px] rounded-xl border ${slotComposted ? 'border-amber-500/30 bg-amber-500/[0.04]' : 'border-dashed border-white/[0.09] bg-discord-card/30'} flex flex-col items-center justify-center gap-2 transition-all`}
         >
-          <span className="text-2xl text-gray-700 group-hover:text-lime-400/50 transition-colors">🌱</span>
-          <span className="text-[9px] text-gray-600 font-mono group-hover:text-gray-400 transition-colors tracking-wider uppercase">Plant seed</span>
-        </motion.button>
+          <motion.button
+            type="button"
+            whileTap={MOTION.interactive.tap}
+            onClick={() => { playClickSound(); onOpenSeedPicker(slotIndex) }}
+            className="flex flex-col items-center gap-1 group"
+          >
+            <span className={`text-2xl ${slotComposted ? 'text-amber-400/60' : 'text-gray-700 group-hover:text-lime-400/50'} transition-colors`}>
+              {slotComposted ? '🧪' : '🌱'}
+            </span>
+            <span className="text-[9px] text-gray-600 font-mono group-hover:text-gray-400 transition-colors tracking-wider uppercase">
+              {slotComposted ? 'Composted · Plant seed' : 'Plant seed'}
+            </span>
+          </motion.button>
+          {!slotComposted && compostCount > 0 && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                if (compostCount < COMPOST_PER_PLOT) return
+                playClickSound()
+                compostSlot(slotIndex)
+              }}
+              disabled={compostCount < COMPOST_PER_PLOT}
+              className={`text-[8px] font-mono px-2 py-0.5 rounded border transition-colors ${
+                compostCount >= COMPOST_PER_PLOT
+                  ? 'bg-amber-500/10 border-amber-500/25 text-amber-400 hover:bg-amber-500/20'
+                  : 'bg-white/[0.03] border-white/[0.06] text-gray-600 cursor-not-allowed'
+              }`}
+            >
+              🧪 Compost ({compostCount}/{COMPOST_PER_PLOT})
+            </button>
+          )}
+        </motion.div>
       ) : (
         // ── Growing / Ready ──
         <motion.div
@@ -1292,10 +1352,12 @@ function FarmSlot({
           transition={{ duration: 0.2, ease: MOTION.easing }}
           className="relative w-full min-h-[116px] rounded-xl border overflow-hidden"
           style={{
-            borderColor: isReady ? '#84cc16' : (theme?.border ?? 'rgba(255,255,255,0.06)'),
+            borderColor: isReady ? '#84cc16' : isComposted ? '#f59e0b' : (theme?.border ?? 'rgba(255,255,255,0.06)'),
             background: isReady
               ? 'linear-gradient(145deg, rgba(132,204,22,0.09) 0%, rgba(9,9,17,0.97) 65%)'
-              : `linear-gradient(145deg, ${theme?.glow ?? 'transparent'}12 0%, rgba(9,9,17,0.97) 65%)`,
+              : isComposted
+                ? `linear-gradient(145deg, rgba(245,158,11,0.08) 0%, ${theme?.glow ?? 'transparent'}12 30%, rgba(9,9,17,0.97) 65%)`
+                : `linear-gradient(145deg, ${theme?.glow ?? 'transparent'}12 0%, rgba(9,9,17,0.97) 65%)`,
           }}
         >
           {/* Ready pulse glow */}
@@ -1348,6 +1410,7 @@ function FarmSlot({
                   ? <img src={seed.image} alt="" className="w-4 h-4 object-contain shrink-0" />
                   : <span className="text-base leading-none shrink-0">{seed?.icon ?? '🌱'}</span>}
                 <p className="text-[10px] font-medium text-white/80 truncate flex-1">{seed?.name}</p>
+                {isComposted && <span className="text-[7px] font-mono px-1 py-px rounded bg-amber-500/15 text-amber-400 border border-amber-500/25 shrink-0">🧪</span>}
                 <span className="text-[8px] font-mono font-bold text-lime-400 shrink-0 tracking-wider">READY</span>
               </div>
 
@@ -1391,6 +1454,7 @@ function FarmSlot({
                     ? <img src={seed.image} alt="" className="w-3.5 h-3.5 object-contain shrink-0" />
                     : <span className="text-sm leading-none shrink-0">{seed?.icon ?? '🌱'}</span>}
                   <p className="text-[10px] font-medium text-white truncate flex-1">{seed?.name}</p>
+                  {isComposted && <span className="text-[7px] font-mono px-1 py-px rounded bg-amber-500/15 text-amber-400 border border-amber-500/25 shrink-0">🧪</span>}
                   {theme && (
                     <span
                       className="text-[7px] font-mono uppercase tracking-wider px-1.5 py-px rounded shrink-0 mr-5"
@@ -1429,9 +1493,11 @@ function FarmSlot({
                     />
                   </motion.div>
                 </div>
-                <p className="text-[8px] font-mono text-gray-400 mt-1 text-right tabular-nums">
-                  {Math.floor(progress * 100)}%
-                </p>
+                <div className="flex items-center justify-end mt-1">
+                  <p className="text-[8px] font-mono text-gray-400 tabular-nums">
+                    {Math.floor(progress * 100)}%
+                  </p>
+                </div>
               </div>
 
               {/* Cancel confirm overlay */}
@@ -1504,7 +1570,19 @@ function LockedSlot({ slotIndex, onUnlock }: { slotIndex: number; onUnlock: () =
 
 function SeedPicker({ slotIndex, seeds, onClose }: { slotIndex: number; seeds: Record<string, number>; onClose: () => void }) {
   const plantSeed = useFarmStore((s) => s.plantSeed)
-  const available = SEED_DEFS.filter((s) => (seeds[s.id] ?? 0) > 0)
+  const inventoryItems = useInventoryStore((s) => s.items)
+
+  // Merge cabinet seeds + inventory seeds so all are visible
+  const mergedSeeds = useMemo(() => {
+    const m: Record<string, number> = { ...seeds }
+    for (const def of SEED_DEFS) {
+      const invQty = inventoryItems[def.id] ?? 0
+      if (invQty > 0) m[def.id] = (m[def.id] ?? 0) + invQty
+    }
+    return m
+  }, [seeds, inventoryItems])
+
+  const available = SEED_DEFS.filter((s) => (mergedSeeds[s.id] ?? 0) > 0)
 
   return (
     <motion.div
@@ -1556,7 +1634,17 @@ function SeedPicker({ slotIndex, seeds, onClose }: { slotIndex: number; seeds: R
                   key={seed.id}
                   type="button"
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => { playClickSound(); track('farm_plant', { seed_id: seed.id }); plantSeed(slotIndex, seed.id); onClose() }}
+                  onClick={() => {
+                    playClickSound()
+                    track('farm_plant', { seed_id: seed.id })
+                    // If this seed is still in the inventory (not yet in cabinet), move it first
+                    const cabinetQty = seeds[seed.id] ?? 0
+                    if (cabinetQty <= 0) {
+                      useFarmStore.getState().transferSeedsFromInventory()
+                    }
+                    plantSeed(slotIndex, seed.id)
+                    onClose()
+                  }}
                   className="w-full rounded-xl border p-3 flex items-center gap-3 text-left transition-opacity hover:opacity-90"
                   style={{ borderColor: t.border, background: `linear-gradient(135deg, ${t.glow}18 0%, rgba(10,10,20,0.95) 60%)` }}
                 >
@@ -1583,7 +1671,7 @@ function SeedPicker({ slotIndex, seeds, onClose }: { slotIndex: number; seeds: R
                     className="text-xs font-mono font-bold shrink-0 px-2 py-0.5 rounded-lg"
                     style={{ color: t.color, backgroundColor: `${t.color}18` }}
                   >
-                    ×{seeds[seed.id] ?? 0}
+                    ×{mergedSeeds[seed.id] ?? 0}
                   </span>
                 </motion.button>
               )
@@ -1604,6 +1692,13 @@ export function FarmPage() {
   const seeds = useFarmStore((s) => s.seeds)
   const unlockNextSlot = useFarmStore((s) => s.unlockNextSlot)
   const harvestAll = useFarmStore((s) => s.harvestAll)
+  const compostAll = useFarmStore((s) => s.compostAll)
+  const compostedSlots = useFarmStore((s) => s.compostedSlots)
+  const compostCount = useInventoryStore((s) => s.items['compost'] ?? 0)
+  const farmerLevel = skillLevelFromXP(
+    (() => { try { return (JSON.parse(localStorage.getItem('grindly_skill_xp') || '{}') as Record<string, number>)['farmer'] ?? 0 } catch { return 0 } })()
+  )
+  const emptyUncompostedCount = Array.from({ length: unlockedSlots }, (_, i) => i).filter((i) => !planted[i] && !compostedSlots[i]).length
   const [pickerSlot, setPickerSlot] = useState<number | null>(null)
   const [unlockError, setUnlockError] = useState(false)
   const [justUnlockedSlot, setJustUnlockedSlot] = useState<number | null>(null)
@@ -1683,7 +1778,36 @@ export function FarmPage() {
       <PageHeader
         title="Farm"
         rightSlot={
-          <GoldDisplay />
+          <div className="flex items-center gap-2">
+            <div className="relative group">
+              <button
+                type="button"
+                disabled={farmerLevel < 50 || emptyUncompostedCount === 0 || compostCount < COMPOST_PER_PLOT}
+                onClick={() => {
+                  if (farmerLevel < 50 || emptyUncompostedCount === 0 || compostCount < COMPOST_PER_PLOT) return
+                  playClickSound()
+                  compostAll()
+                }}
+                className={`text-[10px] font-semibold px-2 py-1 rounded-lg border transition-colors ${
+                  farmerLevel >= 50 && emptyUncompostedCount > 0 && compostCount >= COMPOST_PER_PLOT
+                    ? 'bg-amber-500/12 border-amber-500/30 text-amber-400 hover:bg-amber-500/20'
+                    : 'bg-white/[0.03] border-white/[0.06] text-gray-600 cursor-not-allowed'
+                }`}
+              >
+                🧪 {farmerLevel >= 50 ? 'Compost All' : '🔒 Compost All'}
+              </button>
+              {farmerLevel < 50 && (
+                <div className="absolute right-0 top-full mt-1 z-50 hidden group-hover:block w-44">
+                  <div className="bg-discord-darker border border-white/10 rounded-lg px-2.5 py-1.5 text-[9px] text-gray-300 font-mono shadow-lg">
+                    Unlocks at <span className="text-amber-400 font-bold">Farmer lv.50</span>
+                    <br />Current level: <span className="text-white">{farmerLevel}</span>
+                    <br />Compost empty plots automatically
+                  </div>
+                </div>
+              )}
+            </div>
+            <GoldDisplay />
+          </div>
         }
       />
 
@@ -1710,21 +1834,23 @@ export function FarmPage() {
               </div>
             )}
           </div>
-          <AnimatePresence>
-            {readyCount >= 1 && (
-              <motion.button
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                type="button"
-                whileTap={{ scale: 0.96 }}
-                onClick={() => { playClickSound(); const res = harvestAll(); if (res.length > 0) { setHarvestClaimResults(res); syncAfterHarvest() } }}
-                className="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-lime-400/15 border border-lime-400/35 text-lime-400 hover:bg-lime-400/25 transition-colors"
-              >
-                Claim All{readyCount > 1 ? ` (${readyCount})` : ''}
-              </motion.button>
-            )}
-          </AnimatePresence>
+          <div className="flex items-center gap-1.5">
+            <AnimatePresence>
+              {readyCount >= 1 && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  type="button"
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => { playClickSound(); const res = harvestAll(); if (res.length > 0) { setHarvestClaimResults(res); syncAfterHarvest() } }}
+                  className="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-lime-400/15 border border-lime-400/35 text-lime-400 hover:bg-lime-400/25 transition-colors"
+                >
+                  Claim All{readyCount > 1 ? ` (${readyCount})` : ''}
+                </motion.button>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
 
         {/* 2-col grid */}

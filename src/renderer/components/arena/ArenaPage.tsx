@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ZONES,
-  isZoneUnlocked, getMissingGateItems, getDailyBossId, type ZoneDef,
+  isZoneUnlocked, getMissingGateItems, getDailyBossId, effectiveBossDps, type ZoneDef,
 } from '../../lib/combat'
-import { LOOT_ITEMS, CHEST_DEFS, RARITY_COLORS } from '../../lib/loot'
+import { LOOT_ITEMS, CHEST_DEFS, RARITY_COLORS, type ChestType, type BonusMaterial } from '../../lib/loot'
 import { useInventoryStore } from '../../stores/inventoryStore'
+import { ChestOpenModal } from '../animations/ChestOpenModal'
 import { useArenaStore } from '../../stores/arenaStore'
 import { useAdminConfigStore } from '../../stores/adminConfigStore'
 import { SKILLS, skillLevelFromXP } from '../../lib/skills'
@@ -59,8 +60,6 @@ function ZoneCard({
   const unlocked = isZoneUnlocked(zone, skillLevels, clearedZones, ownedItems)
   const cleared = clearedZones.includes(zone.id)
   const isActive = activeDungeon?.zoneId === zone.id
-  const endBattle = useArenaStore((s) => s.endBattle)
-  const setResultModal = useArenaStore((s) => s.setResultModal)
   const forfeitDungeon = useArenaStore((s) => s.forfeitDungeon)
 
   const mobIndex = isActive ? (activeDungeon?.mobIndex ?? 0) : 0
@@ -209,13 +208,13 @@ function ZoneCard({
               const goldMax = zone.mobs.reduce((s, m) => s + m.goldMax, 0)
               return (
                 <div className="mt-1.5 space-y-1">
-                  {/* Stats row */}
+                  {/* Boss stats row */}
                   <div className="flex items-center gap-2">
                     <span className="text-[9px] text-gray-400 font-mono">
-                      <span className="text-red-400/70">♥</span> {formatShort(zone.mobs[0].hp)}–{formatShort(zone.boss.hp)}
+                      <span className="text-red-400/70">♥</span> Boss HP {formatShort(zone.boss.hp)}
                     </span>
                     <span className="text-[9px] text-gray-400 font-mono">
-                      <span className="text-orange-400/70">⚔</span> {zone.mobs[0].atk}–{zone.boss.atk}
+                      <span className="text-orange-400/70">⚔</span> Boss ATK {zone.boss.atk}/s
                     </span>
                   </div>
                   {/* Drops row */}
@@ -277,32 +276,17 @@ function ZoneCard({
             style={{ borderColor: `${tc}55`, background: `linear-gradient(180deg, ${tc}12 0%, rgba(12,12,20,0.95) 100%)` }}
           >
             {battleComplete ? (
-              /* ── Battle resolved ── */
-              <button
-                type="button"
-                onClick={() => {
-                  playClickSound()
-                  const victory = battleState?.victory ?? false
-                  const enemyName = currentEnemy?.name ?? 'Enemy'
-                  const { goldLost, chest, lostItem, materialDrop, dungeonGold, warriorXP } = endBattle()
-                  if (!activeBattle.isMob) {
-                    setResultModal({ victory, gold: 0, goldAlreadyAdded: true, bossName: enemyName, goldLost, chest, lostItemName: lostItem?.name, lostItemIcon: lostItem?.icon, materialDrop, dungeonGold, warriorXP })
-                  }
-                }}
-                className="w-full px-4 py-5 flex items-center justify-center gap-2.5 hover:bg-white/[0.03] active:bg-white/[0.06] transition-colors"
-              >
-                <span className="text-2xl">{battleState?.victory ? (activeBattle.isMob ? currentEnemy?.icon ?? '⚔️' : '🏆') : '💀'}</span>
+              /* ── Battle resolved — auto-resolves via useEffect ── */
+              <div className="w-full px-4 py-5 flex items-center justify-center gap-2.5">
+                <span className="text-2xl">{battleState?.victory ? (isBossFight ? '🏆' : (currentEnemy?.icon ?? '⚔️')) : '💀'}</span>
                 <div className="text-left">
                   <p className={`text-sm font-bold leading-tight ${battleState?.victory ? 'text-white' : 'text-red-400'}`}>
                     {battleState?.victory
-                      ? (activeBattle.isMob ? `${currentEnemy?.name ?? 'Mob'} slain!` : 'Boss defeated!')
+                      ? (isBossFight ? 'Boss defeated!' : `${currentEnemy?.name ?? 'Mob'} slain!`)
                       : 'You were defeated'}
                   </p>
-                  <p className="text-[10px] font-mono mt-0.5" style={{ color: battleState?.victory ? tc : 'rgba(248,113,113,0.9)' }}>
-                    {battleState?.victory ? 'Tap to continue →' : 'Tap to see result'}
-                  </p>
                 </div>
-              </button>
+              </div>
             ) : battleState && currentEnemy ? (
               /* ── Active battle ── */
               <div className="flex">
@@ -471,10 +455,13 @@ function ZoneCard({
 
                 {/* Combat stats + footer row */}
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2.5 text-[9px] text-gray-400 font-mono">
+                  <div className="flex items-center gap-2 text-[9px] font-mono flex-wrap">
                     <span style={{ color: '#4ade80bb' }}>⚔ {activeBattle.playerSnapshot.atk}/s</span>
-                    <span className="text-gray-600">vs</span>
-                    <span style={{ color: '#f87171bb' }}>♥ −{Math.max(0, activeBattle.bossSnapshot.atk - activeBattle.playerSnapshot.hpRegen).toFixed(1)}/s</span>
+                    <span style={{ color: '#f87171bb' }}>♥ −{activeBattle.bossSnapshot.atk}/s</span>
+                    {activeBattle.playerSnapshot.hpRegen > 0 && (
+                      <span style={{ color: '#22d3eebb' }}>❋ +{activeBattle.playerSnapshot.hpRegen}/s</span>
+                    )}
+                    <span style={{ color: '#fbbf24aa' }}>= −{effectiveBossDps(activeBattle.bossSnapshot.atk, activeBattle.playerSnapshot.hpRegen).toFixed(1)}/s</span>
                   </div>
 
                   {/* Forfeit */}
@@ -615,19 +602,76 @@ export function ArenaPage() {
     }
   }, [activeDungeon, activeBattle, advanceDungeon])
 
-  // Auto-resolve completed mob battle → pushes toast via arenaStore → toastStore
+  // Auto-resolve completed battles (both mob and boss).
+  // Uses a ref to fire exactly once per battle, preventing the 500ms tick from resetting the timeout.
+  const resolvedKeyRef = useRef<string | null>(null)
+  const resolveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
   useEffect(() => {
-    if (!battleState?.isComplete || !activeBattle?.isMob) return
-    const victory = battleState.victory
-    const t = setTimeout(() => {
-      const { goldLost, lostItem } = endBattle()
-      if (!victory && lostItem) {
-        // Died to a mob in a dungeon — show result modal so player sees what they lost
-        setResultModal({ victory: false, gold: 0, goldAlreadyAdded: true, goldLost, lostItemName: lostItem.name, lostItemIcon: lostItem.icon })
+    if (!battleState?.isComplete || !activeBattle) return
+
+    const battleKey = `${activeBattle.bossId}:${activeBattle.startTime}`
+    if (resolvedKeyRef.current === battleKey) return
+    resolvedKeyRef.current = battleKey
+
+    const victory = battleState.victory ?? false
+    const isMob = activeBattle.isMob
+    const enemyName = activeBattle.bossSnapshot?.name ?? 'Enemy'
+
+    resolveTimerRef.current = setTimeout(() => {
+      resolveTimerRef.current = null
+      if (isMob) {
+        const { goldLost, lostItem } = endBattle()
+        if (!victory && lostItem) {
+          setResultModal({ victory: false, gold: 0, goldAlreadyAdded: true, goldLost, lostItemName: lostItem.name, lostItemIcon: lostItem.icon })
+        }
+      } else {
+        const { goldLost, chest, lostItem, dungeonGold, warriorXP } = endBattle()
+        if (victory && chest) {
+          // Open the chest immediately and show ChestOpenModal
+          const inv = useInventoryStore.getState()
+          const opened = inv.openChestAndGrantItem(chest.type as ChestType, { source: 'session_complete', focusCategory: null })
+          if (opened) {
+            setArenaChestModal({
+              chestType: chest.type as ChestType,
+              itemId: opened.itemId,
+              goldDropped: opened.goldDropped,
+              bonusMaterials: opened.bonusMaterials,
+              dungeonGold,
+              warriorXP,
+            })
+          }
+        } else if (victory) {
+          // Victory but no chest dropped (15% chance) — show victory modal with gold/XP only
+          setResultModal({ victory: true, gold: 0, goldAlreadyAdded: true, bossName: enemyName, dungeonGold, warriorXP })
+        } else {
+          // Defeat — show result modal
+          setResultModal({ victory: false, gold: 0, goldAlreadyAdded: true, bossName: enemyName, goldLost, lostItemName: lostItem?.name, lostItemIcon: lostItem?.icon })
+        }
       }
-    }, 600)
-    return () => clearTimeout(t)
+    }, isMob ? 600 : 1200)
   }, [battleState, activeBattle, endBattle, setResultModal])
+
+  // Clear resolve timer on forfeit / unmount
+  useEffect(() => {
+    if (!activeBattle && resolveTimerRef.current) {
+      clearTimeout(resolveTimerRef.current)
+      resolveTimerRef.current = null
+    }
+  }, [activeBattle])
+  useEffect(() => {
+    return () => { if (resolveTimerRef.current) clearTimeout(resolveTimerRef.current) }
+  }, [])
+
+  // Chest open modal state for boss victories
+  const [arenaChestModal, setArenaChestModal] = useState<{
+    chestType: ChestType
+    itemId: string | null
+    goldDropped: number
+    bonusMaterials: BonusMaterial[]
+    dungeonGold: number
+    warriorXP: number
+  } | null>(null)
 
   const killCounts = useArenaStore((s) => s.killCounts)
   const ownedItems = useInventoryStore((s) => s.items)
@@ -638,13 +682,14 @@ export function ArenaPage() {
     if (itemId) ownedOrEquipped[itemId] = (ownedOrEquipped[itemId] ?? 0) + 1
   }
 
-  const inBattle = Boolean(activeBattle)
+  const inBattle = Boolean(activeBattle || activeDungeon)
 
   if (showBackpack) {
     return <InventoryPage onBack={() => setShowBackpack(false)} />
   }
 
   return (
+    <>
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
@@ -695,5 +740,17 @@ export function ArenaPage() {
       </div>
 
     </motion.div>
+
+    <ChestOpenModal
+      open={Boolean(arenaChestModal)}
+      chestType={arenaChestModal?.chestType ?? null}
+      item={arenaChestModal?.itemId ? (LOOT_ITEMS.find((x) => x.id === arenaChestModal.itemId) ?? null) : null}
+      goldDropped={arenaChestModal?.goldDropped}
+      bonusMaterials={arenaChestModal?.bonusMaterials}
+      dungeonGold={arenaChestModal?.dungeonGold}
+      warriorXP={arenaChestModal?.warriorXP}
+      onClose={() => setArenaChestModal(null)}
+    />
+    </>
   )
 }

@@ -41,7 +41,7 @@ function computeFlexScore(row: LeaderboardRow, equippedLootOverride?: Partial<Re
   for (const itemId of Object.values(loot)) {
     if (!itemId) continue
     const item = LOOT_ITEMS.find((x) => x.id === itemId)
-    if (item) score += getItemPower(item.rarity)
+    if (item) score += getItemPower(item)
   }
   if (row.equipped_frame) {
     const frame = FRAMES.find((f) => f.id === row.equipped_frame)

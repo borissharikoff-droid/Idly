@@ -4,7 +4,6 @@ import {
   LOOT_SLOTS,
   POTION_IDS,
   POTION_MAX,
-  estimateLootDropRate,
   getChestGoldDrop,
   getEquippedPerkRuntime,
   nextPityAfterChestRoll,
@@ -49,7 +48,7 @@ interface InventoryState {
   claimAllPendingRewards: () => void
   rollSkillGrindDrop: (context: LootDropContext, elapsedSeconds: number) => PendingReward | null
   rollSessionChestDrop: (context: LootDropContext) => { rewardId: string; chestType: ChestType; estimatedDropRate: number }
-  openChestAndGrantItem: (chestType: ChestType, context: LootDropContext) => { itemId: string; estimatedDropRate: number; goldDropped: number; bonusMaterials: BonusMaterial[] } | null
+  openChestAndGrantItem: (chestType: ChestType, context: LootDropContext) => { itemId: string | null; estimatedDropRate: number; goldDropped: number; bonusMaterials: BonusMaterial[] } | null
   deleteChest: (chestType: ChestType, amount?: number) => void
   equipItem: (itemId: string) => void
   deleteItem: (itemId: string, amount?: number) => void
@@ -286,10 +285,12 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     const state = get()
     if ((state.chests[chestType] ?? 0) <= 0) return null
     const result = openChest(chestType, context)
-    if (!result) return null
     const goldAmount = getChestGoldDrop(chestType)
     const nextChests = { ...state.chests, [chestType]: Math.max(0, state.chests[chestType] - 1) }
-    const nextItems = { ...state.items, [result.item.id]: (state.items[result.item.id] ?? 0) + 1 }
+    const nextItems = { ...state.items }
+    if (result.item) {
+      nextItems[result.item.id] = (nextItems[result.item.id] ?? 0) + 1
+    }
     for (const mat of result.bonusMaterials) {
       nextItems[mat.itemId] = (nextItems[mat.itemId] ?? 0) + mat.qty
     }
@@ -303,7 +304,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     useGoldStore.getState().addGold(goldAmount)
     const user = useAuthStore.getState().user
     if (user) useGoldStore.getState().syncToSupabase(user.id).catch(() => {})
-    return { itemId: result.item.id, estimatedDropRate: estimateLootDropRate(result.item.id, context), goldDropped: goldAmount, bonusMaterials: result.bonusMaterials }
+    return { itemId: result.item?.id ?? null, estimatedDropRate: result.estimatedDropRate, goldDropped: goldAmount, bonusMaterials: result.bonusMaterials }
   },
 
   deleteChest(chestType, amount = 1) {

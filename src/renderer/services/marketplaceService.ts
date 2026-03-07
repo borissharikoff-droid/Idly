@@ -145,9 +145,19 @@ export async function cancelListing(listingId: string): Promise<CancelListingRes
   if (!supabase) return { ok: false, error: 'Supabase not configured' }
   recentlyCancelledListingIds.add(listingId)
   const { data, error } = await supabase.rpc('cancel_listing', { p_listing_id: listingId })
-  if (error) return { ok: false, error: error.message }
+  if (error) {
+    console.error('[cancelListing] RPC error:', error.message, error)
+    return { ok: false, error: error.message }
+  }
+  if (data == null) {
+    console.error('[cancelListing] RPC returned null/undefined data')
+    return { ok: false, error: 'No response from server' }
+  }
   const result = data as { ok?: boolean; error?: string; item_id?: string; quantity?: number }
-  if (!result?.ok) return { ok: false, error: result?.error ?? 'Cancel failed' }
+  if (!result.ok) {
+    console.error('[cancelListing] RPC returned failure:', result)
+    return { ok: false, error: result.error ?? 'Cancel failed' }
+  }
   return {
     ok: true,
     item_id: result.item_id,

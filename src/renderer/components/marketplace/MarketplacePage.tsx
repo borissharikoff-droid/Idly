@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { motion, usePresence } from 'framer-motion'
 import { LOOT_ITEMS, getRarityTheme, getItemPower, MARKETPLACE_BLOCKED_ITEMS, estimateLootDropRate, getItemPerkDescription, type LootRarity } from '../../lib/loot'
 import { getFarmItemDisplay, isSeedId, isSeedZipId } from '../../lib/farming'
 import { SKILLS } from '../../lib/skills'
@@ -11,9 +10,10 @@ import { useInventoryStore } from '../../stores/inventoryStore'
 import { useNavBadgeStore } from '../../stores/navBadgeStore'
 
 import { syncInventoryToSupabase } from '../../services/supabaseSync'
-import { supabase } from '../../lib/supabase'
 import { useFarmStore } from '../../stores/farmStore'
 import { PageHeader } from '../shared/PageHeader'
+import { BackpackButton } from '../shared/BackpackButton'
+import { InventoryPage } from '../inventory/InventoryPage'
 import { GoldDisplay } from './GoldDisplay'
 import { SkeletonBlock } from '../shared/PageLoading'
 import { playClickSound } from '../../lib/sounds'
@@ -46,11 +46,7 @@ function ListingCard({
   const canAfford = (gold ?? 0) >= listing.price_gold
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.15 }}
+    <div
       className="group rounded-2xl border p-4 flex items-center gap-4 transition-all duration-200 hover:border-white/15 hover:shadow-lg"
       style={{ borderColor: theme.border, backgroundColor: `${theme.color}08` }}
     >
@@ -83,7 +79,7 @@ function ListingCard({
           >
             {displayRarity}
           </span>
-          {item && <span className="text-[10px] text-gray-500">IP {getItemPower(item.rarity)}</span>}
+          {item && !['consumable', 'plant', 'material'].includes(item.slot) && <span className="text-[10px] text-gray-500">IP {getItemPower(item)}</span>}
           <span className="text-[10px] text-gray-500 truncate">
             by {listing.seller_username ?? 'Anonymous'}
           </span>
@@ -93,6 +89,7 @@ function ListingCard({
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/12 border border-amber-500/25">
           <span className="text-amber-400" aria-hidden>🪙</span>
           <span className="text-amber-400 font-bold tabular-nums text-sm">{listing.price_gold}</span>
+          {listing.quantity > 1 && <span className="text-amber-400/60 text-[10px] font-medium">/ea</span>}
         </div>
         {isOwn ? (
           <button
@@ -118,7 +115,7 @@ function ListingCard({
           </button>
         )}
       </div>
-    </motion.div>
+    </div>
   )
 }
 
@@ -150,6 +147,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
   const [myListingsOpen, setMyListingsOpen] = useState(true)
   const [filtersExpanded, setFiltersExpanded] = useState(false)
   const [cancelGroupTarget, setCancelGroupTarget] = useState<{ ids: string[]; name: string; totalQty: number } | null>(null)
+  const [showBackpack, setShowBackpack] = useState(false)
   const gold = useGoldStore((s) => s.gold)
   const syncFromSupabase = useGoldStore((s) => s.syncFromSupabase)
   const user = useAuthStore((s) => s.user)
@@ -157,18 +155,12 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
   const listingsRef = useRef<ListingWithSeller[]>([])
   const cancelledListingIdsRef = useRef<Set<string>>(new Set())
 
-  // Close all modals when the page starts its exit animation (prevents stuck overlay).
-  // IMPORTANT: safeToRemove() MUST be called — otherwise AnimatePresence mode="wait" never
-  // unmounts this element and the next tab is permanently blocked from rendering (gray screen).
-  const [isPresent, safeToRemove] = usePresence()
+  // Guard: block async state updates after unmount to prevent React warnings
+  // and stale setState calls. Set on unmount (after exit animation completes).
+  const exitingRef = useRef(false)
   useEffect(() => {
-    if (!isPresent) {
-      setBuyConfirmTarget(null)
-      setCancelConfirmTarget(null)
-      setNoGoldAlert(null)
-      safeToRemove?.()
-    }
-  }, [isPresent]) // safeToRemove is stable — omitting it from deps is intentional
+    return () => { exitingRef.current = true }
+  }, [])
 
   const filteredListings = useMemo(() => {
     let result = listings.filter((l) => !MARKETPLACE_BLOCKED_ITEMS.includes(l.item_id))
@@ -225,25 +217,29 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
   const [refreshing, setRefreshing] = useState(false)
 
   const loadListings = async (withExpiry = false): Promise<ListingWithSeller[]> => {
+    if (exitingRef.current) return []
     setLoading(true)
     try {
       if (withExpiry) await expireOldListings()
       const data = await fetchActiveListings()
+      if (exitingRef.current) return data
       setListings(data)
       return data
     } catch {
       return []
     } finally {
-      setLoading(false)
+      if (!exitingRef.current) setLoading(false)
     }
   }
 
   const handleRefresh = async () => {
-    if (refreshing) return
+    if (refreshing || exitingRef.current) return
     setRefreshing(true)
     await loadListings(false)
-    if (user) syncFromSupabase(user.id).catch(() => {})
-    setRefreshing(false)
+    if (!exitingRef.current) {
+      if (user) syncFromSupabase(user.id).catch(() => {})
+      setRefreshing(false)
+    }
   }
 
   // Keep ref in sync for sold-listing detection
@@ -259,20 +255,12 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
     loadListings(true)
   }, [])
 
-  useEffect(() => {
-    if (!supabase || !user) return
-    const channel = supabase
-      .channel('marketplace-listings-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'marketplace_listings' }, async () => {
-        await loadListings(false)
-        syncFromSupabase(user.id).catch(() => {})
-      })
-      .subscribe()
-    return () => { supabase.removeChannel(channel).catch(() => {}) }
-  }, [user])
+  // NOTE: realtime subscription removed — it fired during AnimatePresence exit,
+  // causing state updates that stalled the exit animation (grey screen).
+  // Listings refresh on mount, after buy/cancel, and via the refresh button.
 
   useEffect(() => {
-    if (user) syncFromSupabase(user.id)
+    if (user) syncFromSupabase(user.id).catch(() => {})
   }, [user, syncFromSupabase])
 
   useEffect(() => {
@@ -306,14 +294,13 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
 
   const handleBuyClick = (listing: ListingWithSeller) => {
     if (!user) return
-    // For multi-qty listings, even 1 unit might be affordable — check cost of 1 unit
-    const minCost = listing.quantity > 1
-      ? Math.ceil(listing.price_gold / listing.quantity)
-      : listing.price_gold
+    // price_gold is per-unit — check if user can afford at least 1
+    const minCost = listing.price_gold
     if ((gold ?? 0) < minCost) {
       showNoGoldAlert(listing)
       return
     }
+    setBuyQty(1)
     setBuyConfirmTarget(listing)
   }
 
@@ -323,50 +310,66 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
     setBuyingId(listing.id)
     try {
       const res = await partialBuyListing(listing.id, qty)
+      if (exitingRef.current) return
       if (res.ok) {
         playClickSound()
-        syncFromSupabase(user.id)
-        const { items, chests } = useInventoryStore.getState()
-        const { seeds, seedZips } = useFarmStore.getState()
-        const merged = await syncInventoryToSupabase(items, chests, { merge: true, seeds, seedZips })
-        if (merged.ok && merged.mergedChests) {
-          if (merged.mergedItems) useInventoryStore.getState().mergeFromCloud(merged.mergedItems, merged.mergedChests)
-          if (merged.mergedSeeds) useFarmStore.getState().mergeSeedsFromCloud(merged.mergedSeeds)
-          if (merged.mergedSeedZips) useFarmStore.getState().mergeSeedZipsFromCloud(merged.mergedSeedZips)
+        syncFromSupabase(user.id).catch(() => {})
+        try {
+          const { items, chests } = useInventoryStore.getState()
+          const { seeds, seedZips } = useFarmStore.getState()
+          const merged = await syncInventoryToSupabase(items, chests, { merge: true, seeds, seedZips })
+          if (merged.ok && merged.mergedChests) {
+            if (merged.mergedItems) useInventoryStore.getState().mergeFromCloud(merged.mergedItems, merged.mergedChests)
+            if (merged.mergedSeeds) useFarmStore.getState().mergeSeedsFromCloud(merged.mergedSeeds)
+            if (merged.mergedSeedZips) useFarmStore.getState().mergeSeedZipsFromCloud(merged.mergedSeedZips)
+          }
+        } catch {
+          // Sync failure is non-fatal — local state already updated by Supabase RPC
         }
-        loadListings().catch(() => {})
+        if (!exitingRef.current) loadListings().catch(() => {})
       }
+    } catch {
+      // Network error — purchase may have succeeded server-side; reload listings to reflect reality
+      if (!exitingRef.current) loadListings().catch(() => {})
     } finally {
-      setBuyingId(null)
+      if (!exitingRef.current) setBuyingId(null)
     }
   }
 
   const handleCancel = async (listing: ListingWithSeller) => {
-    if (!user || listing.seller_id !== user.id) return
+    if (!user) { setCancelError('Not logged in'); return }
+    if (listing.seller_id !== user.id) { setCancelError('Not your listing'); return }
     cancelledListingIdsRef.current.add(listing.id)
     setCancellingId(listing.id)
     setCancelError(null)
     try {
       const res = await cancelListing(listing.id)
+      if (exitingRef.current) return
       if (res.ok) {
         playClickSound()
         setCancelConfirmTarget(null)
-        const { items, chests } = useInventoryStore.getState()
-        const { seeds, seedZips } = useFarmStore.getState()
-        const merged = await syncInventoryToSupabase(items, chests, { merge: true, seeds, seedZips })
-        if (merged.ok && merged.mergedChests) {
-          if (merged.mergedItems) useInventoryStore.getState().mergeFromCloud(merged.mergedItems, merged.mergedChests)
-          if (merged.mergedSeeds) useFarmStore.getState().mergeSeedsFromCloud(merged.mergedSeeds)
-          if (merged.mergedSeedZips) useFarmStore.getState().mergeSeedZipsFromCloud(merged.mergedSeedZips)
+        try {
+          const { items, chests } = useInventoryStore.getState()
+          const { seeds, seedZips } = useFarmStore.getState()
+          const merged = await syncInventoryToSupabase(items, chests, { merge: true, seeds, seedZips })
+          if (merged.ok && merged.mergedChests) {
+            if (merged.mergedItems) useInventoryStore.getState().mergeFromCloud(merged.mergedItems, merged.mergedChests)
+            if (merged.mergedSeeds) useFarmStore.getState().mergeSeedsFromCloud(merged.mergedSeeds)
+            if (merged.mergedSeedZips) useFarmStore.getState().mergeSeedZipsFromCloud(merged.mergedSeedZips)
+          }
+        } catch {
+          // Sync failure is non-fatal — listing already cancelled server-side
         }
-        loadListings().catch(() => {})
+        if (!exitingRef.current) loadListings().catch(() => {})
       } else {
-        setCancelError(res.error ?? 'Failed to remove listing')
+        console.error('[Marketplace] cancel failed:', res.error)
+        if (!exitingRef.current) setCancelError(res.error ?? 'Failed to remove listing')
       }
-    } catch {
-      setCancelError('Network error — try again')
+    } catch (err) {
+      console.error('[Marketplace] cancel error:', err)
+      if (!exitingRef.current) setCancelError('Network error — try again')
     } finally {
-      setCancellingId(null)
+      if (!exitingRef.current) setCancellingId(null)
     }
   }
 
@@ -376,17 +379,22 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
     setCancellingId(ids[0] ?? null)
     setCancelGroupTarget(null)
     await Promise.all(ids.map((id) => cancelListing(id).catch(() => {})))
+    if (exitingRef.current) return
     setCancellingId(null)
     playClickSound()
-    const { items, chests } = useInventoryStore.getState()
-    const { seeds, seedZips } = useFarmStore.getState()
-    const merged = await syncInventoryToSupabase(items, chests, { merge: true, seeds, seedZips })
-    if (merged.ok && merged.mergedChests) {
-      if (merged.mergedItems) useInventoryStore.getState().mergeFromCloud(merged.mergedItems, merged.mergedChests)
-      if (merged.mergedSeeds) useFarmStore.getState().mergeSeedsFromCloud(merged.mergedSeeds)
-      if (merged.mergedSeedZips) useFarmStore.getState().mergeSeedZipsFromCloud(merged.mergedSeedZips)
+    try {
+      const { items, chests } = useInventoryStore.getState()
+      const { seeds, seedZips } = useFarmStore.getState()
+      const merged = await syncInventoryToSupabase(items, chests, { merge: true, seeds, seedZips })
+      if (merged.ok && merged.mergedChests) {
+        if (merged.mergedItems) useInventoryStore.getState().mergeFromCloud(merged.mergedItems, merged.mergedChests)
+        if (merged.mergedSeeds) useFarmStore.getState().mergeSeedsFromCloud(merged.mergedSeeds)
+        if (merged.mergedSeedZips) useFarmStore.getState().mergeSeedZipsFromCloud(merged.mergedSeedZips)
+      }
+    } catch {
+      // Sync failure is non-fatal
     }
-    loadListings().catch(() => {})
+    if (!exitingRef.current) loadListings().catch(() => {})
   }
 
   const activeFiltersCount = [search, perkFilter, skillFilter, rarityFilter, priceMin, priceMax].filter(Boolean).length
@@ -417,18 +425,18 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
     return Array.from(groups.values())
   }, [myListings])
 
+  if (showBackpack) {
+    return <InventoryPage onBack={() => setShowBackpack(false)} />
+  }
+
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="p-4 pb-20 space-y-4"
-    >
+    <div className="p-4 pb-20 space-y-4">
       <PageHeader
         title="Marketplace"
         onBack={onBack}
         rightSlot={
           <div className="flex items-center gap-2">
+            <BackpackButton onClick={() => setShowBackpack(true)} />
             <button
               type="button"
               onClick={handleRefresh}
@@ -761,19 +769,15 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
         typeof document !== 'undefined' &&
         createPortal(
           (() => {
+            try {
             const alertItem = LOOT_ITEMS.find((x) => x.id === noGoldAlert.item_id)
             const alertFarm = !alertItem ? getFarmItemDisplay(noGoldAlert.item_id) : null
             const alertRarity = normalizeRarity(alertItem?.rarity ?? alertFarm?.rarity)
-            const alertTheme = RARITY_THEME[alertRarity]
+            const alertTheme = RARITY_THEME[alertRarity] ?? RARITY_THEME.common
             const deficit = noGoldAlert.price_gold - (gold ?? 0)
             const dropRate = alertItem ? estimateLootDropRate(alertItem.id, { source: 'skill_grind', focusCategory: 'coding' }) : 0
             return (
-              <motion.div
-                key="no-gold-alert"
-                initial={{ opacity: 0, x: 60 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 60 }}
-                transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+              <div
                 className="fixed top-16 right-4 z-[200] w-[300px] rounded-xl border overflow-hidden shadow-2xl"
                 style={{
                   borderColor: alertTheme.border,
@@ -781,13 +785,11 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                   boxShadow: `0 0 28px ${alertTheme.glow}`,
                 }}
               >
-                {/* animated radial glow */}
-                <motion.div
+                {/* radial glow */}
+                <div
                   aria-hidden
-                  className="absolute inset-0 pointer-events-none"
+                  className="absolute inset-0 pointer-events-none opacity-40"
                   style={{ background: `radial-gradient(circle at 50% 18%, ${alertTheme.glow} 0%, transparent 58%)` }}
-                  animate={{ opacity: [0.3, 0.55, 0.3] }}
-                  transition={{ duration: 2, repeat: Infinity }}
                 />
 
                 <div className="relative p-4">
@@ -852,8 +854,12 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                     Need {deficit} more 🪙 to buy
                   </button>
                 </div>
-              </motion.div>
+              </div>
             )
+            } catch (err) {
+              console.error('[Marketplace] No-gold alert render error:', err)
+              return null
+            }
           })(),
           document.body,
         )}
@@ -866,22 +872,20 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
             className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4"
             onClick={() => setBuyConfirmTarget(null)}
           >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
+            <div
               className="w-[320px] rounded-xl bg-discord-card border border-white/10 p-4 flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               {(() => {
+                try {
                 const item = LOOT_ITEMS.find((x) => x.id === buyConfirmTarget.item_id)
                 const confirmFarm = !item ? getFarmItemDisplay(buyConfirmTarget.item_id) : null
                 const confirmRarity = normalizeRarity(item?.rarity ?? confirmFarm?.rarity)
-                const confirmTheme = RARITY_THEME[confirmRarity]
-                const maxQty = buyConfirmTarget.quantity
+                const confirmTheme = RARITY_THEME[confirmRarity] ?? RARITY_THEME.common
+                const maxQty = Math.max(1, buyConfirmTarget.quantity ?? 1)
                 const isMulti = maxQty > 1
-                const buyCost = isMulti
-                  ? Math.ceil(buyConfirmTarget.price_gold * buyQty / maxQty)
-                  : buyConfirmTarget.price_gold
+                const clampedBuyQty = Math.max(1, Math.min(maxQty, buyQty))
+                const buyCost = buyConfirmTarget.price_gold * clampedBuyQty
                 const canAffordSelected = (gold ?? 0) >= buyCost
                 return (
                   <>
@@ -914,7 +918,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                     {isMulti && (
                       <div className="mb-3 rounded-xl bg-discord-darker/60 border border-white/[0.08] p-2.5">
                         <p className="text-[10px] text-gray-500 font-mono mb-2 text-center">
-                          Available: {maxQty} · {Math.round(buyConfirmTarget.price_gold / maxQty * 10) / 10} 🪙 each
+                          Available: {maxQty} · {buyConfirmTarget.price_gold} 🪙 each
                         </p>
                         <div className="flex items-center justify-center gap-2">
                           <button
@@ -954,11 +958,18 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                     )}
 
                     {/* price */}
-                    <div className={`flex items-center justify-center gap-1.5 mb-3 px-3 py-2 rounded-xl border ${canAffordSelected ? 'bg-amber-500/8 border-amber-500/20' : 'bg-red-500/8 border-red-500/20'}`}>
-                      <span className="text-amber-400">🪙</span>
-                      <span className={`font-bold tabular-nums ${canAffordSelected ? 'text-amber-400' : 'text-red-400'}`}>{buyCost}</span>
-                      <span className="text-gray-500 text-xs">gold</span>
-                      {!canAffordSelected && <span className="text-red-400 text-xs ml-1">· {buyCost - (gold ?? 0)} short</span>}
+                    <div className={`flex flex-col items-center gap-1 mb-3 px-3 py-2 rounded-xl border ${canAffordSelected ? 'bg-amber-500/8 border-amber-500/20' : 'bg-red-500/8 border-red-500/20'}`}>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-amber-400">🪙</span>
+                        <span className={`font-bold tabular-nums ${canAffordSelected ? 'text-amber-400' : 'text-red-400'}`}>{buyCost}</span>
+                        <span className="text-gray-500 text-xs">gold</span>
+                        {!canAffordSelected && <span className="text-red-400 text-xs ml-1">· {buyCost - (gold ?? 0)} short</span>}
+                      </div>
+                      {isMulti && clampedBuyQty > 1 && (
+                        <p className="text-[10px] text-gray-500 font-mono">
+                          {clampedBuyQty} × {buyConfirmTarget.price_gold} 🪙 = {buyCost} total
+                        </p>
+                      )}
                     </div>
 
                     <div className="flex gap-2">
@@ -971,17 +982,26 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleBuy(buyConfirmTarget, buyQty)}
+                        onClick={() => handleBuy(buyConfirmTarget, clampedBuyQty)}
                         disabled={!canAffordSelected}
                         className="flex-1 py-2 rounded-lg bg-cyber-neon/20 border border-cyber-neon/40 text-cyber-neon text-xs font-semibold hover:bg-cyber-neon/30 disabled:opacity-40 disabled:cursor-not-allowed"
                       >
-                        {isMulti ? `Buy ×${buyQty}` : 'Buy'}
+                        {isMulti ? `Buy ×${clampedBuyQty}` : 'Buy'}
                       </button>
                     </div>
                   </>
                 )
+                } catch (err) {
+                  console.error('[Marketplace] Buy modal render error:', err)
+                  return (
+                    <div className="p-4 text-center">
+                      <p className="text-sm text-red-400 mb-2">Failed to show buy dialog</p>
+                      <button type="button" onClick={() => setBuyConfirmTarget(null)} className="text-xs text-gray-400 hover:text-white">Close</button>
+                    </div>
+                  )
+                }
               })()}
-            </motion.div>
+            </div>
           </div>,
           document.body,
         )}
@@ -994,9 +1014,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
             className="fixed inset-0 z-[100] bg-black/60 flex items-center justify-center p-4"
             onClick={() => setCancelGroupTarget(null)}
           >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
+            <div
               className="w-[300px] rounded-xl bg-discord-card border border-white/10 p-4 flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
@@ -1022,7 +1040,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                   Remove all
                 </button>
               </div>
-            </motion.div>
+            </div>
           </div>,
           document.body,
         )}
@@ -1038,9 +1056,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
               setCancelError(null)
             }}
           >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
+          <div
             className="w-[320px] rounded-xl bg-discord-card border border-white/10 p-4 flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
@@ -1071,10 +1087,10 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                 {cancellingId === cancelConfirmTarget.id ? 'Removing...' : 'Remove'}
               </button>
             </div>
-          </motion.div>
+          </div>
         </div>
         , document.body
       )}
-    </motion.div>
+    </div>
   )
 }

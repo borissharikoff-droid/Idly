@@ -50,6 +50,7 @@ window.addEventListener('unhandledrejection', (e) => {
   console.warn('[unhandledrejection]', msg)
 })
 
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <ErrorBoundary>
     <App />

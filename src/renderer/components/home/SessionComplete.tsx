@@ -198,7 +198,7 @@ export function SessionComplete({ onNavigateFriends }: SessionCompleteProps = {}
           onClick={(e) => e.stopPropagation()}
           className="w-full max-w-[320px] max-h-[86vh] rounded-2xl bg-discord-card border border-cyber-neon/25 shadow-[0_0_48px_rgba(0,255,136,0.10)] overflow-hidden flex flex-col"
         >
-          <div className="overflow-y-auto overflow-x-hidden px-5 pt-5 pb-3 space-y-3">
+          <div className="overflow-y-auto overflow-x-hidden px-5 pt-5 pb-3 space-y-3 min-h-0">
             {/* Header */}
             <div className="text-center">
               <motion.div
@@ -291,7 +291,10 @@ export function SessionComplete({ onNavigateFriends }: SessionCompleteProps = {}
                 </button>
               </motion.div>
             )}
+          </div>
 
+          {/* Sticky bottom: button + auto-dismiss bar */}
+          <div className="shrink-0 px-5 pb-4 pt-2 border-t border-white/[0.05]">
             <motion.button
               onClick={handleDismiss}
               initial={{ opacity: 0 }}
@@ -304,8 +307,6 @@ export function SessionComplete({ onNavigateFriends }: SessionCompleteProps = {}
               ✓ nice
             </motion.button>
           </div>
-
-          {/* Auto-dismiss bar */}
           <div className="h-0.5 bg-discord-darker/50 shrink-0">
             <div
               className="h-full bg-cyber-neon/50 transition-[width] duration-100"

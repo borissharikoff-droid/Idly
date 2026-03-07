@@ -210,9 +210,33 @@ export interface BonusMaterial {
 }
 
 export interface ChestOpenResult {
-  item: LootItemDef
+  item: LootItemDef | null
   estimatedDropRate: number
   bonusMaterials: BonusMaterial[]
+}
+
+// ─── Boss chest tier roll ────────────────────────────────────────────────────
+const CHEST_TIER_ORDER: ChestType[] = ['common_chest', 'rare_chest', 'epic_chest', 'legendary_chest']
+
+/** Roll which chest tier actually drops from a boss.
+ *  55% listed tier, 30% one tier lower, 15% no chest at all. */
+export function rollBossChestTier(baseTier: ChestType): ChestType | null {
+  const roll = Math.random()
+  if (roll < 0.55) return baseTier                                         // 55% — listed tier
+  if (roll < 0.85) {                                                        // 30% — one tier lower
+    const idx = CHEST_TIER_ORDER.indexOf(baseTier)
+    return idx > 0 ? CHEST_TIER_ORDER[idx - 1] : baseTier                  // common stays common
+  }
+  return null                                                               // 15% — no chest
+}
+
+/** Chance that a chest contains an equipment item (vs only gold/seeds/materials).
+ *  Higher tier → higher chance. */
+const ITEM_DROP_CHANCE: Record<ChestType, number> = {
+  common_chest: 0.50,
+  rare_chest: 0.60,
+  epic_chest: 0.70,
+  legendary_chest: 0.80,
 }
 
 const INLINE_LOOT_IMAGES = {} as Record<string, string>
@@ -609,8 +633,17 @@ const FALLBACK_WEIGHTS: Record<ChestType, { itemId: string; weight: number }[]> 
   ],
 }
 
-export function openChest(chestType: ChestType, context: LootDropContext): ChestOpenResult | null {
+export function openChest(chestType: ChestType, context: LootDropContext): ChestOpenResult {
   const chest = CHEST_DEFS[chestType]
+  const bonusMaterials = rollBonusMaterials(chestType)
+
+  // Roll whether an equipment item drops
+  const itemChance = ITEM_DROP_CHANCE[chestType] ?? 0.5
+  if (Math.random() >= itemChance) {
+    // No item — only gold + materials
+    return { item: null, estimatedDropRate: 0, bonusMaterials }
+  }
+
   // Filter to only items that actually exist in LOOT_ITEMS (admin overrides may reference stale IDs)
   let validWeights = chest.itemWeights.filter((entry) => LOOT_ITEMS.some((x) => x.id === entry.itemId))
   if (validWeights.length === 0) {
@@ -619,11 +652,10 @@ export function openChest(chestType: ChestType, context: LootDropContext): Chest
   }
   const itemId = randomPickByWeight(validWeights.map((entry) => ({ value: entry.itemId, weight: entry.weight })))
   const item = itemId ? LOOT_ITEMS.find((x) => x.id === itemId) : null
-  if (!item) return null
   return {
-    item,
-    estimatedDropRate: estimateLootDropRate(item.id, context),
-    bonusMaterials: rollBonusMaterials(chestType),
+    item: item ?? null,
+    estimatedDropRate: item ? estimateLootDropRate(item.id, context) : 0,
+    bonusMaterials,
   }
 }
 

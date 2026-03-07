@@ -16,7 +16,7 @@ export function ChestDrop() {
   const claimPendingReward = useInventoryStore((s) => s.claimPendingReward)
   const openChestAndGrantItem = useInventoryStore((s) => s.openChestAndGrantItem)
   const [progress, setProgress] = useState(100)
-  const [opened, setOpened] = useState<{ chestType: ChestType; itemId: string; goldDropped?: number; bonusMaterials?: BonusMaterial[] } | null>(null)
+  const [opened, setOpened] = useState<{ chestType: ChestType; itemId: string | null; goldDropped?: number; bonusMaterials?: BonusMaterial[] } | null>(null)
 
   const current = queue[0] ?? null
   const chest = current ? CHEST_DEFS[current.chestType] : null

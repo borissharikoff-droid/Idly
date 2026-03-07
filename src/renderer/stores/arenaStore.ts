@@ -7,14 +7,13 @@ import {
   type BossDef, type MobDef,
 } from '../lib/combat'
 import type { CombatStats } from '../lib/loot'
-import { CHEST_DEFS, LOOT_ITEMS, type ChestType, type LootSlot } from '../lib/loot'
+import { CHEST_DEFS, LOOT_ITEMS, rollBossChestTier, type ChestType, type LootSlot } from '../lib/loot'
 import { PLANT_COMBAT_BUFFS, grantWarriorXP } from '../lib/farming'
 import { skillLevelFromXP } from '../lib/skills'
 import { useAuthStore } from './authStore'
 import { useGoldStore } from './goldStore'
 import { useInventoryStore } from './inventoryStore'
 import { track } from '../lib/analytics'
-import { useToastStore } from './toastStore'
 
 export interface ActiveBattle {
   bossId: string
@@ -34,7 +33,9 @@ export interface ActiveDungeon {
   startedAt: number  // wall-clock timestamp when dungeon started
 }
 
-export interface ArenaChestDrop { type: ChestType; name: string; icon: string; image?: string }
+export interface ArenaChestDrop {
+  type: ChestType; name: string; icon: string; image?: string
+}
 
 interface ArenaState {
   activeBattle: ActiveBattle | null
@@ -311,10 +312,6 @@ export const useArenaStore = create<ArenaState>()(
                   ? { ...s.activeDungeon, goldEarned: (s.activeDungeon.goldEarned) + gold }
                   : null,
               }))
-              useToastStore.getState().push(
-                { kind: 'mob_kill', mobName: mob.name, gold, xp: mob.xpReward, material: materialDrop?.id ?? null },
-                () => useArenaStore.getState().advanceDungeon(),
-              )
             } else {
               set({ activeBattle: null })
             }
@@ -336,11 +333,17 @@ export const useArenaStore = create<ArenaState>()(
             get().recordKill(activeBattle.bossSnapshot.id)
             const bossForChest = activeBattle.bossSnapshot as BossDef
             if (bossForChest.rewards?.chestTier) {
-              const ct = bossForChest.rewards.chestTier
-              useInventoryStore.getState().addChest(ct, 'session_complete', 100)
-              const chest = CHEST_DEFS[ct]
-              if (chest) {
-                droppedChest = { type: ct, name: chest.name, icon: activeBattle.isDaily ? '⭐' : chest.icon, image: chest.image }
+              const rolledTier = rollBossChestTier(bossForChest.rewards.chestTier)
+              if (rolledTier) {
+                // Add rolled chest to inventory
+                useInventoryStore.getState().addChest(rolledTier, 'session_complete', 100)
+                const chest = CHEST_DEFS[rolledTier]
+                if (chest) {
+                  droppedChest = {
+                    type: rolledTier, name: chest.name,
+                    icon: activeBattle.isDaily ? '⭐' : chest.icon, image: chest.image,
+                  }
+                }
               }
             }
             // Grant warrior XP for boss kill
@@ -414,10 +417,12 @@ export const useArenaStore = create<ArenaState>()(
             get().recordKill(activeBattle.bossSnapshot.id)
             const bossForChest = activeBattle.bossSnapshot as BossDef
             if (bossForChest.rewards?.chestTier) {
-              const ct = bossForChest.rewards.chestTier
-              useInventoryStore.getState().addChest(ct, 'session_complete', 100)
-              const chest = CHEST_DEFS[ct]
-              if (chest) droppedChest = { type: ct, name: chest.name, icon: activeBattle.isDaily ? '⭐' : chest.icon, image: chest.image }
+              const rolledTier = rollBossChestTier(bossForChest.rewards.chestTier)
+              if (rolledTier) {
+                useInventoryStore.getState().addChest(rolledTier, 'session_complete', 100)
+                const chest = CHEST_DEFS[rolledTier]
+                if (chest) droppedChest = { type: rolledTier, name: chest.name, icon: activeBattle.isDaily ? '⭐' : chest.icon, image: chest.image }
+              }
             }
             const bossWarriorXP = BOSS_WARRIOR_XP[activeBattle.bossSnapshot.id] ?? 0
             if (bossWarriorXP > 0) void grantWarriorXP(bossWarriorXP)

@@ -32,7 +32,7 @@ export function BackpackPanel({ open, onClose, backpackRef }: BackpackPanelProps
   const equipItem = useInventoryStore((s) => s.equipItem)
   const deleteItem = useInventoryStore((s) => s.deleteItem)
 
-  const [openChestModal, setOpenChestModal] = useState<{ chestType: ChestType; itemId: string; goldDropped?: number; bonusMaterials?: import('../../lib/loot').BonusMaterial[] } | null>(null)
+  const [openChestModal, setOpenChestModal] = useState<{ chestType: ChestType; itemId: string | null; goldDropped?: number; bonusMaterials?: import('../../lib/loot').BonusMaterial[] } | null>(null)
   const [selectedSlotId, setSelectedSlotId] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; slotId: string } | null>(null)
   const [deleteConfirmTarget, setDeleteConfirmTarget] = useState<SlotEntry | null>(null)

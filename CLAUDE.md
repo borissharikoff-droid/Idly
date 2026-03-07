@@ -103,6 +103,7 @@ Copy `.env.example` to `.env`. Supabase keys are optional (social features disab
 ## Deployment
 
 - For Railway deployments: ensure all runtime dependencies (e.g., dotenv) are in `dependencies` not `devDependencies`. After pushing, verify the build triggers. If auto-deploy doesn't fire, push a follow-up commit.
+- **Wiki & Dashboard auto-push**: Whenever you make changes to the wiki (`wiki/` submodule) or the online dashboard, **push immediately** after committing — do not wait for the user to ask. Run `cd wiki && git add -A && git commit && git push` right away. Same for dashboard deploys.
 
 ## Cross-Project Sync: Wiki & Dashboard
 

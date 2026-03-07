@@ -105,7 +105,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
   const [inspectSlotId, setInspectSlotId] = useState<string | null>(null)
   const [listForSaleTarget, setListForSaleTarget] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; slotId: string } | null>(null)
-  const [openChestModal, setOpenChestModal] = useState<{ chestType: ChestType; itemId: string; seedZipTier: import('../../lib/farming').SeedZipTier | null; goldDropped: number; bonusMaterials: import('../../lib/loot').BonusMaterial[] } | null>(null)
+  const [openChestModal, setOpenChestModal] = useState<{ chestType: ChestType; itemId: string | null; seedZipTier: import('../../lib/farming').SeedZipTier | null; goldDropped: number; bonusMaterials: import('../../lib/loot').BonusMaterial[] } | null>(null)
   const [chestModalAnimSeed, setChestModalAnimSeed] = useState(0)
   const [chestChainMessage, setChestChainMessage] = useState<string | null>(null)
 
@@ -214,11 +214,32 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
     if (filterBy !== 'all') return null
     const pending = sortedSlots.filter((s) => s.kind === 'pending')
     const bags = sortedSlots.filter((s) => s.kind === 'chest')
-    const regularItems = sortedSlots.filter((s) => s.kind === 'item')
+    const seeds = sortedSlots.filter((s) => s.kind === 'seed')
+    const items = sortedSlots.filter((s) => s.kind === 'item')
+    const gear = items.filter((s) => {
+      const it = LOOT_ITEMS.find((x) => x.id === (s as Extract<SlotEntry, { kind: 'item' }>).itemId)
+      return it && !['consumable', 'plant', 'material'].includes(it.slot)
+    })
+    const potions = items.filter((s) => {
+      const it = LOOT_ITEMS.find((x) => x.id === (s as Extract<SlotEntry, { kind: 'item' }>).itemId)
+      return it?.slot === 'consumable'
+    })
+    const plants = items.filter((s) => {
+      const it = LOOT_ITEMS.find((x) => x.id === (s as Extract<SlotEntry, { kind: 'item' }>).itemId)
+      return it?.slot === 'plant'
+    })
+    const materials = items.filter((s) => {
+      const it = LOOT_ITEMS.find((x) => x.id === (s as Extract<SlotEntry, { kind: 'item' }>).itemId)
+      return it?.slot === 'material'
+    })
     const groups: { label: string; icon: string; slots: SlotEntry[] }[] = []
     if (pending.length > 0) groups.push({ label: 'Inbox', icon: '📥', slots: pending })
     if (bags.length > 0) groups.push({ label: 'Bags', icon: '📦', slots: bags })
-    if (regularItems.length > 0) groups.push({ label: 'Items', icon: '🎒', slots: regularItems })
+    if (gear.length > 0) groups.push({ label: 'Gear', icon: '⚔️', slots: gear })
+    if (potions.length > 0) groups.push({ label: 'Potions', icon: '⚗️', slots: potions })
+    if (materials.length > 0) groups.push({ label: 'Materials', icon: '🪨', slots: materials })
+    if (plants.length > 0) groups.push({ label: 'Plants', icon: '🌿', slots: plants })
+    if (seeds.length > 0) groups.push({ label: 'Seeds', icon: '🌱', slots: seeds })
     return groups.length >= 2 ? groups : null
   }, [sortedSlots, filterBy])
 
@@ -480,12 +501,6 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
               : lootItem?.slot === 'plant' ? 'PLANT'
               : lootItem ? SLOT_LABEL[lootItem.slot]
               : '?'
-            const cardStyle = {
-              borderColor: isEquipped ? `${slotTheme.color}CC` : `${slotTheme.color}55`,
-              background: isEquipped
-                ? `linear-gradient(160deg, ${slotTheme.glow}22 0%, rgba(12,12,20,0.95) 60%)`
-                : `linear-gradient(160deg, ${slotTheme.glow}10 0%, rgba(12,12,20,0.92) 65%)`,
-            }
             const onClickCard = () => { playClickSound(); setInspectSlotId(slot.id); setContextMenu(null) }
             const onRightClick = (e: React.MouseEvent) => {
               e.preventDefault()
@@ -499,29 +514,27 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                   type="button"
                   onClick={onClickCard}
                   onContextMenu={onRightClick}
-                  className="relative w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg border hover:brightness-110 active:scale-[0.99] transition-all text-left overflow-hidden"
-                  style={cardStyle}
+                  className="relative w-full flex items-center gap-2 px-2 py-1.5 rounded-lg border border-white/[0.06] bg-discord-darker/50 hover:bg-discord-darker/80 active:scale-[0.99] transition-all text-left"
                 >
                   {isPending && <span className="absolute inset-0 rounded-lg pointer-events-none animate-pulse border border-amber-400/30" />}
-                  {/* Left rarity bar */}
+                  {/* Left rarity accent */}
                   <div className="w-[3px] self-stretch rounded-full flex-shrink-0" style={{ background: slotTheme.color }} />
                   {/* Icon */}
-                  <div className="w-9 h-9 rounded-md flex items-center justify-center flex-shrink-0 overflow-hidden relative" style={{ background: 'rgba(9,9,17,0.85)' }}>
-                    <LootVisual icon={slot.icon} image={slotImage} className="w-6 h-6 object-contain" scale={lootItem?.renderScale ?? 1} />
-                    {isEquipped && <span className="absolute bottom-0 right-0 text-[6px] font-bold font-mono px-0.5 rounded-tl leading-tight" style={{ background: slotTheme.color, color: '#000' }}>EQ</span>}
+                  <div className="w-8 h-8 rounded flex items-center justify-center flex-shrink-0 overflow-hidden relative" style={{ background: '#0a0a14', border: `1px solid ${slotTheme.color}30` }}>
+                    <LootVisual icon={slot.icon} image={slotImage} className="w-5 h-5 object-contain" scale={lootItem?.renderScale ?? 1} />
+                    {isEquipped && <span className="absolute bottom-0 right-0 text-[5px] font-bold font-mono px-0.5 rounded-tl leading-tight" style={{ background: slotTheme.color, color: '#000' }}>EQ</span>}
                   </div>
                   {/* Text */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <p className="text-[11px] font-semibold text-white truncate">{slot.title}</p>
-                      {typeLabel && <span className="text-[7px] font-mono uppercase px-1 py-px rounded border border-white/10 text-gray-500 flex-shrink-0">{typeLabel}</span>}
+                    <p className="text-[11px] font-semibold text-gray-100 truncate">{slot.title}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[8px] font-mono uppercase" style={{ color: slotTheme.color }}>{rarityNorm}</span>
+                      {perkChip && <span className="text-[8px] text-gray-500 truncate">· {perkChip}</span>}
                     </div>
-                    <p className="text-[9px] text-gray-400 truncate mt-0.5">{perkChip ?? rarityNorm}</p>
                   </div>
-                  {/* Right: qty + dot */}
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {slot.quantity > 1 && <span className="text-[9px] font-mono" style={{ color: slotTheme.color }}>×{slot.quantity}</span>}
-                    <div className="w-1.5 h-1.5 rounded-full" style={{ background: slotTheme.color }} />
+                  {/* Right */}
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    {slot.quantity > 1 && <span className="text-[9px] font-mono font-semibold" style={{ color: slotTheme.color }}>×{slot.quantity}</span>}
                   </div>
                 </button>
               )
@@ -534,23 +547,21 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                   type="button"
                   onClick={onClickCard}
                   onContextMenu={onRightClick}
-                  className="relative flex flex-col items-center gap-1 p-1.5 rounded-lg border hover:brightness-110 active:scale-[0.97] transition-all overflow-hidden"
-                  style={cardStyle}
+                  className="relative flex flex-col items-center p-1 rounded-lg border border-white/[0.06] bg-discord-darker/50 hover:bg-discord-darker/80 active:scale-[0.97] transition-all overflow-hidden"
                 >
                   {isPending && <span className="absolute inset-0 rounded-lg pointer-events-none animate-pulse border border-amber-400/30" />}
                   {slot.quantity > 1 && (
-                    <span
-                      className="absolute top-1 right-1 text-[8px] font-bold font-mono leading-none px-0.5 rounded z-10"
-                      style={{ background: `${slotTheme.color}44`, color: slotTheme.color }}
-                    >×{slot.quantity}</span>
+                    <span className="absolute top-0.5 right-1 text-[8px] font-bold font-mono leading-none z-10" style={{ color: slotTheme.color }}>
+                      {slot.quantity}
+                    </span>
                   )}
-                  <div className="w-9 h-9 rounded-md flex items-center justify-center overflow-hidden relative" style={{ background: 'rgba(9,9,17,0.85)' }}>
+                  <div className="w-9 h-9 rounded flex items-center justify-center overflow-hidden relative mt-0.5" style={{ background: '#0a0a14', border: `1px solid ${slotTheme.color}25` }}>
                     <LootVisual icon={slot.icon} image={slotImage} className="w-6 h-6 object-contain" scale={lootItem?.renderScale ?? 1} />
-                    {isEquipped && <span className="absolute bottom-0 right-0 text-[6px] font-bold font-mono px-0.5 rounded-tl leading-tight" style={{ background: slotTheme.color, color: '#000' }}>EQ</span>}
+                    {isEquipped && <span className="absolute bottom-0 right-0 text-[5px] font-bold font-mono px-0.5 rounded-tl leading-tight" style={{ background: slotTheme.color, color: '#000' }}>EQ</span>}
                   </div>
-                  <p className="text-[9px] font-semibold text-white leading-tight w-full truncate text-center">{slot.title}</p>
+                  <p className="text-[8px] font-medium text-gray-200 leading-tight w-full truncate text-center mt-1 mb-0.5">{slot.title}</p>
                   {/* Bottom rarity bar */}
-                  <div className="absolute bottom-0 left-0 right-0 h-[2px]" style={{ background: slotTheme.color, opacity: rarityNorm === 'common' ? 0.6 : 1 }} />
+                  <div className="absolute bottom-0 left-0 right-0 h-[2px]" style={{ background: slotTheme.color, opacity: rarityNorm === 'common' ? 0.4 : 0.8 }} />
                 </button>
               )
             }
@@ -562,57 +573,44 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                 type="button"
                 onClick={onClickCard}
                 onContextMenu={onRightClick}
-                className="relative flex flex-col gap-1.5 p-2 rounded-lg border hover:brightness-110 active:scale-[0.98] transition-all text-left overflow-hidden"
-                style={cardStyle}
+                className="relative flex items-center gap-2 p-2 rounded-lg border border-white/[0.06] bg-discord-darker/50 hover:bg-discord-darker/80 active:scale-[0.98] transition-all text-left overflow-hidden"
               >
                 {isPending && (
                   <span className="absolute inset-0 rounded-lg pointer-events-none animate-pulse border border-amber-400/30" />
                 )}
-                {/* Top row: type chip + qty */}
-                <div className="flex items-center justify-between gap-1">
-                  <span
-                    className="text-[8px] font-mono font-bold uppercase tracking-widest px-1.5 py-0.5 rounded leading-none"
-                    style={{ background: isPending ? 'rgba(251,191,36,0.18)' : `${slotTheme.color}22`, color: isPending ? '#fbbf24' : slotTheme.color }}
-                  >
-                    {typeLabel}
-                  </span>
-                  <span
-                    className="text-[9px] font-bold font-mono leading-none px-1 py-0.5 rounded"
-                    style={{
-                      background: slot.quantity > 1 ? `${slotTheme.color}33` : 'rgba(255,255,255,0.05)',
-                      color: slot.quantity > 1 ? slotTheme.color : 'rgba(255,255,255,0.2)',
-                    }}
-                  >
-                    ×{slot.quantity}
-                  </span>
-                </div>
                 {/* Icon box */}
-                <div className="flex justify-center">
-                  <div
-                    className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden relative"
-                    style={isEquipped
-                      ? { background: `radial-gradient(circle at 50% 40%, ${slotTheme.glow}55 0%, rgba(9,9,17,0.95) 70%)` }
-                      : { background: 'rgba(9,9,17,0.85)' }}
-                  >
-                    <LootVisual icon={slot.icon} image={slotImage} className="w-7 h-7 object-contain" scale={lootItem?.renderScale ?? 1} />
-                    {isEquipped && (
-                      <span className="absolute bottom-0 right-0 text-[7px] font-bold font-mono px-0.5 rounded-tl rounded-br leading-tight" style={{ background: slotTheme.color, color: '#000' }}>EQ</span>
-                    )}
-                  </div>
+                <div
+                  className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden relative"
+                  style={{ background: '#0a0a14', border: `1px solid ${slotTheme.color}30` }}
+                >
+                  <LootVisual icon={slot.icon} image={slotImage} className="w-6 h-6 object-contain" scale={lootItem?.renderScale ?? 1} />
+                  {isEquipped && (
+                    <span className="absolute bottom-0 right-0 text-[6px] font-bold font-mono px-0.5 rounded-tl leading-tight" style={{ background: slotTheme.color, color: '#000' }}>EQ</span>
+                  )}
                 </div>
-                {/* Name */}
-                <p className="text-[11px] font-semibold text-white leading-tight w-full truncate">{slot.title}</p>
-                {/* Perk chip */}
-                {perkChip && (
-                  <span className="text-[9px] font-mono font-semibold leading-none truncate" style={{ color: slotTheme.color }}>{perkChip}</span>
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-semibold text-gray-100 leading-tight truncate">{slot.title}</p>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <span className="text-[8px] font-mono uppercase" style={{ color: slotTheme.color }}>{rarityNorm}</span>
+                    {typeLabel && <span className="text-[7px] text-gray-600">·</span>}
+                    {typeLabel && <span className="text-[7px] font-mono text-gray-500 uppercase">{typeLabel}</span>}
+                  </div>
+                  {perkChip && (
+                    <p className="text-[8px] text-gray-500 truncate mt-0.5">{perkChip}</p>
+                  )}
+                </div>
+                {/* Qty */}
+                {slot.quantity > 1 && (
+                  <span className="text-[9px] font-mono font-bold flex-shrink-0" style={{ color: slotTheme.color }}>×{slot.quantity}</span>
                 )}
-                {/* Bottom rarity bar */}
-                <div className="absolute bottom-0 left-0 right-0 h-[2px]" style={{ background: slotTheme.color, opacity: rarityNorm === 'common' ? 0.6 : 1 }} />
+                {/* Left rarity accent */}
+                <div className="absolute left-0 top-1 bottom-1 w-[2px] rounded-full" style={{ background: slotTheme.color, opacity: rarityNorm === 'common' ? 0.3 : 0.7 }} />
               </button>
             )
           }
 
-          const gridClass = viewMode === 'list' ? 'flex flex-col gap-0.5' : viewMode === 'compact' ? 'grid grid-cols-3 gap-1' : 'grid grid-cols-2 gap-1.5'
+          const gridClass = viewMode === 'list' ? 'flex flex-col gap-0.5' : viewMode === 'compact' ? 'grid grid-cols-4 gap-1' : 'grid grid-cols-2 gap-1'
           const sectionHdrClass = `${viewMode !== 'list' ? 'col-span-full' : ''} text-[9px] font-mono uppercase tracking-widest text-gray-500 pt-1 pb-0.5 flex items-center gap-2`
 
           if (groupedSlots) {

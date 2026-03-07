@@ -23,6 +23,7 @@ export interface PlantedSlot {
   seedId: string
   plantedAt: number       // Date.now() ms
   growTimeSeconds: number
+  composted?: boolean
 }
 
 export interface HarvestResult {
@@ -30,11 +31,20 @@ export interface HarvestResult {
   qty: number
   xpGained: number
   seedZipTier: SeedZipTier | null
+  composted?: boolean
+  compostDrop?: boolean
 }
+
+/** Chance to drop 1 compost on any harvest. */
+const HARVEST_COMPOST_DROP_CHANCE = 0.08
+
+/** Compost cost per plot. */
+export const COMPOST_PER_PLOT = 3
 
 interface FarmState {
   unlockedSlots: number                           // 1–8
   planted: Partial<Record<number, PlantedSlot>>   // slot index → planted info
+  compostedSlots: Record<number, boolean>         // slot index → pre-composted (empty slot)
   seeds: Record<string, number>                   // seedId → count in storage
   seedZips: Record<SeedZipTier, number>           // tier → Seed Zip count
   seedCabinetUnlocked: boolean
@@ -44,6 +54,10 @@ interface FarmState {
   cancelPlanting: (slotIndex: number) => boolean
   harvestSlot: (slotIndex: number) => HarvestResult | null
   harvestAll: () => HarvestResult[]
+  /** Compost an empty slot (costs COMPOST_PER_PLOT from inventory). */
+  compostSlot: (slotIndex: number) => boolean
+  /** Compost all empty uncomposted slots. Returns count composted. */
+  compostAll: () => number
   rollSeedDrop: (chestType: ChestType) => SeedZipTier | null
   addSeed: (seedId: string, qty: number) => void
   removeSeed: (seedId: string, qty: number) => void
@@ -73,6 +87,7 @@ export const useFarmStore = create<FarmState>()(
     (set, get) => ({
       unlockedSlots: 1,
       planted: {},
+      compostedSlots: {},
       seeds: {},
       seedZips: { common: 0, rare: 0, epic: 0, legendary: 0 },
       seedCabinetUnlocked: false,
@@ -96,13 +111,17 @@ export const useFarmStore = create<FarmState>()(
       },
 
       plantSeed(slotIndex, seedId) {
-        const { planted, seeds, unlockedSlots } = get()
+        const { planted, seeds, unlockedSlots, compostedSlots } = get()
         if (slotIndex >= unlockedSlots) return
         if (planted[slotIndex]) return
         const qty = seeds[seedId] ?? 0
         if (qty <= 0) return
         const seed = getSeedById(seedId)
         if (!seed) return
+
+        const wasComposted = !!compostedSlots[slotIndex]
+        const newComposted = { ...compostedSlots }
+        if (wasComposted) delete newComposted[slotIndex]
 
         set({
           planted: {
@@ -111,9 +130,11 @@ export const useFarmStore = create<FarmState>()(
               seedId,
               plantedAt: Date.now(),
               growTimeSeconds: seed.growTimeSeconds,
+              composted: wasComposted || undefined,
             },
           },
           seeds: { ...seeds, [seedId]: qty - 1 },
+          compostedSlots: newComposted,
         })
 
         grantFarmerXP(seed.xpOnPlant).catch(() => undefined)
@@ -138,7 +159,9 @@ export const useFarmStore = create<FarmState>()(
         const seed: SeedDef | undefined = getSeedById(slot.seedId)
         if (!seed) return null
 
-        const qty = randomBetween(seed.yieldMin, seed.yieldMax)
+        const isComposted = !!slot.composted
+        let qty = randomBetween(seed.yieldMin, seed.yieldMax)
+        if (isComposted) qty = Math.ceil(qty * 1.2)
         useInventoryStore.getState().addItem(seed.yieldPlantId, qty)
 
         const newPlanted = { ...planted }
@@ -152,10 +175,15 @@ export const useFarmStore = create<FarmState>()(
           newZips[seedZipTier] = (newZips[seedZipTier] ?? 0) + 1
         }
 
-        set({ planted: newPlanted, seedZips: newZips })
-        grantFarmerXP(seed.xpOnHarvest).catch(() => undefined)
+        // Bonus: chance to drop 1 compost on any harvest
+        const compostDrop = Math.random() < HARVEST_COMPOST_DROP_CHANCE
+        if (compostDrop) useInventoryStore.getState().addItem('compost', 1)
 
-        return { yieldPlantId: seed.yieldPlantId, qty, xpGained: seed.xpOnHarvest, seedZipTier }
+        set({ planted: newPlanted, seedZips: newZips })
+        const xp = isComposted ? Math.ceil(seed.xpOnHarvest * 1.05) : seed.xpOnHarvest
+        grantFarmerXP(xp).catch(() => undefined)
+
+        return { yieldPlantId: seed.yieldPlantId, qty, xpGained: xp, seedZipTier, composted: isComposted, compostDrop }
       },
 
       harvestAll() {
@@ -169,9 +197,12 @@ export const useFarmStore = create<FarmState>()(
           if (!isSlotReady(slot)) continue
           const seed = getSeedById(slot.seedId)
           if (!seed) continue
-          const qty = randomBetween(seed.yieldMin, seed.yieldMax)
+          const isComposted = !!slot.composted
+          let qty = randomBetween(seed.yieldMin, seed.yieldMax)
+          if (isComposted) qty = Math.ceil(qty * 1.2)
           useInventoryStore.getState().addItem(seed.yieldPlantId, qty)
-          grantFarmerXP(seed.xpOnHarvest).catch(() => undefined)
+          const xp = isComposted ? Math.ceil(seed.xpOnHarvest * 1.05) : seed.xpOnHarvest
+          grantFarmerXP(xp).catch(() => undefined)
           delete newPlanted[Number(idxStr)]
 
           let seedZipTier: SeedZipTier | null = null
@@ -180,11 +211,46 @@ export const useFarmStore = create<FarmState>()(
             newZips[seedZipTier] = (newZips[seedZipTier] ?? 0) + 1
           }
 
-          results.push({ yieldPlantId: seed.yieldPlantId, qty, xpGained: seed.xpOnHarvest, seedZipTier })
+          const compostDrop = Math.random() < HARVEST_COMPOST_DROP_CHANCE
+          if (compostDrop) useInventoryStore.getState().addItem('compost', 1)
+
+          results.push({ yieldPlantId: seed.yieldPlantId, qty, xpGained: xp, seedZipTier, composted: isComposted, compostDrop })
         }
 
         set({ planted: newPlanted, seedZips: newZips })
         return results
+      },
+
+      compostSlot(slotIndex) {
+        const { planted, compostedSlots, unlockedSlots } = get()
+        if (slotIndex >= unlockedSlots) return false
+        // Only compost empty, uncomposted slots
+        if (planted[slotIndex]) return false
+        if (compostedSlots[slotIndex]) return false
+        const inv = useInventoryStore.getState()
+        if ((inv.items['compost'] ?? 0) < COMPOST_PER_PLOT) return false
+        inv.deleteItem('compost', COMPOST_PER_PLOT)
+        set({ compostedSlots: { ...compostedSlots, [slotIndex]: true } })
+        return true
+      },
+
+      compostAll() {
+        const { planted, compostedSlots, unlockedSlots } = get()
+        const inv = useInventoryStore.getState()
+        let available = inv.items['compost'] ?? 0
+        const newComposted = { ...compostedSlots }
+        let count = 0
+        for (let i = 0; i < unlockedSlots; i++) {
+          if (planted[i] || newComposted[i] || available < COMPOST_PER_PLOT) continue
+          newComposted[i] = true
+          available -= COMPOST_PER_PLOT
+          count++
+        }
+        if (count > 0) {
+          inv.deleteItem('compost', count * COMPOST_PER_PLOT)
+          set({ compostedSlots: newComposted })
+        }
+        return count
       },
 
       rollSeedDrop(chestType) {
@@ -283,6 +349,7 @@ export const useFarmStore = create<FarmState>()(
       partialize: (s) => ({
         unlockedSlots: s.unlockedSlots,
         planted: s.planted,
+        compostedSlots: s.compostedSlots,
         seeds: s.seeds,
         seedZips: s.seedZips,
         seedCabinetUnlocked: s.seedCabinetUnlocked,

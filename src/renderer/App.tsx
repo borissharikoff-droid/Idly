@@ -46,21 +46,27 @@ applyAdminConfig(LOOT_ITEMS, BOSSES, ZONES, CRAFT_RECIPES)
 
 class PageErrorBoundary extends Component<
   { children: ReactNode; onReset: () => void },
-  { crashed: boolean }
+  { crashed: boolean; errorMsg: string }
 > {
   constructor(props: { children: ReactNode; onReset: () => void }) {
     super(props)
-    this.state = { crashed: false }
+    this.state = { crashed: false, errorMsg: '' }
   }
-  static getDerivedStateFromError() { return { crashed: true } }
+  static getDerivedStateFromError(error: Error) { return { crashed: true, errorMsg: String(error?.message ?? error) } }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error('[PageErrorBoundary] crash:', error, info.componentStack)
+  }
   render() {
     if (this.state.crashed) {
       return (
         <div className="p-8 flex flex-col items-center justify-center gap-3 text-center">
           <span className="text-3xl">💥</span>
           <p className="text-sm text-gray-300 font-semibold">Page crashed</p>
+          {this.state.errorMsg && (
+            <p className="text-[10px] text-gray-500 font-mono max-w-[280px] break-all">{this.state.errorMsg}</p>
+          )}
           <button
-            onClick={() => { this.setState({ crashed: false }); this.props.onReset() }}
+            onClick={() => { this.setState({ crashed: false, errorMsg: '' }); this.props.onReset() }}
             className="px-4 py-2 rounded-lg border border-cyber-neon/30 text-cyber-neon text-xs hover:bg-cyber-neon/10 transition-colors"
           >
             Reload page
@@ -118,12 +124,10 @@ function MarketplaceFallback() {
 }
 
 export type TabId = 'home' | 'inventory' | 'skills' | 'stats' | 'profile' | 'friends' | 'marketplace' | 'arena' | 'farm' | 'craft' | 'settings'
-const TAB_ORDER: TabId[] = ['home', 'inventory', 'skills', 'stats', 'profile', 'friends', 'marketplace', 'arena', 'farm', 'craft', 'settings']
 
 const PAGE_SLIDE = {
-  initial: (dir: number) => ({ opacity: 0, x: dir * 16 }),
-  animate: { opacity: 1, x: 0, transition: { duration: 0.2, ease: MOTION.easingSoft } },
-  exit: (dir: number) => ({ opacity: 0, x: dir * -12, transition: { duration: 0.15, ease: MOTION.easingSoft } }),
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.15, ease: MOTION.easingSoft } },
 }
 
 function migrateLegacyLocalStorage(): void {
@@ -149,13 +153,7 @@ function migrateLegacyLocalStorage(): void {
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<TabId>('home')
-  const [slideDir, setSlideDir] = useState<1 | -1>(1)
-  const prevTabRef = useRef<TabId>('home')
   const navigateTo = useCallback((tab: TabId) => {
-    const from = TAB_ORDER.indexOf(prevTabRef.current)
-    const to = TAB_ORDER.indexOf(tab)
-    setSlideDir(to >= from ? 1 : -1)
-    prevTabRef.current = tab
     setActiveTab(tab)
   }, [])
   const [showStreak, setShowStreak] = useState(false)
@@ -261,24 +259,18 @@ export default function App() {
     })
   }, [user])
 
-  // Check streak once on app startup
+  // Check streak once on app startup (once per session, every launch)
   useEffect(() => {
     if (useSessionStore.getState().isStreakDone()) return
     useSessionStore.getState().markStreakDone()
 
     const checkStreak = async () => {
       const api = window.electronAPI
-      if (!api?.db?.getStreak || !api?.db?.getLocalStat || !api?.db?.setLocalStat) return
-
-      const today = new Date().toLocaleDateString('sv-SE')
+      if (!api?.db?.getStreak) return
 
       try {
-        const savedDate = await api.db.getLocalStat('streak_shown_date')
-        if (savedDate === today) return
-
         const streak = await api.db.getStreak()
         if (streak >= 2) {
-          await api.db.setLocalStat('streak_shown_date', today)
           setStreakCount(streak)
           setShowStreak(true)
         }
@@ -389,9 +381,9 @@ export default function App() {
             </div>
           )}
           <main className="flex-1 overflow-y-auto overflow-x-hidden">
-            <AnimatePresence mode="wait" custom={slideDir}>
+            <>
               {activeTab === 'home' && (
-                <motion.div key="home" className="h-full" custom={slideDir} variants={PAGE_SLIDE} initial="initial" animate="animate" exit="exit">
+                <motion.div key="home" className="h-full" variants={PAGE_SLIDE} initial="initial" animate="animate">
                   <HomePage
                     onNavigateProfile={handleNavigateProfile}
                     onNavigateInventory={handleNavigateInventory}
@@ -400,36 +392,36 @@ export default function App() {
                 </motion.div>
               )}
               {activeTab === 'inventory' && (
-                <motion.div key="inventory" custom={slideDir} variants={PAGE_SLIDE} initial="initial" animate="animate" exit="exit">
+                <motion.div key="inventory" variants={PAGE_SLIDE} initial="initial" animate="animate">
                   <InventoryPage onBack={() => navigateTo('home')} onNavigateFarm={handleNavigateFarm} />
                 </motion.div>
               )}
               {activeTab === 'skills' && (
-                <motion.div key="skills" custom={slideDir} variants={PAGE_SLIDE} initial="initial" animate="animate" exit="exit">
+                <motion.div key="skills" variants={PAGE_SLIDE} initial="initial" animate="animate">
                   <SkillsPage />
                 </motion.div>
               )}
               {activeTab === 'stats' && (
-                <motion.div key="stats" custom={slideDir} variants={PAGE_SLIDE} initial="initial" animate="animate" exit="exit">
+                <motion.div key="stats" variants={PAGE_SLIDE} initial="initial" animate="animate">
                   <Suspense fallback={<PageFallback />}>
                     <StatsPage />
                   </Suspense>
                 </motion.div>
               )}
               {activeTab === 'profile' && (
-                <motion.div key="profile" custom={slideDir} variants={PAGE_SLIDE} initial="initial" animate="animate" exit="exit">
+                <motion.div key="profile" variants={PAGE_SLIDE} initial="initial" animate="animate">
                   <ProfilePage onBack={() => navigateTo('home')} />
                 </motion.div>
               )}
               {activeTab === 'friends' && (
-                <motion.div key="friends" className="h-full" custom={slideDir} variants={PAGE_SLIDE} initial="initial" animate="animate" exit="exit">
+                <motion.div key="friends" className="h-full" variants={PAGE_SLIDE} initial="initial" animate="animate">
                   <Suspense fallback={<PageFallback />}>
                     <FriendsPage friendsModel={friendsModel} />
                   </Suspense>
                 </motion.div>
               )}
               {activeTab === 'marketplace' && (
-                <motion.div key="marketplace" custom={slideDir} variants={PAGE_SLIDE} initial="initial" animate="animate" exit="exit">
+                <motion.div key="marketplace" variants={PAGE_SLIDE} initial="initial" animate="animate">
                   <PageErrorBoundary onReset={() => navigateTo('home')}>
                     <Suspense fallback={<MarketplaceFallback />}>
                       <MarketplacePage />
@@ -438,32 +430,32 @@ export default function App() {
                 </motion.div>
               )}
               {activeTab === 'arena' && (
-                <motion.div key="arena" custom={slideDir} variants={PAGE_SLIDE} initial="initial" animate="animate" exit="exit">
+                <motion.div key="arena" variants={PAGE_SLIDE} initial="initial" animate="animate">
                   <Suspense fallback={<PageFallback />}>
                     <ArenaPage />
                   </Suspense>
                 </motion.div>
               )}
               {activeTab === 'farm' && (
-                <motion.div key="farm" custom={slideDir} variants={PAGE_SLIDE} initial="initial" animate="animate" exit="exit">
+                <motion.div key="farm" variants={PAGE_SLIDE} initial="initial" animate="animate">
                   <Suspense fallback={<PageFallback />}>
                     <FarmPage />
                   </Suspense>
                 </motion.div>
               )}
               {activeTab === 'craft' && (
-                <motion.div key="craft" custom={slideDir} variants={PAGE_SLIDE} initial="initial" animate="animate" exit="exit">
+                <motion.div key="craft" variants={PAGE_SLIDE} initial="initial" animate="animate">
                   <Suspense fallback={<PageFallback />}>
                     <CraftPage />
                   </Suspense>
                 </motion.div>
               )}
               {activeTab === 'settings' && (
-                <motion.div key="settings" custom={slideDir} variants={PAGE_SLIDE} initial="initial" animate="animate" exit="exit">
+                <motion.div key="settings" variants={PAGE_SLIDE} initial="initial" animate="animate">
                   <SettingsPage />
                 </motion.div>
               )}
-            </AnimatePresence>
+            </>
           </main>
           <BottomNav activeTab={activeTab} onTabChange={navigateTo} />
           <AnimatePresence>
@@ -481,12 +473,12 @@ export default function App() {
             goldAlreadyAdded={arenaResultModal?.goldAlreadyAdded ?? true}
             bossName={arenaResultModal?.bossName}
             goldLost={arenaResultModal?.goldLost}
-            chest={arenaResultModal?.chest}
+            chest={arenaResultModal?.chest ?? null}
             lostItemName={arenaResultModal?.lostItemName}
             lostItemIcon={arenaResultModal?.lostItemIcon}
-            materialDrop={arenaResultModal?.materialDrop}
-            dungeonGold={arenaResultModal?.dungeonGold}
-            warriorXP={arenaResultModal?.warriorXP}
+            materialDrop={arenaResultModal?.materialDrop ?? null}
+            dungeonGold={arenaResultModal?.dungeonGold ?? 0}
+            warriorXP={arenaResultModal?.warriorXP ?? 0}
             onClose={() => setArenaResultModal(null)}
           />
           <MessageBanner onNavigateToChat={handleNavigateToChat} />

@@ -17,9 +17,11 @@ interface ListForSaleModalProps {
   maxQty?: number
   /** Custom deduction function (e.g. for farm items not in inventoryStore). If omitted, uses deleteItem. */
   onDeductItem?: (qty: number) => void
+  /** Rollback for onDeductItem when listing fails. Re-adds the deducted quantity. */
+  onRollbackDeduct?: (qty: number) => void
 }
 
-export function ListForSaleModal({ itemId, onClose, onListed, maxQty = 1, onDeductItem }: ListForSaleModalProps) {
+export function ListForSaleModal({ itemId, onClose, onListed, maxQty = 1, onDeductItem, onRollbackDeduct }: ListForSaleModalProps) {
   const user = useAuthStore((s) => s.user)
   const gold = useGoldStore((s) => s.gold)
   const [price, setPrice] = useState('')
@@ -54,20 +56,26 @@ export function ListForSaleModal({ itemId, onClose, onListed, maxQty = 1, onDedu
     } else {
       deleteItem(itemId, qty)
     }
-    const res = await createListing(user.id, itemId, qty, priceNum)
-    setLoading(false)
-    if (res.ok) {
-      playClickSound()
-      onListed()
-    } else {
+    try {
+      const res = await createListing(user.id, itemId, qty, priceNum)
+      setLoading(false)
+      if (res.ok) {
+        playClickSound()
+        onListed()
+      } else {
+        addGold(commission)
+        syncToSupabase(user.id).catch(() => {})
+        if (onRollbackDeduct) onRollbackDeduct(qty)
+        else if (!onDeductItem) addItem(itemId, qty)
+        setError(res.error ?? 'Failed to list')
+      }
+    } catch {
+      setLoading(false)
       addGold(commission)
       syncToSupabase(user.id).catch(() => {})
-      if (onDeductItem) {
-        // Caller handles rollback via onListed not being called
-      } else {
-        addItem(itemId, qty)
-      }
-      setError(res.error ?? 'Failed to list')
+      if (onRollbackDeduct) onRollbackDeduct(qty)
+      else if (!onDeductItem) addItem(itemId, qty)
+      setError('Network error — try again')
     }
   }
 

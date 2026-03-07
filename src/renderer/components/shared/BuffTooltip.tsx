@@ -1,9 +1,11 @@
 import { useRef, useState, useCallback, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
+import { getItemPower, getItemPerks, type LootItemDef, type LootRarity, type LootSlot } from '../../lib/loot'
+import { RARITY_THEME, normalizeRarity, SLOT_LABEL } from '../loot/LootUI'
 
 interface BuffTooltipProps {
   /** Item with name and perkDescription; if null, no tooltip */
-  item: { name: string; perkDescription: string } | null
+  item: { name: string; perkDescription: string; rarity?: LootRarity; slot?: LootSlot; perks?: LootItemDef['perks']; perkType?: string; perkValue?: string | number; perkTarget?: string } | null
   children: React.ReactNode
   /** Prefer 'top' to avoid overlapping content below */
   placement?: 'top' | 'bottom'
@@ -126,7 +128,24 @@ export function BuffTooltip({ item, children, placement = 'bottom', stretch = fa
             }}
           >
             <p className="text-[10px] font-semibold text-cyber-neon">{item.name}</p>
-            <p className="text-[10px] text-gray-300 leading-snug mt-0.5">{item.perkDescription}</p>
+            {item.rarity && (
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-[9px] font-mono font-bold uppercase" style={{ color: RARITY_THEME[normalizeRarity(item.rarity)].color }}>
+                  {item.rarity}
+                </span>
+                {item.slot && <span className="text-[9px] font-mono text-gray-500 uppercase">{SLOT_LABEL[item.slot] ?? item.slot}</span>}
+                <span className="text-[9px] font-mono text-amber-400/70">IP {getItemPower(item as LootItemDef)}</span>
+              </div>
+            )}
+            {item.rarity && (item.perks?.length || item.perkType) ? (
+              <div className="mt-1 space-y-0.5">
+                {getItemPerks(item as LootItemDef).map((p, i) => (
+                  <p key={i} className="text-[10px] text-green-400 leading-snug">{p.perkDescription}</p>
+                ))}
+              </div>
+            ) : (
+              <p className="text-[10px] text-gray-300 leading-snug mt-0.5">{item.perkDescription}</p>
+            )}
           </div>,
           document.body,
         )}

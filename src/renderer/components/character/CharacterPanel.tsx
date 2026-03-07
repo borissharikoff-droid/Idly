@@ -61,13 +61,17 @@ function HSlot({
     </div>
   )
 
+  const clickable = Boolean(item && onSlotClick && !locked)
+
   return (
     <BuffTooltip item={item} placement="top" stretch>
-      <div className="h-full rounded-lg overflow-hidden"
-        style={{ border: `1px solid ${theme ? theme.border : 'rgba(255,255,255,0.07)'}` }}>
-        {item && onSlotClick && !locked
-          ? <button type="button" onClick={() => { playClickSound(); onSlotClick(slot, item.id) }} className="w-full h-full text-left hover:brightness-110 active:scale-[0.99] transition-all">{inner}</button>
-          : <div className="h-full">{inner}</div>}
+      <div
+        className={`h-full rounded-lg overflow-hidden${clickable ? ' cursor-pointer hover:brightness-110 active:scale-[0.99] transition-all' : ''}`}
+        style={{ border: `1px solid ${theme ? theme.border : 'rgba(255,255,255,0.07)'}` }}
+        role={clickable ? 'button' : undefined}
+        onClick={clickable ? () => { playClickSound(); onSlotClick!(slot, item!.id) } : undefined}
+      >
+        {inner}
       </div>
     </BuffTooltip>
   )
@@ -125,13 +129,17 @@ function VSlot({
     </div>
   )
 
+  const clickable = Boolean(item && onSlotClick && !locked)
+
   return (
     <BuffTooltip item={item} placement="top" stretch>
-      <div className="h-full rounded-lg overflow-hidden"
-        style={{ border: `1px solid ${theme ? theme.border : 'rgba(255,255,255,0.08)'}` }}>
-        {item && onSlotClick && !locked
-          ? <button type="button" onClick={() => { playClickSound(); onSlotClick(slot, item.id) }} className="w-full h-full hover:brightness-110 transition-all">{inner}</button>
-          : <div className="h-full">{inner}</div>}
+      <div
+        className={`h-full rounded-lg overflow-hidden${clickable ? ' cursor-pointer hover:brightness-110 transition-all' : ''}`}
+        style={{ border: `1px solid ${theme ? theme.border : 'rgba(255,255,255,0.08)'}` }}
+        role={clickable ? 'button' : undefined}
+        onClick={clickable ? () => { playClickSound(); onSlotClick!(slot, item!.id) } : undefined}
+      >
+        {inner}
       </div>
     </BuffTooltip>
   )

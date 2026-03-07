@@ -4,6 +4,15 @@ import type { LootItemDef, LootRarity } from './loot'
 
 export const CRAFT_INTERMEDIATE_ITEMS: LootItemDef[] = [
   {
+    id: 'compost',
+    name: 'Compost',
+    slot: 'material',
+    rarity: 'common',
+    icon: '🧪',
+    description: 'Organic fertiliser. Apply to a farm plot for +20% yield and +5% farmer XP.',
+    perkType: 'cosmetic', perkValue: 0, perkDescription: 'Farm consumable — +20% yield, +5% XP',
+  },
+  {
     id: 'iron_bar',
     name: 'Iron Bar',
     slot: 'material',
@@ -285,6 +294,17 @@ export interface CraftRecipe {
 }
 
 export const CRAFT_RECIPES: CraftRecipe[] = [
+  // ── Farm consumable ────────────────────────────────────────────────────────
+  {
+    id: 'recipe_compost',
+    outputItemId: 'compost',
+    outputQty: 3,
+    isIntermediate: true,
+    ingredients: [{ id: 'wheat', qty: 5 }, { id: 'herbs', qty: 3 }],
+    levelRequired: 0,
+    xpPerItem: 30,
+    secPerItem: 6,
+  },
   // ── Tier 1 — Refine raw materials into intermediate components ─────────────
   {
     id: 'recipe_iron_bar',
