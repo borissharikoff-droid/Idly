@@ -5,6 +5,7 @@ import { useArenaStore } from '../../stores/arenaStore'
 import { useNotificationStore } from '../../stores/notificationStore'
 import { LOOT_ITEMS } from '../../lib/loot'
 import { playClickSound } from '../../lib/sounds'
+import type { TabId } from '../../App'
 
 function formatShort(n: number): string {
   if (!Number.isFinite(n) || n < 0) return '0'
@@ -24,8 +25,15 @@ function accentFor(t: Toast): string {
   }
 }
 
+function tabForToast(d: Toast['data']): TabId | null {
+  if (d.kind === 'arena_boss' || d.kind === 'mob_kill') return 'arena'
+  if (d.kind === 'craft_complete') return 'craft'
+  if (d.kind === 'friend_online' || d.kind === 'friend_message') return 'friends'
+  return null
+}
+
 // ─── Single toast item ───────────────────────────────────────────────────────
-function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }) {
+function ToastItem({ toast, onDismiss, onNavigate }: { toast: Toast; onDismiss: () => void; onNavigate?: (tab: TabId) => void }) {
   const [pct, setPct] = useState(100)
   const setResultModal = useArenaStore((s) => s.setResultModal)
   const dismissNotif = useNotificationStore((s) => s.dismiss)
@@ -82,7 +90,15 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
     playClickSound()
     if (d.kind === 'arena_boss') {
       dismissNotif(d.notificationId)
-      setResultModal({ victory: true, gold: d.gold, goldAlreadyAdded: false, bossName: d.bossName })
+      setResultModal({
+        victory: true,
+        gold: d.gold,
+        goldAlreadyAdded: false,
+        bossName: d.bossName,
+        chest: d.chest as import('../../stores/arenaStore').ArenaChestDrop | null | undefined,
+        materialDrop: d.materialDrop ?? null,
+        warriorXP: d.warriorXP ?? 0,
+      })
     }
     onDismiss()
   }
@@ -102,16 +118,24 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
       <div className="h-px" style={{ background: `linear-gradient(90deg, transparent, ${accent}70, transparent)` }} />
 
       <div className="px-3.5 pt-2.5 pb-2 flex items-center gap-2.5">
-        <span className="text-lg leading-none shrink-0">{icon}</span>
-
-        <div className="min-w-0 flex-1">
-          <p className="text-[12px] font-semibold text-white leading-tight truncate">{title}</p>
-          {body && (
-            <p className="text-[10px] font-mono mt-0.5 truncate" style={{ color: `${accent}cc` }}>
-              {body}
-            </p>
-          )}
-        </div>
+        <button
+          type="button"
+          className="flex items-center gap-2.5 min-w-0 flex-1 text-left"
+          onClick={() => {
+            const tab = tabForToast(d)
+            if (tab && onNavigate) { playClickSound(); onNavigate(tab); onDismiss() }
+          }}
+        >
+          <span className="text-lg leading-none shrink-0">{icon}</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[12px] font-semibold text-white leading-tight truncate">{title}</p>
+            {body && (
+              <p className="text-[10px] font-mono mt-0.5 truncate" style={{ color: `${accent}cc` }}>
+                {body}
+              </p>
+            )}
+          </div>
+        </button>
 
         <div className="flex items-center gap-1 shrink-0">
           {canClaim && (
@@ -147,7 +171,7 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
 }
 
 // ─── Stack ───────────────────────────────────────────────────────────────────
-export function ToastStack() {
+export function ToastStack({ onNavigate }: { onNavigate?: (tab: TabId) => void } = {}) {
   const { toasts, dismiss } = useToastStore()
 
   return (
@@ -163,7 +187,7 @@ export function ToastStack() {
             transition={{ type: 'spring', stiffness: 400, damping: 32 }}
             className="pointer-events-auto"
           >
-            <ToastItem toast={t} onDismiss={() => dismiss(t.id)} />
+            <ToastItem toast={t} onDismiss={() => dismiss(t.id)} onNavigate={onNavigate} />
           </motion.div>
         ))}
       </AnimatePresence>

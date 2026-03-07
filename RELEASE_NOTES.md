@@ -1,3 +1,16 @@
+## What's new in v3.2.0
+
+### New
+- Click any toast notification to navigate to the relevant page (arena, craft, friends)
+- Click notification panel items to navigate to the relevant page
+- Arena boss Claim (from toast or notification) now opens the full victory modal with chest loot, materials, and warrior XP
+
+### Improved
+- Global navigation store for cross-component tab switching
+
+---
+Released: 2026-03-07
+
 ## What's new in v3.1.1
 
 ### Fixed

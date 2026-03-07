@@ -40,6 +40,7 @@ import { CRAFT_RECIPES } from './lib/crafting'
 import { applyAdminConfig, syncAdminConfigFromSupabase } from './lib/itemConfig'
 import { useAdminConfigStore } from './stores/adminConfigStore'
 import { supabase } from './lib/supabase'
+import { useNavigationStore } from './stores/navigationStore'
 
 // Apply cached admin overrides before first render (populated after first Supabase sync)
 applyAdminConfig(LOOT_ITEMS, BOSSES, ZONES, CRAFT_RECIPES)
@@ -156,6 +157,7 @@ export default function App() {
   const navigateTo = useCallback((tab: TabId) => {
     setActiveTab(tab)
   }, [])
+  useEffect(() => { useNavigationStore.getState().setNavigateTo(navigateTo) }, [navigateTo])
   const [showStreak, setShowStreak] = useState(false)
   const [streakCount, setStreakCount] = useState(0)
   const [healthIssues, setHealthIssues] = useState<string[]>([])
@@ -465,7 +467,7 @@ export default function App() {
           </AnimatePresence>
           <LootDrop />
           <ChestDrop />
-          <ToastStack />
+          <ToastStack onNavigate={navigateTo} />
           <VictoryResultModal
             open={Boolean(arenaResultModal)}
             victory={arenaResultModal?.victory ?? false}

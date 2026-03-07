@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 
 export type ToastKind =
-  | { kind: 'arena_boss'; victory: boolean; bossName: string; gold: number; notificationId: string }
+  | { kind: 'arena_boss'; victory: boolean; bossName: string; gold: number; notificationId: string; chest?: { type: string; name: string; icon: string; image?: string } | null; materialDrop?: { id: string; name: string; icon: string; qty: number } | null; warriorXP?: number; dungeonGold?: number }
   | { kind: 'mob_kill'; mobName: string; gold: number; xp: number; material: string | null }
   | { kind: 'craft_complete'; itemName: string; itemIcon: string; qty: number; xp: number }
   | { kind: 'friend_online'; friendName: string }

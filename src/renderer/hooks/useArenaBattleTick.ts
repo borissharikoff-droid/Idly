@@ -2,6 +2,8 @@ import { useEffect, useRef } from 'react'
 import { useArenaStore } from '../stores/arenaStore'
 import { useToastStore } from '../stores/toastStore'
 import { useNotificationStore } from '../stores/notificationStore'
+import { LOOT_ITEMS } from '../lib/loot'
+import { BOSS_WARRIOR_XP } from '../lib/combat'
 import type { TabId } from '../App'
 
 function formatShort(n: number): string {
@@ -45,6 +47,14 @@ export function useArenaBattleTick(activeTab: TabId) {
 
       timeoutRef.current = setTimeout(() => {
         const { goldLost, chest } = endBattleWithoutGold()
+        // Also grab material drop info from the boss def for the notification
+        const bossDef = activeBattle.bossSnapshot as { materialDropId?: string; materialDropQty?: number; id: string }
+        let materialDrop: { id: string; name: string; icon: string; qty: number } | null = null
+        if (victory && bossDef.materialDropId) {
+          const matItem = LOOT_ITEMS.find((x) => x.id === bossDef.materialDropId)
+          if (matItem) materialDrop = { id: matItem.id, name: matItem.name, icon: matItem.icon, qty: bossDef.materialDropQty ?? 1 }
+        }
+        const warriorXP = BOSS_WARRIOR_XP[activeBattle.bossSnapshot.id] ?? 0
         const notifId = pushNotification({
           type: 'arena_result',
           icon: victory ? '🏆' : '💀',
@@ -52,10 +62,10 @@ export function useArenaBattleTick(activeTab: TabId) {
           body: victory
             ? chest ? `${chest.icon} ${chest.name} — check Inventory` : 'Boss slain!'
             : goldLost > 0 ? `-${formatShort(goldLost)} 🪙 lost on death` : '',
-          arenaResult: { victory, gold: 0, bossName },
+          arenaResult: { victory, gold: 0, bossName, chest, materialDrop, warriorXP },
         })
         if (notifId) {
-          pushToast({ kind: 'arena_boss', victory, bossName, gold: 0, notificationId: notifId })
+          pushToast({ kind: 'arena_boss', victory, bossName, gold: 0, notificationId: notifId, chest, materialDrop, warriorXP })
         }
       }, 1200)
     }

@@ -1,15 +1,25 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useNotificationStore } from '../../stores/notificationStore'
+import { useNotificationStore, type NotificationType } from '../../stores/notificationStore'
 import { useSessionStore } from '../../stores/sessionStore'
-import { useGoldStore } from '../../stores/goldStore'
-import { useAuthStore } from '../../stores/authStore'
 import { useArenaStore } from '../../stores/arenaStore'
 import { useInventoryStore } from '../../stores/inventoryStore'
 import { useFarmStore } from '../../stores/farmStore'
+import { useNavigationStore } from '../../stores/navigationStore'
 import { LOOT_ITEMS, type ChestType } from '../../lib/loot'
 import { ChestOpenModal } from '../animations/ChestOpenModal'
 import { playClickSound } from '../../lib/sounds'
+import type { TabId } from '../../App'
+
+function tabForNotifType(type: NotificationType): TabId | null {
+  switch (type) {
+    case 'arena_result': return 'arena'
+    case 'marketplace_sale': return 'marketplace'
+    case 'friend_levelup': return 'friends'
+    case 'progression': return 'skills'
+    default: return null
+  }
+}
 
 function timeAgo(ts: number): string {
   const sec = Math.floor(Math.max(0, Date.now() - ts) / 1000)
@@ -29,10 +39,8 @@ interface NotificationPanelProps {
 
 export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelProps) {
   const { items, markAllRead, clear, dismiss } = useNotificationStore()
-  const addGold = useGoldStore((s) => s.addGold)
-  const syncToSupabase = useGoldStore((s) => s.syncToSupabase)
-  const user = useAuthStore((s) => s.user)
   const setResultModal = useArenaStore((s) => s.setResultModal)
+  const globalNavigate = useNavigationStore((s) => s.navigateTo)
   const presentRecoveryComplete = useSessionStore((s) => s.presentRecoveryComplete)
   const claimPendingReward = useInventoryStore((s) => s.claimPendingReward)
   const openChestAndGrantItem = useInventoryStore((s) => s.openChestAndGrantItem)
@@ -131,7 +139,9 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
               filteredItems.map((item) => (
                 item.arenaResult ? (
                   <div key={item.id} className="px-3 py-2 border-b border-white/[0.03] last:border-0">
-                    <div className={`rounded-2xl border px-3 py-2.5 ${item.arenaResult.victory ? 'border-cyber-neon/25 bg-gradient-to-r from-cyber-neon/10 via-cyber-neon/5 to-discord-card/80' : 'border-red-500/25 bg-gradient-to-r from-red-500/10 via-red-500/5 to-discord-card/80'}`}>
+                    <div className={`rounded-2xl border px-3 py-2.5 cursor-pointer ${item.arenaResult.victory ? 'border-cyber-neon/25 bg-gradient-to-r from-cyber-neon/10 via-cyber-neon/5 to-discord-card/80' : 'border-red-500/25 bg-gradient-to-r from-red-500/10 via-red-500/5 to-discord-card/80'}`}
+                      onClick={() => { if (globalNavigate) { playClickSound(); globalNavigate('arena'); onClose() } }}
+                    >
                       <div className="flex items-start gap-2">
                         <span className="text-base shrink-0 mt-0.5">{item.icon}</span>
                         <div className="min-w-0 flex-1">
@@ -146,10 +156,15 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                             type="button"
                             onClick={() => {
                               playClickSound()
+                              const ar = item.arenaResult!
                               setResultModal({
                                 victory: true,
-                                gold: item.arenaResult!.gold,
+                                gold: ar.gold,
                                 goldAlreadyAdded: false,
+                                bossName: ar.bossName,
+                                chest: ar.chest as import('../../stores/arenaStore').ArenaChestDrop | null | undefined,
+                                materialDrop: ar.materialDrop ?? null,
+                                warriorXP: ar.warriorXP ?? 0,
                               })
                               dismiss(item.id)
                               onClose()
@@ -215,7 +230,11 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                 ) : (
                   <div
                     key={item.id}
-                    className="px-3 py-2 flex items-start gap-2 hover:bg-white/[0.02] border-b border-white/[0.03] last:border-0"
+                    className="px-3 py-2 flex items-start gap-2 hover:bg-white/[0.02] border-b border-white/[0.03] last:border-0 cursor-pointer"
+                    onClick={() => {
+                      const tab = tabForNotifType(item.type)
+                      if (tab && globalNavigate) { playClickSound(); globalNavigate(tab); onClose() }
+                    }}
                   >
                     <span className="text-sm shrink-0 mt-0.5">{item.icon}</span>
                     <div className="min-w-0 flex-1">
