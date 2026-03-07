@@ -1,3 +1,28 @@
+## What's new in v3.1.0
+
+### New
+- Compost system — apply compost to empty farm plots (3 per plot) for +20% harvest yield and +5% farmer XP
+- Compost All button (unlocks at Farmer lv.50)
+- Compost crafting recipe: Wheat ×5 + Herbs ×3 → Compost ×3
+- 8% chance to drop compost on any harvest
+- Dashboard icon editor — change navbar, gold, and all UI icons from Game Config
+
+### Improved
+- Claim All now shows each harvest one-by-one instead of a combined scroll view
+- Seed picker now shows seeds from both inventory and cabinet
+- Marketplace buy-price formula corrected (per-unit pricing)
+
+### Fixed
+- Marketplace page crash on buy/list actions
+- Compost recipe now visible in Craft page (moved to CRAFT_INTERMEDIATE_ITEMS)
+
+### Wiki
+- New Compost tab on Farming page
+- Updated item descriptions and crafting references
+
+---
+Released: 2026-03-07
+
 ## What's new in v3.0.0
 
 ### New

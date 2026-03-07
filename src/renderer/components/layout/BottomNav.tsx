@@ -9,15 +9,17 @@ import { useArenaStore } from '../../stores/arenaStore'
 import { useCraftingStore } from '../../stores/craftingStore'
 import { useFarmStore } from '../../stores/farmStore'
 import { MOTION } from '../../lib/motion'
+import { getUIIcons } from '../../lib/itemConfig'
+import { useAdminConfigStore } from '../../stores/adminConfigStore'
 
-const PRIMARY_TABS: { id: TabId; icon: string }[] = [
+const PRIMARY_TABS_DEFAULT: { id: TabId; icon: string }[] = [
   { id: 'home',    icon: '⏱' },
   { id: 'skills',  icon: '⚡' },
   { id: 'friends', icon: '👥' },
   { id: 'stats',   icon: '📊' },
 ]
 
-const SECONDARY_TABS: { id: TabId; icon: string; label: string }[] = [
+const SECONDARY_TABS_DEFAULT: { id: TabId; icon: string; label: string }[] = [
   { id: 'inventory',   icon: '🎒', label: 'Inventory' },
   { id: 'marketplace', icon: '🛒', label: 'Market'    },
   { id: 'arena',       icon: '⚔️', label: 'Arena'     },
@@ -27,7 +29,7 @@ const SECONDARY_TABS: { id: TabId; icon: string; label: string }[] = [
   { id: 'settings',    icon: '⚙',  label: 'Settings'  },
 ]
 
-const SECONDARY_IDS = new Set<TabId>(SECONDARY_TABS.map((t) => t.id))
+const SECONDARY_IDS = new Set<TabId>(SECONDARY_TABS_DEFAULT.map((t) => t.id))
 
 interface BottomNavProps {
   activeTab: TabId
@@ -35,6 +37,10 @@ interface BottomNavProps {
 }
 
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
+  useAdminConfigStore((s) => s.rev) // re-render on config change
+  const uiIcons = getUIIcons()
+  const PRIMARY_TABS = PRIMARY_TABS_DEFAULT.map((t) => ({ ...t, icon: uiIcons.navTabs?.[t.id] || t.icon }))
+  const SECONDARY_TABS = SECONDARY_TABS_DEFAULT.map((t) => ({ ...t, icon: uiIcons.navSecondaryTabs?.[t.id] || t.icon }))
   const [moreOpen, setMoreOpen] = useState(false)
   const { queue, currentAlert } = useAlertStore()
   const { incomingRequestsCount, unreadMessagesCount, marketplaceSaleCount } = useNavBadgeStore()

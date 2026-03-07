@@ -811,317 +811,9 @@ function SeedZipSection() {
   )
 }
 
-// ─── Harvest Claim All Modal ─────────────────────────────────────────────────
-// Full chest-style reveal modal for the "Claim All" button.
-// Shows every harvest result as a scrollable card; arrows appear when multiple.
-
-function HarvestClaimModal({ results, onClose }: { results: HarvestResult[]; onClose: () => void }) {
-  const totalXP = results.reduce((s, r) => s + r.xpGained, 0)
-  const hasMultiple = results.length > 1
-
-  // Animation tier based on result count
-  const tier: SeedZipTier =
-    results.length >= 5 ? 'legendary'
-    : results.length >= 3 ? 'epic'
-    : results.length >= 2 ? 'rare'
-    : 'common'
-  const animCfg = ZIP_OPEN_ANIM[tier]
-  const shakeFrames = ZIP_SHAKE_FRAMES[tier] ?? ZIP_SHAKE_FRAMES.common
-  const scaleFrames = ZIP_SCALE_FRAMES[tier] ?? ZIP_SCALE_FRAMES.common
-
-  const [phase, setPhase] = useState<'opening' | 'revealed'>('opening')
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const [scrollPos, setScrollPos] = useState<'start' | 'middle' | 'end'>('start')
-
-  const updateScrollPos = useCallback(() => {
-    const el = scrollRef.current
-    if (!el) return
-    const { scrollLeft, scrollWidth, clientWidth } = el
-    if (scrollWidth <= clientWidth + 2) { setScrollPos('start'); return }
-    if (scrollLeft <= 2) setScrollPos('start')
-    else if (scrollLeft + clientWidth >= scrollWidth - 2) setScrollPos('end')
-    else setScrollPos('middle')
-  }, [])
-
-  const doScroll = useCallback((dir: 'left' | 'right') => {
-    scrollRef.current?.scrollBy({ left: dir === 'right' ? 160 : -160, behavior: 'smooth' })
-  }, [])
-
-  useEffect(() => {
-    setPhase('opening')
-    if (scrollRef.current) scrollRef.current.scrollLeft = 0
-    setScrollPos('start')
-    playLootRaritySound('common')
-    const t = setTimeout(() => setPhase('revealed'), animCfg.openMs)
-    return () => clearTimeout(t)
-  }, [animCfg.openMs])
-
-  useEffect(() => {
-    if (phase !== 'revealed') return
-    const RARITY_ORD = ['common', 'rare', 'epic', 'legendary', 'mythic']
-    const best = results.reduce((a, r) => {
-      const rarity = LOOT_ITEMS.find((x) => x.id === r.yieldPlantId)?.rarity ?? 'common'
-      return RARITY_ORD.indexOf(rarity) > RARITY_ORD.indexOf(a) ? rarity : a
-    }, 'common')
-    playLootRaritySound(best)
-  }, [phase]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const isRevealed = phase === 'revealed'
-
-  const LIME = '#84cc16'
-  const LIME_BORDER = 'rgba(132,204,22,0.3)'
-  const LIME_GLOW = 'rgba(132,204,22,0.15)'
-
-  if (typeof document === 'undefined') return null
-  return createPortal(
-    <AnimatePresence>
-      <motion.div
-        key="harvest-claim-modal"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{ duration: 0.2, ease: 'easeOut' }}
-        className="fixed inset-0 z-[120] flex items-center justify-center p-4"
-        onClick={isRevealed ? onClose : undefined}
-      >
-        <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" />
-
-        {isRevealed && (
-          <PixelConfetti originX={0.5} originY={0.4} accentColor={LIME} count={animCfg.particles} duration={animCfg.particleDur} />
-        )}
-
-        <motion.div
-          key="harvest-claim-card"
-          initial={{ scale: 0.82, opacity: 0, y: 24 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          exit={{ scale: 0.88, opacity: 0, y: 16 }}
-          transition={{ type: 'spring', stiffness: 340, damping: 28, mass: 0.9 }}
-          onClick={(e) => e.stopPropagation()}
-          className="w-[300px] rounded-2xl border p-5 text-center relative overflow-hidden"
-          style={{
-            borderColor: LIME_BORDER,
-            background: `linear-gradient(160deg, ${LIME_GLOW}1A 0%, rgba(8,8,16,0.97) 55%)`,
-            boxShadow: isRevealed
-              ? `0 0 32px ${LIME_GLOW}, 0 4px 32px rgba(0,0,0,0.7)`
-              : `0 0 20px ${LIME_GLOW}66, 0 4px 24px rgba(0,0,0,0.6)`,
-            transition: 'box-shadow 0.5s ease',
-          }}
-        >
-          {/* Ambient glow */}
-          <motion.div
-            aria-hidden
-            className="absolute inset-0 pointer-events-none rounded-2xl"
-            style={{ background: `radial-gradient(circle at 50% 12%, ${LIME_GLOW} 0%, transparent 55%)` }}
-            animate={{ opacity: isRevealed ? [0.45, 0.65, 0.5] : [0.25, 0.45, 0.25] }}
-            transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
-          />
-
-          {/* Basket icon — floats + shakes during opening */}
-          <motion.div
-            className="mx-auto w-fit relative"
-            animate={!isRevealed ? { y: [0, -animCfg.floatY, 0] } : { y: 0 }}
-            transition={!isRevealed
-              ? { duration: animCfg.floatDur, repeat: Infinity, ease: 'easeInOut' }
-              : { type: 'spring', stiffness: 200, damping: 18 }}
-          >
-            <motion.div
-              animate={!isRevealed
-                ? { rotate: shakeFrames, scale: scaleFrames }
-                : { rotate: 0, scale: 1.08 }}
-              transition={!isRevealed
-                ? { duration: animCfg.chestDur, ease: 'easeInOut', times: shakeFrames.map((_, i) => i / (shakeFrames.length - 1)) }
-                : { type: 'spring', stiffness: 220, damping: 16 }}
-              className="w-[76px] h-[76px] rounded-2xl border flex items-center justify-center relative overflow-hidden"
-              style={{
-                borderColor: LIME_BORDER,
-                background: `radial-gradient(circle at 50% 35%, ${LIME_GLOW}55 0%, rgba(8,8,16,0.92) 70%)`,
-                boxShadow: `0 0 18px ${LIME_GLOW}88`,
-              }}
-            >
-              <span className="text-4xl">🧺</span>
-            </motion.div>
-          </motion.div>
-
-          {/* Status label */}
-          <div className="mt-3 h-[18px] relative overflow-hidden">
-            <AnimatePresence mode="wait">
-              <motion.p
-                key={isRevealed ? 'revealed' : 'opening'}
-                className="absolute inset-0 text-[11px] font-mono uppercase tracking-wider text-center"
-                style={{ color: LIME }}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.2, ease: 'easeOut' }}
-              >
-                {isRevealed
-                  ? (hasMultiple ? `${results.length} plots harvested!` : 'Harvested!')
-                  : 'Collecting\u2026'}
-              </motion.p>
-            </AnimatePresence>
-          </div>
-
-          <p className="text-sm text-white/80 font-medium mt-0.5">Claim All</p>
-
-          {/* Harvest cards scroll */}
-          <motion.div
-            className="mt-3"
-            animate={{
-              opacity: isRevealed ? 1 : 0,
-              y: isRevealed ? 0 : 18,
-              scale: isRevealed ? 1 : 0.9,
-              filter: isRevealed ? 'blur(0px)' : 'blur(4px)',
-            }}
-            transition={{
-              type: 'spring', stiffness: 280, damping: 24,
-              delay: isRevealed ? 0.04 : 0,
-              filter: { duration: 0.3, ease: 'easeOut', delay: isRevealed ? 0.04 : 0 },
-            }}
-            style={{ pointerEvents: isRevealed ? 'auto' : 'none' }}
-          >
-            <div className="relative">
-              {/* Left scroll arrow */}
-              {hasMultiple && scrollPos !== 'start' && (
-                <button
-                  type="button"
-                  onClick={() => doScroll('left')}
-                  className="absolute left-0 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90"
-                  style={{ background: 'rgba(8,8,16,0.85)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(4px)', marginLeft: '-12px' }}
-                >
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M7.5 2L4 6l3.5 4" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                </button>
-              )}
-              {/* Right scroll arrow */}
-              {hasMultiple && scrollPos !== 'end' && (
-                <button
-                  type="button"
-                  onClick={() => doScroll('right')}
-                  className="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90"
-                  style={{ background: 'rgba(8,8,16,0.85)', border: '1px solid rgba(255,255,255,0.12)', backdropFilter: 'blur(4px)', marginRight: '-12px' }}
-                >
-                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M4.5 2L8 6l-3.5 4" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                </button>
-              )}
-
-              <div
-                ref={scrollRef}
-                onScroll={updateScrollPos}
-                className="flex gap-2.5 overflow-x-auto snap-x snap-mandatory"
-                style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}
-              >
-                {results.map((r, i) => {
-                  const plant = LOOT_ITEMS.find((x) => x.id === r.yieldPlantId)
-                  const pt = getRarityTheme(plant?.rarity ?? 'common')
-                  return (
-                    <motion.div
-                      key={i}
-                      className="snap-start rounded-xl border p-3 relative overflow-hidden flex flex-col items-center gap-1.5 flex-none"
-                      style={{
-                        width: hasMultiple ? '140px' : '100%',
-                        borderColor: pt.border,
-                        background: `linear-gradient(135deg, ${pt.glow}18 0%, rgba(8,8,16,0.95) 60%)`,
-                        boxShadow: `0 0 12px ${pt.glow}33`,
-                      }}
-                      initial={{ opacity: 0, x: 16, scale: 0.9 }}
-                      animate={{ opacity: isRevealed ? 1 : 0, x: isRevealed ? 0 : 16, scale: isRevealed ? 1 : 0.9 }}
-                      transition={{ type: 'spring', stiffness: 280, damping: 24, delay: 0.04 + i * 0.07 }}
-                    >
-                      <div
-                        className="absolute inset-0 pointer-events-none"
-                        style={{ background: `radial-gradient(circle at 50% 30%, ${pt.glow}22 0%, transparent 65%)` }}
-                      />
-                      {plant?.image
-                        ? <img src={plant.image} alt="" className="w-8 h-8 object-contain relative" />
-                        : <span className="text-3xl relative">{plant?.icon ?? '🌱'}</span>}
-                      <p className="text-[11px] text-white font-semibold relative leading-tight">{plant?.name ?? r.yieldPlantId}</p>
-                      <p className="text-xl font-bold relative" style={{ color: pt.color }}>×{r.qty}</p>
-                      {r.composted && (
-                        <p className="text-[8px] font-mono text-amber-400 relative">🧪 +20%</p>
-                      )}
-                      <p className="text-[9px] font-mono text-lime-400 relative">+{r.xpGained} XP</p>
-                      {r.compostDrop && (
-                        <div className="flex items-center gap-0.5 mt-0.5 px-1.5 py-0.5 rounded-md border border-amber-500/25 bg-amber-500/10 relative">
-                          <span className="text-[10px]">🧪</span>
-                          <span className="text-[8px] font-mono text-amber-400">+1</span>
-                        </div>
-                      )}
-                      {r.seedZipTier && (() => {
-                        const zt = getRarityTheme(r.seedZipTier!)
-                        const zd = getSeedZipDisplay(r.seedZipTier!)
-                        return (
-                          <div
-                            className="flex items-center gap-1 mt-0.5 px-1.5 py-0.5 rounded-md border relative"
-                            style={{ borderColor: zt.border, background: `${zt.glow}15` }}
-                          >
-                            {zd.image
-                              ? <img src={zd.image} className="w-3 h-3 object-contain" />
-                              : <span className="text-[10px]">{zd.icon}</span>}
-                            <span className="text-[8px] font-mono" style={{ color: zt.color }}>Zip!</span>
-                          </div>
-                        )
-                      })()}
-                    </motion.div>
-                  )
-                })}
-
-                {/* Total XP card — only when multiple results */}
-                {hasMultiple && (
-                  <motion.div
-                    className="flex-none w-[120px] snap-start rounded-xl border border-lime-400/20 flex flex-col items-center justify-center gap-1.5 py-4 relative overflow-hidden"
-                    style={{ background: 'linear-gradient(160deg, rgba(132,204,22,0.08) 0%, rgba(8,8,16,0.95) 65%)' }}
-                    initial={{ opacity: 0, x: 20, scale: 0.88 }}
-                    animate={{ opacity: isRevealed ? 1 : 0, x: isRevealed ? 0 : 20, scale: isRevealed ? 1 : 0.88 }}
-                    transition={{ type: 'spring', stiffness: 280, damping: 24, delay: 0.04 + results.length * 0.07 }}
-                  >
-                    <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 50% 35%, rgba(132,204,22,0.15) 0%, transparent 65%)' }} />
-                    <span className="text-2xl relative">🌾</span>
-                    <span className="text-base font-bold text-lime-400 tabular-nums relative">+{totalXP}</span>
-                    <span className="text-[9px] font-mono text-lime-500/60 uppercase tracking-widest relative">Total XP</span>
-                  </motion.div>
-                )}
-
-                {hasMultiple && <div className="flex-none w-5" aria-hidden />}
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Single result: XP line below card */}
-          {!hasMultiple && (
-            <motion.p
-              className="text-[11px] text-lime-400 font-mono mt-1.5"
-              animate={{ opacity: isRevealed ? 1 : 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              +{totalXP} Farmer XP
-            </motion.p>
-          )}
-
-          {/* Done button */}
-          <motion.div
-            className="mt-4"
-            animate={{ opacity: isRevealed ? 1 : 0, y: isRevealed ? 0 : 8 }}
-            transition={{ duration: 0.28, delay: isRevealed ? 0.18 : 0, ease: 'easeOut' }}
-            style={{ pointerEvents: isRevealed ? 'auto' : 'none' }}
-          >
-            <button
-              type="button"
-              onClick={() => { playClickSound(); onClose() }}
-              className="w-full h-10 rounded-xl text-[13px] font-semibold transition-all active:scale-[0.97]"
-              style={{ color: LIME, border: `1px solid ${LIME_BORDER}`, background: `${LIME}22` }}
-            >
-              Done
-            </button>
-          </motion.div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>,
-    document.body,
-  )
-}
-
 // ─── Harvest result modal ────────────────────────────────────────────────────
 
-function HarvestRevealModal({ result, onClose }: { result: HarvestResult; onClose: () => void }) {
+function HarvestRevealModal({ result, remaining = 0, onClose }: { result: HarvestResult; remaining?: number; onClose: () => void }) {
   const plant = LOOT_ITEMS.find((x) => x.id === result.yieldPlantId)
   const t = getRarityTheme(plant?.rarity ?? 'common')
   const zipT = result.seedZipTier ? rarityTheme(result.seedZipTier) : null
@@ -1247,7 +939,7 @@ function HarvestRevealModal({ result, onClose }: { result: HarvestResult; onClos
           className="w-full py-2 rounded-xl font-semibold transition-colors"
           style={{ color: t.color, border: `1px solid ${t.border}`, backgroundColor: `${t.color}20` }}
         >
-          Sweet!
+          {remaining > 0 ? `Next (${remaining} more)` : 'Sweet!'}
         </button>
       </motion.div>
     </motion.div>
@@ -1703,7 +1395,7 @@ export function FarmPage() {
   const [unlockError, setUnlockError] = useState(false)
   const [justUnlockedSlot, setJustUnlockedSlot] = useState<number | null>(null)
   const [harvestResult, setHarvestResult] = useState<HarvestResult | null>(null)
-  const [harvestClaimResults, setHarvestClaimResults] = useState<HarvestResult[] | null>(null)
+  const [harvestQueue, setHarvestQueue] = useState<HarvestResult[]>([])
   const runSync = useCallback(async () => {
     if (!supabase || !user) return
     try {
@@ -1843,7 +1535,7 @@ export function FarmPage() {
                   exit={{ opacity: 0, scale: 0.9 }}
                   type="button"
                   whileTap={{ scale: 0.96 }}
-                  onClick={() => { playClickSound(); const res = harvestAll(); if (res.length > 0) { setHarvestClaimResults(res); syncAfterHarvest() } }}
+                  onClick={() => { playClickSound(); const res = harvestAll(); if (res.length > 0) { setHarvestResult(res[0]); setHarvestQueue(res.slice(1)); syncAfterHarvest() } }}
                   className="text-[10px] font-semibold px-3 py-1.5 rounded-lg bg-lime-400/15 border border-lime-400/35 text-lime-400 hover:bg-lime-400/25 transition-colors"
                 >
                   Claim All{readyCount > 1 ? ` (${readyCount})` : ''}
@@ -1894,13 +1586,6 @@ export function FarmPage() {
         )}
       </div>
 
-      {/* ── Harvest Claim modal ── */}
-      <AnimatePresence>
-        {harvestClaimResults && (
-          <HarvestClaimModal results={harvestClaimResults} onClose={() => setHarvestClaimResults(null)} />
-        )}
-      </AnimatePresence>
-
       {/* ── Seed Zips ── */}
       <SeedZipSection />
 
@@ -1930,8 +1615,17 @@ export function FarmPage() {
       <AnimatePresence>
         {harvestResult && (
           <HarvestRevealModal
+            key={`${harvestResult.yieldPlantId}-${harvestResult.qty}-${harvestQueue.length}`}
             result={harvestResult}
-            onClose={() => setHarvestResult(null)}
+            remaining={harvestQueue.length}
+            onClose={() => {
+              if (harvestQueue.length > 0) {
+                setHarvestResult(harvestQueue[0])
+                setHarvestQueue(harvestQueue.slice(1))
+              } else {
+                setHarvestResult(null)
+              }
+            }}
           />
         )}
       </AnimatePresence>

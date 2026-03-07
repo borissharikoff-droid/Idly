@@ -84,6 +84,17 @@ export interface AdminConfig {
     craftTimeSeconds?: number
     ingredients?: Record<string, number>
   }>
+  /** UI icon overrides — navbar tabs, gold display, page headers, etc. */
+  uiIcons?: {
+    /** Navbar primary tab icons keyed by TabId */
+    navTabs?: Record<string, string>
+    /** Navbar secondary (More menu) tab icons keyed by TabId */
+    navSecondaryTabs?: Record<string, string>
+    /** Gold currency icon (default 🪙) */
+    gold?: string
+    /** More button icon override (emoji, default ···) */
+    moreButton?: string
+  }
 }
 
 export function loadAdminConfig(): AdminConfig {
@@ -98,6 +109,11 @@ export function loadAdminConfig(): AdminConfig {
 
 function saveAdminConfig(cfg: AdminConfig): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg))
+}
+
+/** Get UI icon overrides (navbar, gold, etc.). Reads from cached localStorage. */
+export function getUIIcons(): NonNullable<AdminConfig['uiIcons']> {
+  return loadAdminConfig().uiIcons ?? {}
 }
 
 /** Fetch admin config from Supabase and cache locally. Call once after auth. */

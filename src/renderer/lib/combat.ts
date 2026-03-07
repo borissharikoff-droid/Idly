@@ -45,6 +45,11 @@ export interface MobDef {
   materialDropQty?: number
 }
 
+export interface EntryCost {
+  itemId: string
+  quantity: number
+}
+
 export interface ZoneDef {
   id: string
   name: string
@@ -58,6 +63,8 @@ export interface ZoneDef {
   prevZoneId?: string
   /** Item IDs player must own (in inventory or equipped) to enter this zone. */
   gateItems?: string[]
+  /** Items consumed each time the player enters this dungeon. */
+  entryCost?: EntryCost[]
 }
 
 export const ZONES: ZoneDef[] = [
@@ -67,6 +74,7 @@ export const ZONES: ZoneDef[] = [
     name: 'Slime Cavern',
     icon: '🌊',
     themeColor: '#22d3ee',
+    entryCost: [{ itemId: 'wheat', quantity: 3 }],
     mobs: [
       { id: 'slime_scout',  name: 'Slime Scout',  icon: '🫧', hp: 100,   atk: 1.5, xpReward: 15,    goldMin: 3,   goldMax: 8,    materialDropId: 'slime_gel', materialDropChance: 0.3 },
       { id: 'slime_guard',  name: 'Slime Guard',  icon: '🫧', hp: 180,   atk: 2.5, xpReward: 25,    goldMin: 5,   goldMax: 12,   materialDropId: 'slime_gel', materialDropChance: 0.4 },
@@ -86,6 +94,7 @@ export const ZONES: ZoneDef[] = [
     themeColor: '#84cc16',
     prevZoneId: 'zone1',
     warriorLevelRequired: 3,
+    entryCost: [{ itemId: 'herbs', quantity: 3 }],
     mobs: [
       { id: 'goblin_scout',   name: 'Goblin Scout',   icon: '👺', hp: 250,   atk: 3,   xpReward: 60,   goldMin: 10,  goldMax: 20,   materialDropId: 'goblin_tooth', materialDropChance: 0.3 },
       { id: 'goblin_warrior', name: 'Goblin Warrior',  icon: '👺', hp: 400,   atk: 4,   xpReward: 100,  goldMin: 15,  goldMax: 30,   materialDropId: 'goblin_tooth', materialDropChance: 0.4 },
@@ -107,6 +116,7 @@ export const ZONES: ZoneDef[] = [
     prevZoneId: 'zone2',
     warriorLevelRequired: 8,
     gateItems: ['craft_slime_shield'],
+    entryCost: [{ itemId: 'slime_gel', quantity: 3 }, { itemId: 'apples', quantity: 2 }],
     mobs: [
       { id: 'wolf_young', name: 'Young Wolf',  icon: '🐺', hp: 500,   atk: 4.5, xpReward: 200,   goldMin: 25,  goldMax: 50,   materialDropId: 'wolf_fang', materialDropChance: 0.3 },
       { id: 'wolf_pack',  name: 'Pack Wolf',   icon: '🐺', hp: 800,   atk: 6,   xpReward: 350,   goldMin: 40,  goldMax: 70,   materialDropId: 'wolf_fang', materialDropChance: 0.4 },
@@ -128,6 +138,7 @@ export const ZONES: ZoneDef[] = [
     prevZoneId: 'zone3',
     warriorLevelRequired: 15,
     gateItems: ['craft_goblin_blade'],
+    entryCost: [{ itemId: 'goblin_tooth', quantity: 3 }, { itemId: 'blossoms', quantity: 2 }],
     mobs: [
       { id: 'orc_grunt',  name: 'Orc Grunt',  icon: '👹', hp: 1000,  atk: 7.5, xpReward: 800,   goldMin: 60,  goldMax: 120,  materialDropId: 'orc_shard', materialDropChance: 0.3, materialDropQty: 2 },
       { id: 'orc_brute',  name: 'Orc Brute',  icon: '👹', hp: 1600,  atk: 9,   xpReward: 1400,  goldMin: 90,  goldMax: 160,  materialDropId: 'orc_shard', materialDropChance: 0.4, materialDropQty: 2 },
@@ -149,6 +160,7 @@ export const ZONES: ZoneDef[] = [
     prevZoneId: 'zone4',
     warriorLevelRequired: 25,
     gateItems: ['craft_wolf_pendant', 'craft_orc_plate'],
+    entryCost: [{ itemId: 'wolf_fang', quantity: 2 }, { itemId: 'orc_shard', quantity: 2 }, { itemId: 'clovers', quantity: 2 }],
     mobs: [
       { id: 'troll_bridge', name: 'Bridge Troll', icon: '🧌', hp: 1800,  atk: 10.5, xpReward: 3000,  goldMin: 150, goldMax: 250,  materialDropId: 'troll_hide', materialDropChance: 0.3, materialDropQty: 2 },
       { id: 'troll_stone',  name: 'Stone Troll',  icon: '🧌', hp: 3000,  atk: 12,   xpReward: 5000,  goldMin: 200, goldMax: 350,  materialDropId: 'troll_hide', materialDropChance: 0.4, materialDropQty: 3 },
@@ -170,6 +182,7 @@ export const ZONES: ZoneDef[] = [
     prevZoneId: 'zone5',
     warriorLevelRequired: 40,
     gateItems: ['craft_troll_cloak'],
+    entryCost: [{ itemId: 'troll_hide', quantity: 2 }, { itemId: 'dragon_scale', quantity: 1 }, { itemId: 'orchids', quantity: 3 }],
     mobs: [
       { id: 'dragon_whelp',  name: 'Dragon Whelp',  icon: '🐉', hp: 2500,  atk: 14,   xpReward: 10000, goldMin: 300,  goldMax: 500,  materialDropId: 'dragon_scale', materialDropChance: 0.3, materialDropQty: 2 },
       { id: 'dragon_guard',  name: 'Dragon Guard',  icon: '🐉', hp: 3500,  atk: 16,   xpReward: 18000, goldMin: 450,  goldMax: 700,  materialDropId: 'dragon_scale', materialDropChance: 0.4, materialDropQty: 3 },
@@ -262,6 +275,20 @@ export function isZoneUnlocked(
 export function getMissingGateItems(zone: ZoneDef, ownedItems: Record<string, number>): string[] {
   if (!zone.gateItems) return []
   return zone.gateItems.filter((id) => (ownedItems[id] ?? 0) < 1)
+}
+
+/** Check if the player has enough items to pay the dungeon entry cost. */
+export function canAffordEntry(zone: ZoneDef, ownedItems: Record<string, number>): boolean {
+  if (!zone.entryCost) return true
+  return zone.entryCost.every((c) => (ownedItems[c.itemId] ?? 0) >= c.quantity)
+}
+
+/** Returns entry cost items the player doesn't have enough of. */
+export function getMissingEntryCost(zone: ZoneDef, ownedItems: Record<string, number>): Array<EntryCost & { owned: number }> {
+  if (!zone.entryCost) return []
+  return zone.entryCost
+    .filter((c) => (ownedItems[c.itemId] ?? 0) < c.quantity)
+    .map((c) => ({ ...c, owned: ownedItems[c.itemId] ?? 0 }))
 }
 
 export function getDailyBossId(): string {

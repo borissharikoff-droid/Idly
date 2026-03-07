@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware'
 import {
   BOSSES, ZONES, BOSS_WARRIOR_XP,
   computeBattleStateAtTime, computePlayerStats, computeWarriorBonuses,
-  getDailyBossId,
+  getDailyBossId, canAffordEntry,
   type BossDef, type MobDef,
 } from '../lib/combat'
 import type { CombatStats } from '../lib/loot'
@@ -180,7 +180,17 @@ export const useArenaStore = create<ArenaState>()(
         const zone = ZONES.find((z) => z.id === zoneId)
         if (!zone) return false
 
-        const { equippedBySlot, permanentStats } = useInventoryStore.getState()
+        const inv = useInventoryStore.getState()
+
+        // Check & consume entry cost
+        if (zone.entryCost && zone.entryCost.length > 0) {
+          if (!canAffordEntry(zone, inv.items)) return false
+          for (const c of zone.entryCost) {
+            inv.deleteItem(c.itemId, c.quantity)
+          }
+        }
+
+        const { equippedBySlot, permanentStats } = inv
         const warriorLevel = getWarriorLevel()
         const warriorBonuses = computeWarriorBonuses(warriorLevel)
 
@@ -191,7 +201,7 @@ export const useArenaStore = create<ArenaState>()(
           if (buff) {
             consumableBuff = buff
             // Consume the plant
-            useInventoryStore.getState().deleteItem(consumablePlantId, 1)
+            inv.deleteItem(consumablePlantId, 1)
           }
         }
 

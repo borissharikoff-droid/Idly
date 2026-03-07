@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ZONES,
-  isZoneUnlocked, getMissingGateItems, getDailyBossId, effectiveBossDps, type ZoneDef,
+  isZoneUnlocked, getMissingGateItems, canAffordEntry, getDailyBossId, effectiveBossDps, type ZoneDef,
 } from '../../lib/combat'
-import { LOOT_ITEMS, CHEST_DEFS, RARITY_COLORS, type ChestType, type BonusMaterial } from '../../lib/loot'
+import { LOOT_ITEMS, type ChestType, type BonusMaterial } from '../../lib/loot'
 import { useInventoryStore } from '../../stores/inventoryStore'
 import { ChestOpenModal } from '../animations/ChestOpenModal'
 import { useArenaStore } from '../../stores/arenaStore'
@@ -81,6 +81,7 @@ function ZoneCard({
     reqTexts.push(`Need ${item?.icon ?? '📦'} ${item?.name ?? itemId}`)
   }
 
+  const affordable = canAffordEntry(zone, ownedItems)
   const tc = zone.themeColor
 
   // Material drop for current mob
@@ -194,70 +195,74 @@ function ZoneCard({
                   ? <img src={zone.boss.image} alt="" className="w-4 h-4 object-contain inline" />
                   : zone.boss.icon}
               </span>
-              {!unlocked && reqTexts.length > 0 && (
-                <span className="ml-2 text-[9px] text-amber-400/80 font-mono">{reqTexts.join(' · ')}</span>
-              )}
             </div>
 
-            {unlocked && !isActive && (() => {
-              const chest = CHEST_DEFS[zone.boss.rewards.chestTier]
-              const rarityTheme = RARITY_COLORS[chest.rarity]
-              const bossMat = zone.boss.materialDropId ? LOOT_ITEMS.find((x) => x.id === zone.boss.materialDropId) : null
-              const mobMat = zone.mobs[0].materialDropId ? LOOT_ITEMS.find((x) => x.id === zone.mobs[0].materialDropId) : null
-              const goldMin = zone.mobs.reduce((s, m) => s + m.goldMin, 0)
-              const goldMax = zone.mobs.reduce((s, m) => s + m.goldMax, 0)
-              return (
-                <div className="mt-1.5 space-y-1">
-                  {/* Boss stats row */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-[9px] text-gray-400 font-mono">
-                      <span className="text-red-400/70">♥</span> Boss HP {formatShort(zone.boss.hp)}
-                    </span>
-                    <span className="text-[9px] text-gray-400 font-mono">
-                      <span className="text-orange-400/70">⚔</span> Boss ATK {zone.boss.atk}/s
-                    </span>
-                  </div>
-                  {/* Drops row */}
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <span className="text-[8px] text-gray-500 font-mono uppercase tracking-wider">Drops</span>
-                    <span className="text-[9px] text-amber-400/80 font-mono">{formatShort(goldMin)}–{formatShort(goldMax)}g</span>
-                    {mobMat && (
-                      <span className="text-[9px] text-gray-400 font-mono">{mobMat.icon} {mobMat.name}</span>
-                    )}
-                  </div>
-                  {/* Boss reward row */}
-                  <div className="flex items-center gap-1 flex-wrap">
-                    <span className="text-[8px] text-gray-500 font-mono uppercase tracking-wider">Boss</span>
-                    <span
-                      className="inline-flex items-center gap-0.5 text-[9px] font-mono px-1 py-0.5 rounded border"
-                      style={{ color: rarityTheme.color, borderColor: rarityTheme.border, background: `${rarityTheme.color}10` }}
-                    >
-                      {chest.image
-                        ? <img src={chest.image} alt={chest.name} className="w-3.5 h-3.5 object-contain" style={{ imageRendering: 'pixelated' }} />
-                        : chest.icon}
-                      {chest.name}
-                    </span>
-                    {bossMat && (
-                      <span className="text-[9px] text-gray-400 font-mono">{bossMat.icon} ×{zone.boss.materialDropQty ?? 1}</span>
-                    )}
-                  </div>
+            {!isActive && (
+              <div className="mt-1.5 space-y-1">
+                {/* Boss stats row */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[9px] text-gray-400 font-mono">
+                    <span className="text-red-400/70">♥</span> Boss HP {formatShort(zone.boss.hp)}
+                  </span>
+                  <span className="text-[9px] text-gray-400 font-mono">
+                    <span className="text-orange-400/70">⚔</span> Boss ATK {zone.boss.atk}/s
+                  </span>
                 </div>
-              )
-            })()}
+                {/* Unified requirements */}
+                {(reqTexts.length > 0 || (zone.entryCost && zone.entryCost.length > 0)) && (
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[8px] text-gray-500 font-mono uppercase tracking-wider">Req:</span>
+                    {reqTexts.map((txt) => (
+                      <span
+                        key={txt}
+                        className="inline-flex items-center gap-0.5 text-[9px] font-mono px-1 py-0.5 rounded"
+                        style={{ color: '#ff6b6b', background: 'rgba(255,107,107,0.1)' }}
+                      >
+                        {txt}
+                      </span>
+                    ))}
+                    {zone.entryCost?.map((c) => {
+                      const item = LOOT_ITEMS.find((x) => x.id === c.itemId)
+                      const owned = ownedItems[c.itemId] ?? 0
+                      const enough = owned >= c.quantity
+                      return (
+                        <span
+                          key={c.itemId}
+                          className="inline-flex items-center gap-0.5 text-[9px] font-mono px-1 py-0.5 rounded"
+                          style={{
+                            color: enough ? 'rgba(255,255,255,0.7)' : '#ff6b6b',
+                            background: enough ? 'rgba(255,255,255,0.05)' : 'rgba(255,107,107,0.1)',
+                          }}
+                        >
+                          {item?.icon ?? '📦'}
+                          <span>{item?.name ?? c.itemId}</span>
+                          <span style={{ color: enough ? 'rgba(255,255,255,0.4)' : 'rgba(255,107,107,0.7)' }}>
+                            ×{c.quantity}
+                          </span>
+                          <span className="text-[8px]" style={{ color: enough ? 'rgba(134,239,172,0.6)' : 'rgba(255,107,107,0.5)' }}>
+                            ({owned})
+                          </span>
+                        </span>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Enter / locked button */}
           {!isActive && (
             <button
               type="button"
-              disabled={!unlocked || !!activeBattle}
+              disabled={!unlocked || !!activeBattle || !affordable}
               onClick={() => { playClickSound(); onEnter(zone.id) }}
               className="shrink-0 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all active:scale-95"
-              style={unlocked && !activeBattle
+              style={unlocked && !activeBattle && affordable
                 ? { color: tc, borderColor: `${tc}60`, border: `1px solid ${tc}60`, background: `${tc}20` }
                 : { color: 'rgba(156,163,175,0.6)', border: '1px solid rgba(255,255,255,0.10)', background: 'transparent', cursor: 'not-allowed' }}
             >
-              {!unlocked ? '🔒 Locked' : activeBattle ? 'Busy' : 'Enter →'}
+              {!unlocked ? '🔒 Locked' : activeBattle ? 'Busy' : !affordable ? '📦 Need items' : 'Enter →'}
             </button>
           )}
         </div>
