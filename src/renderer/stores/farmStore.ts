@@ -294,9 +294,8 @@ export const useFarmStore = create<FarmState>()(
         const { seedZips } = get()
         if ((seedZips[tier] ?? 0) <= 0) return null
         const seedId = rollSeedFromZip(tier)
-        const newZips = { ...seedZips, [tier]: seedZips[tier] - 1 }
-        if (!seedId) { set({ seedZips: newZips }); return null }
-        set({ seedZips: newZips })
+        if (!seedId) return null // Don't consume zip if roll fails
+        set({ seedZips: { ...seedZips, [tier]: seedZips[tier] - 1 } })
         // Seeds go to inventory first; cabinet pulls them when opened
         useInventoryStore.getState().addItem(seedId, 1)
         return seedId

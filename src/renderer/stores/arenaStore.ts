@@ -318,10 +318,13 @@ export const useArenaStore = create<ArenaState>()(
             if (user) useGoldStore.getState().syncToSupabase(user.id)
 
             void grantWarriorXP(mob.xpReward)
+            warriorXP = mob.xpReward
 
             const materialDrop = rollMaterial(mob)
             if (materialDrop) {
               useInventoryStore.getState().addItem(materialDrop.id, materialDrop.qty)
+              const matItem = LOOT_ITEMS.find((x) => x.id === materialDrop.id)
+              matDrop = { id: materialDrop.id, name: matItem?.name ?? materialDrop.id, icon: matItem?.icon ?? '📦', qty: materialDrop.qty }
             }
 
             if (activeDungeon) {

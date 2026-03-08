@@ -47,8 +47,9 @@ export async function createListing(
         .eq('user_id', sellerId)
         .eq('item_id', itemId)
     }
-  } catch {
-    // Non-fatal — local state and listing are correct; cloud will self-correct on next full sync.
+  } catch (err) {
+    // Non-fatal — client-side syncInventoryToSupabase handles the authoritative push.
+    console.warn('[createListing] cloud deduction failed, relying on client sync:', err)
   }
 
   return { ok: true }

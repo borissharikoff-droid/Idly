@@ -787,7 +787,7 @@ function HarvestRevealModal({ result, remaining = 0, onClose }: { result: Harves
         exit={{ scale: 0.9, opacity: 0, y: 12 }}
         transition={{ duration: 0.18, ease: MOTION.easing }}
         onClick={(e) => e.stopPropagation()}
-        className="w-[300px] rounded-2xl border p-5 text-center space-y-3 relative overflow-hidden"
+        className="w-[300px] min-h-[340px] rounded-2xl border p-5 text-center flex flex-col relative overflow-hidden"
         style={{ borderColor: t.border, background: t.panel, boxShadow: `0 0 28px ${t.glow}` }}
       >
         {/* Pulsing bg glow */}
@@ -800,6 +800,8 @@ function HarvestRevealModal({ result, remaining = 0, onClose }: { result: Harves
           transition={{ duration: 2.1, repeat: Infinity, ease: MOTION.easing }}
         />
 
+        {/* Top content */}
+        <div className="space-y-3">
         {/* Plant icon box */}
         <motion.div
           initial={{ rotate: -12, scale: 0.6, opacity: 0 }}
@@ -877,11 +879,12 @@ function HarvestRevealModal({ result, remaining = 0, onClose }: { result: Harves
             </div>
           )}
         </motion.div>
+        </div>
 
         <button
           type="button"
           onClick={() => { playClickSound(); onClose() }}
-          className="w-full py-2 rounded-xl font-semibold transition-colors"
+          className="w-full mt-auto pt-3 py-2 rounded-xl font-semibold transition-colors"
           style={{ color: t.color, border: `1px solid ${t.border}`, backgroundColor: `${t.color}20` }}
         >
           {remaining > 0 ? `Next (${remaining} more)` : 'Sweet!'}
@@ -1231,7 +1234,7 @@ function SeedPicker({ slotIndex, seeds, onClose }: { slotIndex: number; seeds: R
       className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm flex items-end justify-center"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      exit={{ opacity: 0, transition: { duration: 0 } }}
       transition={{ duration: 0.15 }}
       onClick={onClose}
     >

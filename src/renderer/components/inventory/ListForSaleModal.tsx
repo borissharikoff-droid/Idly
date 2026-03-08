@@ -7,6 +7,8 @@ import { createListing } from '../../services/marketplaceService'
 import { useAuthStore } from '../../stores/authStore'
 import { useInventoryStore } from '../../stores/inventoryStore'
 import { useGoldStore } from '../../stores/goldStore'
+import { useFarmStore } from '../../stores/farmStore'
+import { syncInventoryToSupabase } from '../../services/supabaseSync'
 import { playClickSound } from '../../lib/sounds'
 
 interface ListForSaleModalProps {
@@ -61,6 +63,12 @@ export function ListForSaleModal({ itemId, onClose, onListed, maxQty = 1, onDedu
       setLoading(false)
       if (res.ok) {
         playClickSound()
+        // Sync inventory to Supabase immediately so Math.max merge doesn't restore the item
+        try {
+          const { items, chests } = useInventoryStore.getState()
+          const { seeds, seedZips } = useFarmStore.getState()
+          await syncInventoryToSupabase(items, chests, { merge: false, seeds, seedZips })
+        } catch { /* non-fatal */ }
         onListed()
       } else {
         addGold(commission)

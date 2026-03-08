@@ -231,9 +231,11 @@ function RecipeCard({
                       <button type="button"
                         onClick={() => { if (max > 0) setQty(max) }}
                         className="text-[11px] font-mono px-2.5 py-1 rounded-lg border transition-colors"
-                        style={max > 0
-                          ? { borderColor: `${CRAFT_COLOR}77`, background: `${CRAFT_COLOR}28`, color: CRAFT_COLOR }
-                          : { borderColor: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.25)', cursor: 'not-allowed' }
+                        style={max <= 0
+                          ? { borderColor: 'rgba(255,255,255,0.10)', color: 'rgba(255,255,255,0.25)', cursor: 'not-allowed' }
+                          : qty === max
+                            ? { borderColor: `${CRAFT_COLOR}77`, background: `${CRAFT_COLOR}28`, color: CRAFT_COLOR }
+                            : { borderColor: 'rgba(255,255,255,0.14)', color: 'rgba(255,255,255,0.45)' }
                         }>
                         Max{max > 0 ? ` (${max})` : ''}
                       </button>

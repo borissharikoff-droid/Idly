@@ -44,6 +44,7 @@ function ZoneCard({
   onEnter,
   onAutoFarm,
   passCount,
+  isAutoMode,
 }: {
   zone: ZoneDef
   skillLevels: Record<string, number>
@@ -60,6 +61,7 @@ function ZoneCard({
   onEnter: (zoneId: string) => void
   onAutoFarm: (zoneId: string) => void
   passCount: number
+  isAutoMode?: boolean
 }) {
   const unlocked = isZoneUnlocked(zone, skillLevels, clearedZones, ownedItems)
   const cleared = clearedZones.includes(zone.id)
@@ -172,7 +174,7 @@ function ZoneCard({
               )}
               {isActive && (
                 <span className="text-[8px] font-semibold font-mono px-1.5 py-0.5 rounded-md animate-pulse" style={{ color: tc, borderColor: `${tc}40`, border: `1px solid ${tc}40`, background: `${tc}15` }}>
-                  ● ACTIVE
+                  ● {isAutoMode ? 'AUTO' : 'ACTIVE'}
                 </span>
               )}
             </div>
@@ -540,12 +542,26 @@ export function ArenaPage() {
   const endBattle = useArenaStore((s) => s.endBattle)
   const setResultModal = useArenaStore((s) => s.setResultModal)
   const startDungeon = useArenaStore((s) => s.startDungeon)
-  const autoRunDungeon = useArenaStore((s) => s.autoRunDungeon)
   const passCount = useInventoryStore((s) => s.items['dungeon_pass'] ?? 0)
   const [autoRunResult, setAutoRunResult] = useState<AutoRunResult | null>(null)
   const [battleState, setBattleState] = useState<ReturnType<typeof getBattleState>>(null)
   const [skillLevels, setSkillLevels] = useState<Record<string, number>>({})
   const [confirmForfeit, setConfirmForfeit] = useState(false)
+
+  // Auto mode: chain dungeon runs with passes (animated, not instant)
+  const autoAccRef = useRef<{
+    zoneId: string
+    remaining: number
+    runsCompleted: number
+    totalGold: number
+    totalWarriorXP: number
+    materials: Record<string, { name: string; icon: string; qty: number }>
+    chests: ChestType[]
+    failed: boolean
+    failedAt?: string
+    passesUsed: number
+  } | null>(null)
+  const [isAutoMode, setIsAutoMode] = useState(false)
   const [playerFlash, setPlayerFlash] = useState(false)
   const [bossFlash, setBossFlash] = useState(false)
   const prevPlayerHpRef = useRef<number | null>(null)
@@ -555,9 +571,32 @@ export function ArenaPage() {
   const dailyBossId = getDailyBossId()
 
   const handleAutoFarm = useCallback((zoneId: string) => {
-    const result = autoRunDungeon(zoneId, passCount)
-    setAutoRunResult(result)
-  }, [autoRunDungeon, passCount])
+    const inv = useInventoryStore.getState()
+    const passes = inv.items['dungeon_pass'] ?? 0
+    if (passes <= 0) return
+
+    // Consume 1 dungeon_pass for the first run
+    inv.deleteItem('dungeon_pass', 1)
+
+    const started = startDungeon(zoneId)
+    if (!started) {
+      inv.addItem('dungeon_pass', 1)
+      return
+    }
+
+    autoAccRef.current = {
+      zoneId,
+      remaining: passes - 1,
+      runsCompleted: 0,
+      totalGold: 0,
+      totalWarriorXP: 0,
+      materials: {},
+      chests: [],
+      failed: false,
+      passesUsed: 1,
+    }
+    setIsAutoMode(true)
+  }, [startDungeon])
 
   useEffect(() => {
     const buildLevels = (rows: { skill_id: string; total_xp: number }[]): Record<string, number> => {
@@ -625,6 +664,20 @@ export function ArenaPage() {
 
   useEffect(() => { setConfirmForfeit(false) }, [activeBattle])
 
+  // Clear auto mode if dungeon was forfeited (both states null for >2s)
+  useEffect(() => {
+    if (isAutoMode && !activeBattle && !activeDungeon) {
+      const t = setTimeout(() => {
+        const s = useArenaStore.getState()
+        if (!s.activeBattle && !s.activeDungeon) {
+          autoAccRef.current = null
+          setIsAutoMode(false)
+        }
+      }, 2000)
+      return () => clearTimeout(t)
+    }
+  }, [isAutoMode, activeBattle, activeDungeon])
+
   // Safety net: if dungeon is active but no battle, auto-advance (e.g. toast dismissed early)
   const advanceDungeon = useArenaStore((s) => s.advanceDungeon)
   useEffect(() => {
@@ -652,36 +705,141 @@ export function ArenaPage() {
 
     resolveTimerRef.current = setTimeout(() => {
       resolveTimerRef.current = null
+      const auto = autoAccRef.current
+
       if (isMob) {
-        const { goldLost, lostItem } = endBattle()
-        if (!victory && lostItem) {
-          setResultModal({ victory: false, gold: 0, goldAlreadyAdded: true, goldLost, lostItemName: lostItem.name, lostItemIcon: lostItem.icon })
+        const { goldLost, lostItem, materialDrop, warriorXP: mobXP } = endBattle()
+        if (victory) {
+          // Track mob drops in auto accumulator
+          if (auto) {
+            auto.totalWarriorXP += mobXP
+            if (materialDrop) {
+              if (auto.materials[materialDrop.id]) {
+                auto.materials[materialDrop.id].qty += materialDrop.qty
+              } else {
+                auto.materials[materialDrop.id] = { name: materialDrop.name, icon: materialDrop.icon, qty: materialDrop.qty }
+              }
+            }
+          }
+          // Dungeon auto-advances via safety net effect
+        } else {
+          // Mob defeat
+          if (auto) {
+            setAutoRunResult({
+              runsCompleted: auto.runsCompleted,
+              totalGold: Math.max(0, auto.totalGold),
+              totalWarriorXP: auto.totalWarriorXP,
+              materials: Object.entries(auto.materials).map(([id, m]) => ({ id, ...m })),
+              chests: auto.chests,
+              failed: true,
+              failedAt: enemyName,
+              passesUsed: auto.passesUsed,
+            })
+            autoAccRef.current = null
+            setIsAutoMode(false)
+          } else if (lostItem) {
+            setResultModal({ victory: false, gold: 0, goldAlreadyAdded: true, goldLost, lostItemName: lostItem.name, lostItemIcon: lostItem.icon })
+          }
         }
       } else {
+        // Boss battle
         const { goldLost, chest, lostItem, materialDrop, dungeonGold, warriorXP } = endBattle()
-        if (victory && chest) {
-          // Open the chest immediately and show ChestOpenModal
-          const inv = useInventoryStore.getState()
-          const opened = inv.openChestAndGrantItem(chest.type as ChestType, { source: 'session_complete', focusCategory: null })
-          if (opened) {
-            setArenaChestModal({
-              chestType: chest.type as ChestType,
-              itemId: opened.itemId,
-              goldDropped: opened.goldDropped + dungeonGold,
-              bonusMaterials: opened.bonusMaterials,
-              warriorXP,
+
+        if (auto) {
+          if (victory) {
+            auto.runsCompleted++
+            auto.totalGold += dungeonGold
+            auto.totalWarriorXP += warriorXP
+            if (materialDrop) {
+              if (auto.materials[materialDrop.id]) {
+                auto.materials[materialDrop.id].qty += materialDrop.qty
+              } else {
+                auto.materials[materialDrop.id] = { name: materialDrop.name, icon: materialDrop.icon, qty: materialDrop.qty }
+              }
+            }
+            // Open chest silently (grant item but no animation)
+            if (chest) {
+              const inv = useInventoryStore.getState()
+              const opened = inv.openChestAndGrantItem(chest.type as ChestType, { source: 'session_complete', focusCategory: null })
+              auto.chests.push(chest.type as ChestType)
+              if (opened?.goldDropped) auto.totalGold += opened.goldDropped
+            }
+            // More runs?
+            if (auto.remaining > 0) {
+              const inv = useInventoryStore.getState()
+              const passes = inv.items['dungeon_pass'] ?? 0
+              const zone = ZONES.find((z) => z.id === auto.zoneId)
+              if (passes > 0 && zone && canAffordEntry(zone, inv.items)) {
+                inv.deleteItem('dungeon_pass', 1)
+                auto.remaining--
+                auto.passesUsed++
+                setTimeout(() => startDungeon(auto.zoneId), 800)
+              } else {
+                // Can't continue
+                setAutoRunResult({
+                  runsCompleted: auto.runsCompleted,
+                  totalGold: Math.max(0, auto.totalGold),
+                  totalWarriorXP: auto.totalWarriorXP,
+                  materials: Object.entries(auto.materials).map(([id, m]) => ({ id, ...m })),
+                  chests: auto.chests,
+                  failed: false,
+                  passesUsed: auto.passesUsed,
+                })
+                autoAccRef.current = null
+                setIsAutoMode(false)
+              }
+            } else {
+              // All runs done
+              setAutoRunResult({
+                runsCompleted: auto.runsCompleted,
+                totalGold: Math.max(0, auto.totalGold),
+                totalWarriorXP: auto.totalWarriorXP,
+                materials: Object.entries(auto.materials).map(([id, m]) => ({ id, ...m })),
+                chests: auto.chests,
+                failed: false,
+                passesUsed: auto.passesUsed,
+              })
+              autoAccRef.current = null
+              setIsAutoMode(false)
+            }
+          } else {
+            // Boss defeat in auto mode
+            setAutoRunResult({
+              runsCompleted: auto.runsCompleted,
+              totalGold: Math.max(0, auto.totalGold),
+              totalWarriorXP: auto.totalWarriorXP,
+              materials: Object.entries(auto.materials).map(([id, m]) => ({ id, ...m })),
+              chests: auto.chests,
+              failed: true,
+              failedAt: enemyName,
+              passesUsed: auto.passesUsed,
             })
+            autoAccRef.current = null
+            setIsAutoMode(false)
           }
-        } else if (victory) {
-          // Victory but no chest dropped (15% chance) — show victory modal with gold/XP/material
-          setResultModal({ victory: true, gold: dungeonGold, goldAlreadyAdded: true, bossName: enemyName, materialDrop, warriorXP })
         } else {
-          // Defeat — show result modal
-          setResultModal({ victory: false, gold: 0, goldAlreadyAdded: true, bossName: enemyName, goldLost, lostItemName: lostItem?.name, lostItemIcon: lostItem?.icon })
+          // Normal mode (no auto)
+          if (victory && chest) {
+            const inv = useInventoryStore.getState()
+            const opened = inv.openChestAndGrantItem(chest.type as ChestType, { source: 'session_complete', focusCategory: null })
+            if (opened) {
+              setArenaChestModal({
+                chestType: chest.type as ChestType,
+                itemId: opened.itemId,
+                goldDropped: opened.goldDropped + dungeonGold,
+                bonusMaterials: opened.bonusMaterials,
+                warriorXP,
+              })
+            }
+          } else if (victory) {
+            setResultModal({ victory: true, gold: dungeonGold, goldAlreadyAdded: true, bossName: enemyName, materialDrop, warriorXP })
+          } else {
+            setResultModal({ victory: false, gold: 0, goldAlreadyAdded: true, bossName: enemyName, goldLost, lostItemName: lostItem?.name, lostItemIcon: lostItem?.icon })
+          }
         }
       }
     }, isMob ? 600 : 1200)
-  }, [battleState, activeBattle, endBattle, setResultModal])
+  }, [battleState, activeBattle, endBattle, setResultModal, startDungeon])
 
   // Clear resolve timer on forfeit / unmount
   useEffect(() => {
@@ -761,6 +919,7 @@ export function ArenaPage() {
             onEnter={(zoneId) => { startDungeon(zoneId) }}
             onAutoFarm={handleAutoFarm}
             passCount={passCount}
+            isAutoMode={isAutoMode}
           />
         ))}
       </div>
