@@ -68,7 +68,7 @@ export interface ZoneDef {
 }
 
 export const ZONES: ZoneDef[] = [
-  // ── Zone 1 — Slime Cavern (target: Wooden set → 11 ATK, 115 HP, 1 Regen) ──
+  // ── Zone 1 — Slime Cavern (target: partial Wooden → ~8 ATK, 100 HP; full Wooden → 11/115/1) ──
   {
     id: 'zone1',
     name: 'Slime Cavern',
@@ -76,12 +76,12 @@ export const ZONES: ZoneDef[] = [
     themeColor: '#22d3ee',
     entryCost: [{ itemId: 'wheat', quantity: 3 }],
     mobs: [
-      { id: 'slime_scout',  name: 'Slime Scout',  icon: '🫧', hp: 100,   atk: 1.5, xpReward: 15,    goldMin: 3,   goldMax: 8,    materialDropId: 'slime_gel', materialDropChance: 0.3 },
-      { id: 'slime_guard',  name: 'Slime Guard',  icon: '🫧', hp: 180,   atk: 2.5, xpReward: 25,    goldMin: 5,   goldMax: 12,   materialDropId: 'slime_gel', materialDropChance: 0.4 },
-      { id: 'slime_brute',  name: 'Slime Brute',  icon: '🫧', hp: 350,   atk: 3.5, xpReward: 40,    goldMin: 8,   goldMax: 18,   materialDropId: 'slime_gel', materialDropChance: 0.5 },
+      { id: 'slime_scout',  name: 'Slime Scout',  icon: '🫧', hp: 80,    atk: 1.5, xpReward: 15,    goldMin: 3,   goldMax: 8,    materialDropId: 'slime_gel', materialDropChance: 0.3 },
+      { id: 'slime_guard',  name: 'Slime Guard',  icon: '🫧', hp: 150,   atk: 2,   xpReward: 25,    goldMin: 5,   goldMax: 12,   materialDropId: 'slime_gel', materialDropChance: 0.4 },
+      { id: 'slime_brute',  name: 'Slime Brute',  icon: '🫧', hp: 250,   atk: 3,   xpReward: 40,    goldMin: 8,   goldMax: 18,   materialDropId: 'slime_gel', materialDropChance: 0.5 },
     ],
     boss: {
-      id: 'slime', name: 'Slime King', icon: '💧', hp: 400, atk: 3,
+      id: 'slime', name: 'Slime King', icon: '💧', hp: 350, atk: 3,
       rewards: { chestTier: 'common_chest' },
       materialDropId: 'slime_gel', materialDropQty: 3,
     },
@@ -96,12 +96,12 @@ export const ZONES: ZoneDef[] = [
     warriorLevelRequired: 3,
     entryCost: [{ itemId: 'herbs', quantity: 3 }],
     mobs: [
-      { id: 'goblin_scout',   name: 'Goblin Scout',   icon: '👺', hp: 250,   atk: 3,   xpReward: 60,   goldMin: 10,  goldMax: 20,   materialDropId: 'goblin_tooth', materialDropChance: 0.3 },
-      { id: 'goblin_warrior', name: 'Goblin Warrior',  icon: '👺', hp: 400,   atk: 4,   xpReward: 100,  goldMin: 15,  goldMax: 30,   materialDropId: 'goblin_tooth', materialDropChance: 0.4 },
-      { id: 'goblin_shaman',  name: 'Goblin Shaman',  icon: '👺', hp: 550,   atk: 4.5, xpReward: 150,  goldMin: 20,  goldMax: 40,   materialDropId: 'goblin_tooth', materialDropChance: 0.5 },
+      { id: 'goblin_scout',   name: 'Goblin Scout',   icon: '👺', hp: 220,   atk: 2.5, xpReward: 60,   goldMin: 10,  goldMax: 20,   materialDropId: 'goblin_tooth', materialDropChance: 0.3 },
+      { id: 'goblin_warrior', name: 'Goblin Warrior',  icon: '👺', hp: 350,   atk: 3.5, xpReward: 100,  goldMin: 15,  goldMax: 30,   materialDropId: 'goblin_tooth', materialDropChance: 0.4 },
+      { id: 'goblin_shaman',  name: 'Goblin Shaman',  icon: '👺', hp: 480,   atk: 4,   xpReward: 150,  goldMin: 20,  goldMax: 40,   materialDropId: 'goblin_tooth', materialDropChance: 0.5 },
     ],
     boss: {
-      id: 'goblin', name: 'Goblin Chief', icon: '👺', hp: 700, atk: 5.5,
+      id: 'goblin', name: 'Goblin Chief', icon: '👺', hp: 600, atk: 4.5,
       rewards: { chestTier: 'rare_chest' },
       requirements: { minAtk: 10 },
       materialDropId: 'goblin_tooth', materialDropQty: 3,
@@ -118,9 +118,9 @@ export const ZONES: ZoneDef[] = [
     gateItems: ['craft_slime_shield'],
     entryCost: [{ itemId: 'slime_gel', quantity: 3 }, { itemId: 'apples', quantity: 2 }],
     mobs: [
-      { id: 'wolf_young', name: 'Young Wolf',  icon: '🐺', hp: 200,   atk: 3,   xpReward: 150,   goldMin: 20,  goldMax: 40,   materialDropId: 'wolf_fang', materialDropChance: 0.3 },
-      { id: 'wolf_pack',  name: 'Pack Wolf',   icon: '🐺', hp: 320,   atk: 3.5, xpReward: 250,   goldMin: 30,  goldMax: 55,   materialDropId: 'wolf_fang', materialDropChance: 0.4 },
-      { id: 'wolf_alpha', name: 'Alpha Wolf',  icon: '🐺', hp: 450,   atk: 4,   xpReward: 400,   goldMin: 45,  goldMax: 80,   materialDropId: 'wolf_fang', materialDropChance: 0.5 },
+      { id: 'wolf_young', name: 'Young Wolf',  icon: '🐺', hp: 280,   atk: 3,   xpReward: 150,   goldMin: 20,  goldMax: 40,   materialDropId: 'wolf_fang', materialDropChance: 0.3 },
+      { id: 'wolf_pack',  name: 'Pack Wolf',   icon: '🐺', hp: 400,   atk: 3.5, xpReward: 250,   goldMin: 30,  goldMax: 55,   materialDropId: 'wolf_fang', materialDropChance: 0.4 },
+      { id: 'wolf_alpha', name: 'Alpha Wolf',  icon: '🐺', hp: 550,   atk: 4.5, xpReward: 400,   goldMin: 45,  goldMax: 80,   materialDropId: 'wolf_fang', materialDropChance: 0.5 },
     ],
     boss: {
       id: 'wolf', name: 'Forest Wolf', icon: '🐺', hp: 700, atk: 5,
@@ -129,7 +129,7 @@ export const ZONES: ZoneDef[] = [
       materialDropId: 'wolf_fang', materialDropQty: 2,
     },
   },
-  // ── Zone 4 — Orc Stronghold (target: Golden set → 49 ATK, 250 HP, 7 Regen) ─
+  // ── Zone 4 — Orc Stronghold (target: Shadow set → 34 ATK, 205 HP, 5 Regen) ─
   {
     id: 'zone4',
     name: 'Orc Stronghold',
@@ -140,18 +140,18 @@ export const ZONES: ZoneDef[] = [
     gateItems: ['craft_goblin_blade'],
     entryCost: [{ itemId: 'goblin_tooth', quantity: 3 }, { itemId: 'blossoms', quantity: 2 }],
     mobs: [
-      { id: 'orc_grunt',  name: 'Orc Grunt',  icon: '👹', hp: 1000,  atk: 7.5, xpReward: 800,   goldMin: 60,  goldMax: 120,  materialDropId: 'orc_shard', materialDropChance: 0.3, materialDropQty: 2 },
-      { id: 'orc_brute',  name: 'Orc Brute',  icon: '👹', hp: 1600,  atk: 9,   xpReward: 1400,  goldMin: 90,  goldMax: 160,  materialDropId: 'orc_shard', materialDropChance: 0.4, materialDropQty: 2 },
-      { id: 'orc_shaman', name: 'Orc Shaman', icon: '👹', hp: 2200,  atk: 10,  xpReward: 2000,  goldMin: 120, goldMax: 200,  materialDropId: 'orc_shard', materialDropChance: 0.5, materialDropQty: 3 },
+      { id: 'orc_grunt',  name: 'Orc Grunt',  icon: '👹', hp: 800,   atk: 6,   xpReward: 800,   goldMin: 60,  goldMax: 120,  materialDropId: 'orc_shard', materialDropChance: 0.3, materialDropQty: 2 },
+      { id: 'orc_brute',  name: 'Orc Brute',  icon: '👹', hp: 1200,  atk: 7,   xpReward: 1400,  goldMin: 90,  goldMax: 160,  materialDropId: 'orc_shard', materialDropChance: 0.4, materialDropQty: 2 },
+      { id: 'orc_shaman', name: 'Orc Shaman', icon: '👹', hp: 1600,  atk: 8,   xpReward: 2000,  goldMin: 120, goldMax: 200,  materialDropId: 'orc_shard', materialDropChance: 0.5, materialDropQty: 3 },
     ],
     boss: {
-      id: 'orc', name: 'Orc Warlord', icon: '👹', hp: 2500, atk: 11,
+      id: 'orc', name: 'Orc Warlord', icon: '👹', hp: 1800, atk: 8.5,
       rewards: { chestTier: 'epic_chest' },
       requirements: { minAtk: 25, minHp: 180, minHpRegen: 4 },
       materialDropId: 'warlord_sigil', materialDropQty: 1,
     },
   },
-  // ── Zone 5 — Troll Bridge (target: Void set → 67 ATK, 330 HP, 10 Regen) ────
+  // ── Zone 5 — Troll Bridge (target: Golden set → 49 ATK, 250 HP, 7 Regen) ───
   {
     id: 'zone5',
     name: 'Troll Bridge',
@@ -162,18 +162,18 @@ export const ZONES: ZoneDef[] = [
     gateItems: ['craft_wolf_pendant', 'craft_orc_plate'],
     entryCost: [{ itemId: 'wolf_fang', quantity: 2 }, { itemId: 'orc_shard', quantity: 2 }, { itemId: 'clovers', quantity: 2 }],
     mobs: [
-      { id: 'troll_bridge', name: 'Bridge Troll', icon: '🧌', hp: 1800,  atk: 10.5, xpReward: 3000,  goldMin: 150, goldMax: 250,  materialDropId: 'troll_hide', materialDropChance: 0.3, materialDropQty: 2 },
-      { id: 'troll_stone',  name: 'Stone Troll',  icon: '🧌', hp: 3000,  atk: 12,   xpReward: 5000,  goldMin: 200, goldMax: 350,  materialDropId: 'troll_hide', materialDropChance: 0.4, materialDropQty: 3 },
-      { id: 'troll_ancient',name: 'Ancient Troll', icon: '🧌', hp: 4200,  atk: 13.5, xpReward: 7500,  goldMin: 280, goldMax: 450,  materialDropId: 'troll_hide', materialDropChance: 0.5, materialDropQty: 3 },
+      { id: 'troll_bridge', name: 'Bridge Troll', icon: '🧌', hp: 1500,  atk: 8,    xpReward: 3000,  goldMin: 150, goldMax: 250,  materialDropId: 'troll_hide', materialDropChance: 0.3, materialDropQty: 2 },
+      { id: 'troll_stone',  name: 'Stone Troll',  icon: '🧌', hp: 2200,  atk: 9,    xpReward: 5000,  goldMin: 200, goldMax: 350,  materialDropId: 'troll_hide', materialDropChance: 0.4, materialDropQty: 3 },
+      { id: 'troll_ancient',name: 'Ancient Troll', icon: '🧌', hp: 3000,  atk: 10,   xpReward: 7500,  goldMin: 280, goldMax: 450,  materialDropId: 'troll_hide', materialDropChance: 0.5, materialDropQty: 3 },
     ],
     boss: {
-      id: 'troll', name: 'Troll Overlord', icon: '🧌', hp: 4500, atk: 14.5,
+      id: 'troll', name: 'Troll Overlord', icon: '🧌', hp: 3200, atk: 10.5,
       rewards: { chestTier: 'epic_chest' },
       requirements: { minAtk: 40, minHp: 230, minHpRegen: 7 },
       materialDropId: 'troll_heart', materialDropQty: 1,
     },
   },
-  // ── Zone 6 — Dragon Lair (target: Void + crafted/potions → ~80 ATK, 350 HP, 15+ Regen)
+  // ── Zone 6 — Dragon Lair (target: Void set → 67 ATK, 330 HP, 10 Regen + warrior bonuses)
   {
     id: 'zone6',
     name: 'Dragon Lair',
@@ -184,12 +184,12 @@ export const ZONES: ZoneDef[] = [
     gateItems: ['craft_troll_cloak'],
     entryCost: [{ itemId: 'troll_hide', quantity: 2 }, { itemId: 'dragon_scale', quantity: 1 }, { itemId: 'orchids', quantity: 3 }],
     mobs: [
-      { id: 'dragon_whelp',  name: 'Dragon Whelp',  icon: '🐉', hp: 2500,  atk: 14,   xpReward: 10000, goldMin: 300,  goldMax: 500,  materialDropId: 'dragon_scale', materialDropChance: 0.3, materialDropQty: 2 },
-      { id: 'dragon_guard',  name: 'Dragon Guard',  icon: '🐉', hp: 3500,  atk: 16,   xpReward: 18000, goldMin: 450,  goldMax: 700,  materialDropId: 'dragon_scale', materialDropChance: 0.4, materialDropQty: 3 },
-      { id: 'dragon_elder',  name: 'Elder Dragon',  icon: '🐉', hp: 5000,  atk: 18,   xpReward: 28000, goldMin: 600,  goldMax: 900,  materialDropId: 'dragon_scale', materialDropChance: 0.5, materialDropQty: 4 },
+      { id: 'dragon_whelp',  name: 'Dragon Whelp',  icon: '🐉', hp: 2200,  atk: 12,   xpReward: 10000, goldMin: 300,  goldMax: 500,  materialDropId: 'dragon_scale', materialDropChance: 0.3, materialDropQty: 2 },
+      { id: 'dragon_guard',  name: 'Dragon Guard',  icon: '🐉', hp: 3200,  atk: 13,   xpReward: 18000, goldMin: 450,  goldMax: 700,  materialDropId: 'dragon_scale', materialDropChance: 0.4, materialDropQty: 3 },
+      { id: 'dragon_elder',  name: 'Elder Dragon',  icon: '🐉', hp: 4200,  atk: 14.5, xpReward: 28000, goldMin: 600,  goldMax: 900,  materialDropId: 'dragon_scale', materialDropChance: 0.5, materialDropQty: 4 },
     ],
     boss: {
-      id: 'dragon', name: 'Ancient Dragon', icon: '🐉', hp: 6000, atk: 19,
+      id: 'dragon', name: 'Ancient Dragon', icon: '🐉', hp: 4800, atk: 15,
       rewards: { chestTier: 'legendary_chest' },
       requirements: { minAtk: 55, minHp: 300, minHpRegen: 10 },
       materialDropId: 'dragon_heart', materialDropQty: 1,
