@@ -7,7 +7,7 @@ import {
   type BossDef, type MobDef,
 } from '../lib/combat'
 import type { CombatStats } from '../lib/loot'
-import { CHEST_DEFS, LOOT_ITEMS, rollBossChestTier, type ChestType, type LootSlot } from '../lib/loot'
+import { CHEST_DEFS, LOOT_ITEMS, rollBossChestTier, type BonusMaterial, type ChestType, type LootSlot } from '../lib/loot'
 import { PLANT_COMBAT_BUFFS, grantWarriorXP } from '../lib/farming'
 import { skillLevelFromXP, getGrindlyLevel, computeGrindlyBonuses } from '../lib/skills'
 import { useAuthStore } from './authStore'
@@ -119,12 +119,20 @@ function loseRandomEquippedItem(): { name: string; icon: string } | null {
   return itemDef ? { name: itemDef.name, icon: itemDef.icon } : { name: itemId, icon: '📦' }
 }
 
+export interface AutoRunChestResult {
+  chestType: ChestType
+  itemId: string | null
+  goldDropped: number
+  bonusMaterials: BonusMaterial[]
+}
+
 export interface AutoRunResult {
   runsCompleted: number
   totalGold: number
   totalWarriorXP: number
   materials: { id: string; name: string; icon: string; qty: number }[]
   chests: ChestType[]
+  chestResults: AutoRunChestResult[]
   failed: boolean
   failedAt?: string
   passesUsed: number
@@ -499,12 +507,12 @@ export const useArenaStore = create<ArenaState>()(
 
       autoRunDungeon(zoneId: string, passCount: number): AutoRunResult {
         const zone = ZONES.find((z) => z.id === zoneId)
-        if (!zone) return { runsCompleted: 0, totalGold: 0, totalWarriorXP: 0, materials: [], chests: [], failed: false, passesUsed: 0 }
+        if (!zone) return { runsCompleted: 0, totalGold: 0, totalWarriorXP: 0, materials: [], chests: [], chestResults: [], failed: false, passesUsed: 0 }
 
         const inv = useInventoryStore.getState()
         const passes = inv.items['dungeon_pass'] ?? 0
         const actualRuns = Math.min(passCount, passes)
-        if (actualRuns <= 0) return { runsCompleted: 0, totalGold: 0, totalWarriorXP: 0, materials: [], chests: [], failed: false, passesUsed: 0 }
+        if (actualRuns <= 0) return { runsCompleted: 0, totalGold: 0, totalWarriorXP: 0, materials: [], chests: [], chestResults: [], failed: false, passesUsed: 0 }
 
         let totalGold = 0
         let totalWarriorXP = 0
@@ -624,6 +632,7 @@ export const useArenaStore = create<ArenaState>()(
           totalWarriorXP,
           materials: Object.entries(materialMap).map(([id, m]) => ({ id, ...m })),
           chests,
+          chestResults: [],
           failed,
           failedAt,
           passesUsed,

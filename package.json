@@ -1,6 +1,6 @@
 {
   "name": "grindly",
-  "version": "3.3.2",
+  "version": "3.3.3",
   "description": "Windows productivity tracker with session timer, activity monitoring, and gamification",
   "main": "dist/main/main/index.js",
   "scripts": {
@@ -23,8 +23,7 @@
     "electron-log": "^5.4.3",
     "electron-updater": "^6.7.3",
     "framer-motion": "^11.11.0",
-    "recharts": "^2.13.0",
-    "sharp": "^0.34.5",
+"sharp": "^0.34.5",
     "zod": "^4.3.6",
     "zustand": "^5.0.0"
   },

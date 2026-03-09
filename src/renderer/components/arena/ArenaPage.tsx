@@ -557,10 +557,12 @@ export function ArenaPage() {
     totalWarriorXP: number
     materials: Record<string, { name: string; icon: string; qty: number }>
     chests: ChestType[]
+    chestResults: { chestType: ChestType; itemId: string | null; goldDropped: number; bonusMaterials: BonusMaterial[] }[]
     failed: boolean
     failedAt?: string
     passesUsed: number
   } | null>(null)
+  const [autoChestQueue, setAutoChestQueue] = useState<{ chestType: ChestType; itemId: string | null; goldDropped: number; bonusMaterials: BonusMaterial[] }[]>([])
   const [isAutoMode, setIsAutoMode] = useState(false)
   const [playerFlash, setPlayerFlash] = useState(false)
   const [bossFlash, setBossFlash] = useState(false)
@@ -592,6 +594,7 @@ export function ArenaPage() {
       totalWarriorXP: 0,
       materials: {},
       chests: [],
+      chestResults: [],
       failed: false,
       passesUsed: 1,
     }
@@ -731,6 +734,7 @@ export function ArenaPage() {
               totalWarriorXP: auto.totalWarriorXP,
               materials: Object.entries(auto.materials).map(([id, m]) => ({ id, ...m })),
               chests: auto.chests,
+              chestResults: auto.chestResults,
               failed: true,
               failedAt: enemyName,
               passesUsed: auto.passesUsed,
@@ -757,12 +761,15 @@ export function ArenaPage() {
                 auto.materials[materialDrop.id] = { name: materialDrop.name, icon: materialDrop.icon, qty: materialDrop.qty }
               }
             }
-            // Open chest silently (grant item but no animation)
+            // Open chest silently (grant item but no animation — shown after summary)
             if (chest) {
               const inv = useInventoryStore.getState()
               const opened = inv.openChestAndGrantItem(chest.type as ChestType, { source: 'session_complete', focusCategory: null })
               auto.chests.push(chest.type as ChestType)
-              if (opened?.goldDropped) auto.totalGold += opened.goldDropped
+              if (opened) {
+                if (opened.goldDropped) auto.totalGold += opened.goldDropped
+                auto.chestResults.push({ chestType: chest.type as ChestType, itemId: opened.itemId, goldDropped: opened.goldDropped, bonusMaterials: opened.bonusMaterials })
+              }
             }
             // More runs?
             if (auto.remaining > 0) {
@@ -782,6 +789,7 @@ export function ArenaPage() {
                   totalWarriorXP: auto.totalWarriorXP,
                   materials: Object.entries(auto.materials).map(([id, m]) => ({ id, ...m })),
                   chests: auto.chests,
+                  chestResults: auto.chestResults,
                   failed: false,
                   passesUsed: auto.passesUsed,
                 })
@@ -796,6 +804,7 @@ export function ArenaPage() {
                 totalWarriorXP: auto.totalWarriorXP,
                 materials: Object.entries(auto.materials).map(([id, m]) => ({ id, ...m })),
                 chests: auto.chests,
+                chestResults: auto.chestResults,
                 failed: false,
                 passesUsed: auto.passesUsed,
               })
@@ -810,6 +819,7 @@ export function ArenaPage() {
               totalWarriorXP: auto.totalWarriorXP,
               materials: Object.entries(auto.materials).map(([id, m]) => ({ id, ...m })),
               chests: auto.chests,
+              chestResults: auto.chestResults,
               failed: true,
               failedAt: enemyName,
               passesUsed: auto.passesUsed,
@@ -942,6 +952,20 @@ export function ArenaPage() {
       onClose={() => setArenaChestModal(null)}
     />
 
+    {/* Auto-farm chest queue — shown 1 by 1 after summary modal */}
+    <ChestOpenModal
+      open={autoChestQueue.length > 0}
+      chestType={autoChestQueue[0]?.chestType ?? null}
+      item={autoChestQueue[0]?.itemId ? (LOOT_ITEMS.find((x) => x.id === autoChestQueue[0].itemId) ?? null) : null}
+      goldDropped={autoChestQueue[0]?.goldDropped}
+      bonusMaterials={autoChestQueue[0]?.bonusMaterials}
+      nextAvailable={autoChestQueue.length > 1}
+      chainMessage={autoChestQueue.length > 1 ? `${autoChestQueue.length - 1} more chest${autoChestQueue.length > 2 ? 's' : ''}` : undefined}
+      onOpenNext={() => setAutoChestQueue((q) => q.slice(1))}
+      onClose={() => setAutoChestQueue((q) => q.slice(1))}
+      animationSeed={autoChestQueue.length}
+    />
+
     {/* Auto-Farm Result Modal */}
     <AnimatePresence>
       {autoRunResult && (
@@ -950,7 +974,7 @@ export function ArenaPage() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-[115] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => setAutoRunResult(null)}
+          onClick={() => { const cr = autoRunResult?.chestResults ?? []; setAutoRunResult(null); if (cr.length) setAutoChestQueue(cr) }}
         >
           <motion.div
             initial={{ scale: 0.86, y: 16, opacity: 0 }}
@@ -982,10 +1006,10 @@ export function ArenaPage() {
                     <span className="text-[12px] text-emerald-300 font-semibold">×{m.qty} {m.name}</span>
                   </div>
                 ))}
-                {autoRunResult.chests.length > 0 && (
+                {autoRunResult.chestResults.length > 0 && (
                   <div className="flex items-center gap-2 rounded-lg bg-purple-500/10 border border-purple-500/20 px-3 py-1.5">
                     <span>📦</span>
-                    <span className="text-[12px] text-purple-300 font-semibold">{autoRunResult.chests.length} chest{autoRunResult.chests.length > 1 ? 's' : ''}</span>
+                    <span className="text-[12px] text-purple-300 font-semibold">{autoRunResult.chestResults.length} chest{autoRunResult.chestResults.length > 1 ? 's' : ''} to open</span>
                   </div>
                 )}
                 {autoRunResult.totalWarriorXP > 0 && (
@@ -1004,10 +1028,10 @@ export function ArenaPage() {
 
               <button
                 type="button"
-                onClick={() => setAutoRunResult(null)}
+                onClick={() => { const cr = autoRunResult?.chestResults ?? []; setAutoRunResult(null); if (cr.length) setAutoChestQueue(cr) }}
                 className="mt-4 w-full py-2.5 rounded-xl border border-amber-500/35 bg-amber-500/15 text-amber-300 text-sm font-semibold hover:bg-amber-500/25 transition-colors"
               >
-                OK
+                {autoRunResult?.chestResults.length ? 'Open chests' : 'OK'}
               </button>
             </div>
           </motion.div>

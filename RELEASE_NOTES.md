@@ -1,9 +1,13 @@
-## What's new in v3.3.1
+## What's new in v3.3.3
 
-### Fixed
-- Marketplace purchases of Seed Zips now correctly add them to buyer's farm
-- Marketplace cancel of Seed Zips now returns them to seller's farm
-- Same fix applied to bulk cancel (Cancel All)
+**New:**
+- Arena auto-farm now shows chest opening animations after summary
+
+**Improved:**
+- Removed 15 unused component/service files (dead code cleanup)
+- Removed unused `recharts` dependency
+- Deleted 6 unused test/BW asset images
+- Cleaned up old release build artifacts
 
 ---
-Released: 2026-03-08
+Released: 2026-03-09
