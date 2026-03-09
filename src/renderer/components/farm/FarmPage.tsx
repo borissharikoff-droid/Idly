@@ -1371,6 +1371,135 @@ function SeedPicker({ slotIndex, seeds, onClose }: { slotIndex: number; seeds: R
   )
 }
 
+// ─── Plant All picker ─────────────────────────────────────────────────────────
+
+function PlantAllPicker({ seeds, emptyCount, onClose }: { seeds: Record<string, number>; emptyCount: number; onClose: () => void }) {
+  const plantAll = useFarmStore((s) => s.plantAll)
+  const seedCabinetUnlocked = useFarmStore((s) => s.seedCabinetUnlocked)
+  const inventoryItems = useInventoryStore((s) => s.items)
+
+  const mergedSeeds = useMemo(() => {
+    const m: Record<string, number> = { ...seeds }
+    if (!seedCabinetUnlocked) {
+      for (const def of SEED_DEFS) {
+        const invQty = inventoryItems[def.id] ?? 0
+        if (invQty > 0) m[def.id] = (m[def.id] ?? 0) + invQty
+      }
+    }
+    return m
+  }, [seeds, inventoryItems, seedCabinetUnlocked])
+
+  const available = SEED_DEFS.filter((s) => (mergedSeeds[s.id] ?? 0) > 0)
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-[90] bg-black/60 backdrop-blur-sm flex items-end justify-center"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0, transition: { duration: 0 } }}
+      transition={{ duration: 0.15 }}
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ y: 72, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 72, opacity: 0 }}
+        transition={MOTION.spring.pop}
+        className="w-full max-w-sm rounded-t-2xl border-t border-x border-white/[0.09] bg-[#0f0f18]/95 backdrop-blur-md p-4 pb-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="w-8 h-1 rounded-full bg-white/15 mx-auto mb-4" />
+
+        <div className="flex items-baseline justify-between mb-3">
+          <div>
+            <p className="text-sm font-semibold text-white">Plant All</p>
+            <p className="text-[10px] text-gray-500 mt-0.5 font-mono">{emptyCount} empty plot{emptyCount !== 1 ? 's' : ''}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-gray-600 hover:text-gray-400 transition-colors text-xs font-mono"
+          >
+            ESC
+          </button>
+        </div>
+
+        {available.length === 0 ? (
+          <div className="py-10 flex flex-col items-center gap-2">
+            <span className="text-4xl">🌰</span>
+            <p className="text-sm text-gray-500 text-center font-medium">No seeds yet</p>
+            <p className="text-[10px] text-gray-600 text-center">Open Seed Zips in the Farm tab to get seeds!</p>
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-0.5">
+            {available.map((seed) => {
+              const t = rarityTheme(seed.rarity)
+              const plant = LOOT_ITEMS.find((x) => x.id === seed.yieldPlantId)
+              const qty = mergedSeeds[seed.id] ?? 0
+              const willPlant = Math.min(qty, emptyCount)
+              return (
+                <motion.button
+                  key={seed.id}
+                  type="button"
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    playClickSound()
+                    track('farm_plant_all', { seed_id: seed.id, count: willPlant })
+                    const cabinetQty = seeds[seed.id] ?? 0
+                    if (cabinetQty < willPlant) {
+                      useFarmStore.getState().transferSeedsFromInventory()
+                    }
+                    plantAll(seed.id)
+                    const user = useAuthStore.getState().user
+                    if (supabase && user) {
+                      const { items: itm, chests: ch } = useInventoryStore.getState()
+                      const { seeds: sd, seedZips: sz } = useFarmStore.getState()
+                      syncInventoryToSupabase(itm, ch, { merge: false, seeds: sd, seedZips: sz }).catch(() => {})
+                    }
+                    onClose()
+                  }}
+                  className="w-full rounded-xl border p-3 flex items-center gap-3 text-left transition-opacity hover:opacity-90"
+                  style={{ borderColor: t.border, background: `linear-gradient(135deg, ${t.glow}18 0%, rgba(10,10,20,0.95) 60%)` }}
+                >
+                  {seed.image
+                    ? <img src={seed.image} alt="" className="w-7 h-7 object-contain shrink-0" />
+                    : <span className="text-2xl shrink-0">{seed.icon}</span>}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <p className="text-sm font-semibold text-white">{seed.name}</p>
+                      <span
+                        className="text-[8px] font-mono uppercase px-1.5 py-0.5 rounded shrink-0"
+                        style={{ color: t.color, backgroundColor: `${t.color}1A` }}
+                      >
+                        {seed.rarity}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-gray-400">
+                      ⏱ {formatGrowTime(seed.growTimeSeconds)}
+                      {plant && <span className="ml-2">· yields {plant.image ? <img src={plant.image} className="w-3 h-3 object-contain inline" /> : plant.icon} ×{seed.yieldMin}–{seed.yieldMax}</span>}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end shrink-0">
+                    <span
+                      className="text-xs font-mono font-bold px-2 py-0.5 rounded-lg"
+                      style={{ color: t.color, backgroundColor: `${t.color}18` }}
+                    >
+                      ×{qty}
+                    </span>
+                    <span className="text-[9px] text-gray-500 font-mono mt-0.5">
+                      plant {willPlant}
+                    </span>
+                  </div>
+                </motion.button>
+              )
+            })}
+          </div>
+        )}
+      </motion.div>
+    </motion.div>
+  )
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function FarmPage() {
@@ -1387,7 +1516,10 @@ export function FarmPage() {
     (() => { try { return (JSON.parse(localStorage.getItem('grindly_skill_xp') || '{}') as Record<string, number>)['farmer'] ?? 0 } catch { return 0 } })()
   )
   const emptyUncompostedCount = Array.from({ length: unlockedSlots }, (_, i) => i).filter((i) => !planted[i] && !compostedSlots[i]).length
+  const emptySlotCount = Array.from({ length: unlockedSlots }, (_, i) => i).filter((i) => !planted[i]).length
+  const hasAnySeed = SEED_DEFS.some((s) => (seeds[s.id] ?? 0) > 0)
   const [pickerSlot, setPickerSlot] = useState<number | null>(null)
+  const [showPlantAll, setShowPlantAll] = useState(false)
   const [unlockError, setUnlockError] = useState(false)
   const [justUnlockedSlot, setJustUnlockedSlot] = useState<number | null>(null)
   const [harvestResult, setHarvestResult] = useState<HarvestResult | null>(null)
@@ -1457,6 +1589,35 @@ export function FarmPage() {
         title="Farm"
         rightSlot={
           <div className="flex items-center gap-2">
+            {/* Plant All — unlocks at Farmer LVL 10 */}
+            <div className="relative group">
+              <button
+                type="button"
+                disabled={farmerLevel < 10 || emptySlotCount === 0 || !hasAnySeed}
+                onClick={() => {
+                  if (farmerLevel < 10 || emptySlotCount === 0 || !hasAnySeed) return
+                  playClickSound()
+                  setShowPlantAll(true)
+                }}
+                className={`text-[10px] font-semibold px-2 py-1 rounded-lg border transition-colors ${
+                  farmerLevel >= 10 && emptySlotCount > 0 && hasAnySeed
+                    ? 'bg-emerald-500/12 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
+                    : 'bg-white/[0.03] border-white/[0.06] text-gray-600 cursor-not-allowed'
+                }`}
+              >
+                🌱 {farmerLevel >= 10 ? 'Plant All' : '🔒 Plant All'}
+              </button>
+              {farmerLevel < 10 && (
+                <div className="absolute right-0 top-full mt-1 z-50 hidden group-hover:block w-44">
+                  <div className="bg-discord-darker border border-white/10 rounded-lg px-2.5 py-1.5 text-[9px] text-gray-300 font-mono shadow-lg">
+                    Unlocks at <span className="text-emerald-400 font-bold">Farmer LVL 10</span>
+                    <br />Current level: <span className="text-white">{farmerLevel}</span>
+                    <br />Plant one seed in all empty plots
+                  </div>
+                </div>
+              )}
+            </div>
+            {/* Compost All — unlocks at Farmer LVL 50 */}
             <div className="relative group">
               <button
                 type="button"
@@ -1624,6 +1785,17 @@ export function FarmPage() {
             slotIndex={pickerSlot}
             seeds={seeds}
             onClose={() => setPickerSlot(null)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* ── Plant All picker modal ── */}
+      <AnimatePresence>
+        {showPlantAll && (
+          <PlantAllPicker
+            seeds={seeds}
+            emptyCount={emptySlotCount}
+            onClose={() => setShowPlantAll(false)}
           />
         )}
       </AnimatePresence>

@@ -63,6 +63,8 @@ interface FarmState {
   cancelPlanting: (slotIndex: number) => boolean
   harvestSlot: (slotIndex: number) => HarvestResult | null
   harvestAll: () => HarvestResult[]
+  /** Plant the same seed in all empty slots. Returns number planted. */
+  plantAll: (seedId: string) => number
   /** Compost an empty slot (costs COMPOST_PER_PLOT from inventory). */
   compostSlot: (slotIndex: number) => boolean
   /** Compost all empty uncomposted slots. Returns count composted. */
@@ -147,6 +149,41 @@ export const useFarmStore = create<FarmState>()(
         })
 
         grantFarmerXP(seed.xpOnPlant).catch(() => undefined)
+      },
+
+      plantAll(seedId) {
+        const { planted, seeds, unlockedSlots, compostedSlots } = get()
+        const seed = getSeedById(seedId)
+        if (!seed) return 0
+        let available = seeds[seedId] ?? 0
+        if (available <= 0) return 0
+
+        const newPlanted = { ...planted }
+        const newSeeds = { ...seeds }
+        const newComposted = { ...compostedSlots }
+        let count = 0
+        const now = Date.now()
+
+        for (let i = 0; i < unlockedSlots; i++) {
+          if (newPlanted[i] || available <= 0) continue
+          const wasComposted = !!newComposted[i]
+          if (wasComposted) delete newComposted[i]
+          newPlanted[i] = {
+            seedId,
+            plantedAt: now,
+            growTimeSeconds: seed.growTimeSeconds,
+            composted: wasComposted || undefined,
+          }
+          available--
+          count++
+        }
+
+        if (count > 0) {
+          newSeeds[seedId] = available
+          set({ planted: newPlanted, seeds: newSeeds, compostedSlots: newComposted })
+          grantFarmerXP(seed.xpOnPlant * count).catch(() => undefined)
+        }
+        return count
       },
 
       cancelPlanting(slotIndex) {

@@ -25,11 +25,16 @@ export function useProfileSync() {
       if (!supabase || !user) return
       await useGoldStore.getState().syncFromSupabase(user.id)
 
-      // Inventory + seeds + seed zips sync — runs even without Electron (browser dev mode)
+      // Inventory + seeds + seed zips sync — merge cloud → local so admin grants appear
       ensureInventoryHydrated()
       const { items, chests } = useInventoryStore.getState()
       const { seeds, seedZips } = useFarmStore.getState()
-      syncInventoryToSupabase(items, chests, { merge: false, seeds, seedZips })
+      syncInventoryToSupabase(items, chests, { merge: true, seeds, seedZips })
+        .then((result) => {
+          if (result.ok && result.mergedItems) {
+            useInventoryStore.getState().mergeFromCloud(result.mergedItems, result.mergedChests ?? chests)
+          }
+        })
         .catch(() => {})
 
       if (!window.electronAPI?.db?.getStreak) return

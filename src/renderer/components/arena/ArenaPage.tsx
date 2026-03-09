@@ -8,6 +8,7 @@ import { LOOT_ITEMS, type ChestType, type BonusMaterial } from '../../lib/loot'
 import { useInventoryStore } from '../../stores/inventoryStore'
 import { ChestOpenModal } from '../animations/ChestOpenModal'
 import { useArenaStore, ITEM_LOSS_CHANCE, type AutoRunResult } from '../../stores/arenaStore'
+import { setAutoAcc } from '../../hooks/useArenaBattleTick'
 import { useAdminConfigStore } from '../../stores/adminConfigStore'
 import { SKILLS, skillLevelFromXP } from '../../lib/skills'
 import { CharacterCard } from '../character/CharacterCard'
@@ -615,7 +616,7 @@ export function ArenaPage() {
       return
     }
 
-    autoAccRef.current = {
+    const acc = {
       zoneId,
       remaining: passes - 1,
       runsCompleted: 0,
@@ -627,6 +628,8 @@ export function ArenaPage() {
       failed: false,
       passesUsed: 1,
     }
+    autoAccRef.current = acc
+    setAutoAcc(acc)
     setIsAutoMode(true)
   }, [startDungeon])
 
@@ -698,17 +701,18 @@ export function ArenaPage() {
 
   // Clear auto mode if dungeon was forfeited (both states null for >2s)
   useEffect(() => {
-    if (isAutoMode && !activeBattle && !activeDungeon) {
+    if (isAutoMode && !activeBattle && !activeDungeon && !isAutoRunning) {
       const t = setTimeout(() => {
         const s = useArenaStore.getState()
         if (!s.activeBattle && !s.activeDungeon) {
           autoAccRef.current = null
-          setIsAutoMode(false)
+          setAutoAcc(null)
+          _setIsAutoMode(false)
         }
       }, 2000)
       return () => clearTimeout(t)
     }
-  }, [isAutoMode, activeBattle, activeDungeon])
+  }, [isAutoMode, isAutoRunning, activeBattle, activeDungeon])
 
   // Safety net: if dungeon is active but no battle, auto-advance (e.g. toast dismissed early)
   const advanceDungeon = useArenaStore((s) => s.advanceDungeon)
@@ -724,8 +728,26 @@ export function ArenaPage() {
   const resolvedKeyRef = useRef<string | null>(null)
   const resolveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
+  // Pick up auto-farm results from useArenaBattleTick
+  useEffect(() => {
+    if (!isAutoRunning) {
+      const raw = localStorage.getItem('grindly_auto_result')
+      if (raw) {
+        try {
+          const result = JSON.parse(raw) as AutoRunResult
+          setAutoRunResult(result)
+        } catch { /* ignore */ }
+        localStorage.removeItem('grindly_auto_result')
+        autoAccRef.current = null
+        _setIsAutoMode(false)
+      }
+    }
+  }, [isAutoRunning])
+
   useEffect(() => {
     if (!battleState?.isComplete || !activeBattle) return
+    // When auto-running, useArenaBattleTick handles all resolution
+    if (useArenaStore.getState().isAutoRunning) return
 
     const battleKey = `${activeBattle.bossId}:${activeBattle.startTime}`
     if (resolvedKeyRef.current === battleKey) return
