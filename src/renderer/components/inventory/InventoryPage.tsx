@@ -803,6 +803,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                   const consumed = isPotion
                     ? inspectItem.id === 'atk_potion' ? permanentStats.atk
                       : inspectItem.id === 'hp_potion' ? permanentStats.hp
+                      : inspectItem.id === 'def_potion' ? (permanentStats.def ?? 0)
                       : permanentStats.hpRegen
                     : 0
 
@@ -818,6 +819,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                       case 'xp_global_boost':  return [{ value: pct(v),  unit: 'XP',      desc: 'All skills',            color: '#a78bfa' }]
                       case 'chest_drop_boost': return [{ value: `+${Math.round(v * 100)}%`, unit: 'Drop', desc: p.perkTarget ?? 'Chests', color: '#fbbf24' }]
                       case 'focus_boost':      return [{ value: pct(v),  unit: 'Focus',   desc: 'Focus sessions',        color: '#38bdf8' }]
+                      case 'def_boost':        return [{ value: `+${v}`, unit: 'DEF',     desc: 'Defense',               color: '#a3a3a3' }]
                       case 'streak_shield':    return [{ value: '1×',    unit: 'Shield',  desc: 'Streak protect',        color: '#f97316' }]
                       case 'status_title':     return [{ value: '✦',     unit: String(p.perkValue || 'Title'), desc: 'Status title', color: inspectTheme.color }]
                       default: return []

@@ -4,10 +4,12 @@ export type ToastKind =
   | { kind: 'arena_boss'; victory: boolean; bossName: string; gold: number; notificationId: string; chest?: { type: string; name: string; icon: string; image?: string } | null; materialDrop?: { id: string; name: string; icon: string; qty: number } | null; warriorXP?: number; dungeonGold?: number }
   | { kind: 'mob_kill'; mobName: string; gold: number; xp: number; material: string | null }
   | { kind: 'craft_complete'; itemName: string; itemIcon: string; qty: number; xp: number }
+  | { kind: 'cook_complete'; itemName: string; itemIcon: string; qty: number; xp: number }
   | { kind: 'friend_online'; friendName: string }
   | { kind: 'friend_message'; friendName: string; messagePreview?: string }
   | { kind: 'marketplace_listed'; itemName: string; qty: number; priceGold: number }
   | { kind: 'marketplace_sold'; itemName: string; qty: number; totalGold: number }
+  | { kind: 'crop_rot'; count: number }
 
 export interface Toast {
   id: string
@@ -21,10 +23,12 @@ const TTL: Record<ToastKind['kind'], number> = {
   arena_boss:      6000,
   mob_kill:        3000,
   craft_complete:  3500,
+  cook_complete:   3500,
   friend_online:   4500,
   friend_message:      4500,
   marketplace_listed:  3500,
   marketplace_sold:    5000,
+  crop_rot:            4000,
 }
 
 const MAX_TOASTS = 4

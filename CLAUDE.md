@@ -100,6 +100,17 @@ Copy `.env.example` to `.env`. Supabase keys are optional (social features disab
 
 - Never return a new object/array reference directly from a selector. Use shallow comparison or select individual fields to avoid infinite re-render loops.
 
+## Release Screenshot Checklist
+
+Before each release (`/release`), send the user a **screenshot checklist** — a numbered list of specific screens/actions to capture in the running app. Format:
+
+1. State what page/tab to open
+2. State what action to perform (if any)
+3. State what should be visible (the new/changed element)
+4. Give a short filename suggestion (e.g. `prestige_badge.png`)
+
+After the user provides the screenshots (as file paths), insert them into the patch notes (wiki patches page or release notes) with captions describing each change. This ensures every release has visual documentation of what changed.
+
 ## Deployment
 
 - For Railway deployments: ensure all runtime dependencies (e.g., dotenv) are in `dependencies` not `devDependencies`. After pushing, verify the build triggers. If auto-deploy doesn't fire, push a follow-up commit.

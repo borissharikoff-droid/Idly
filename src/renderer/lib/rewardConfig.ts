@@ -6,15 +6,15 @@ export const STREAK_MULTIPLIERS = {
 } as const
 
 export const CATEGORY_XP_MULTIPLIER_CONFIG: Record<string, number> = {
-  coding: 2,
-  design: 1.4,
-  creative: 1.15,
-  learning: 1.2,
-  music: 0.6,
-  games: 0.5,
-  social: 0.6,
-  browsing: 0.75,
-  other: 0.5,
+  coding: 1.3,
+  design: 1.2,
+  creative: 1.1,
+  learning: 1.15,
+  music: 0.8,
+  games: 0.85,
+  social: 0.75,
+  browsing: 0.8,
+  other: 0.6,
   idle: 0,
 }
 
@@ -43,6 +43,34 @@ export const ACHIEVEMENT_XP_REWARDS: Record<string, number> = {
   skill_gamer_25: 70,
   polymath: 120,
   jack_of_all_trades: 260,
+  // New skill milestones
+  skill_warrior_25: 70,
+  skill_farmer_25: 70,
+  skill_crafter_25: 70,
+  skill_chef_25: 70,
+  total_skill_500: 300,
+  // Farming
+  first_harvest: 15,
+  harvest_100: 150,
+  all_seeds_planted: 100,
+  void_harvest: 200,
+  // Crafting
+  first_craft: 15,
+  craft_50: 150,
+  craft_dragonfire: 300,
+  // Cooking
+  first_cook: 15,
+  cook_mythic: 200,
+  cook_50: 150,
+  // Arena
+  first_dungeon: 20,
+  clear_all_zones: 250,
+  kill_100_mobs: 100,
+  dragon_slayer: 300,
+  // Gold
+  earn_1000_gold: 30,
+  earn_10000_gold: 100,
+  earn_100000_gold: 250,
 }
 
 export const REWARD_RARITY_TABLE: Record<'common' | 'rare' | 'epic' | 'legendary', string[]> = {

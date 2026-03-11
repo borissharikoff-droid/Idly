@@ -138,6 +138,20 @@ export interface AchievementProgressContext {
   streakCount: number
   friendCount: number
   skillLevels: Record<string, number>
+  /** Cumulative achievement stats (from achievementStatsStore) */
+  totalHarvests?: number
+  totalCrafts?: number
+  totalCooks?: number
+  totalDungeonCompletions?: number
+  totalMobKills?: number
+  maxGoldEver?: number
+  uniqueSeedsPlanted?: number
+  clearedZoneCount?: number
+  /** Whether specific items were ever crafted/harvested */
+  hasDragonfireBlade?: boolean
+  hasCookedMythic?: boolean
+  hasVoidBlossom?: boolean
+  hasDragonKill?: boolean
 }
 
 export interface AchievementProgress {
@@ -289,8 +303,40 @@ const ACHIEVEMENTS_BASE: AchievementDef[] = [
   { id: 'skill_designer_10', name: 'Pixel Pusher', description: 'Designer LVL 10', icon: '🎨', xpReward: 30, xpDestination: 'skill', reward: { type: 'skill_boost', value: 'designer', label: '+30 min Designer XP' }, category: 'skill' },
   { id: 'skill_designer_50', name: 'Art Director', description: 'Designer LVL 50', icon: '🖌️', xpReward: 100, xpDestination: 'skill', reward: { type: 'profile_frame', value: 'art', label: 'Art frame unlocked' }, category: 'skill' },
   { id: 'skill_gamer_25', name: 'Pro Gamer', description: 'Gamer LVL 25', icon: '🎮', xpReward: 50, xpDestination: 'skill', reward: { type: 'skill_boost', value: 'gamer', label: '+30 min Gamer XP' }, category: 'skill' },
+  { id: 'skill_warrior_25', name: 'Battle Hardened', description: 'Warrior LVL 25', icon: '⚔️', xpReward: 70, xpDestination: 'skill', reward: { type: 'badge', value: '⚔️', label: 'Warrior badge' }, category: 'skill' },
+  { id: 'skill_farmer_25', name: 'Green Thumb', description: 'Farmer LVL 25', icon: '🌱', xpReward: 70, xpDestination: 'skill', reward: { type: 'badge', value: '🌱', label: 'Farmer badge' }, category: 'skill' },
+  { id: 'skill_crafter_25', name: 'Artisan', description: 'Crafter LVL 25', icon: '⚒️', xpReward: 70, xpDestination: 'skill', reward: { type: 'badge', value: '⚒️', label: 'Artisan badge' }, category: 'skill' },
+  { id: 'skill_chef_25', name: 'Chef de Cuisine', description: 'Chef LVL 25', icon: '🍳', xpReward: 70, xpDestination: 'skill', reward: { type: 'badge', value: '🍳', label: 'Chef badge' }, category: 'skill' },
+  { id: 'total_skill_500', name: 'Renaissance', description: 'Total skill level 500+', icon: '🏛️', xpReward: 300, xpDestination: 'skill', reward: { type: 'profile_frame', value: 'renaissance', label: 'Renaissance frame unlocked' }, category: 'skill' },
   { id: 'polymath', name: 'Polymath', description: '3 skills at LVL 25+', icon: '🌟', xpReward: 80, xpDestination: 'skill', reward: { type: 'profile_frame', value: 'star', label: 'Star frame unlocked' }, category: 'skill' },
   { id: 'jack_of_all_trades', name: 'Jack of All Trades', description: 'All skills at LVL 10+', icon: '🔮', xpReward: 200, xpDestination: 'skill', reward: { type: 'avatar', value: '🔮', label: 'Crystal avatar' }, category: 'skill' },
+
+  // Farming achievements
+  { id: 'first_harvest', name: 'First Harvest', description: 'Harvest 1 crop', icon: '🌾', xpReward: 15, reward: { type: 'badge', value: '🌾', label: 'Harvest badge' }, category: 'grind' },
+  { id: 'harvest_100', name: 'Master Gardener', description: 'Harvest 100 crops', icon: '🌻', xpReward: 150, reward: { type: 'profile_frame', value: 'garden', label: 'Garden frame unlocked' }, category: 'grind' },
+  { id: 'all_seeds_planted', name: 'Botanist', description: 'Plant all 9 seed types', icon: '🌿', xpReward: 100, reward: { type: 'avatar', value: '🌿', label: 'Botanist avatar' }, category: 'grind' },
+  { id: 'void_harvest', name: 'Void Farmer', description: 'Harvest a Void Blossom', icon: '💜', xpReward: 200, reward: { type: 'profile_frame', value: 'void_farm', label: 'Void Farm frame unlocked' }, category: 'grind' },
+
+  // Crafting achievements
+  { id: 'first_craft', name: 'Apprentice Smith', description: 'Craft 1 item', icon: '🔨', xpReward: 15, reward: { type: 'badge', value: '🔨', label: 'Smith badge' }, category: 'grind' },
+  { id: 'craft_50', name: 'Master Crafter', description: 'Craft 50 items', icon: '⚒️', xpReward: 150, reward: { type: 'profile_frame', value: 'forge', label: 'Forge frame unlocked' }, category: 'grind' },
+  { id: 'craft_dragonfire', name: 'Dragonforged', description: 'Craft the Dragonfire Blade', icon: '🔥', xpReward: 300, reward: { type: 'avatar', value: '🐲', label: 'Dragonforged avatar' }, category: 'grind' },
+
+  // Cooking achievements
+  { id: 'first_cook', name: 'Sous Chef', description: 'Cook 1 dish', icon: '🍲', xpReward: 15, reward: { type: 'badge', value: '🍲', label: 'Cook badge' }, category: 'grind' },
+  { id: 'cook_mythic', name: 'Grand Chef', description: 'Cook a mythic dish', icon: '🍽️', xpReward: 200, reward: { type: 'profile_frame', value: 'grand_chef', label: 'Grand Chef frame unlocked' }, category: 'grind' },
+  { id: 'cook_50', name: 'Iron Chef', description: 'Cook 50 dishes', icon: '🏅', xpReward: 150, reward: { type: 'avatar', value: '🏅', label: 'Iron Chef avatar' }, category: 'grind' },
+
+  // Arena achievements
+  { id: 'first_dungeon', name: 'Dungeon Delver', description: 'Complete 1 dungeon', icon: '🏰', xpReward: 20, reward: { type: 'badge', value: '🏰', label: 'Dungeon badge' }, category: 'grind' },
+  { id: 'clear_all_zones', name: 'Zone Clearer', description: 'Clear all 6 zones', icon: '🗺️', xpReward: 250, reward: { type: 'profile_frame', value: 'conqueror', label: 'Conqueror frame unlocked' }, category: 'grind' },
+  { id: 'kill_100_mobs', name: 'Monster Slayer', description: 'Kill 100 mobs', icon: '💀', xpReward: 100, reward: { type: 'badge', value: '💀', label: 'Slayer badge' }, category: 'grind' },
+  { id: 'dragon_slayer', name: 'Dragon Slayer', description: 'Defeat the Ancient Dragon', icon: '🐉', xpReward: 300, reward: { type: 'avatar', value: '🐉', label: 'Dragon Slayer avatar' }, category: 'grind' },
+
+  // Gold achievements
+  { id: 'earn_1000_gold', name: 'Pocket Change', description: 'Accumulate 1,000 gold', icon: '💰', xpReward: 30, reward: { type: 'badge', value: '💰', label: 'Gold badge' }, category: 'grind' },
+  { id: 'earn_10000_gold', name: 'Gold Hoarder', description: 'Accumulate 10,000 gold', icon: '💎', xpReward: 100, reward: { type: 'profile_frame', value: 'treasury', label: 'Treasury frame unlocked' }, category: 'grind' },
+  { id: 'earn_100000_gold', name: 'Dragon\'s Treasury', description: 'Accumulate 100,000 gold', icon: '👑', xpReward: 250, reward: { type: 'avatar', value: '💎', label: 'Treasury avatar' }, category: 'grind' },
 ]
 
 export const ACHIEVEMENTS: AchievementDef[] = ACHIEVEMENTS_BASE.map((achievement) => ({
@@ -321,14 +367,20 @@ export function getAchievementProgress(
     complete: current >= target,
   })
 
+  const totalSkillLevel = Object.values(levels).reduce((s, v) => s + v, 0)
+
   switch (achievementId) {
     case 'first_session': return fixed(safeSessions, 1, 'sessions')
+    case 'code_warrior': return fixed(safeSessions > 0 ? 1 : 0, 1, 'sessions with 2h+ coding')
+    case 'marathon': return fixed(safeSessions > 0 ? 1 : 0, 1, 'sessions 2h+')
     case 'ten_sessions': return fixed(safeSessions, 10, 'sessions')
     case 'fifty_sessions': return fixed(safeSessions, 50, 'sessions')
     case 'streak_2': return fixed(safeStreak, 2, 'streak days')
     case 'streak_7': return fixed(safeStreak, 7, 'streak days')
     case 'streak_14': return fixed(safeStreak, 14, 'streak days')
     case 'streak_30': return fixed(safeStreak, 30, 'streak days')
+    case 'night_owl': return fixed(safeSessions > 0 ? 1 : 0, 1, 'late night sessions')
+    case 'early_bird': return fixed(safeSessions > 0 ? 1 : 0, 1, 'early morning sessions')
     case 'first_friend': return fixed(safeFriends, 1, 'friends')
     case 'five_friends': return fixed(safeFriends, 5, 'friends')
     case 'social_butterfly': return fixed(safeFriends, 10, 'friends')
@@ -338,8 +390,35 @@ export function getAchievementProgress(
     case 'skill_designer_10': return fixed(levels.designer || 0, 10, 'designer levels')
     case 'skill_designer_50': return fixed(levels.designer || 0, 50, 'designer levels')
     case 'skill_gamer_25': return fixed(levels.gamer || 0, 25, 'gamer levels')
+    case 'skill_warrior_25': return fixed(levels.warrior || 0, 25, 'warrior levels')
+    case 'skill_farmer_25': return fixed(levels.farmer || 0, 25, 'farmer levels')
+    case 'skill_crafter_25': return fixed(levels.crafter || 0, 25, 'crafter levels')
+    case 'skill_chef_25': return fixed(levels.chef || 0, 25, 'chef levels')
+    case 'total_skill_500': return fixed(totalSkillLevel, 500, 'total levels')
     case 'polymath': return fixed(skills25, 3, 'skills LVL 25+')
     case 'jack_of_all_trades': return fixed(skills10, baseSkills.length, 'skills LVL 10+')
+    // Farming
+    case 'first_harvest': return fixed(ctx.totalHarvests ?? 0, 1, 'harvests')
+    case 'harvest_100': return fixed(ctx.totalHarvests ?? 0, 100, 'harvests')
+    case 'all_seeds_planted': return fixed(ctx.uniqueSeedsPlanted ?? 0, 9, 'seed types')
+    case 'void_harvest': return fixed(ctx.hasVoidBlossom ? 1 : 0, 1, 'void blossoms')
+    // Crafting
+    case 'first_craft': return fixed(ctx.totalCrafts ?? 0, 1, 'crafts')
+    case 'craft_50': return fixed(ctx.totalCrafts ?? 0, 50, 'crafts')
+    case 'craft_dragonfire': return fixed(ctx.hasDragonfireBlade ? 1 : 0, 1, 'dragonfire blades')
+    // Cooking
+    case 'first_cook': return fixed(ctx.totalCooks ?? 0, 1, 'dishes')
+    case 'cook_50': return fixed(ctx.totalCooks ?? 0, 50, 'dishes')
+    case 'cook_mythic': return fixed(ctx.hasCookedMythic ? 1 : 0, 1, 'mythic dishes')
+    // Arena
+    case 'first_dungeon': return fixed(ctx.totalDungeonCompletions ?? 0, 1, 'dungeons')
+    case 'clear_all_zones': return fixed(ctx.clearedZoneCount ?? 0, 6, 'zones')
+    case 'kill_100_mobs': return fixed(ctx.totalMobKills ?? 0, 100, 'mobs')
+    case 'dragon_slayer': return fixed(ctx.hasDragonKill ? 1 : 0, 1, 'dragon kills')
+    // Gold
+    case 'earn_1000_gold': return fixed(ctx.maxGoldEver ?? 0, 1000, 'gold')
+    case 'earn_10000_gold': return fixed(ctx.maxGoldEver ?? 0, 10000, 'gold')
+    case 'earn_100000_gold': return fixed(ctx.maxGoldEver ?? 0, 100000, 'gold')
     default:
       return null
   }
@@ -407,6 +486,58 @@ export function checkSocialAchievements(
   return newOnes
 }
 
+/** Check cumulative game achievements (farming, crafting, cooking, arena, gold). */
+export function checkGameAchievements(
+  stats: {
+    totalHarvests: number
+    totalCrafts: number
+    totalCooks: number
+    totalDungeonCompletions: number
+    totalMobKills: number
+    maxGoldEver: number
+    uniqueSeedsPlanted: number
+    clearedZoneCount: number
+    hasDragonfireBlade: boolean
+    hasCookedMythic: boolean
+    hasVoidBlossom: boolean
+    hasDragonKill: boolean
+  },
+  alreadyUnlocked: string[],
+): { id: string; def: AchievementDef }[] {
+  const newOnes: { id: string; def: AchievementDef }[] = []
+  const checks: { id: string; pass: boolean }[] = [
+    // Farming
+    { id: 'first_harvest', pass: stats.totalHarvests >= 1 },
+    { id: 'harvest_100', pass: stats.totalHarvests >= 100 },
+    { id: 'all_seeds_planted', pass: stats.uniqueSeedsPlanted >= 9 },
+    { id: 'void_harvest', pass: stats.hasVoidBlossom },
+    // Crafting
+    { id: 'first_craft', pass: stats.totalCrafts >= 1 },
+    { id: 'craft_50', pass: stats.totalCrafts >= 50 },
+    { id: 'craft_dragonfire', pass: stats.hasDragonfireBlade },
+    // Cooking
+    { id: 'first_cook', pass: stats.totalCooks >= 1 },
+    { id: 'cook_50', pass: stats.totalCooks >= 50 },
+    { id: 'cook_mythic', pass: stats.hasCookedMythic },
+    // Arena
+    { id: 'first_dungeon', pass: stats.totalDungeonCompletions >= 1 },
+    { id: 'clear_all_zones', pass: stats.clearedZoneCount >= 6 },
+    { id: 'kill_100_mobs', pass: stats.totalMobKills >= 100 },
+    { id: 'dragon_slayer', pass: stats.hasDragonKill },
+    // Gold
+    { id: 'earn_1000_gold', pass: stats.maxGoldEver >= 1000 },
+    { id: 'earn_10000_gold', pass: stats.maxGoldEver >= 10000 },
+    { id: 'earn_100000_gold', pass: stats.maxGoldEver >= 100000 },
+  ]
+  for (const { id, pass } of checks) {
+    if (pass && !alreadyUnlocked.includes(id)) {
+      const def = getAchievementById(id)
+      if (def) newOnes.push({ id, def })
+    }
+  }
+  return newOnes
+}
+
 /** Check skill-based achievements. skillLevels: skillId -> level (1-99) */
 export function checkSkillAchievements(
   skillLevels: Record<string, number>,
@@ -416,8 +547,13 @@ export function checkSkillAchievements(
   const dev = skillLevels.developer ?? 0
   const des = skillLevels.designer ?? 0
   const gam = skillLevels.gamer ?? 0
+  const war = skillLevels.warrior ?? 0
+  const far = skillLevels.farmer ?? 0
+  const cra = skillLevels.crafter ?? 0
+  const che = skillLevels.chef ?? 0
   const levels = Object.values(skillLevels)
   const atLeast25 = levels.filter((l) => l >= 25).length
+  const totalLevel = levels.reduce((s, v) => s + v, 0)
   const skillIds = ['developer', 'designer', 'gamer', 'communicator', 'researcher', 'creator', 'learner', 'listener']
   const allAtLeast10 = skillIds.every((id) => (skillLevels[id] ?? 0) >= 10)
 
@@ -428,6 +564,11 @@ export function checkSkillAchievements(
     { id: 'skill_designer_10', pass: des >= 10 },
     { id: 'skill_designer_50', pass: des >= 50 },
     { id: 'skill_gamer_25', pass: gam >= 25 },
+    { id: 'skill_warrior_25', pass: war >= 25 },
+    { id: 'skill_farmer_25', pass: far >= 25 },
+    { id: 'skill_crafter_25', pass: cra >= 25 },
+    { id: 'skill_chef_25', pass: che >= 25 },
+    { id: 'total_skill_500', pass: totalLevel >= 500 },
     { id: 'polymath', pass: atLeast25 >= 3 },
     { id: 'jack_of_all_trades', pass: allAtLeast10 },
   ]

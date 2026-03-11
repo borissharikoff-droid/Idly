@@ -2,7 +2,7 @@ export type LootRarity = 'common' | 'rare' | 'epic' | 'legendary' | 'mythic'
 export type LootSlot = 'head' | 'body' | 'legs' | 'ring' | 'weapon' | 'consumable' | 'plant' | 'material'
 export const LOOT_SLOTS: LootSlot[] = ['head', 'body', 'legs', 'ring', 'weapon']
 
-export const POTION_IDS = ['atk_potion', 'hp_potion', 'regen_potion'] as const
+export const POTION_IDS = ['atk_potion', 'hp_potion', 'regen_potion', 'def_potion'] as const
 export const POTION_MAX = 50
 
 /** Normalize equipped_loot from DB (handles JSON string, different key casing, null, legacy integer 0) */
@@ -50,6 +50,7 @@ const PERK_IP: Partial<Record<string, (v: number) => number>> = {
   atk_boost:        v => v * 15,
   hp_boost:         v => v * 0.5,
   hp_regen_boost:   v => v * 25,
+  def_boost:        v => v * 20,
   xp_skill_boost:   v => Math.max(0, v - 1) * 150,
   xp_global_boost:  v => Math.max(0, v - 1) * 300,
   chest_drop_boost: v => v * 800,
@@ -132,7 +133,7 @@ export function getRarityTheme(rarity: LootRarity | string) {
 }
 
 /** Item IDs that cannot be listed or shown on the marketplace */
-export const MARKETPLACE_BLOCKED_ITEMS: string[] = ['health_potion', 'atk_potion', 'hp_potion', 'regen_potion']
+export const MARKETPLACE_BLOCKED_ITEMS: string[] = ['atk_potion', 'hp_potion', 'regen_potion', 'def_potion', 'death_insurance']
 
 let _validIdCache: Set<string> | null = null
 /** Returns true if the item ID corresponds to a real in-game item (gear, seed, chest, material, etc.) */
@@ -157,6 +158,7 @@ export type LootPerkType =
   | 'atk_boost'
   | 'hp_boost'
   | 'hp_regen_boost'
+  | 'def_boost'
   | 'harvested_plant'
 export type ChestType = 'common_chest' | 'rare_chest' | 'epic_chest' | 'legendary_chest'
 
@@ -291,6 +293,17 @@ export const LOOT_ITEMS: LootItemDef[] = [
     perkValue: 1,
     perkDescription: '+1 permanent HP Regen/s (max 50)',
   },
+  {
+    id: 'def_potion',
+    name: 'Defense Potion',
+    slot: 'consumable',
+    rarity: 'mythic',
+    icon: '🛡️',
+    description: 'A rare elixir that permanently hardens your defenses.',
+    perkType: 'def_boost',
+    perkValue: 1,
+    perkDescription: '+1 permanent DEF (max 50)',
+  },
 
   // Harvested Plants (from Farm)
   { id: 'wheat',        name: 'Wheat',        slot: 'plant', rarity: 'common',    icon: '🌾', description: 'Golden wheat harvested from your farm.',          perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Farm harvest. Sell on the Marketplace.' },
@@ -302,6 +315,7 @@ export const LOOT_ITEMS: LootItemDef[] = [
   { id: 'star_bloom',   name: 'Star Bloom',   slot: 'plant', rarity: 'legendary', icon: '🌟', description: 'A radiant bloom said to hold cosmic energy.',    perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Farm harvest. Sell on the Marketplace.' },
   { id: 'crystal_root', name: 'Crystal Root', slot: 'plant', rarity: 'legendary', icon: '💎', description: 'A crystalline root pulsing with energy.',        perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Farm harvest. Sell on the Marketplace.' },
   { id: 'void_blossom', name: 'Void Blossom', slot: 'plant', rarity: 'mythic',   icon: '🔮', description: 'A flower from beyond — grown from a Void Spore.', perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Farm harvest. Sell on the Marketplace.' },
+  { id: 'wilted_plant', name: 'Wilted Plant', slot: 'plant', rarity: 'common',  icon: '🥀', description: 'A rotted crop. Can be composted or sold for scraps.', perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Rotted crop salvage.' },
 
   // Arena materials (dropped by dungeon mobs & bosses, used in crafting)
   { id: 'slime_gel',    name: 'Slime Gel',    slot: 'plant', rarity: 'common',    icon: '🫧', description: 'Dropped by slimes. Craft into Slime Shield.',       perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Crafting material — Slime Cavern' },
@@ -326,14 +340,16 @@ export const LOOT_ITEMS: LootItemDef[] = [
   // ── Bag-drop gear (equippable items that drop directly from chests) ────────
   // Common — Wooden Set  (full set: +6 ATK, +15 HP, +1 Regen → player 11/115/1)
   { id: 'wooden_helm',    name: 'Wooden Helm',    slot: 'head',   rarity: 'common', icon: '🪖', description: 'A crude helm carved from hardwood.',               perkType: 'atk_boost',      perkValue: 2,  perkDescription: '+2 ATK' },
-  { id: 'wooden_plate',   name: 'Wooden Plate',   slot: 'body',   rarity: 'common', icon: '🪵', description: 'Wooden planks strapped together as armor.',        perkType: 'hp_boost',       perkValue: 15, perkDescription: '+15 HP' },
+  { id: 'wooden_plate',   name: 'Wooden Plate',   slot: 'body',   rarity: 'common', icon: '🪵', description: 'Wooden planks strapped together as armor.',        perkType: 'hp_boost',       perkValue: 15, perkDescription: '+15 HP · +1 DEF',
+    perks: [{ perkType: 'hp_boost', perkValue: 15, perkDescription: '+15 HP' }, { perkType: 'def_boost', perkValue: 1, perkDescription: '+1 DEF' }] },
   { id: 'wooden_sword',   name: 'Wooden Sword',   slot: 'weapon', rarity: 'common', icon: '🗡️', description: 'A practice sword. Splinters on contact.',         perkType: 'atk_boost',      perkValue: 3,  perkDescription: '+3 ATK' },
   { id: 'wooden_legs',    name: 'Wooden Legs',    slot: 'legs',   rarity: 'common', icon: '🦿', description: 'Wooden shin guards. Better than bare legs.',       perkType: 'atk_boost',      perkValue: 1,  perkDescription: '+1 ATK' },
   { id: 'wooden_ring',    name: 'Wooden Ring',    slot: 'ring',   rarity: 'common', icon: '📿', description: 'A whittled ring with faint natural energy.',       perkType: 'hp_regen_boost', perkValue: 1,  perkDescription: '+1 HP Regen' },
   // Rare — Copper Set  (full set: +13 ATK, +55 HP, +2 Regen → player 18/155/2)
   { id: 'copper_helm',    name: 'Copper Helm',    slot: 'head',   rarity: 'rare',   icon: '⛑️', description: 'A polished copper helm. Deflects glancing blows.', perkType: 'atk_boost', perkValue: 4, perkDescription: '+4 ATK',
     perks: [{ perkType: 'atk_boost', perkValue: 4, perkDescription: '+4 ATK' }, { perkType: 'hp_boost', perkValue: 10, perkDescription: '+10 HP' }] },
-  { id: 'copper_plate',   name: 'Copper Plate',   slot: 'body',   rarity: 'rare',   icon: '🛡️', description: 'Hammered copper chestplate. Solid protection.',   perkType: 'hp_boost',       perkValue: 35, perkDescription: '+35 HP' },
+  { id: 'copper_plate',   name: 'Copper Plate',   slot: 'body',   rarity: 'rare',   icon: '🛡️', description: 'Hammered copper chestplate. Solid protection.',   perkType: 'hp_boost',       perkValue: 35, perkDescription: '+35 HP · +2 DEF',
+    perks: [{ perkType: 'hp_boost', perkValue: 35, perkDescription: '+35 HP' }, { perkType: 'def_boost', perkValue: 2, perkDescription: '+2 DEF' }] },
   { id: 'copper_sword',   name: 'Copper Sword',   slot: 'weapon', rarity: 'rare',   icon: '⚔️', description: 'A copper blade with a keen edge.',                perkType: 'atk_boost',      perkValue: 6,  perkDescription: '+6 ATK' },
   { id: 'copper_legs',    name: 'Copper Legs',    slot: 'legs',   rarity: 'rare',   icon: '🦿', description: 'Copper greaves forged for agility.',               perkType: 'atk_boost', perkValue: 3, perkDescription: '+3 ATK',
     perks: [{ perkType: 'atk_boost', perkValue: 3, perkDescription: '+3 ATK' }, { perkType: 'hp_boost', perkValue: 10, perkDescription: '+10 HP' }] },
@@ -342,7 +358,7 @@ export const LOOT_ITEMS: LootItemDef[] = [
   { id: 'shadow_helm',    name: 'Shadow Helm',    slot: 'head',   rarity: 'epic',   icon: '🪖', description: 'A helm wreathed in living shadow.',                perkType: 'atk_boost', perkValue: 7, perkDescription: '+7 ATK',
     perks: [{ perkType: 'atk_boost', perkValue: 7, perkDescription: '+7 ATK' }, { perkType: 'hp_boost', perkValue: 20, perkDescription: '+20 HP' }] },
   { id: 'shadow_plate',   name: 'Shadow Plate',   slot: 'body',   rarity: 'epic',   icon: '🛡️', description: 'Dark armor that absorbs incoming strikes.',       perkType: 'hp_boost', perkValue: 60, perkDescription: '+60 HP',
-    perks: [{ perkType: 'hp_boost', perkValue: 60, perkDescription: '+60 HP' }, { perkType: 'atk_boost', perkValue: 3, perkDescription: '+3 ATK' }] },
+    perks: [{ perkType: 'hp_boost', perkValue: 60, perkDescription: '+60 HP' }, { perkType: 'atk_boost', perkValue: 3, perkDescription: '+3 ATK' }, { perkType: 'def_boost', perkValue: 4, perkDescription: '+4 DEF' }] },
   { id: 'shadow_sword',   name: 'Shadow Sword',   slot: 'weapon', rarity: 'epic',   icon: '⚔️', description: 'A blade forged in darkness. Cuts through armor.',  perkType: 'atk_boost', perkValue: 10, perkDescription: '+10 ATK',
     perks: [{ perkType: 'atk_boost', perkValue: 10, perkDescription: '+10 ATK' }, { perkType: 'hp_regen_boost', perkValue: 2, perkDescription: '+2 HP Regen' }] },
   { id: 'shadow_legs',    name: 'Shadow Legs',    slot: 'legs',   rarity: 'epic',   icon: '🦿', description: 'Greaves that let you move like a phantom.',        perkType: 'atk_boost', perkValue: 5, perkDescription: '+5 ATK',
@@ -353,7 +369,7 @@ export const LOOT_ITEMS: LootItemDef[] = [
   { id: 'golden_helm',    name: 'Golden Helm',    slot: 'head',   rarity: 'legendary', icon: '👑', description: 'A crown-helm of pure gold. Radiates power.',    perkType: 'atk_boost', perkValue: 10, perkDescription: '+10 ATK',
     perks: [{ perkType: 'atk_boost', perkValue: 10, perkDescription: '+10 ATK' }, { perkType: 'hp_boost', perkValue: 30, perkDescription: '+30 HP' }, { perkType: 'xp_global_boost', perkValue: 0.05, perkDescription: '+5% Global XP' }] },
   { id: 'golden_plate',   name: 'Golden Plate',   slot: 'body',   rarity: 'legendary', icon: '🛡️', description: 'Legendary golden armor. Nearly impenetrable.', perkType: 'hp_boost', perkValue: 80, perkDescription: '+80 HP',
-    perks: [{ perkType: 'hp_boost', perkValue: 80, perkDescription: '+80 HP' }, { perkType: 'atk_boost', perkValue: 5, perkDescription: '+5 ATK' }, { perkType: 'streak_shield', perkValue: 1, perkDescription: 'Streak Shield' }] },
+    perks: [{ perkType: 'hp_boost', perkValue: 80, perkDescription: '+80 HP' }, { perkType: 'atk_boost', perkValue: 5, perkDescription: '+5 ATK' }, { perkType: 'def_boost', perkValue: 6, perkDescription: '+6 DEF' }, { perkType: 'streak_shield', perkValue: 1, perkDescription: 'Streak Shield' }] },
   { id: 'golden_sword',   name: 'Golden Sword',   slot: 'weapon', rarity: 'legendary', icon: '⚔️', description: 'A blade of gleaming gold. Strikes true.',     perkType: 'atk_boost', perkValue: 15, perkDescription: '+15 ATK',
     perks: [{ perkType: 'atk_boost', perkValue: 15, perkDescription: '+15 ATK' }, { perkType: 'hp_regen_boost', perkValue: 3, perkDescription: '+3 HP Regen' }] },
   { id: 'golden_legs',    name: 'Golden Legs',    slot: 'legs',   rarity: 'legendary', icon: '🦿', description: 'Golden greaves that bolster the wearer.',       perkType: 'atk_boost', perkValue: 8, perkDescription: '+8 ATK',
@@ -364,7 +380,7 @@ export const LOOT_ITEMS: LootItemDef[] = [
   { id: 'void_helm',      name: 'Void Helm',      slot: 'head',   rarity: 'mythic', icon: '🌀', description: 'A helm torn from the void itself.',               perkType: 'atk_boost', perkValue: 14, perkDescription: '+14 ATK',
     perks: [{ perkType: 'atk_boost', perkValue: 14, perkDescription: '+14 ATK' }, { perkType: 'hp_boost', perkValue: 50, perkDescription: '+50 HP' }, { perkType: 'xp_global_boost', perkValue: 0.08, perkDescription: '+8% Global XP' }] },
   { id: 'void_plate',     name: 'Void Plate',     slot: 'body',   rarity: 'mythic', icon: '👻', description: 'Armor woven from void threads. Defies reality.',   perkType: 'hp_boost', perkValue: 120, perkDescription: '+120 HP',
-    perks: [{ perkType: 'hp_boost', perkValue: 120, perkDescription: '+120 HP' }, { perkType: 'atk_boost', perkValue: 8, perkDescription: '+8 ATK' }, { perkType: 'streak_shield', perkValue: 1, perkDescription: 'Streak Shield' }] },
+    perks: [{ perkType: 'hp_boost', perkValue: 120, perkDescription: '+120 HP' }, { perkType: 'atk_boost', perkValue: 8, perkDescription: '+8 ATK' }, { perkType: 'def_boost', perkValue: 10, perkDescription: '+10 DEF' }, { perkType: 'streak_shield', perkValue: 1, perkDescription: 'Streak Shield' }] },
   { id: 'void_sword',     name: 'Void Sword',     slot: 'weapon', rarity: 'mythic', icon: '⚔️', description: 'A blade of pure void energy. Unmatchable.',       perkType: 'atk_boost', perkValue: 18, perkDescription: '+18 ATK',
     perks: [{ perkType: 'atk_boost', perkValue: 18, perkDescription: '+18 ATK' }, { perkType: 'hp_regen_boost', perkValue: 5, perkDescription: '+5 HP Regen' }] },
   { id: 'void_legs',      name: 'Void Legs',      slot: 'legs',   rarity: 'mythic', icon: '🦿', description: 'Greaves that phase through attacks.',              perkType: 'atk_boost', perkValue: 12, perkDescription: '+12 ATK',
@@ -432,6 +448,7 @@ export const CHEST_DEFS: Record<ChestType, ChestDef> = {
       { itemId: 'atk_potion',    weight: 1 },
       { itemId: 'hp_potion',     weight: 1 },
       { itemId: 'regen_potion',  weight: 1 },
+      { itemId: 'def_potion',   weight: 1 },
     ],
   },
   legendary_chest: {
@@ -459,6 +476,7 @@ export const CHEST_DEFS: Record<ChestType, ChestDef> = {
       { itemId: 'atk_potion',    weight: 2 },
       { itemId: 'hp_potion',     weight: 2 },
       { itemId: 'regen_potion',  weight: 2 },
+      { itemId: 'def_potion',   weight: 2 },
     ],
   },
 }
@@ -633,7 +651,7 @@ const FALLBACK_WEIGHTS: Record<ChestType, { itemId: string; weight: number }[]> 
     { itemId: 'copper_legs', weight: 2 }, { itemId: 'copper_ring', weight: 2 },
     { itemId: 'shadow_helm', weight: 3 }, { itemId: 'shadow_plate', weight: 3 }, { itemId: 'shadow_sword', weight: 3 },
     { itemId: 'shadow_legs', weight: 3 }, { itemId: 'shadow_ring', weight: 3 },
-    { itemId: 'atk_potion', weight: 1 }, { itemId: 'hp_potion', weight: 1 }, { itemId: 'regen_potion', weight: 1 },
+    { itemId: 'atk_potion', weight: 1 }, { itemId: 'hp_potion', weight: 1 }, { itemId: 'regen_potion', weight: 1 }, { itemId: 'def_potion', weight: 1 },
   ],
   legendary_chest: [
     { itemId: 'shadow_helm', weight: 2 }, { itemId: 'shadow_plate', weight: 2 }, { itemId: 'shadow_sword', weight: 2 },
@@ -642,7 +660,7 @@ const FALLBACK_WEIGHTS: Record<ChestType, { itemId: string; weight: number }[]> 
     { itemId: 'golden_legs', weight: 3 }, { itemId: 'golden_ring', weight: 3 },
     { itemId: 'void_helm', weight: 1 }, { itemId: 'void_plate', weight: 1 }, { itemId: 'void_sword', weight: 1 },
     { itemId: 'void_legs', weight: 1 }, { itemId: 'void_ring', weight: 1 },
-    { itemId: 'atk_potion', weight: 2 }, { itemId: 'hp_potion', weight: 2 }, { itemId: 'regen_potion', weight: 2 },
+    { itemId: 'atk_potion', weight: 2 }, { itemId: 'hp_potion', weight: 2 }, { itemId: 'regen_potion', weight: 2 }, { itemId: 'def_potion', weight: 2 },
   ],
 }
 
@@ -731,11 +749,12 @@ export interface CombatStats {
   atk: number
   hp: number
   hpRegen: number
+  def: number
 }
 
 /** Sum ATK, HP, HP regen from equipped items with combat perks. */
 export function getCombatStatsFromEquipped(equippedBySlot: Partial<Record<LootSlot, string>>): CombatStats {
-  const out: CombatStats = { atk: 0, hp: 0, hpRegen: 0 }
+  const out: CombatStats = { atk: 0, hp: 0, hpRegen: 0, def: 0 }
   const equippedItems = Object.values(equippedBySlot)
     .map((id) => LOOT_ITEMS.find((x) => x.id === id))
     .filter((item): item is LootItemDef => Boolean(item))
@@ -748,6 +767,8 @@ export function getCombatStatsFromEquipped(equippedBySlot: Partial<Record<LootSl
         out.hp += Number(p.perkValue || 0)
       } else if (p.perkType === 'hp_regen_boost') {
         out.hpRegen += Number(p.perkValue || 0)
+      } else if (p.perkType === 'def_boost') {
+        out.def += Number(p.perkValue || 0)
       }
     }
   }

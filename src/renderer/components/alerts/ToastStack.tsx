@@ -21,16 +21,20 @@ function accentFor(t: Toast): string {
     case 'arena_boss':     return t.data.victory ? '#fbbf24' : '#f87171'
     case 'mob_kill':       return '#22c55e'
     case 'craft_complete': return '#f97316'
+    case 'cook_complete':  return '#fb923c'
     case 'friend_online':  return '#22c55e'
     case 'friend_message':      return '#60a5fa'
     case 'marketplace_listed': return '#fbbf24'
     case 'marketplace_sold':   return '#22c55e'
+    case 'crop_rot':       return '#a0674a'
+    default:               return '#6b7280'
   }
 }
 
 function tabForToast(d: Toast['data']): TabId | null {
   if (d.kind === 'arena_boss' || d.kind === 'mob_kill') return 'arena'
   if (d.kind === 'craft_complete') return 'craft'
+  if (d.kind === 'cook_complete') return 'cooking'
   if (d.kind === 'friend_online' || d.kind === 'friend_message') return 'friends'
   if (d.kind === 'marketplace_listed' || d.kind === 'marketplace_sold') return 'marketplace'
   return null
@@ -60,20 +64,24 @@ function ToastItem({ toast, onDismiss, onNavigate }: { toast: Toast; onDismiss: 
     if (d.kind === 'arena_boss')     return d.victory ? '🏆' : '💀'
     if (d.kind === 'mob_kill')       return '⚔️'
     if (d.kind === 'craft_complete') return d.itemIcon
+    if (d.kind === 'cook_complete')  return d.itemIcon
     if (d.kind === 'friend_online')  return '🟢'
     if (d.kind === 'friend_message')      return '💬'
     if (d.kind === 'marketplace_listed') return '🏷️'
     if (d.kind === 'marketplace_sold')   return '🛒'
+    if (d.kind === 'crop_rot')           return '🥀'
   })()
 
   const title = (() => {
     if (d.kind === 'arena_boss')     return d.victory ? `${d.bossName} slain!` : `Fell vs ${d.bossName}`
     if (d.kind === 'mob_kill')       return `${d.mobName} slain!`
     if (d.kind === 'craft_complete') return `${d.itemName} crafted!`
+    if (d.kind === 'cook_complete')  return d.qty > 0 ? `${d.itemName} cooked!` : `${d.itemName} done!`
     if (d.kind === 'friend_online')  return `${d.friendName} is online`
     if (d.kind === 'friend_message')      return `${d.friendName}`
     if (d.kind === 'marketplace_listed') return 'Listed on marketplace'
     if (d.kind === 'marketplace_sold')   return 'Item sold!'
+    if (d.kind === 'crop_rot')           return 'Crop rotted!'
   })()
 
   const body = (() => {
@@ -89,9 +97,15 @@ function ToastItem({ toast, onDismiss, onNavigate }: { toast: Toast; onDismiss: 
       if (d.xp > 0) parts.push(`+${formatShort(d.xp)} craft XP`)
       return parts.join('  ·  ')
     }
+    if (d.kind === 'cook_complete') {
+      const parts = [`×${d.qty}`]
+      if (d.xp > 0) parts.push(`+${formatShort(d.xp)} chef XP`)
+      return parts.join('  ·  ')
+    }
     if (d.kind === 'friend_message') return d.messagePreview ?? 'sent a message'
     if (d.kind === 'marketplace_listed') return `${d.itemName}${d.qty > 1 ? ` ×${d.qty}` : ''} — ${d.priceGold * d.qty} 🪙`
     if (d.kind === 'marketplace_sold')   return `${d.itemName}${d.qty > 1 ? ` ×${d.qty}` : ''} — +${d.totalGold} 🪙`
+    if (d.kind === 'crop_rot') return d.count === 1 ? 'A crop has rotted! +1 wilted plant' : `${d.count} crops rotted! +${d.count} wilted plants`
     return null
   })()
 

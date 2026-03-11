@@ -6,8 +6,8 @@ import { playClickSound } from '../../lib/sounds'
 
 export interface CharacterPanelProps {
   equippedBySlot: Partial<Record<LootSlot, string>>
-  permanentStats?: { atk: number; hp: number; hpRegen: number }
-  warriorBonuses?: { atk: number; hp: number; hpRegen: number }
+  permanentStats?: { atk: number; hp: number; hpRegen: number; def?: number }
+  warriorBonuses?: { atk: number; hp: number; hpRegen: number; def?: number }
   onSlotClick?: (slot: LootSlot, itemId: string) => void
   locked?: boolean
 }
@@ -166,6 +166,7 @@ export function CharacterPanel({
     { icon: '⚔', value: playerStats.atk,     label: 'ATK', unit: '/s', color: '#f87171', maxed: (permanentStats?.atk ?? 0) >= PMAX },
     { icon: '♥', value: playerStats.hp,       label: 'HP',  unit: '',   color: '#4ade80', maxed: (permanentStats?.hp ?? 0) >= PMAX },
     { icon: '❋', value: playerStats.hpRegen,  label: 'REG', unit: '/s', color: '#22d3ee', maxed: (permanentStats?.hpRegen ?? 0) >= PMAX },
+    { icon: '🛡', value: playerStats.def,     label: 'DEF', unit: '',   color: '#818cf8', maxed: (permanentStats?.def ?? 0) >= PMAX },
     { icon: '✦', value: ip,                   label: 'IP',  unit: '',   color: '#fcd34d', maxed: false },
   ]
 
@@ -199,7 +200,7 @@ export function CharacterPanel({
       </div>
 
       {/* Статы */}
-      <div className="grid grid-cols-4 gap-1.5">
+      <div className="grid grid-cols-5 gap-1.5">
         {statRows.map(({ icon, value, label, unit, color, maxed }) => {
           const c = maxed ? '#f59e0b' : color
           return (

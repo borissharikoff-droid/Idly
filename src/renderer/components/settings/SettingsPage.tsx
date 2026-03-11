@@ -51,7 +51,7 @@ export function SettingsPage() {
   const [showWindowOnSessionEnd, setShowWindowOnSessionEnd] = useState(true)
 
   // Accordion
-  const [openSections, setOpenSections] = useState<Set<string>>(new Set(['general', 'notifications']))
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set(['links', 'general', 'notifications']))
   const toggleSection = useCallback((id: string) => {
     setOpenSections((prev) => {
       const next = new Set(prev)
@@ -138,6 +138,34 @@ export function SettingsPage() {
       style={{ maxHeight: 'calc(100vh - 60px)' }}
     >
       <PageHeader title="Settings" />
+
+      {/* ─── LINKS ──────────────────────────────────────────── */}
+      <Section id="links" title="Links & Resources" icon="link" open={openSections.has('links')} onToggle={toggleSection}>
+        <LinkRow
+          icon={<XLogo />}
+          label="Follow on X"
+          sublabel="Updates, sneak peeks & community"
+          url="https://x.com/GrindlyIdle"
+        />
+        <LinkRow
+          icon="📖"
+          label="Grindly Wiki"
+          sublabel="Items, recipes, arena guides & roadmap"
+          url="https://borissharikoff-droid.github.io/Grindly-Wiki/"
+        />
+        <LinkRow
+          icon="🗺️"
+          label="Roadmap"
+          sublabel="Planned features & development timeline"
+          url="https://borissharikoff-droid.github.io/Grindly-Wiki/roadmap.html"
+        />
+        <LinkRow
+          icon="📋"
+          label="Patch Notes"
+          sublabel="Latest updates & changelogs"
+          url="https://borissharikoff-droid.github.io/Grindly-Wiki/patches.html"
+        />
+      </Section>
 
       {/* ─── SOUND ──────────────────────────────────────────── */}
       <Section id="sound" title="Sound & Audio" icon="volume" open={openSections.has('sound')} onToggle={toggleSection}>
@@ -323,6 +351,7 @@ const SECTION_ICONS: Record<string, string> = {
   bell: '\u{1F514}',
   window: '\u{1F5D4}',
   data: '\u{1F4BE}',
+  link: '\u{1F517}',
 }
 
 function Section({ id, title, icon, open, onToggle, children }: {
@@ -446,5 +475,29 @@ function ActionButton({ label, onClick }: { label: string; onClick: () => void }
     >
       {label}
     </motion.button>
+  )
+}
+
+function XLogo() {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4 text-white">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  )
+}
+
+function LinkRow({ icon, label, sublabel, url }: { icon: React.ReactNode; label: string; sublabel: string; url: string }) {
+  return (
+    <button
+      onClick={() => window.open(url, '_blank')}
+      className="w-full flex items-center gap-3 py-1.5 text-left group"
+    >
+      <span className="text-base flex items-center justify-center w-5">{icon}</span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm text-white group-hover:text-cyber-neon transition-colors truncate">{label}</p>
+        <p className="text-[11px] text-gray-500 truncate">{sublabel}</p>
+      </div>
+      <span className="text-gray-600 group-hover:text-gray-400 text-xs transition-colors">↗</span>
+    </button>
   )
 }

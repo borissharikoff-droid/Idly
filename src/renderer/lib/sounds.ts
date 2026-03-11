@@ -325,6 +325,215 @@ export function playChestOpeningSound(rarity: string) {
   playThud(120, 0.18, 0)
 }
 
+// ── Cooking sounds ──────────────────────────────────────────────────────────
+
+/** Soft chop sound — knife on board */
+export function playCookChopSound() {
+  loadSettings()
+  if (cachedMuted) return
+  const ctx = getAudioCtx()
+  const vol = cachedVolume * 0.9
+  // Sharp transient click
+  const noise = ctx.createBufferSource()
+  const buf = ctx.createBuffer(1, ctx.sampleRate * 0.04, ctx.sampleRate)
+  const data = buf.getChannelData(0)
+  for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (data.length * 0.15))
+  noise.buffer = buf
+  const bp = ctx.createBiquadFilter()
+  bp.type = 'bandpass'
+  bp.frequency.value = 3200
+  bp.Q.value = 1.5
+  const gain = ctx.createGain()
+  gain.gain.setValueAtTime(vol * 0.35, ctx.currentTime)
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06)
+  noise.connect(bp); bp.connect(gain); gain.connect(ctx.destination)
+  noise.start(ctx.currentTime); noise.stop(ctx.currentTime + 0.06)
+  // Low wood thud
+  const osc = ctx.createOscillator()
+  const g2 = ctx.createGain()
+  osc.type = 'sine'
+  osc.frequency.setValueAtTime(180, ctx.currentTime)
+  osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.05)
+  g2.gain.setValueAtTime(vol * 0.2, ctx.currentTime)
+  g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07)
+  osc.connect(g2); g2.connect(ctx.destination)
+  osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.08)
+}
+
+/** Sizzle sound — pan frying */
+export function playCookSizzleSound() {
+  loadSettings()
+  if (cachedMuted) return
+  const ctx = getAudioCtx()
+  const vol = cachedVolume * 0.7
+  // White noise burst shaped as sizzle
+  const noise = ctx.createBufferSource()
+  const dur = 0.18
+  const buf = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate)
+  const data = buf.getChannelData(0)
+  for (let i = 0; i < data.length; i++) {
+    const t = i / data.length
+    data[i] = (Math.random() * 2 - 1) * Math.sin(t * Math.PI) * 0.5
+  }
+  noise.buffer = buf
+  const hp = ctx.createBiquadFilter()
+  hp.type = 'highpass'
+  hp.frequency.value = 4000
+  const gain = ctx.createGain()
+  gain.gain.setValueAtTime(vol * 0.2, ctx.currentTime)
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur)
+  noise.connect(hp); hp.connect(gain); gain.connect(ctx.destination)
+  noise.start(ctx.currentTime); noise.stop(ctx.currentTime + dur + 0.01)
+}
+
+/** Bubble sound — boiling/simmering */
+export function playCookBubbleSound() {
+  loadSettings()
+  if (cachedMuted) return
+  const ctx = getAudioCtx()
+  const vol = cachedVolume * 0.8
+  // 3 quick ascending bubble pops
+  ;[0, 45, 100].forEach((delay, i) => {
+    setTimeout(() => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      const freq = 260 + i * 80 + Math.random() * 40
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(freq, ctx.currentTime)
+      osc.frequency.exponentialRampToValueAtTime(freq * 1.8, ctx.currentTime + 0.04)
+      gain.gain.setValueAtTime(vol * 0.18, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06)
+      osc.connect(gain); gain.connect(ctx.destination)
+      osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.07)
+    }, delay)
+  })
+}
+
+/** Grind/mortar sound — grinding/crushing */
+export function playCookGrindSound() {
+  loadSettings()
+  if (cachedMuted) return
+  const ctx = getAudioCtx()
+  const vol = cachedVolume * 0.7
+  // Low rumble + gritty noise
+  const osc = ctx.createOscillator()
+  const g1 = ctx.createGain()
+  osc.type = 'sawtooth'
+  osc.frequency.setValueAtTime(90, ctx.currentTime)
+  osc.frequency.linearRampToValueAtTime(60, ctx.currentTime + 0.12)
+  g1.gain.setValueAtTime(vol * 0.12, ctx.currentTime)
+  g1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.14)
+  osc.connect(g1); g1.connect(ctx.destination)
+  osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.15)
+  // High grit
+  const noise = ctx.createBufferSource()
+  const buf = ctx.createBuffer(1, ctx.sampleRate * 0.1, ctx.sampleRate)
+  const data = buf.getChannelData(0)
+  for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.3
+  noise.buffer = buf
+  const bp = ctx.createBiquadFilter()
+  bp.type = 'bandpass'; bp.frequency.value = 1800; bp.Q.value = 2
+  const g2 = ctx.createGain()
+  g2.gain.setValueAtTime(vol * 0.15, ctx.currentTime)
+  g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1)
+  noise.connect(bp); bp.connect(g2); g2.connect(ctx.destination)
+  noise.start(ctx.currentTime); noise.stop(ctx.currentTime + 0.11)
+}
+
+/** Oven/bake sound — warm whoosh */
+export function playCookOvenSound() {
+  loadSettings()
+  if (cachedMuted) return
+  const ctx = getAudioCtx()
+  const vol = cachedVolume * 0.7
+  const osc = ctx.createOscillator()
+  const gain = ctx.createGain()
+  osc.type = 'sine'
+  osc.frequency.setValueAtTime(120, ctx.currentTime)
+  osc.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.2)
+  gain.gain.setValueAtTime(vol * 0.15, ctx.currentTime)
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3)
+  osc.connect(gain); gain.connect(ctx.destination)
+  osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.32)
+  // Warm crackle overlay
+  setTimeout(() => {
+    const n = ctx.createBufferSource()
+    const b = ctx.createBuffer(1, ctx.sampleRate * 0.08, ctx.sampleRate)
+    const d = b.getChannelData(0)
+    for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / (d.length * 0.3)) * 0.2
+    n.buffer = b
+    const lp = ctx.createBiquadFilter()
+    lp.type = 'lowpass'; lp.frequency.value = 2000
+    const g = ctx.createGain()
+    g.gain.setValueAtTime(vol * 0.1, ctx.currentTime)
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08)
+    n.connect(lp); lp.connect(g); g.connect(ctx.destination)
+    n.start(ctx.currentTime); n.stop(ctx.currentTime + 0.09)
+  }, 100)
+}
+
+/** Bowl/mix sound — gentle swish */
+export function playCookMixSound() {
+  loadSettings()
+  if (cachedMuted) return
+  const ctx = getAudioCtx()
+  const vol = cachedVolume * 0.7
+  // Sine sweep up then down
+  const osc = ctx.createOscillator()
+  const gain = ctx.createGain()
+  osc.type = 'sine'
+  osc.frequency.setValueAtTime(300, ctx.currentTime)
+  osc.frequency.linearRampToValueAtTime(500, ctx.currentTime + 0.06)
+  osc.frequency.linearRampToValueAtTime(280, ctx.currentTime + 0.12)
+  gain.gain.setValueAtTime(vol * 0.12, ctx.currentTime)
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.14)
+  osc.connect(gain); gain.connect(ctx.destination)
+  osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.15)
+}
+
+/** Step advance — satisfying "ding" with warmth */
+export function playCookAdvanceSound() {
+  loadSettings()
+  if (cachedMuted) return
+  const vol = cachedVolume * 1.0
+  // Two-note chime: warm + bright
+  playTone(440, 0.12, 'sine', vol * 0.7)
+  setTimeout(() => playTone(660, 0.18, 'triangle', vol * 0.8), 60)
+  setTimeout(() => playTone(880, 0.12, 'sine', vol * 0.5), 130)
+}
+
+/** Play cooking sound based on instrument type */
+export function playCookSoundForInstrument(instrument: string) {
+  switch (instrument) {
+    case 'knife': return playCookChopSound()
+    case 'pan': return playCookSizzleSound()
+    case 'pot': return playCookBubbleSound()
+    case 'mortar': return playCookGrindSound()
+    case 'oven': return playCookOvenSound()
+    case 'bowl': return playCookMixSound()
+    default: return playCookChopSound()
+  }
+}
+
+/** Sweet spot tap HIT — bright positive chime */
+export function playTapHitSound() {
+  loadSettings()
+  if (cachedMuted) return
+  const vol = cachedVolume * 0.9
+  playTone(880, 0.08, 'sine', vol * 0.6)
+  setTimeout(() => playTone(1100, 0.12, 'triangle', vol * 0.8), 50)
+  setTimeout(() => playTone(1320, 0.15, 'sine', vol * 0.5), 110)
+}
+
+/** Sweet spot tap MISS — dull low thud */
+export function playTapMissSound() {
+  loadSettings()
+  if (cachedMuted) return
+  const vol = cachedVolume * 0.6
+  playTone(180, 0.12, 'sine', vol * 0.5)
+  setTimeout(() => playTone(120, 0.08, 'triangle', vol * 0.3), 40)
+}
+
 export function setSoundVolume(volume: number) {
   cachedVolume = Math.max(0, Math.min(1, volume))
   localStorage.setItem('grindly_sound_volume', String(cachedVolume))

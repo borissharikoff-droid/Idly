@@ -21,6 +21,7 @@ import { InventoryPage } from '../inventory/InventoryPage'
 import { LootVisual } from '../loot/LootUI'
 import { syncInventoryToSupabase } from '../../services/supabaseSync'
 import { useAuthStore } from '../../stores/authStore'
+import { useGoldStore } from '../../stores/goldStore'
 import { useFarmStore } from '../../stores/farmStore'
 import { supabase } from '../../lib/supabase'
 
@@ -106,11 +107,12 @@ function ActiveJob({ onCancel }: { onCancel: (id: string) => void }) {
 // ── Recipe card ───────────────────────────────────────────────────────────────
 
 function RecipeCard({
-  recipe, crafterLevel, items, expanded, onToggle, onStart,
+  recipe, crafterLevel, items, gold, expanded, onToggle, onStart,
 }: {
   recipe: CraftRecipe
   crafterLevel: number
   items: Record<string, number>
+  gold: number
   expanded: boolean
   onToggle: () => void
   onStart: (r: CraftRecipe, qty: number) => void
@@ -120,8 +122,10 @@ function RecipeCard({
   const locked = crafterLevel < recipe.levelRequired
   const [qty, setQty] = useState(1)
 
-  const canStart = !locked && canAffordRecipe(recipe, qty, items)
-  const hasAll1 = !locked && canAffordRecipe(recipe, 1, items)
+  const hasIngredients = canAffordRecipe(recipe, qty, items)
+  const hasGold = gold >= (recipe.goldCost ?? 0) * qty
+  const canStart = !locked && hasIngredients && hasGold
+  const hasAll1 = !locked && canAffordRecipe(recipe, 1, items) && gold >= (recipe.goldCost ?? 0)
 
   if (!output) return null
 
@@ -204,6 +208,19 @@ function RecipeCard({
                     </div>
                   )
                 })}
+                {recipe.goldCost != null && recipe.goldCost > 0 && (
+                  <div
+                    className="flex items-center gap-2 rounded-lg px-2 py-1.5"
+                    style={{ background: hasGold ? 'rgba(132,204,22,0.10)' : 'rgba(255,255,255,0.05)' }}
+                  >
+                    <span className="text-sm leading-none">🪙</span>
+                    <span className="flex-1 text-[11px] text-gray-300 truncate">Gold</span>
+                    <span className="text-[10px] font-mono tabular-nums shrink-0"
+                      style={{ color: hasGold ? '#86efac' : '#f87171' }}>
+                      {gold.toLocaleString()}/{(recipe.goldCost * qty).toLocaleString()}
+                    </span>
+                  </div>
+                )}
                 {!hasAll1 && (
                   <p className="text-[9px] text-gray-500 italic pt-0.5">
                     Buy on Marketplace or loot from bosses &amp; farm
@@ -293,6 +310,7 @@ export function CraftPage() {
   const items = useInventoryStore((s) => s.items)
   const deleteItem = useInventoryStore((s) => s.deleteItem)
   const addItem = useInventoryStore((s) => s.addItem)
+  const gold = useGoldStore((s) => s.gold)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [category, setCategory] = useState<CraftCategory>('all')
   const [showBackpack, setShowBackpack] = useState(false)
@@ -413,6 +431,7 @@ export function CraftPage() {
               recipe={recipe}
               crafterLevel={crafterLevel}
               items={items}
+              gold={gold}
               expanded={expandedId === recipe.id}
               onToggle={() => setExpandedId((p) => p === recipe.id ? null : recipe.id)}
               onStart={handleStart}

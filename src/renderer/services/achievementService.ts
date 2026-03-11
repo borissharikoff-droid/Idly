@@ -3,7 +3,7 @@
  * computes explicit rewards, and returns progression events for UI/history.
  */
 
-import { checkNewAchievements, checkSkillAchievements, getStreakMultiplier, type AchievementDef } from '../lib/xp'
+import { checkNewAchievements, checkSkillAchievements, checkGameAchievements, getStreakMultiplier, type AchievementDef } from '../lib/xp'
 import { skillLevelFromXP } from '../lib/skills'
 import { appendProgressionHistory } from '../lib/progressionHistory'
 import { buildSessionCompleteEvent, makeProgressionEvent, type ProgressionEvent, type RewardGrantPayload } from '../lib/progressionContract'
@@ -15,6 +15,10 @@ import { CHEST_DEFS } from '../lib/loot'
 import { useNotificationStore } from '../stores/notificationStore'
 import { ensureInventoryHydrated, useInventoryStore } from '../stores/inventoryStore'
 import { rollSessionMaterialDrops } from '../lib/crafting'
+import { useGoldStore } from '../stores/goldStore'
+import { useAuthStore } from '../stores/authStore'
+import { useAchievementStatsStore } from '../stores/achievementStatsStore'
+import { useArenaStore } from '../stores/arenaStore'
 
 export interface AchievementResult {
   streakMultiplier: number
@@ -93,6 +97,34 @@ export async function processAchievementsElectron(
     newAchievementList.push(...skillAch)
   }
 
+  // Check game achievements (farming, crafting, cooking, arena, gold)
+  const allUnlocked = [...updatedUnlocked, ...newAchievementList.map(({ id }) => id)]
+  const achStats = useAchievementStatsStore.getState()
+  const arenaState = useArenaStore.getState()
+  const inv = useInventoryStore.getState()
+  const totalMobKills = Object.values(arenaState.killCounts).reduce((s, v) => s + v, 0)
+  const gameAch = checkGameAchievements({
+    totalHarvests: achStats.totalHarvests,
+    totalCrafts: achStats.totalCrafts,
+    totalCooks: achStats.totalCooks,
+    totalDungeonCompletions: achStats.totalDungeonCompletions,
+    totalMobKills,
+    maxGoldEver: achStats.maxGoldEver,
+    uniqueSeedsPlanted: achStats.uniqueSeedsPlanted.length,
+    clearedZoneCount: arenaState.clearedZones.length,
+    hasDragonfireBlade: (inv.items['craft_dragonfire_blade'] ?? 0) > 0,
+    hasCookedMythic: (inv.items['food_void_feast'] ?? 0) > 0 || (inv.items['food_dragon_roast'] ?? 0) > 0,
+    hasVoidBlossom: (inv.items['void_blossom'] ?? 0) > 0,
+    hasDragonKill: (arenaState.killCounts['dragon'] ?? 0) > 0,
+  }, allUnlocked)
+  for (const { id, def } of gameAch) {
+    await api.db.unlockAchievement(id).catch(() => {})
+    syncedAchievementIds.push(id)
+    rewardPayloads.push(...mapAchievementToRewardPayloads(def))
+    grantAchievementCosmetics(id)
+  }
+  newAchievementList.push(...gameAch)
+
   const immediateSkillRewards = rewardPayloads.filter((p) => p.destination === 'skill')
   if (immediateSkillRewards.length > 0) {
     await grantRewardPayloads(immediateSkillRewards, api)
@@ -108,9 +140,31 @@ export async function processAchievementsElectron(
   }
   const topCategory = Array.from(categoryCounts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
   ensureInventoryHydrated()
-  // Session-end chest is very rare — bosses are the primary source, grind chests should be exceptional
-  const SESSION_CHEST_CHANCE = 0.02
-  if (Math.random() < SESSION_CHEST_CHANCE) {
+
+  // ── Session gold reward (duration-gated, streak-boosted) ──────────────────
+  const durationMin = session.duration_seconds / 60
+  let sessionGold = 0
+  if (durationMin >= 180) sessionGold = 120 + Math.floor(Math.random() * 81)       // 120-200
+  else if (durationMin >= 120) sessionGold = 60 + Math.floor(Math.random() * 61)    // 60-120
+  else if (durationMin >= 60) sessionGold = 25 + Math.floor(Math.random() * 36)     // 25-60
+  else if (durationMin >= 30) sessionGold = 10 + Math.floor(Math.random() * 16)     // 10-25
+  if (sessionGold > 0) {
+    sessionGold = Math.floor(sessionGold * streakMult)
+    useGoldStore.getState().addGold(sessionGold)
+    const user = useAuthStore.getState().user
+    if (user) useGoldStore.getState().syncToSupabase(user.id).catch(() => {})
+    useNotificationStore.getState().push({
+      type: 'progression',
+      icon: '💰',
+      title: `+${sessionGold} gold`,
+      body: streakMult > 1 ? `Streak bonus ×${streakMult}` : 'Session reward',
+    })
+  }
+
+  // ── Session chest drop (8% base + 2% per hour, cap 20%) ──────────────────
+  const durationHoursForChest = session.duration_seconds / 3600
+  const sessionChestChance = Math.min(0.20, 0.08 + Math.floor(durationHoursForChest) * 0.02)
+  if (Math.random() < sessionChestChance) {
     const context = { source: 'session_complete' as const, focusCategory: topCategory }
     const { chestType, estimatedDropRate } = useInventoryStore.getState().rollSessionChestDrop(context)
     const chest = CHEST_DEFS[chestType]
@@ -126,7 +180,8 @@ export async function processAchievementsElectron(
 
   // Session crafting material drops — duration-gated supply for the crafting loop
   const durationHours = session.duration_seconds / 3600
-  const materialDrops = rollSessionMaterialDrops(topCategory, durationHours)
+  const clearedZones = useArenaStore.getState().clearedZones
+  const materialDrops = rollSessionMaterialDrops(topCategory, durationHours, clearedZones)
   if (materialDrops.length > 0) {
     const inv = useInventoryStore.getState()
     for (const drop of materialDrops) {

@@ -282,6 +282,12 @@ export function getDatabaseApi() {
         'INSERT INTO skill_xp (skill_id, total_xp, updated_at) VALUES (?, ?, ?) ON CONFLICT(skill_id) DO UPDATE SET total_xp = total_xp + ?, updated_at = ?'
       ).run(skillId, amount, now, amount, now)
     },
+    resetSkillXP(skillId: string): void {
+      const now = Date.now()
+      database.prepare(
+        'UPDATE skill_xp SET total_xp = 0, updated_at = ? WHERE skill_id = ?'
+      ).run(now, skillId)
+    },
     getAllSkillXP(): { skill_id: string; total_xp: number }[] {
       return database.prepare('SELECT skill_id, total_xp FROM skill_xp ORDER BY total_xp DESC').all() as { skill_id: string; total_xp: number }[]
     },

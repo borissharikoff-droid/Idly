@@ -7,6 +7,7 @@ import { useAlertStore } from '../../stores/alertStore'
 import { useNavBadgeStore } from '../../stores/navBadgeStore'
 import { useArenaStore } from '../../stores/arenaStore'
 import { useCraftingStore } from '../../stores/craftingStore'
+import { useCookingStore } from '../../stores/cookingStore'
 import { useFarmStore } from '../../stores/farmStore'
 import { MOTION } from '../../lib/motion'
 import { getUIIcons } from '../../lib/itemConfig'
@@ -25,6 +26,7 @@ const SECONDARY_TABS_DEFAULT: { id: TabId; icon: string; label: string }[] = [
   { id: 'arena',       icon: '⚔️', label: 'Arena'     },
   { id: 'farm',        icon: '🌱', label: 'Farm'      },
   { id: 'craft',       icon: '⚒️', label: 'Craft'     },
+  { id: 'cooking',     icon: '🍳', label: 'Cook'      },
   { id: 'profile',     icon: '👤', label: 'Profile'   },
   { id: 'settings',    icon: '⚙',  label: 'Settings'  },
 ]
@@ -46,6 +48,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   const { incomingRequestsCount, unreadMessagesCount, marketplaceSaleCount } = useNavBadgeStore()
   const isArenaBattleActive = useArenaStore((s) => !!s.activeBattle)
   const isCraftingActive = useCraftingStore((s) => !!s.activeJob)
+  const isCookingActive = useCookingStore((s) => !!s.activeJob)
   const planted = useFarmStore((s) => s.planted)
   const badgeHome = (currentAlert && !currentAlert.claimed ? 1 : 0) + queue.length
   const badgeFriends = incomingRequestsCount + unreadMessagesCount
@@ -61,8 +64,19 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
     (s) => !!s && (now - s.plantedAt) / 1000 >= s.growTimeSeconds,
   ).length
 
+  // Unclaimed achievement rewards (read from localStorage, recheck on tick)
+  const profileUnclaimed = (() => {
+    try {
+      const unlocked = JSON.parse(localStorage.getItem('grindly_unlocked_achievements') || '[]') as string[]
+      const claimed = JSON.parse(localStorage.getItem('grindly_claimed_achievements') || '[]') as string[]
+      const claimedSet = new Set(claimed)
+      return unlocked.filter((id) => !claimedSet.has(id)).length
+    } catch { return 0 }
+  })()
+  void tick // re-read on tick
+
   const secondaryIsActive = SECONDARY_IDS.has(activeTab)
-  const secondaryHasBadge = badgeFarm > 0 || isArenaBattleActive || isCraftingActive || marketplaceSaleCount > 0
+  const secondaryHasBadge = badgeFarm > 0 || isArenaBattleActive || isCraftingActive || isCookingActive || marketplaceSaleCount > 0 || profileUnclaimed > 0
 
   const navigate = (id: TabId) => {
     playTabSound()
@@ -98,7 +112,8 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
                 {SECONDARY_TABS.map((tab) => {
                   const isActive = activeTab === tab.id
                   const tabBadge = tab.id === 'farm' ? badgeFarm : tab.id === 'marketplace' ? marketplaceSaleCount : 0
-                  const tabPulse = (tab.id === 'arena' && isArenaBattleActive) || (tab.id === 'craft' && isCraftingActive)
+                  const tabPulse = (tab.id === 'arena' && isArenaBattleActive) || (tab.id === 'craft' && isCraftingActive) || (tab.id === 'cooking' && isCookingActive)
+                  const tabOrangeDot = tab.id === 'profile' && profileUnclaimed > 0
                   return (
                     <motion.button
                       key={tab.id}
@@ -120,6 +135,11 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
                       )}
                       {tabPulse && (
                         <span className="absolute top-1.5 right-2 w-2 h-2 rounded-full bg-cyber-neon animate-pulse" />
+                      )}
+                      {tabOrangeDot && (
+                        <span className="absolute top-1 right-1.5 min-w-[13px] h-[13px] px-0.5 flex items-center justify-center rounded-full text-[8px] font-bold text-white bg-orange-500">
+                          {profileUnclaimed}
+                        </span>
                       )}
                     </motion.button>
                   )

@@ -20,6 +20,7 @@ import { ensureInventoryHydrated, useInventoryStore } from '../../stores/invento
 import { getDailyActivities, getWeeklyActivities } from '../../services/dailyActivityService'
 import { QuestsSection } from '../quests/QuestsSection'
 import { AvatarWithFrame } from '../shared/AvatarWithFrame'
+import { ItemInspectModal } from '../shared/ItemInspectModal'
 
 
 
@@ -330,6 +331,9 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
   const hasClaimableQuest = dailyActivities.some((m) => m.completed && !m.claimed) || weeklyActivities.some((m) => m.completed && !m.claimed)
   const hasQuestAttention = hasClaimableQuest || dailyActivities.some((m) => !m.claimed)
 
+  const [inspectItemId, setInspectItemId] = useState<string | null>(null)
+  const inspectItem = inspectItemId ? (LOOT_ITEMS.find((x) => x.id === inspectItemId) ?? null) : null
+
   return (
     <div
       className="p-4 pb-20 space-y-4 overflow-auto"
@@ -353,6 +357,7 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
         onDraftChange={setDraftUsername}
         onDraftSubmit={applyDraftUsername}
         onDraftCancel={() => { setDraftUsername(username); setIsUsernameEditing(false) }}
+        onItemInspect={(itemId) => { playClickSound(); setInspectItemId(itemId) }}
         syncButton={supabase && user ? (
           <button
             type="button"
@@ -373,6 +378,8 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
           </button>
         ) : null}
       />
+
+      <ItemInspectModal item={inspectItem} onClose={() => setInspectItemId(null)} />
 
       {isAvatarPickerOpen && (
         <div className="rounded-xl bg-discord-card/90 border border-cyber-neon/20 p-3 space-y-2">
@@ -868,7 +875,7 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
 // ── Flex Card ─────────────────────────────────────────────────────────────────
 
 function FlexCard({ avatar, username, frameId, equippedBadges, equippedLootItems, unlockedCount, totalSkillLevel,
-  onAvatarClick, onUsernameClick, isUsernameEditing, draftUsername, onDraftChange, onDraftSubmit, onDraftCancel, syncButton,
+  onAvatarClick, onUsernameClick, isUsernameEditing, draftUsername, onDraftChange, onDraftSubmit, onDraftCancel, syncButton, onItemInspect,
 }: {
   avatar: string
   username: string
@@ -885,6 +892,7 @@ function FlexCard({ avatar, username, frameId, equippedBadges, equippedLootItems
   onDraftSubmit?: () => void
   onDraftCancel?: () => void
   syncButton?: React.ReactNode
+  onItemInspect?: (itemId: string) => void
 }) {
   const gold = useGoldStore((s) => s.gold)
   const killCounts = useArenaStore((s) => s.killCounts)
@@ -1036,6 +1044,7 @@ function FlexCard({ avatar, username, frameId, equippedBadges, equippedLootItems
         <StatCell icon={'\u2328\uFE0F'} value={grindStats.totalKeys > 0 ? formatKeys(grindStats.totalKeys) : '-'} label="Keys" color="#67E8F9" />
         <StatCell icon={'\u2694\uFE0F'} value={combat.atk > 0 ? `${combat.atk}` : '-'} label="ATK" color="#F87171" />
         <StatCell icon={'\u2764\uFE0F'} value={combat.hp > 0 ? `${combat.hp}` : '-'} label="HP" color="#34D399" />
+        <StatCell icon={'\uD83D\uDEE1'} value={combat.def > 0 ? `${combat.def}` : '-'} label="DEF" color="#818CF8" />
       </div>
 
       {/* Equipped gear strip */}
@@ -1045,20 +1054,22 @@ function FlexCard({ avatar, username, frameId, equippedBadges, equippedLootItems
             {equippedLootItems.map(({ slot, item }) => {
               const rt = getRarityTheme(item.rarity)
               return (
-                <div
+                <button
+                  type="button"
                   key={slot}
-                  className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border shrink-0"
+                  className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border shrink-0 hover:brightness-125 transition-all active:scale-[0.97] cursor-pointer"
                   style={{ borderColor: `${rt.color}20`, backgroundColor: `${rt.color}06` }}
                   title={`${item.name} (${item.rarity}) \u2014 ${slot}`}
+                  onClick={() => onItemInspect?.(item.id)}
                 >
                   {item.image
                     ? <img src={item.image} alt="" className="w-4 h-4 object-contain" style={{ imageRendering: 'pixelated' }} draggable={false} />
                     : <span className="text-sm leading-none">{item.icon}</span>}
-                  <div className="min-w-0">
+                  <div className="min-w-0 text-left">
                     <p className="text-[9px] font-medium text-white/90 truncate max-w-[65px]">{item.name}</p>
                     <p className="text-[7px] font-mono uppercase" style={{ color: rt.color }}>{item.rarity}</p>
                   </div>
-                </div>
+                </button>
               )
             })}
           </div>

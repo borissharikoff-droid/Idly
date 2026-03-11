@@ -17,6 +17,25 @@ export default defineConfig({
   build: {
     outDir: '../../dist/renderer',
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'scheduler'],
+          'vendor-motion': ['framer-motion'],
+          'vendor-supabase': ['@supabase/supabase-js'],
+          'vendor-zustand': ['zustand'],
+          'game-data': [
+            './src/renderer/lib/loot.ts',
+            './src/renderer/lib/combat.ts',
+            './src/renderer/lib/crafting.ts',
+            './src/renderer/lib/farming.ts',
+            './src/renderer/lib/cooking.ts',
+            './src/renderer/lib/skills.ts',
+            './src/renderer/lib/xp.ts',
+          ],
+        },
+      },
+    },
   },
   resolve: {
     alias: {

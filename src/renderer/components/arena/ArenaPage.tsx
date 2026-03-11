@@ -5,9 +5,12 @@ import {
   isZoneUnlocked, getMissingGateItems, canAffordEntry, getDailyBossId, effectiveBossDps, type ZoneDef,
 } from '../../lib/combat'
 import { LOOT_ITEMS, type ChestType, type BonusMaterial } from '../../lib/loot'
+import { FOOD_ITEMS, type FoodItemDef } from '../../lib/cooking'
+import type { FoodLoadout, FoodLoadoutSlot } from '../../lib/combat'
 import { useInventoryStore } from '../../stores/inventoryStore'
 import { ChestOpenModal } from '../animations/ChestOpenModal'
-import { useArenaStore, ITEM_LOSS_CHANCE, type AutoRunResult } from '../../stores/arenaStore'
+import { AutoFarmLootModal } from '../animations/AutoFarmLootModal'
+import { useArenaStore, type AutoRunResult } from '../../stores/arenaStore'
 import { setAutoAcc } from '../../hooks/useArenaBattleTick'
 import { useAdminConfigStore } from '../../stores/adminConfigStore'
 import { SKILLS, skillLevelFromXP } from '../../lib/skills'
@@ -27,6 +30,114 @@ function formatShort(n: number): string {
   return Math.floor(n).toString()
 }
 
+// ─── Food selector ───────────────────────────────────────────────────────────
+
+function FoodSelector({
+  slots,
+  onChange,
+  ownedItems,
+}: {
+  slots: (FoodLoadoutSlot | null)[]
+  onChange: (slots: (FoodLoadoutSlot | null)[]) => void
+  ownedItems: Record<string, number>
+}) {
+  const [pickerIdx, setPickerIdx] = useState<number | null>(null)
+
+  const hasAnyFood = FOOD_ITEMS.some((f) => (ownedItems[f.id] ?? 0) > 0)
+  const availableFood = FOOD_ITEMS.filter((f) => {
+    const owned = ownedItems[f.id] ?? 0
+    // Subtract food already in other slots
+    const usedInSlots = slots.reduce((sum, s) => sum + (s && s.foodId === f.id ? s.qty : 0), 0)
+    return owned - usedInSlots > 0
+  })
+
+  // Don't render if player has no food at all and no slots are filled
+  if (!hasAnyFood && !slots.some(Boolean)) return null
+
+  const handlePick = (idx: number, food: FoodItemDef) => {
+    const owned = ownedItems[food.id] ?? 0
+    const usedInOtherSlots = slots.reduce((sum, s, i) => sum + (i !== idx && s && s.foodId === food.id ? s.qty : 0), 0)
+    const available = owned - usedInOtherSlots
+    if (available <= 0) return
+    const next = [...slots]
+    next[idx] = { foodId: food.id, qty: Math.min(available, 10), effect: food.effect }
+    onChange(next)
+    setPickerIdx(null)
+  }
+
+  const handleClear = (idx: number) => {
+    const next = [...slots]
+    next[idx] = null
+    onChange(next)
+  }
+
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="text-[9px] text-gray-500 font-mono">Food:</span>
+      {slots.map((slot, idx) => {
+        const food = slot ? FOOD_ITEMS.find((f) => f.id === slot.foodId) : null
+        return (
+          <div key={idx} className="relative">
+            <button
+              type="button"
+              onClick={() => setPickerIdx(pickerIdx === idx ? null : idx)}
+              className="w-7 h-7 rounded-lg border border-white/10 bg-white/[0.04] flex items-center justify-center text-xs hover:bg-white/[0.08] transition-colors"
+              title={food ? `${food.name} ×${slot!.qty}` : 'Empty slot'}
+            >
+              {food ? (
+                <>
+                  <span>{food.icon}</span>
+                  <span className="absolute -bottom-0.5 -right-0.5 text-[8px] font-bold text-white bg-black/60 rounded px-0.5">{slot!.qty}</span>
+                </>
+              ) : (
+                <span className="text-gray-600">+</span>
+              )}
+            </button>
+            {slot && (
+              <button
+                type="button"
+                onClick={() => handleClear(idx)}
+                className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-500/80 text-[8px] text-white flex items-center justify-center hover:bg-red-500"
+              >×</button>
+            )}
+            {/* Picker dropdown */}
+            {pickerIdx === idx && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setPickerIdx(null)} />
+                <div className="absolute bottom-full left-0 mb-1 z-50 w-44 max-h-48 overflow-y-auto rounded-xl border border-white/10 bg-[#1a1a2a] shadow-xl p-1">
+                  {availableFood.length === 0 ? (
+                    <p className="text-[10px] text-gray-500 text-center py-2">No food available</p>
+                  ) : (
+                    availableFood.map((f) => {
+                      const owned = ownedItems[f.id] ?? 0
+                      const usedOther = slots.reduce((sum, s, i) => sum + (i !== idx && s && s.foodId === f.id ? s.qty : 0), 0)
+                      return (
+                        <button
+                          key={f.id}
+                          type="button"
+                          onClick={() => handlePick(idx, f)}
+                          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-white/[0.06] transition-colors"
+                        >
+                          <span className="text-base">{f.icon}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] font-semibold text-gray-200 truncate">{f.name}</p>
+                            <p className="text-[8px] text-gray-500">{f.description.split('.')[0]}</p>
+                          </div>
+                          <span className="text-[9px] text-gray-400">×{owned - usedOther}</span>
+                        </button>
+                      )
+                    })
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // ─── Zone card ───────────────────────────────────────────────────────────────
 
 function ZoneCard({
@@ -44,8 +155,12 @@ function ZoneCard({
   setConfirmForfeit,
   onEnter,
   onAutoFarm,
+  onForfeit,
   passCount,
   isAutoMode,
+  foodSlots,
+  onFoodChange,
+  lastInsuranceUsed,
 }: {
   zone: ZoneDef
   skillLevels: Record<string, number>
@@ -61,13 +176,16 @@ function ZoneCard({
   setConfirmForfeit: (v: boolean) => void
   onEnter: (zoneId: string) => void
   onAutoFarm: (zoneId: string) => void
+  onForfeit: () => void
   passCount: number
   isAutoMode?: boolean
+  foodSlots?: (FoodLoadoutSlot | null)[]
+  onFoodChange?: (slots: (FoodLoadoutSlot | null)[]) => void
+  lastInsuranceUsed?: boolean
 }) {
   const unlocked = isZoneUnlocked(zone, skillLevels, clearedZones, ownedItems)
   const cleared = clearedZones.includes(zone.id)
   const isActive = activeDungeon?.zoneId === zone.id
-  const forfeitDungeon = useArenaStore((s) => s.forfeitDungeon)
 
   const mobIndex = isActive ? (activeDungeon?.mobIndex ?? 0) : 0
   const isBossFight = isActive && mobIndex === 3
@@ -288,6 +406,13 @@ function ZoneCard({
             </div>
           )}
         </div>
+
+        {/* Food loadout selector — own row below zone info */}
+        {!isActive && unlocked && !activeBattle && foodSlots && onFoodChange && (
+          <div className="mt-2 pt-2 border-t border-white/[0.06]">
+            <FoodSelector slots={foodSlots} onChange={onFoodChange} ownedItems={ownedItems} />
+          </div>
+        )}
       </motion.div>
 
       {/* Battle panel — attached below header */}
@@ -304,15 +429,22 @@ function ZoneCard({
           >
             {battleComplete ? (
               /* ── Battle resolved — auto-resolves via useEffect ── */
-              <div className="w-full px-4 py-5 flex items-center justify-center gap-2.5">
-                <span className="text-2xl">{battleState?.victory ? (isBossFight ? '🏆' : (currentEnemy?.icon ?? '⚔️')) : '💀'}</span>
-                <div className="text-left">
-                  <p className={`text-sm font-bold leading-tight ${battleState?.victory ? 'text-white' : 'text-red-400'}`}>
-                    {battleState?.victory
-                      ? (isBossFight ? 'Boss defeated!' : `${currentEnemy?.name ?? 'Mob'} slain!`)
-                      : 'You were defeated'}
-                  </p>
+              <div className="w-full px-4 py-5 flex flex-col items-center justify-center gap-1">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-2xl">{battleState?.victory ? (isBossFight ? '🏆' : (currentEnemy?.icon ?? '⚔️')) : '💀'}</span>
+                  <div className="text-left">
+                    <p className={`text-sm font-bold leading-tight ${battleState?.victory ? 'text-white' : 'text-red-400'}`}>
+                      {battleState?.victory
+                        ? (isBossFight ? 'Boss defeated!' : `${currentEnemy?.name ?? 'Mob'} slain!`)
+                        : 'You were defeated'}
+                    </p>
+                  </div>
                 </div>
+                {!battleState?.victory && lastInsuranceUsed && (
+                  <p className="text-[10px] font-mono text-emerald-400 mt-0.5">
+                    Death Insurance consumed — no items lost!
+                  </p>
+                )}
               </div>
             ) : battleState && currentEnemy ? (
               /* ── Active battle ── */
@@ -488,7 +620,13 @@ function ZoneCard({
                     {activeBattle.playerSnapshot.hpRegen > 0 && (
                       <span style={{ color: '#22d3eebb' }}>❋ +{activeBattle.playerSnapshot.hpRegen}/s</span>
                     )}
-                    <span style={{ color: '#fbbf24aa' }}>= −{effectiveBossDps(activeBattle.bossSnapshot.atk, activeBattle.playerSnapshot.hpRegen).toFixed(1)}/s</span>
+                    {(activeBattle.playerSnapshot.def ?? 0) > 0 && (
+                      <span style={{ color: '#818cf8bb' }}>🛡 {activeBattle.playerSnapshot.def}</span>
+                    )}
+                    <span style={{ color: '#fbbf24aa' }}>= −{effectiveBossDps(activeBattle.bossSnapshot.atk, activeBattle.playerSnapshot.hpRegen, activeBattle.playerSnapshot.def).toFixed(1)}/s</span>
+                    {activeBattle.foodLoadout?.some(Boolean) && (
+                      <span style={{ color: '#fb923cbb' }}>🍳 Food</span>
+                    )}
                   </div>
 
                   {/* Forfeit */}
@@ -496,7 +634,7 @@ function ZoneCard({
                     <div className="flex items-center gap-1">
                       <button
                         type="button"
-                        onClick={() => { forfeitDungeon(); setConfirmForfeit(false) }}
+                        onClick={() => { onForfeit(); setConfirmForfeit(false) }}
                         className="text-[10px] font-semibold text-red-200 border border-red-500/40 bg-red-500/15 hover:bg-red-500/25 px-2.5 py-1 rounded-lg transition-colors"
                       >
                         Abandon
@@ -547,6 +685,7 @@ export function ArenaPage() {
   const [battleState, setBattleState] = useState<ReturnType<typeof getBattleState>>(null)
   const [skillLevels, setSkillLevels] = useState<Record<string, number>>({})
   const [confirmForfeit, setConfirmForfeit] = useState(false)
+  const [foodSlots, setFoodSlots] = useState<(FoodLoadoutSlot | null)[]>([null, null, null])
 
   // Auto mode: chain dungeon runs with passes (animated, not instant)
   const autoAccRef = useRef<{
@@ -561,17 +700,19 @@ export function ArenaPage() {
     failed: boolean
     failedAt?: string
     passesUsed: number
+    foodLoadout?: FoodLoadout
   } | null>(null)
-  const [autoChestQueue, setAutoChestQueue] = useState<{ chestType: ChestType; itemId: string | null; goldDropped: number; bonusMaterials: BonusMaterial[] }[]>([])
   const isAutoRunning = useArenaStore((s) => s.isAutoRunning)
   const setAutoRunning = useArenaStore((s) => s.setAutoRunning)
   const [isAutoMode, _setIsAutoMode] = useState(false)
   const setIsAutoMode = useCallback((v: boolean) => { _setIsAutoMode(v); setAutoRunning(v) }, [setAutoRunning])
   const [playerFlash, setPlayerFlash] = useState(false)
   const [bossFlash, setBossFlash] = useState(false)
+  const [lastInsuranceUsed, setLastInsuranceUsed] = useState(false)
   const prevPlayerHpRef = useRef<number | null>(null)
   const prevBossHpRef = useRef<number | null>(null)
   const flashTimersRef = useRef<ReturnType<typeof setTimeout>[]>([])
+  const resolveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const dailyBossId = getDailyBossId()
 
@@ -610,7 +751,8 @@ export function ArenaPage() {
     // Consume 1 dungeon_pass for the first run
     inv.deleteItem('dungeon_pass', 1)
 
-    const started = startDungeon(zoneId)
+    const activeFood = foodSlots.some(Boolean) ? foodSlots : undefined
+    const started = startDungeon(zoneId, null, activeFood)
     if (!started) {
       inv.addItem('dungeon_pass', 1)
       return
@@ -622,16 +764,45 @@ export function ArenaPage() {
       runsCompleted: 0,
       totalGold: 0,
       totalWarriorXP: 0,
-      materials: {},
-      chests: [],
-      chestResults: [],
+      materials: {} as Record<string, { name: string; icon: string; qty: number }>,
+      chests: [] as ChestType[],
+      chestResults: [] as { chestType: ChestType; itemId: string | null; goldDropped: number; bonusMaterials: BonusMaterial[] }[],
       failed: false,
       passesUsed: 1,
+      foodLoadout: activeFood,
     }
     autoAccRef.current = acc
     setAutoAcc(acc)
     setIsAutoMode(true)
-  }, [startDungeon])
+  }, [startDungeon, setIsAutoMode, foodSlots])
+
+  const forfeitDungeon = useArenaStore((s) => s.forfeitDungeon)
+
+  const handleForfeit = useCallback(() => {
+    const auto = autoAccRef.current
+    // Cancel any pending resolve timer so it doesn't fire after forfeit
+    if (resolveTimerRef.current) {
+      clearTimeout(resolveTimerRef.current)
+      resolveTimerRef.current = null
+    }
+    forfeitDungeon()
+    if (auto) {
+      // Auto-farm forfeit: current pass burns, show accumulated loot from completed runs
+      setAutoRunResult({
+        runsCompleted: auto.runsCompleted,
+        totalGold: Math.max(0, auto.totalGold),
+        totalWarriorXP: auto.totalWarriorXP,
+        materials: Object.entries(auto.materials).map(([id, m]) => ({ id, ...m })),
+        chests: auto.chests,
+        chestResults: auto.chestResults,
+        failed: false,
+        passesUsed: auto.passesUsed,
+      })
+      autoAccRef.current = null
+      setAutoAcc(null)
+      setIsAutoMode(false)
+    }
+  }, [forfeitDungeon, setIsAutoMode])
 
   useEffect(() => {
     const buildLevels = (rows: { skill_id: string; total_xp: number }[]): Record<string, number> => {
@@ -697,14 +868,28 @@ export function ArenaPage() {
     return () => { flashTimersRef.current.forEach(clearTimeout) }
   }, [])
 
-  useEffect(() => { setConfirmForfeit(false) }, [activeBattle])
+  useEffect(() => { setConfirmForfeit(false); if (activeBattle) setLastInsuranceUsed(false) }, [activeBattle])
 
-  // Clear auto mode if dungeon was forfeited (both states null for >2s)
+  // Safety net: if auto mode is on but nothing is running, show accumulated loot
   useEffect(() => {
     if (isAutoMode && !activeBattle && !activeDungeon && !isAutoRunning) {
       const t = setTimeout(() => {
         const s = useArenaStore.getState()
         if (!s.activeBattle && !s.activeDungeon) {
+          const auto = autoAccRef.current
+          if (auto && (auto.runsCompleted > 0 || auto.passesUsed > 0)) {
+            // Show accumulated loot instead of silently discarding
+            setAutoRunResult({
+              runsCompleted: auto.runsCompleted,
+              totalGold: Math.max(0, auto.totalGold),
+              totalWarriorXP: auto.totalWarriorXP,
+              materials: Object.entries(auto.materials).map(([id, m]) => ({ id, ...m })),
+              chests: auto.chests,
+              chestResults: auto.chestResults,
+              failed: false,
+              passesUsed: auto.passesUsed,
+            })
+          }
           autoAccRef.current = null
           setAutoAcc(null)
           _setIsAutoMode(false)
@@ -726,7 +911,6 @@ export function ArenaPage() {
   // Auto-resolve completed battles (both mob and boss).
   // Uses a ref to fire exactly once per battle, preventing the 500ms tick from resetting the timeout.
   const resolvedKeyRef = useRef<string | null>(null)
-  const resolveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Pick up auto-farm results from useArenaBattleTick
   useEffect(() => {
@@ -744,10 +928,19 @@ export function ArenaPage() {
     }
   }, [isAutoRunning])
 
+  // Ensure auto mode flag stays in sync with store (prevents stale local state)
+  useEffect(() => {
+    if (isAutoRunning && !isAutoMode) {
+      _setIsAutoMode(true)
+    }
+  }, [isAutoRunning, isAutoMode])
+
   useEffect(() => {
     if (!battleState?.isComplete || !activeBattle) return
-    // When auto-running, useArenaBattleTick handles all resolution
-    if (useArenaStore.getState().isAutoRunning) return
+    // When auto-running, useArenaBattleTick handles all resolution.
+    // Also check isAutoMode and autoAccRef as fallback — prevents showing
+    // modal on brief timing gaps between store updates and local state.
+    if (useArenaStore.getState().isAutoRunning || isAutoMode || autoAccRef.current) return
 
     const battleKey = `${activeBattle.bossId}:${activeBattle.startTime}`
     if (resolvedKeyRef.current === battleKey) return
@@ -762,7 +955,8 @@ export function ArenaPage() {
       const auto = autoAccRef.current
 
       if (isMob) {
-        const { goldLost, lostItem, materialDrop, warriorXP: mobXP } = endBattle()
+        const { goldLost, lostItem, materialDrop, warriorXP: mobXP, insuranceUsed } = endBattle()
+        if (insuranceUsed) setLastInsuranceUsed(true)
         if (victory) {
           // Track mob drops in auto accumulator
           if (auto) {
@@ -798,7 +992,8 @@ export function ArenaPage() {
         }
       } else {
         // Boss battle
-        const { goldLost, chest, lostItem, materialDrop, dungeonGold, warriorXP } = endBattle()
+        const { goldLost, chest, lostItem, materialDrop, dungeonGold, warriorXP, insuranceUsed: bossInsurance } = endBattle()
+        if (bossInsurance) setLastInsuranceUsed(true)
 
         if (auto) {
           if (victory) {
@@ -834,7 +1029,7 @@ export function ArenaPage() {
                 inv.deleteItem('dungeon_pass', 1)
                 auto.remaining--
                 auto.passesUsed++
-                setTimeout(() => startDungeon(auto.zoneId), 800)
+                setTimeout(() => startDungeon(auto.zoneId, null, auto.foodLoadout), 800)
               } else {
                 // Can't continue
                 setAutoRunResult({
@@ -916,7 +1111,7 @@ export function ArenaPage() {
         }
       }
     }, isMob ? 600 : 1200)
-  }, [battleState, activeBattle, endBattle, startDungeon])
+  }, [battleState, activeBattle, endBattle, startDungeon, isAutoMode])
 
   // Clear resolve timer on forfeit / unmount
   useEffect(() => {
@@ -993,10 +1188,14 @@ export function ArenaPage() {
             bossFlash={bossFlash}
             confirmForfeit={confirmForfeit}
             setConfirmForfeit={setConfirmForfeit}
-            onEnter={(zoneId) => { startDungeon(zoneId) }}
+            onEnter={(zoneId) => { startDungeon(zoneId, null, foodSlots.some(Boolean) ? foodSlots : undefined) }}
+            foodSlots={foodSlots}
+            onFoodChange={setFoodSlots}
             onAutoFarm={handleAutoFarm}
+            onForfeit={handleForfeit}
             passCount={passCount}
             isAutoMode={isAutoMode}
+            lastInsuranceUsed={lastInsuranceUsed}
           />
         ))}
       </div>
@@ -1019,103 +1218,12 @@ export function ArenaPage() {
       onClose={() => setArenaChestModal(null)}
     />
 
-    {/* Auto-farm chest queue — shown 1 by 1 after summary modal */}
-    <ChestOpenModal
-      open={autoChestQueue.length > 0}
-      chestType={autoChestQueue[0]?.chestType ?? null}
-      item={autoChestQueue[0]?.itemId ? (LOOT_ITEMS.find((x) => x.id === autoChestQueue[0].itemId) ?? null) : null}
-      goldDropped={autoChestQueue[0]?.goldDropped}
-      bonusMaterials={autoChestQueue[0]?.bonusMaterials}
-      nextAvailable={autoChestQueue.length > 1}
-      chainMessage={autoChestQueue.length > 1 ? `${autoChestQueue.length - 1} more chest${autoChestQueue.length > 2 ? 's' : ''}` : undefined}
-      onOpenNext={() => setAutoChestQueue((q) => q.slice(1))}
-      onClose={() => setAutoChestQueue((q) => q.slice(1))}
-      animationSeed={autoChestQueue.length}
+    {/* Auto-Farm Loot Bag Modal */}
+    <AutoFarmLootModal
+      open={Boolean(autoRunResult)}
+      result={autoRunResult}
+      onClose={() => setAutoRunResult(null)}
     />
-
-    {/* Auto-Farm Result Modal */}
-    <AnimatePresence>
-      {autoRunResult && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[115] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => { const cr = autoRunResult?.chestResults ?? []; setAutoRunResult(null); if (cr.length) setAutoChestQueue(cr) }}
-        >
-          <motion.div
-            initial={{ scale: 0.86, y: 16, opacity: 0 }}
-            animate={{ scale: 1, y: 0, opacity: 1 }}
-            exit={{ scale: 0.92, y: 10, opacity: 0 }}
-            transition={{ type: 'spring', duration: 0.35, bounce: 0.15 }}
-            className="w-[300px] rounded-2xl border border-amber-500/30 bg-discord-card overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-5 text-center">
-              <div className="w-14 h-14 mx-auto rounded-2xl border border-amber-500/30 bg-amber-500/10 flex items-center justify-center mb-3">
-                <span className="text-2xl">🎫</span>
-              </div>
-              <p className="text-[10px] font-mono uppercase tracking-widest text-amber-400 mb-1">Auto-Farm Complete</p>
-              <p className="text-white font-bold text-xl mb-3">
-                {autoRunResult.runsCompleted} / {autoRunResult.passesUsed} runs
-              </p>
-
-              <div className="space-y-1.5 text-left">
-                {autoRunResult.totalGold > 0 && (
-                  <div className="flex items-center gap-2 rounded-lg bg-amber-500/10 border border-amber-500/20 px-3 py-1.5">
-                    <span>🪙</span>
-                    <span className="text-[12px] text-amber-300 font-semibold">+{formatShort(autoRunResult.totalGold)} Gold</span>
-                  </div>
-                )}
-                {autoRunResult.materials.map((m) => (
-                  <div key={m.id} className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5">
-                    <span>{m.icon}</span>
-                    <span className="text-[12px] text-emerald-300 font-semibold">×{m.qty} {m.name}</span>
-                  </div>
-                ))}
-                {autoRunResult.chestResults.length > 0 && (
-                  <div className="flex items-center gap-2 rounded-lg bg-purple-500/10 border border-purple-500/20 px-3 py-1.5">
-                    <span>📦</span>
-                    <span className="text-[12px] text-purple-300 font-semibold">{autoRunResult.chestResults.length} chest{autoRunResult.chestResults.length > 1 ? 's' : ''} to open</span>
-                  </div>
-                )}
-                {autoRunResult.totalWarriorXP > 0 && (
-                  <div className="flex items-center gap-2 rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-1.5">
-                    <span>⚔️</span>
-                    <span className="text-[12px] text-red-300 font-semibold">+{formatShort(autoRunResult.totalWarriorXP)} Warrior XP</span>
-                  </div>
-                )}
-                {autoRunResult.failed && autoRunResult.failedAt && (
-                  <div className="rounded-lg bg-red-500/10 border border-red-500/25 px-3 py-1.5 space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <span>💀</span>
-                      <span className="text-[12px] text-red-300 font-semibold">Died vs {autoRunResult.failedAt}</span>
-                    </div>
-                    {autoRunResult.lostItem ? (
-                      <p className="text-[11px] text-red-400/80 pl-6">
-                        Lost {autoRunResult.lostItem.icon} {autoRunResult.lostItem.name} <span className="text-red-400/50">({Math.round(ITEM_LOSS_CHANCE * 100)}% chance)</span>
-                      </p>
-                    ) : (
-                      <p className="text-[11px] text-gray-500 pl-6">
-                        Gear survived <span className="text-gray-600">({100 - Math.round(ITEM_LOSS_CHANCE * 100)}% safe)</span>
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <button
-                type="button"
-                onClick={() => { const cr = autoRunResult?.chestResults ?? []; setAutoRunResult(null); if (cr.length) setAutoChestQueue(cr) }}
-                className="mt-4 w-full py-2.5 rounded-xl border border-amber-500/35 bg-amber-500/15 text-amber-300 text-sm font-semibold hover:bg-amber-500/25 transition-colors"
-              >
-                {autoRunResult?.chestResults.length ? 'Open chests' : 'OK'}
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
     </>
   )
 }

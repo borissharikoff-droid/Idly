@@ -9,7 +9,14 @@ import { skillLevelFromXP } from '../../lib/skills'
 import { supabase } from '../../lib/supabase'
 import { syncInventoryToSupabase } from '../../services/supabaseSync'
 import { ensureInventoryHydrated, useInventoryStore } from '../../stores/inventoryStore'
-import { SEED_DEFS, SLOT_UNLOCK_COSTS, MAX_FARM_SLOTS, getSeedById, formatGrowTime, SEED_ZIP_ITEM_IDS, getSeedZipDisplay, type SeedZipTier } from '../../lib/farming'
+import {
+  SEED_DEFS, SLOT_UNLOCK_COSTS, MAX_FARM_SLOTS, getSeedById, formatGrowTime,
+  SEED_ZIP_ITEM_IDS, getSeedZipDisplay, type SeedZipTier,
+  SLOT_UNLOCK_REQUIREMENTS, FIELD_DEFS, canUnlockSlot,
+  FARMHOUSE_UNLOCK_LEVEL, getFarmhouseBonuses, getNextFarmhouseUpgrade,
+  getFarmhouseIcon, getEffectiveRotChance,
+} from '../../lib/farming'
+import { useFarmRotTick } from '../../hooks/useFarmRotTick'
 import { useAdminConfigStore } from '../../stores/adminConfigStore'
 import { LOOT_ITEMS, getRarityTheme } from '../../lib/loot'
 import { RARITY_THEME, normalizeRarity } from '../loot/LootUI'
@@ -20,6 +27,21 @@ import { MOTION } from '../../lib/motion'
 import { playClickSound, playLootRaritySound } from '../../lib/sounds'
 import { track } from '../../lib/analytics'
 import { ListForSaleModal } from '../inventory/ListForSaleModal'
+
+// ─── Reactive skill XP hook (re-reads localStorage on cloud sync) ────────────
+
+function useSkillXP(): Record<string, number> {
+  const read = () => {
+    try { return JSON.parse(localStorage.getItem('grindly_skill_xp') || '{}') as Record<string, number> } catch { return {} }
+  }
+  const [xp, setXP] = useState(read)
+  useEffect(() => {
+    const handler = () => setXP(read())
+    window.addEventListener('grindly-skill-xp-updated', handler)
+    return () => window.removeEventListener('grindly-skill-xp-updated', handler)
+  }, [])
+  return xp
+}
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -548,14 +570,8 @@ function SeedCabinetSection() {
   const gold = useGoldStore((s) => s.gold)
   const addGold = useGoldStore((s) => s.addGold)
   const slimeKills = useArenaStore((s) => s.killCounts['slime'] ?? 0)
-  const farmerLevel = skillLevelFromXP(
-    (() => {
-      try {
-        const stored = JSON.parse(localStorage.getItem('grindly_skill_xp') || '{}') as Record<string, number>
-        return stored['farmer'] ?? 0
-      } catch { return 0 }
-    })()
-  )
+  const skillXP = useSkillXP()
+  const farmerLevel = skillLevelFromXP(skillXP['farmer'] ?? 0)
   const inventoryItems = useInventoryStore((s) => s.items)
 
   // When the cabinet is open, pull any seeds sitting in the inventory into the cabinet
@@ -620,6 +636,16 @@ function SeedCabinetSection() {
     )
   }
 
+  // Track first render to play entrance animation
+  const [entered, setEntered] = useState(false)
+  useEffect(() => {
+    if (!entered && totalSeeds > 0) {
+      const t = setTimeout(() => setEntered(true), 600)
+      return () => clearTimeout(t)
+    }
+    if (totalSeeds > 0) setEntered(true)
+  }, [totalSeeds, entered])
+
   // Unlocked state
   return (
     <div className="rounded-xl border border-white/[0.08] bg-discord-card/70 p-3">
@@ -629,7 +655,12 @@ function SeedCabinetSection() {
           <p className="text-[10px] uppercase tracking-wider text-gray-300 font-mono">Seed Cabinet</p>
         </div>
         {totalSeeds > 0 && (
-          <span className="text-[10px] text-gray-400 font-mono">{totalSeeds} total</span>
+          <motion.span
+            className="text-[10px] text-gray-400 font-mono"
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
+          >
+            {totalSeeds} total
+          </motion.span>
         )}
       </div>
 
@@ -640,13 +671,19 @@ function SeedCabinetSection() {
         </div>
       ) : (
         <div className="space-y-1.5">
-          {SEED_DEFS.filter((s) => (seeds[s.id] ?? 0) > 0).map((seed) => {
+          {SEED_DEFS.filter((s) => (seeds[s.id] ?? 0) > 0).map((seed, i) => {
             const t = rarityTheme(seed.rarity)
             return (
-              <div
+              <motion.div
                 key={seed.id}
                 className="rounded-lg border flex items-center gap-2.5 px-2.5 py-2"
                 style={{ borderColor: t.border, background: `linear-gradient(135deg, ${t.glow}0C 0%, rgba(10,10,20,0.85) 60%)` }}
+                initial={!entered ? { opacity: 0, x: 60, scale: 0.85 } : false}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                transition={!entered ? {
+                  delay: 0.08 + i * 0.07,
+                  type: 'spring', stiffness: 320, damping: 26,
+                } : { duration: 0.15 }}
               >
                 {seed.image
                   ? <img src={seed.image} alt="" className="w-5 h-5 object-contain shrink-0" />
@@ -657,10 +694,16 @@ function SeedCabinetSection() {
                     {seed.rarity} · {formatGrowTime(seed.growTimeSeconds)}
                   </p>
                 </div>
-                <span className="text-sm font-mono font-bold shrink-0 mr-1" style={{ color: t.color }}>
+                <motion.span
+                  className="text-sm font-mono font-bold shrink-0 mr-1"
+                  style={{ color: t.color }}
+                  initial={!entered ? { opacity: 0, scale: 0 } : false}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={!entered ? { delay: 0.25 + i * 0.07, type: 'spring', stiffness: 400, damping: 20 } : { duration: 0.15 }}
+                >
                   ×{seeds[seed.id]}
-                </span>
-              </div>
+                </motion.span>
+              </motion.div>
             )
           })}
         </div>
@@ -947,6 +990,7 @@ function FarmSlot({
   const compostSlot = useFarmStore((s) => s.compostSlot)
   const cancelPlanting = useFarmStore((s) => s.cancelPlanting)
   const compostCount = useInventoryStore((s) => s.items['compost'] ?? 0)
+  const farmhouseLevel = useFarmStore((s) => s.farmhouseLevel)
   const isComposted = !!planted?.composted || slotComposted
   const seed = planted ? getSeedById(planted.seedId) : null
   const remaining = useCountdown(planted?.plantedAt ?? 0, planted?.growTimeSeconds ?? 0)
@@ -1141,6 +1185,19 @@ function FarmSlot({
                   )}
                 </div>
 
+                {/* Rot indicator */}
+                {seed && (
+                  <div className="flex items-center gap-1 mt-0.5">
+                    {planted.rotAt && !planted.rotted ? (
+                      <span className="text-[7px] font-mono text-red-400">💀 Will rot!</span>
+                    ) : (
+                      <span className="text-[7px] font-mono text-gray-500">
+                        🎲 Rot {Math.round(getEffectiveRotChance(seed.rarity, farmhouseLevel) * 100)}%
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {/* Big countdown — center of card */}
                 <div className="flex-1 flex items-center justify-center">
                   <motion.span
@@ -1220,24 +1277,39 @@ function FarmSlot({
 
 function LockedSlot({ slotIndex, onUnlock }: { slotIndex: number; onUnlock: () => void }) {
   const cost = SLOT_UNLOCK_COSTS[slotIndex] ?? 0
+  const req = SLOT_UNLOCK_REQUIREMENTS[slotIndex] ?? { farmerLevel: 0 }
   const gold = useGoldStore((s) => s.gold ?? 0)
-  const canAfford = gold >= cost
+
+  const skillXP = useSkillXP()
+  const check = canUnlockSlot(slotIndex, gold, skillXP)
+
+  const SKILL_LABELS: Record<string, string> = { crafter: 'Crafter', warrior: 'Warrior', farmer: 'Farmer' }
 
   return (
     <motion.button
       type="button"
-      whileTap={canAfford ? MOTION.interactive.tap : undefined}
+      whileTap={check.canUnlock ? MOTION.interactive.tap : undefined}
       onClick={() => { playClickSound(); onUnlock() }}
-      disabled={!canAfford}
-      className={`w-full min-h-[116px] rounded-xl border flex flex-col items-center justify-center gap-1.5 transition-all ${
-        canAfford
+      disabled={!check.canUnlock}
+      className={`w-full min-h-[116px] rounded-xl border flex flex-col items-center justify-center gap-1 transition-all ${
+        check.canUnlock
           ? 'border-amber-500/30 bg-amber-500/[0.04] hover:bg-amber-500/[0.09] hover:border-amber-500/50'
           : 'border-white/[0.05] bg-discord-darker/20 opacity-70 cursor-not-allowed'
       }`}
     >
-      <span className="text-2xl">{canAfford ? '🔓' : '🔒'}</span>
+      <span className="text-xl">{check.canUnlock ? '🔓' : '🔒'}</span>
       <span className="text-[10px] font-mono font-semibold text-amber-400">🪙 {cost.toLocaleString()}</span>
-      <span className="text-[8px] text-gray-300 font-mono">{canAfford ? 'Tap to unlock' : 'Need more gold'}</span>
+      {req.farmerLevel > 0 && (
+        <span className={`text-[8px] font-mono ${check.missingFarmer ? 'text-red-400' : 'text-emerald-400'}`}>
+          {check.missingFarmer ? '✗' : '✓'} Farmer LVL {req.farmerLevel}
+        </span>
+      )}
+      {req.secondarySkill && (
+        <span className={`text-[8px] font-mono ${check.missingSecondary ? 'text-red-400' : 'text-emerald-400'}`}>
+          {check.missingSecondary ? '✗' : '✓'} {SKILL_LABELS[req.secondarySkill.skillId] ?? req.secondarySkill.skillId} LVL {req.secondarySkill.level}
+        </span>
+      )}
+      <span className="text-[7px] text-gray-500 font-mono">{check.canUnlock ? 'Tap to unlock' : 'Requirements not met'}</span>
     </motion.button>
   )
 }
@@ -1500,6 +1572,405 @@ function PlantAllPicker({ seeds, emptyCount, onClose }: { seeds: Record<string, 
   )
 }
 
+// ─── Farmhouse section ────────────────────────────────────────────────────────
+
+function formatBuildTime(ms: number): string {
+  if (ms <= 0) return '0s'
+  const d = Math.floor(ms / 86_400_000)
+  const h = Math.floor((ms % 86_400_000) / 3_600_000)
+  const m = Math.floor((ms % 3_600_000) / 60_000)
+  const s = Math.floor((ms % 60_000) / 1000)
+  if (d > 0) return h > 0 ? `${d}d ${h}h` : `${d}d`
+  if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`
+  if (m > 0) return s > 0 ? `${m}m ${s}s` : `${m}m`
+  return `${s}s`
+}
+
+function FarmhouseSection({ farmerLevel, farmhouseLevel, onUpgrade }: { farmerLevel: number; farmhouseLevel: number; onUpgrade: () => boolean }) {
+  const isUnlocked = farmerLevel >= FARMHOUSE_UNLOCK_LEVEL
+  const bonuses = getFarmhouseBonuses(farmhouseLevel)
+  const nextUpgrade = getNextFarmhouseUpgrade(farmhouseLevel)
+  const icon = getFarmhouseIcon(farmhouseLevel)
+  const gold = useGoldStore((s) => s.gold ?? 0)
+  const inventoryItems = useInventoryStore((s) => s.items)
+  const buildStartedAt = useFarmStore((s) => s.farmhouseBuildStartedAt)
+  const buildTargetLevel = useFarmStore((s) => s.farmhouseBuildTargetLevel)
+  const completeFarmhouseBuild = useFarmStore((s) => s.completeFarmhouseBuild)
+  const [upgradeError, setUpgradeError] = useState('')
+  const [justUpgraded, setJustUpgraded] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const isMaxed = farmhouseLevel >= 10
+  const isBuilding = buildStartedAt != null
+
+  // Tick for build countdown
+  const [, forceUpdate] = useReducer((n: number) => n + 1, 0)
+  useEffect(() => {
+    if (!isBuilding) return
+    const id = setInterval(forceUpdate, 1000)
+    return () => clearInterval(id)
+  }, [isBuilding])
+
+  // Auto-complete build
+  const buildTimeTotal = nextUpgrade?.buildDurationMs ?? 0
+  const buildElapsed = isBuilding ? Date.now() - buildStartedAt : 0
+  const buildRemaining = Math.max(0, buildTimeTotal - buildElapsed)
+  const buildPct = buildTimeTotal > 0 ? Math.min(100, (buildElapsed / buildTimeTotal) * 100) : 0
+
+  useEffect(() => {
+    if (isBuilding && buildRemaining <= 0) {
+      const ok = completeFarmhouseBuild()
+      if (ok) {
+        setJustUpgraded(true)
+        setTimeout(() => setJustUpgraded(false), 2500)
+      }
+    }
+  }, [isBuilding, buildRemaining, completeFarmhouseBuild])
+
+  const handleUpgrade = () => {
+    playClickSound()
+    const ok = onUpgrade()
+    if (ok) {
+      setJustUpgraded(true)
+      setUpgradeError('')
+      setTimeout(() => setJustUpgraded(false), 2500)
+    } else {
+      setUpgradeError('Requirements not met')
+      setTimeout(() => setUpgradeError(''), 2000)
+    }
+  }
+
+  // Progress bar for farmhouse level (0-10)
+  const progressPct = (farmhouseLevel / 10) * 100
+  const accentColor = isMaxed ? '#84cc16' : '#f59e0b'
+
+  if (!isUnlocked) {
+    return (
+      <div className="rounded-xl border border-white/[0.06] overflow-hidden"
+        style={{ background: 'linear-gradient(160deg, rgba(15,12,8,0.95) 0%, rgba(12,10,15,0.97) 100%)' }}
+      >
+        <div className="p-4 flex items-center gap-3.5">
+          <div className="relative">
+            <span className="text-3xl opacity-30 grayscale">🏚️</span>
+            <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center">
+              <span className="text-[8px]">🔒</span>
+            </div>
+          </div>
+          <div className="flex-1">
+            <p className="text-[13px] font-bold text-gray-500">Farmhouse</p>
+            <p className="text-[11px] text-gray-600 font-mono mt-0.5">
+              Unlocks at <span className="text-amber-500 font-bold">Farmer LVL {FARMHOUSE_UNLOCK_LEVEL}</span>
+            </p>
+            {/* Mini progress to unlock */}
+            <div className="mt-1.5 h-1.5 rounded-full bg-white/[0.04] overflow-hidden w-32">
+              <div className="h-full rounded-full bg-amber-500/40 transition-all" style={{ width: `${Math.min(100, (farmerLevel / FARMHOUSE_UNLOCK_LEVEL) * 100)}%` }} />
+            </div>
+            <p className="text-[10px] text-gray-600 font-mono mt-0.5">LVL {farmerLevel}/{FARMHOUSE_UNLOCK_LEVEL}</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-xl border overflow-hidden relative"
+      style={{
+        borderColor: isMaxed ? 'rgba(132,204,22,0.25)' : 'rgba(245,158,11,0.2)',
+        background: isMaxed
+          ? 'linear-gradient(160deg, rgba(132,204,22,0.04) 0%, rgba(10,10,18,0.97) 50%)'
+          : 'linear-gradient(160deg, rgba(245,158,11,0.04) 0%, rgba(10,10,18,0.97) 50%)',
+      }}
+    >
+      {/* Subtle ambient glow */}
+      <div className="absolute top-0 left-0 w-full h-24 pointer-events-none"
+        style={{ background: `radial-gradient(ellipse 80% 60% at 25% 0%, ${accentColor}08 0%, transparent 70%)` }}
+      />
+
+      {/* Header — always visible */}
+      <button
+        type="button"
+        className="w-full p-4 pb-3 flex items-center gap-3.5 text-left relative z-10"
+        onClick={() => { playClickSound(); setExpanded(!expanded) }}
+      >
+        {/* House icon with level ring */}
+        <div className="relative shrink-0">
+          <motion.div
+            animate={justUpgraded ? { scale: [1, 1.25, 1], rotate: [0, 8, -8, 0] } : undefined}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
+            className="w-12 h-12 rounded-xl flex items-center justify-center border"
+            style={{
+              borderColor: `${accentColor}30`,
+              background: `linear-gradient(145deg, ${accentColor}12 0%, rgba(10,10,18,0.9) 70%)`,
+              boxShadow: `0 0 20px ${accentColor}10`,
+            }}
+          >
+            <span className="text-2xl">{icon}</span>
+          </motion.div>
+          {farmhouseLevel > 0 && (
+            <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-[8px] font-black border"
+              style={{
+                background: isMaxed ? '#84cc16' : '#f59e0b',
+                borderColor: isMaxed ? '#65a30d' : '#d97706',
+                color: '#000',
+              }}
+            >
+              {farmhouseLevel}
+            </div>
+          )}
+        </div>
+
+        {/* Title + level bar */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-[13px] font-bold text-white">Farmhouse</p>
+            {isMaxed && (
+              <span className="text-[8px] font-mono font-black px-1.5 py-0.5 rounded bg-lime-400/15 text-lime-400 border border-lime-400/25 tracking-wider">
+                MAX
+              </span>
+            )}
+          </div>
+          {/* Level progress bar */}
+          <div className="mt-1.5 flex items-center gap-2">
+            <div className="flex-1 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+              <motion.div
+                className="h-full rounded-full"
+                style={{ backgroundColor: accentColor }}
+                initial={false}
+                animate={{ width: `${progressPct}%` }}
+                transition={{ duration: 0.5, ease: 'easeOut' }}
+              />
+            </div>
+            <span className="text-[8px] font-mono text-gray-500 shrink-0 tabular-nums">{farmhouseLevel}/10</span>
+          </div>
+          {/* Inline bonus summary */}
+          {farmhouseLevel > 0 && !isBuilding ? (
+            <div className="flex items-center gap-2.5 mt-1">
+              <span className="text-[10px] font-mono text-red-400/70">💀-{bonuses.rotReductionPct}%</span>
+              <span className="text-[10px] font-mono text-cyan-400/70">⚡-{bonuses.growSpeedPct}%</span>
+              <span className="text-[10px] font-mono text-amber-400/70">🧪{bonuses.autoCompostPct}%</span>
+              <span className="text-[10px] font-mono text-lime-400/70">🌾+{bonuses.yieldBonusPct}%</span>
+              {bonuses.autoHarvest && <span className="text-[10px] font-mono text-lime-400">✨</span>}
+            </div>
+          ) : isBuilding ? (
+            <div className="mt-1.5">
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-2 rounded-full bg-white/[0.06] overflow-hidden">
+                  <motion.div
+                    className="h-full rounded-full bg-amber-500"
+                    initial={false}
+                    animate={{ width: `${buildPct}%` }}
+                    transition={{ duration: 0.5, ease: 'easeOut' }}
+                  />
+                </div>
+                <span className="text-[10px] font-mono text-amber-400 shrink-0 tabular-nums">{formatBuildTime(buildRemaining)}</span>
+              </div>
+              <p className="text-[10px] text-amber-400/60 font-mono mt-0.5">🔨 Building LVL {buildTargetLevel}…</p>
+            </div>
+          ) : (
+            <p className="text-[10px] text-gray-500 mt-0.5">Tap to build and gain farming bonuses</p>
+          )}
+        </div>
+
+        {/* Expand chevron */}
+        <motion.span
+          animate={{ rotate: expanded ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+          className="text-gray-600 text-[10px] shrink-0"
+        >
+          ▼
+        </motion.span>
+      </button>
+
+      {/* Expanded content */}
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: MOTION.easing }}
+            className="overflow-hidden"
+          >
+            <div className="px-4 pb-4 space-y-3">
+              {/* Active bonuses grid */}
+              {farmhouseLevel > 0 && (
+                <div className="grid grid-cols-2 gap-1.5">
+                  {[
+                    { icon: '💀', label: 'Rot Reduction', value: `-${bonuses.rotReductionPct}%`, color: '#f87171', desc: 'Less chance crops will rot' },
+                    { icon: '⚡', label: 'Growth Speed', value: `-${bonuses.growSpeedPct}%`, color: '#22d3ee', desc: 'Faster growing time' },
+                    { icon: '🧪', label: 'Auto-Compost', value: `${bonuses.autoCompostPct}%`, color: '#f59e0b', desc: 'Auto-apply on plant' },
+                    { icon: '🌾', label: 'Yield Bonus', value: `+${bonuses.yieldBonusPct}%`, color: '#84cc16', desc: 'Extra harvest yield' },
+                  ].map((stat) => (
+                    <div key={stat.label} className="rounded-lg p-2.5 border border-white/[0.04]"
+                      style={{ background: `linear-gradient(135deg, ${stat.color}06 0%, transparent 70%)` }}
+                    >
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="text-[11px]">{stat.icon}</span>
+                        <span className="text-[10px] font-mono text-gray-500 uppercase tracking-wider">{stat.label}</span>
+                      </div>
+                      <p className="text-[15px] font-mono font-black" style={{ color: stat.color }}>{stat.value}</p>
+                      <p className="text-[9px] text-gray-600 font-mono mt-0.5">{stat.desc}</p>
+                    </div>
+                  ))}
+                  {bonuses.autoHarvest && (
+                    <div className="col-span-2 rounded-lg p-2.5 border border-lime-400/20"
+                      style={{ background: 'linear-gradient(135deg, rgba(132,204,22,0.06) 0%, transparent 70%)' }}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">✨</span>
+                        <div>
+                          <p className="text-[11px] font-bold text-lime-400">Auto-Harvest Active</p>
+                          <p className="text-[9px] text-gray-500 font-mono">Ready crops are automatically collected</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Upgrade section */}
+              {nextUpgrade && (
+                <div className="rounded-lg border border-white/[0.06] overflow-hidden"
+                  style={{ background: 'rgba(0,0,0,0.2)' }}
+                >
+                  {/* Upgrade header */}
+                  <div className="px-3 py-2.5 border-b border-white/[0.04] flex items-center justify-between">
+                    <p className="text-[11px] font-bold text-white">
+                      {farmhouseLevel === 0 ? 'Build Farmhouse' : `Upgrade to Level ${nextUpgrade.level}`}
+                    </p>
+                    <span className="text-[10px] font-mono text-gray-500">🕐 {formatBuildTime(nextUpgrade.buildDurationMs)}</span>
+                  </div>
+
+                  {/* Requirements */}
+                  <div className="px-3 py-2.5 space-y-2">
+                    {/* Gold cost */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] ${gold >= nextUpgrade.goldCost ? 'text-emerald-400' : 'text-red-400'}`}>
+                          {gold >= nextUpgrade.goldCost ? '✓' : '✗'}
+                        </span>
+                        <span className="text-[11px] text-amber-400 font-mono">🪙 {nextUpgrade.goldCost.toLocaleString()}</span>
+                      </div>
+                      <span className="text-[10px] text-gray-600 font-mono">{gold.toLocaleString()} owned</span>
+                    </div>
+
+                    {/* Material costs — displayed as compact cards */}
+                    <div className="grid grid-cols-2 gap-1">
+                      {Object.entries(nextUpgrade.materials).map(([matId, qty]) => {
+                        const have = inventoryItems[matId] ?? 0
+                        const ok = have >= qty
+                        const item = LOOT_ITEMS.find((x) => x.id === matId)
+                        const rt = item ? rarityTheme(item.rarity) : null
+                        return (
+                          <div key={matId} className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border transition-colors"
+                            style={{
+                              borderColor: ok ? 'rgba(74,222,128,0.15)' : 'rgba(255,255,255,0.04)',
+                              background: ok ? 'rgba(74,222,128,0.03)' : 'rgba(255,255,255,0.01)',
+                            }}
+                          >
+                            <span className={`text-[10px] shrink-0 ${ok ? 'text-emerald-400' : 'text-red-400/60'}`}>
+                              {ok ? '✓' : '✗'}
+                            </span>
+                            {item?.image
+                              ? <img src={item.image} alt="" className="w-5 h-5 object-contain shrink-0" />
+                              : <span className="text-base shrink-0">{item?.icon ?? '📦'}</span>
+                            }
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[10px] font-medium text-gray-200 truncate">{item?.name ?? matId}</p>
+                              <p className="text-[10px] font-mono" style={{ color: ok ? '#4ade80' : '#9ca3af' }}>
+                                {have}/{qty}
+                              </p>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Upgrade button or build progress */}
+                  <div className="px-3 pb-3">
+                    {isBuilding ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-3 rounded-full bg-white/[0.06] overflow-hidden">
+                            <motion.div
+                              className="h-full rounded-full"
+                              style={{ backgroundColor: accentColor }}
+                              initial={false}
+                              animate={{ width: `${buildPct}%` }}
+                              transition={{ duration: 0.5, ease: 'easeOut' }}
+                            />
+                          </div>
+                          <span className="text-[11px] font-mono font-bold tabular-nums" style={{ color: accentColor }}>{Math.floor(buildPct)}%</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <p className="text-[11px] font-mono text-amber-400/80">🔨 Construction in progress…</p>
+                          <p className="text-[11px] font-mono text-gray-400 tabular-nums">{formatBuildTime(buildRemaining)} left</p>
+                        </div>
+                      </div>
+                    ) : (
+                    <motion.button
+                      type="button"
+                      whileTap={{ scale: 0.97 }}
+                      onClick={handleUpgrade}
+                      className="w-full py-2.5 rounded-lg border text-[12px] font-black tracking-wide transition-all relative overflow-hidden"
+                      style={{
+                        borderColor: `${accentColor}50`,
+                        background: `linear-gradient(135deg, ${accentColor}18 0%, ${accentColor}08 100%)`,
+                        color: accentColor,
+                      }}
+                    >
+                      {/* Shimmer */}
+                      <motion.div
+                        className="absolute inset-0 pointer-events-none"
+                        animate={{ x: ['-100%', '200%'] }}
+                        transition={{ duration: 2, repeat: Infinity, repeatDelay: 1.5, ease: 'linear' }}
+                        style={{ background: `linear-gradient(90deg, transparent, ${accentColor}10, transparent)`, width: '40%' }}
+                      />
+                      <span className="relative z-10">
+                        {farmhouseLevel === 0 ? '🏠 Build Farmhouse' : `⬆ Upgrade to LVL ${nextUpgrade.level}`}
+                      </span>
+                    </motion.button>
+                    )}
+                    <AnimatePresence>
+                      {upgradeError && (
+                        <motion.p
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0 }}
+                          className="text-[9px] text-red-400 font-mono text-center mt-1.5"
+                        >
+                          {upgradeError}
+                        </motion.p>
+                      )}
+                      {justUpgraded && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -4 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0 }}
+                          className="text-center mt-1.5"
+                        >
+                          <span className="text-[9px] text-emerald-400 font-mono font-bold">✨ Farmhouse upgraded!</span>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              )}
+
+              {/* Max level message */}
+              {isMaxed && (
+                <div className="text-center py-2">
+                  <p className="text-[11px] font-mono text-lime-400/60">🏰 Farmhouse is fully upgraded!</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export function FarmPage() {
@@ -1512,12 +1983,19 @@ export function FarmPage() {
   const compostAll = useFarmStore((s) => s.compostAll)
   const compostedSlots = useFarmStore((s) => s.compostedSlots)
   const compostCount = useInventoryStore((s) => s.items['compost'] ?? 0)
-  const farmerLevel = skillLevelFromXP(
-    (() => { try { return (JSON.parse(localStorage.getItem('grindly_skill_xp') || '{}') as Record<string, number>)['farmer'] ?? 0 } catch { return 0 } })()
-  )
+  const activeField = useFarmStore((s) => s.activeField)
+  const setActiveField = useFarmStore((s) => s.setActiveField)
+  const farmhouseLevel = useFarmStore((s) => s.farmhouseLevel)
+  const upgradeFarmhouse = useFarmStore((s) => s.upgradeFarmhouse)
+  const skillXP = useSkillXP()
+  const farmerLevel = skillLevelFromXP(skillXP['farmer'] ?? 0)
   const emptyUncompostedCount = Array.from({ length: unlockedSlots }, (_, i) => i).filter((i) => !planted[i] && !compostedSlots[i]).length
   const emptySlotCount = Array.from({ length: unlockedSlots }, (_, i) => i).filter((i) => !planted[i]).length
   const hasAnySeed = SEED_DEFS.some((s) => (seeds[s.id] ?? 0) > 0)
+  const activeFieldDef = FIELD_DEFS.find((f) => f.id === activeField) ?? FIELD_DEFS[0]
+
+  // Rot tick
+  useFarmRotTick()
   const [pickerSlot, setPickerSlot] = useState<number | null>(null)
   const [showPlantAll, setShowPlantAll] = useState(false)
   const [unlockError, setUnlockError] = useState(false)
@@ -1723,9 +2201,75 @@ export function FarmPage() {
           </div>
         </div>
 
-        {/* 2-col grid */}
+        {/* Field tabs */}
+        <div className="flex gap-1 mb-3">
+          {FIELD_DEFS.map((field) => {
+            const isActive = activeField === field.id
+            const fieldSlots = field.slots
+            const fieldUnlocked = fieldSlots.filter((i) => i < unlockedSlots).length
+            const fieldGrowing = fieldSlots.filter((i) => {
+              const s = planted[i]
+              return s && !s.rotted && (Date.now() - s.plantedAt) / 1000 < s.growTimeSeconds
+            }).length
+            const fieldReady = fieldSlots.filter((i) => {
+              const s = planted[i]
+              return s && !s.rotted && (Date.now() - s.plantedAt) / 1000 >= s.growTimeSeconds
+            }).length
+            const isLocked = field.id === 'field2' && unlockedSlots <= 8
+            // Requirements for Field 2 unlock
+            const field2Req = SLOT_UNLOCK_REQUIREMENTS[8]
+            return (
+              <div key={field.id} className="flex-1 relative group">
+                <button
+                  type="button"
+                  disabled={isLocked}
+                  onClick={() => { playClickSound(); setActiveField(field.id) }}
+                  className={`w-full py-1.5 px-2 rounded-lg text-[10px] font-mono font-semibold transition-all border ${
+                    isLocked
+                      ? 'border-white/[0.04] bg-discord-darker/20 text-gray-600 cursor-not-allowed'
+                      : isActive
+                        ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
+                        : 'border-white/[0.06] bg-white/[0.02] text-gray-400 hover:bg-white/[0.05]'
+                  }`}
+                >
+                  <span>{isLocked ? '🔒 ' : ''}{field.label}</span>
+                  {!isLocked && (fieldGrowing > 0 || fieldReady > 0) && (
+                    <span className="ml-1.5 text-[8px]">
+                      {fieldGrowing > 0 && <span className="text-gray-500">{fieldGrowing}⏳</span>}
+                      {fieldReady > 0 && <span className="text-lime-400 ml-0.5">{fieldReady}✓</span>}
+                    </span>
+                  )}
+                  {!isLocked && <span className="text-[8px] text-gray-600 ml-1">{fieldUnlocked}/8</span>}
+                </button>
+                {isLocked && (
+                  <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-50 hidden group-hover:block w-48">
+                    <div className="bg-discord-darker border border-white/10 rounded-lg px-3 py-2 shadow-xl">
+                      <p className="text-[10px] font-bold text-white mb-1.5">Unlock Field 2</p>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-[9px] ${unlockedSlots > 8 ? 'text-emerald-400' : 'text-red-400'}`}>{unlockedSlots > 8 ? '✓' : '✗'}</span>
+                          <span className="text-[10px] text-gray-300 font-mono">Unlock all Field 1 plots</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-[9px] ${farmerLevel >= field2Req.farmerLevel ? 'text-emerald-400' : 'text-red-400'}`}>{farmerLevel >= field2Req.farmerLevel ? '✓' : '✗'}</span>
+                          <span className="text-[10px] text-gray-300 font-mono">Farmer LVL {field2Req.farmerLevel}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-[9px] ${(useGoldStore.getState().gold ?? 0) >= (SLOT_UNLOCK_COSTS[8] ?? 0) ? 'text-emerald-400' : 'text-red-400'}`}>{(useGoldStore.getState().gold ?? 0) >= (SLOT_UNLOCK_COSTS[8] ?? 0) ? '✓' : '✗'}</span>
+                          <span className="text-[10px] text-amber-400 font-mono">🪙 {(SLOT_UNLOCK_COSTS[8] ?? 0).toLocaleString()}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* 2-col grid — current field */}
         <div className="grid grid-cols-2 gap-2">
-          {Array.from({ length: MAX_FARM_SLOTS }, (_, i) => {
+          {activeFieldDef.slots.map((i) => {
             if (i < unlockedSlots) return <FarmSlot key={i} slotIndex={i} onOpenSeedPicker={setPickerSlot} onHarvested={(r) => { setHarvestResult(r); syncAfterHarvest() }} />
             if (i === unlockedSlots) return <LockedSlot key={i} slotIndex={i} onUnlock={handleUnlock} />
             const fade = Math.max(0.18, 0.45 - (i - unlockedSlots - 1) * 0.08)
@@ -1738,6 +2282,9 @@ export function FarmPage() {
                 <span className="text-gray-500 text-base">🔒</span>
                 {SLOT_UNLOCK_COSTS[i] != null && (
                   <span className="text-[8px] font-mono text-gray-500">🪙 {SLOT_UNLOCK_COSTS[i]!.toLocaleString()}</span>
+                )}
+                {SLOT_UNLOCK_REQUIREMENTS[i]?.farmerLevel > 0 && (
+                  <span className="text-[7px] font-mono text-gray-600">Farmer LVL {SLOT_UNLOCK_REQUIREMENTS[i].farmerLevel}</span>
                 )}
               </div>
             )
@@ -1753,16 +2300,22 @@ export function FarmPage() {
               exit={{ opacity: 0 }}
               className="text-[10px] text-red-400 font-mono text-center mt-2"
             >
-              Not enough gold
+              Requirements not met
             </motion.p>
           )}
         </AnimatePresence>
         {!unlockError && unlockedSlots < MAX_FARM_SLOTS && (
           <p className="text-[9px] text-gray-400 font-mono text-center mt-2">
             Next plot · 🪙 {(SLOT_UNLOCK_COSTS[unlockedSlots] ?? 0).toLocaleString()} gold
+            {(SLOT_UNLOCK_REQUIREMENTS[unlockedSlots]?.farmerLevel ?? 0) > 0 && (
+              <span> · Farmer LVL {SLOT_UNLOCK_REQUIREMENTS[unlockedSlots].farmerLevel}</span>
+            )}
           </p>
         )}
       </div>
+
+      {/* ── Farmhouse ── */}
+      <FarmhouseSection farmerLevel={farmerLevel} farmhouseLevel={farmhouseLevel} onUpgrade={upgradeFarmhouse} />
 
       {/* ── Seed Zips ── */}
       <SeedZipSection />

@@ -33,6 +33,7 @@ export const IPC_CHANNELS = {
     getKeystrokesByApp: 'db:getKeystrokesByApp',
     getSkillXP: 'db:getSkillXP',
     addSkillXP: 'db:addSkillXP',
+    resetSkillXP: 'db:resetSkillXP',
     getAllSkillXP: 'db:getAllSkillXP',
     restoreSkillXP: 'db:restoreSkillXP',
     getActiveGoals: 'db:getActiveGoals',

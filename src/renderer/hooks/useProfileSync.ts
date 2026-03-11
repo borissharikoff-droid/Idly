@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuthStore } from '../stores/authStore'
-import { computeTotalSkillLevel } from '../lib/skills'
+import { computeTotalSkillLevelWithPrestige } from '../lib/skills'
 import { getEquippedBadges, getEquippedFrame } from '../lib/cosmetics'
 import { detectPersona } from '../lib/persona'
 import { syncCosmeticsToSupabase, syncInventoryToSupabase, syncSkillsToSupabase } from '../services/supabaseSync'
@@ -11,6 +11,28 @@ import { ensureInventoryHydrated, useInventoryStore } from '../stores/inventoryS
 import { useFarmStore } from '../stores/farmStore'
 import { useGoldStore } from '../stores/goldStore'
 import { getEquippedPerkRuntime } from '../lib/loot'
+
+/** Merge cloud skill XP into localStorage so secondary skills (farmer, chef, warrior, crafter)
+ *  reflect admin grants or cross-device progress. Takes MAX of local vs cloud. */
+function restoreCloudSkillsToLocalStorage(cloudRows: { skill_id: string; total_xp: number }[]) {
+  try {
+    const stored = JSON.parse(localStorage.getItem('grindly_skill_xp') || '{}') as Record<string, number>
+    let changed = false
+    for (const row of cloudRows) {
+      const localXp = stored[row.skill_id] ?? 0
+      if (row.total_xp > localXp) {
+        stored[row.skill_id] = row.total_xp
+        changed = true
+      }
+    }
+    if (changed) {
+      localStorage.setItem('grindly_skill_xp', JSON.stringify(stored))
+      window.dispatchEvent(new CustomEvent('grindly-skill-xp-updated'))
+    }
+  } catch {
+    // ignore storage errors
+  }
+}
 
 export function useProfileSync() {
   const { user } = useAuthStore()
@@ -43,7 +65,7 @@ export function useProfileSync() {
       let totalSkillXp = 0
       if (api?.db?.getAllSkillXP) {
         const rows = (await api.db.getAllSkillXP()) as { skill_id: string; total_xp: number }[]
-        totalSkillLevel = computeTotalSkillLevel(rows || [])
+        totalSkillLevel = computeTotalSkillLevelWithPrestige(rows || [])
         totalSkillXp = (rows || []).reduce((sum, row) => sum + Math.max(0, row.total_xp ?? 0), 0)
       }
       const [streak] = await Promise.all([
@@ -109,6 +131,9 @@ export function useProfileSync() {
             .then((result) => {
               if (result.ok) {
                 setSyncState({ status: 'success', at: result.lastSkillSyncAt })
+                if (result.cloudSkillRows?.length) {
+                  restoreCloudSkillsToLocalStorage(result.cloudSkillRows)
+                }
                 return
               }
               setSyncState({ status: 'error', error: result.error ?? 'Skill sync failed' })
@@ -135,6 +160,10 @@ export function useProfileSync() {
             // Restore cloud skill XP to local SQLite if local was empty (e.g. fresh install)
             if (result.cloudSkillRows?.length && api.db.restoreSkillXP) {
               api.db.restoreSkillXP(result.cloudSkillRows).catch(() => {})
+            }
+            // Also restore cloud XP to localStorage (secondary skills like farmer/chef/warrior/crafter read from here)
+            if (result.cloudSkillRows?.length) {
+              restoreCloudSkillsToLocalStorage(result.cloudSkillRows)
             }
             return
           }

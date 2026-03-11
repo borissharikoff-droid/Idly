@@ -66,6 +66,15 @@ export const CRAFT_INTERMEDIATE_ITEMS: LootItemDef[] = [
     description: 'Instantly completes one dungeon run. Consume on auto-farm.',
     perkType: 'cosmetic', perkValue: 0, perkDescription: 'Consumable — auto-runs one dungeon',
   },
+  {
+    id: 'death_insurance',
+    name: 'Death Insurance',
+    slot: 'material',
+    rarity: 'rare',
+    icon: '📜',
+    description: 'A protective ward. Auto-consumed on arena death to prevent item loss.',
+    perkType: 'cosmetic', perkValue: 0, perkDescription: 'Consumable — prevents item loss on death',
+  },
 ]
 
 // ── Craftable output items ────────────────────────────────────────────────────
@@ -113,7 +122,11 @@ export const CRAFT_LOOT_ITEMS: LootItemDef[] = [
     description: 'A robe woven from ancient dust.',
     perkType: 'hp_boost',
     perkValue: 20,
-    perkDescription: '+20 HP',
+    perkDescription: '+20 HP · +2 DEF',
+    perks: [
+      { perkType: 'hp_boost', perkValue: 20, perkDescription: '+20 HP' },
+      { perkType: 'def_boost', perkValue: 2, perkDescription: '+2 DEF' },
+    ],
   },
   {
     id: 'craft_void_blade',
@@ -137,6 +150,10 @@ export const CRAFT_LOOT_ITEMS: LootItemDef[] = [
     description: 'A rubbery shield coated in hardened slime gel.',
     perkType: 'hp_boost',
     perkValue: 8,
+    perks: [
+      { perkType: 'hp_boost', perkValue: 8, perkDescription: '+8 HP' },
+      { perkType: 'def_boost', perkValue: 1, perkDescription: '+1 DEF' },
+    ],
     perkDescription: '+8 HP',
   },
   {
@@ -170,10 +187,11 @@ export const CRAFT_LOOT_ITEMS: LootItemDef[] = [
     description: 'Heavy armor forged from orc shards and fang bindings.',
     perkType: 'hp_boost',
     perkValue: 15,
-    perkDescription: '+15 HP · +3 ATK',
+    perkDescription: '+15 HP · +3 ATK · +2 DEF',
     perks: [
       { perkType: 'hp_boost', perkValue: 15, perkDescription: '+15 HP' },
       { perkType: 'atk_boost', perkValue: 3, perkDescription: '+3 ATK' },
+      { perkType: 'def_boost', perkValue: 2, perkDescription: '+2 DEF' },
     ],
   },
   {
@@ -185,10 +203,11 @@ export const CRAFT_LOOT_ITEMS: LootItemDef[] = [
     description: 'A thick cloak of troll hide — regenerates the wearer.',
     perkType: 'hp_boost',
     perkValue: 25,
-    perkDescription: '+25 HP · +5 HP Regen/s',
+    perkDescription: '+25 HP · +5 HP Regen/s · +4 DEF',
     perks: [
       { perkType: 'hp_boost', perkValue: 25, perkDescription: '+25 HP' },
       { perkType: 'hp_regen_boost', perkValue: 5, perkDescription: '+5 HP Regen/s' },
+      { perkType: 'def_boost', perkValue: 4, perkDescription: '+4 DEF' },
     ],
   },
   {
@@ -232,10 +251,11 @@ export const CRAFT_LOOT_ITEMS: LootItemDef[] = [
     description: 'Armor fueled by a troll heart — regenerates endlessly.',
     perkType: 'hp_boost',
     perkValue: 40,
-    perkDescription: '+40 HP · +8 HP Regen/s',
+    perkDescription: '+40 HP · +8 HP Regen/s · +6 DEF',
     perks: [
       { perkType: 'hp_boost', perkValue: 40, perkDescription: '+40 HP' },
       { perkType: 'hp_regen_boost', perkValue: 8, perkDescription: '+8 HP Regen/s' },
+      { perkType: 'def_boost', perkValue: 6, perkDescription: '+6 DEF' },
     ],
   },
   {
@@ -298,6 +318,8 @@ export interface CraftRecipe {
   xpPerItem: number
   /** Base real-world seconds to craft one item (before level speed perk). */
   secPerItem: number
+  /** Gold cost per craft (optional — advanced recipes only). */
+  goldCost?: number
   /** Whether this is an intermediate refining step (vs. a final equippable item). */
   isIntermediate?: boolean
 }
@@ -323,6 +345,16 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     levelRequired: 5,
     xpPerItem: 40,
     secPerItem: 15,
+  },
+  {
+    id: 'recipe_death_insurance',
+    outputItemId: 'death_insurance',
+    outputQty: 1,
+    isIntermediate: true,
+    ingredients: [{ id: 'iron_bar', qty: 1 }, { id: 'magic_essence', qty: 2 }],
+    levelRequired: 20,
+    xpPerItem: 80,
+    secPerItem: 60,
   },
   // ── Tier 1 — Refine raw materials into intermediate components ─────────────
   {
@@ -415,6 +447,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     levelRequired: 30,
     xpPerItem: 130,
     secPerItem: 600,
+    goldCost: 500,
   },
   {
     // Ancient Dust × 2 + Orchids × 2 → Scale Robe
@@ -428,6 +461,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     levelRequired: 45,
     xpPerItem: 260,
     secPerItem: 1200,
+    goldCost: 1500,
   },
   {
     // Void Fragment × 2 + Star Bloom × 2 → Void Blade
@@ -441,6 +475,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     levelRequired: 65,
     xpPerItem: 650,
     secPerItem: 2700,
+    goldCost: 3000,
   },
 
   // ── Tier 3 — Zone-drop gear (arena mob materials + farm plants + intermediates)
@@ -483,6 +518,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     levelRequired: 20,
     xpPerItem: 100,
     secPerItem: 480,
+    goldCost: 300,
   },
   {
     // Orc Shard × 3 + Fang Shard × 2 + Orchids × 2 → Orc Plate
@@ -497,6 +533,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     levelRequired: 35,
     xpPerItem: 200,
     secPerItem: 900,
+    goldCost: 800,
   },
   {
     // Troll Hide × 3 + Essence Vial × 1 + Orchids × 2 → Troll Cloak
@@ -511,6 +548,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     levelRequired: 50,
     xpPerItem: 400,
     secPerItem: 1800,
+    goldCost: 2000,
   },
   {
     // Dragon Scale × 3 + Void Fragment × 1 + Star Bloom × 2 → Dragon Crown
@@ -525,6 +563,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     levelRequired: 70,
     xpPerItem: 850,
     secPerItem: 3600,
+    goldCost: 5000,
   },
 
   // ── Tier 4 — Boss-material gear (require boss-exclusive drops) ──────────────
@@ -541,6 +580,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     levelRequired: 40,
     xpPerItem: 350,
     secPerItem: 1500,
+    goldCost: 1500,
   },
   {
     // Troll Heart × 2 + Troll Hide × 5 + Ancient Dust × 2 + Crystal Root × 1 → Troll Aegis
@@ -556,6 +596,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     levelRequired: 60,
     xpPerItem: 700,
     secPerItem: 3000,
+    goldCost: 4000,
   },
   {
     // Dragon Heart × 2 + Dragon Scale × 5 + Void Fragment × 2 + Star Bloom × 3 → Dragonfire Blade
@@ -571,6 +612,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     levelRequired: 80,
     xpPerItem: 1500,
     secPerItem: 5400,
+    goldCost: 8000,
   },
 ]
 
@@ -655,6 +697,7 @@ const MATERIAL_NAMES: Record<string, string> = {
 export function rollSessionMaterialDrops(
   topCategory: string | null,
   durationHours: number,
+  clearedZones: string[] = [],
 ): SessionMaterialDrop[] {
   if (durationHours < 0.5) return []
 
@@ -667,12 +710,12 @@ export function rollSessionMaterialDrops(
     drops.push({ id: primaryId, name: MATERIAL_NAMES[primaryId], qty: 1 })
   }
 
-  if (durationHours >= 2.0) {
+  if (durationHours >= 2.0 && clearedZones.includes('zone3')) {
     const rareMat = Math.random() < 0.5 ? 'magic_essence' : 'ancient_scale'
     drops.push({ id: rareMat, name: MATERIAL_NAMES[rareMat], qty: 1 })
   }
 
-  if (durationHours >= 3.0 && Math.random() < 0.50) {
+  if (durationHours >= 3.0 && clearedZones.includes('zone5') && Math.random() < 0.50) {
     drops.push({ id: 'void_crystal', name: 'Void Crystal', qty: 1 })
   }
 

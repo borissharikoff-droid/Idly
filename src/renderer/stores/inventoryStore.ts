@@ -59,15 +59,15 @@ interface InventoryState {
   consumePotion: (itemId: string) => boolean
   /** Merge cloud data into local (takes max). Used after sync. */
   mergeFromCloud: (items: Record<string, number>, chests: Record<ChestType, number>) => void
-  permanentStats: { atk: number; hp: number; hpRegen: number }
+  permanentStats: { atk: number; hp: number; hpRegen: number; def: number }
 }
 
 const STORAGE_KEY = 'grindly_inventory_state_v2'
-// Economy: chests from grinding are extremely rare — arena bosses are the primary loot source.
+// Economy: chests from grinding are rare — arena bosses are the primary loot source.
 // - cooldown: 3600s (1 hr)
-// - base chance: 0.02%/min → ~1.2% per hour → ~1 chest per 80+ hours grinding
+// - base chance: 0.05%/min → ~3% per hour → ~1 chest per 33 hours grinding
 const SKILL_DROP_COOLDOWN_MS = 3_600_000
-const BASE_DROP_PER_MINUTE = 0.0002
+const BASE_DROP_PER_MINUTE = 0.0005
 
 
 const initialState: Omit<InventoryState, 'hydrate' | 'addItem' | 'addChest' | 'claimPendingReward' | 'claimAllPendingRewards' | 'rollSkillGrindDrop' | 'rollSessionChestDrop' | 'openChestAndGrantItem' | 'equipItem' | 'unequipSlot' | 'mergeFromCloud' | 'consumePotion' | 'deletePendingReward' | 'deleteChest' | 'deleteItem'> = {
@@ -86,7 +86,7 @@ const initialState: Omit<InventoryState, 'hydrate' | 'addItem' | 'addChest' | 'c
     rollsSinceLegendaryChest: 0,
   },
   lastSkillDropAt: 0,
-  permanentStats: { atk: 0, hp: 0, hpRegen: 0 },
+  permanentStats: { atk: 0, hp: 0, hpRegen: 0, def: 0 },
 }
 
 function saveSnapshot(state: InventoryState): void {
@@ -148,6 +148,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
           atk: (snapshot as { permanentStats?: { atk?: number } }).permanentStats?.atk ?? 0,
           hp: (snapshot as { permanentStats?: { hp?: number } }).permanentStats?.hp ?? 0,
           hpRegen: (snapshot as { permanentStats?: { hpRegen?: number } }).permanentStats?.hpRegen ?? 0,
+          def: (snapshot as { permanentStats?: { def?: number } }).permanentStats?.def ?? 0,
         },
       }
     })
@@ -327,18 +328,30 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     const state = get()
     const qty = state.items[itemId] ?? 0
     if (qty <= 0) return false
-    const potionIndex = POTION_IDS.indexOf(itemId as (typeof POTION_IDS)[number])
-    if (potionIndex === -1) return false
+    if (!POTION_IDS.includes(itemId as (typeof POTION_IDS)[number])) return false
     const { permanentStats } = state
-    let nextStats: { atk: number; hp: number; hpRegen: number } | null = null
+    let nextStats: { atk: number; hp: number; hpRegen: number; def: number } | null = null
     if (itemId === 'atk_potion' && permanentStats.atk < POTION_MAX) {
       nextStats = { ...permanentStats, atk: permanentStats.atk + 1 }
     } else if (itemId === 'hp_potion' && permanentStats.hp < POTION_MAX) {
       nextStats = { ...permanentStats, hp: permanentStats.hp + 1 }
     } else if (itemId === 'regen_potion' && permanentStats.hpRegen < POTION_MAX) {
       nextStats = { ...permanentStats, hpRegen: permanentStats.hpRegen + 1 }
+    } else if (itemId === 'def_potion' && permanentStats.def < POTION_MAX) {
+      nextStats = { ...permanentStats, def: permanentStats.def + 1 }
     }
-    if (!nextStats) return false
+
+    // At cap: convert excess potion to 100 gold instead of wasting it
+    if (!nextStats) {
+      const nextItems = { ...state.items, [itemId]: qty - 1 }
+      if (nextItems[itemId] === 0) delete nextItems[itemId]
+      const nextState: InventoryState = { ...state, items: nextItems }
+      set(nextState)
+      saveSnapshot(nextState)
+      useGoldStore.getState().addGold(100)
+      return true
+    }
+
     const nextItems = { ...state.items, [itemId]: qty - 1 }
     if (nextItems[itemId] === 0) delete nextItems[itemId]
     const nextState: InventoryState = { ...state, items: nextItems, permanentStats: nextStats }

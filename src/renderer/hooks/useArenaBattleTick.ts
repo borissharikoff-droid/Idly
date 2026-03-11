@@ -4,7 +4,7 @@ import { useInventoryStore } from '../stores/inventoryStore'
 import { useToastStore } from '../stores/toastStore'
 import { useNotificationStore } from '../stores/notificationStore'
 import { LOOT_ITEMS, type ChestType } from '../lib/loot'
-import { BOSS_WARRIOR_XP, ZONES, canAffordEntry } from '../lib/combat'
+import { BOSS_WARRIOR_XP, ZONES, canAffordEntry, type FoodLoadout } from '../lib/combat'
 import type { TabId } from '../App'
 
 function formatShort(n: number): string {
@@ -30,6 +30,7 @@ interface AutoAcc {
   failedAt?: string
   lostItem?: { name: string; icon: string } | null
   passesUsed: number
+  foodLoadout?: FoodLoadout
 }
 
 let autoAcc: AutoAcc | null = null
@@ -111,14 +112,8 @@ export function useArenaBattleTick(activeTab: TabId) {
                 }
               }
             }
-            const bs = activeBattle.bossSnapshot
-            const ps = activeBattle.playerSnapshot
-            const tWin = bs.hp / ps.atk
-            const minDmgFraction = 0.20
-            const eDPS = Math.max(bs.atk * minDmgFraction, bs.atk - ps.hpRegen)
-            const tLose = eDPS > 0 ? ps.hp / eDPS : Infinity
-            const fightDuration = Math.min(tWin, tLose)
-            const fightEndTime = activeBattle.startTime + fightDuration * 1000
+            // Use actual elapsed time (dynamic damage means formula-based duration is inaccurate)
+            const fightEndTime = Date.now()
             completedRef.current = false
             useArenaStore.getState().advanceDungeon(fightEndTime)
           }
@@ -166,7 +161,8 @@ export function useArenaBattleTick(activeTab: TabId) {
                 autoAcc.remaining--
                 autoAcc.passesUsed++
                 completedRef.current = false
-                setTimeout(() => useArenaStore.getState().startDungeon(autoAcc!.zoneId), 400)
+                const chainFood = autoAcc!.foodLoadout
+                setTimeout(() => useArenaStore.getState().startDungeon(autoAcc!.zoneId, null, chainFood), 400)
               } else {
                 finishAutoRun()
               }
@@ -175,7 +171,6 @@ export function useArenaBattleTick(activeTab: TabId) {
             }
           } else {
             // Boss defeat
-            void goldLost
             autoAcc.failed = true
             autoAcc.failedAt = bossName
             autoAcc.lostItem = lostItem

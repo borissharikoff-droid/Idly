@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS public.user_skills (
   skill_id TEXT NOT NULL,
   level INTEGER DEFAULT 0,
   total_xp INTEGER DEFAULT 0,
+  prestige_count INTEGER DEFAULT 0,
   updated_at TIMESTAMPTZ DEFAULT now(),
   UNIQUE(user_id, skill_id)
 );

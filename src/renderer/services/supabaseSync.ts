@@ -5,7 +5,7 @@
  */
 
 import { supabase } from '../lib/supabase'
-import { skillLevelFromXP, SKILLS, normalizeSkillId } from '../lib/skills'
+import { skillLevelFromXP, SKILLS, normalizeSkillId, getPrestigeCounts } from '../lib/skills'
 import { isSeedId, isSeedZipId, seedZipTierFromItemId, SEED_ZIP_ITEM_IDS, type SeedZipTier } from '../lib/farming'
 import type { ChestType } from '../lib/loot'
 
@@ -56,6 +56,7 @@ type SkillPayloadFull = {
   skill_id: string
   level: number
   total_xp: number
+  prestige_count: number
   updated_at: string
 }
 
@@ -71,6 +72,7 @@ type ExistingSkillRow = {
   skill_id: string
   level?: number | null
   total_xp?: number | null
+  prestige_count?: number | null
 }
 
 function mergeSkillPayload(
@@ -80,10 +82,12 @@ function mergeSkillPayload(
   const existingLevel = Math.max(0, Math.floor(existing?.level ?? 0))
   const existingXp = Math.max(0, Math.floor(existing?.total_xp ?? 0))
   const mergedXp = Math.max(local.total_xp, existingXp)
+  const existingPrestige = Math.max(0, Math.floor(existing?.prestige_count ?? 0))
   return {
     ...local,
     total_xp: mergedXp,
     level: Math.max(local.level, existingLevel, skillLevelFromXP(mergedXp)),
+    prestige_count: Math.max(local.prestige_count, existingPrestige),
   }
 }
 
@@ -97,7 +101,7 @@ async function manualSyncWithoutConflict(
   const existingRes = await withTimeout(
     supabase
       .from('user_skills')
-      .select('id, skill_id, level, total_xp')
+      .select('id, skill_id, level, total_xp, prestige_count')
       .eq('user_id', userId),
     10000,
     'user_skills select existing',
@@ -121,6 +125,7 @@ async function manualSyncWithoutConflict(
           .update({
             level: merged.level,
             total_xp: merged.total_xp,
+            prestige_count: merged.prestige_count,
             updated_at: merged.updated_at,
           })
           .eq('id', existing.id),
@@ -204,6 +209,7 @@ export async function syncSkillsToSupabase(
       }
 
       const syncAt = new Date().toISOString()
+      const prestigeCounts = getPrestigeCounts()
       const localPayload = SKILLS.map((skill) => {
         const total_xp = xpMap.get(skill.id) ?? 0
         const level = skillLevelFromXP(total_xp)
@@ -212,13 +218,14 @@ export async function syncSkillsToSupabase(
           skill_id: skill.id,
           level,
           total_xp,
+          prestige_count: prestigeCounts[skill.id] ?? 0,
           updated_at: syncAt,
         }
       })
       const existingRes = await withTimeout(
         supabase
           .from('user_skills')
-          .select('id, skill_id, level, total_xp')
+          .select('id, skill_id, level, total_xp, prestige_count')
           .eq('user_id', user.id),
         10000,
         'user_skills select existing before upsert',

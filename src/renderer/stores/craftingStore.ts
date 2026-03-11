@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import { CRAFT_RECIPE_MAP, canAffordRecipe, getCrafterSpeedMultiplier, getCrafterDoubleChance } from '../lib/crafting'
 import { skillLevelFromXP, getGrindlyLevel, computeGrindlyBonuses } from '../lib/skills'
 import { recordCraftComplete } from '../services/dailyActivityService'
+import { useAchievementStatsStore } from './achievementStatsStore'
+import { useGoldStore } from './goldStore'
 
 const STORAGE_KEY = 'grindly_crafting_v2'
 
@@ -38,7 +40,7 @@ interface CraftingState {
     qty: number,
     itemsOwned: Record<string, number>,
     onConsume: (id: string, qty: number) => void,
-  ) => 'ok' | 'not_enough' | 'invalid'
+  ) => 'ok' | 'not_enough' | 'no_gold' | 'invalid'
 
   /**
    * Advance the active job based on wall time. Call every ~2s from App.
@@ -104,9 +106,19 @@ export const useCraftingStore = create<CraftingState>((set, get) => ({
     if (!recipe) return 'invalid'
     if (!canAffordRecipe(recipe, qty, itemsOwned)) return 'not_enough'
 
-    // Consume all ingredients upfront (OSRS-style)
+    // Check gold cost (gold sink for high-tier recipes)
+    const totalGoldCost = (recipe.goldCost ?? 0) * qty
+    if (totalGoldCost > 0) {
+      const goldState = useGoldStore.getState()
+      if (goldState.gold < totalGoldCost) return 'no_gold'
+    }
+
+    // Consume all ingredients upfront (OSRS-style), then deduct gold
     for (const ing of recipe.ingredients) {
       onConsume(ing.id, ing.qty * qty)
+    }
+    if (totalGoldCost > 0) {
+      useGoldStore.getState().addGold(-totalGoldCost)
     }
 
     const now = Date.now()
@@ -171,6 +183,7 @@ export const useCraftingStore = create<CraftingState>((set, get) => ({
     let newActiveJob: CraftJob | null
     if (newDone >= activeJob.totalQty) {
       recordCraftComplete()
+      useAchievementStatsStore.getState().incrementCrafts()
       const next = newQueue.shift() ?? null
       newActiveJob = next ? { ...next, startedAt: now, doneQty: 0 } : null
     } else {

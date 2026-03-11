@@ -6,9 +6,6 @@ import { useProfileSync, usePresenceSync } from './hooks/useProfileSync'
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { BottomNav } from './components/layout/BottomNav'
 import { HomePage } from './components/home/HomePage'
-import { ProfilePage } from './components/profile/ProfilePage'
-import { SettingsPage } from './components/settings/SettingsPage'
-import { SkillsPage } from './components/skills/SkillsPage'
 import { StreakOverlay } from './components/animations/StreakOverlay'
 import { LootDrop } from './components/alerts/LootDrop'
 import { ChestDrop } from './components/alerts/ChestDrop'
@@ -21,12 +18,13 @@ import { useGoldStore } from './stores/goldStore'
 import { useAuthStore } from './stores/authStore'
 import { MessageBanner } from './components/alerts/MessageBanner'
 import { SkillLevelUpModal } from './components/home/SkillLevelUpModal'
-import { InventoryPage } from './components/inventory/InventoryPage'
 import { useFriends } from './hooks/useFriends'
 import { useMessageNotifier } from './hooks/useMessageNotifier'
 import { useAnnouncements } from './hooks/useAnnouncements'
+import { usePolls } from './hooks/usePolls'
 import { useMarketplaceSaleNotifier } from './hooks/useMarketplaceSaleNotifier'
 import { useCraftTick } from './hooks/useCraftTick'
+import { useCookingTick } from './hooks/useCookingTick'
 import { UpdateBanner } from './components/UpdateBanner'
 import { useSessionStore } from './stores/sessionStore'
 import { useChatTargetStore } from './stores/chatTargetStore'
@@ -38,10 +36,12 @@ import { MOTION } from './lib/motion'
 import { PageLoading } from './components/shared/PageLoading'
 import { BOSSES, ZONES } from './lib/combat'
 import { CRAFT_RECIPES } from './lib/crafting'
+import { useAchievementStatsStore } from './stores/achievementStatsStore'
 import { applyAdminConfig, syncAdminConfigFromSupabase } from './lib/itemConfig'
 import { useAdminConfigStore } from './stores/adminConfigStore'
 import { supabase } from './lib/supabase'
 import { useNavigationStore } from './stores/navigationStore'
+import { useWhatsNew, WhatsNewModal } from './components/WhatsNewModal'
 
 // Apply cached admin overrides before first render (populated after first Supabase sync)
 applyAdminConfig(LOOT_ITEMS, BOSSES, ZONES, CRAFT_RECIPES)
@@ -80,12 +80,17 @@ class PageErrorBoundary extends Component<
   }
 }
 
+const InventoryPage = lazy(() => import('./components/inventory/InventoryPage').then((m) => ({ default: m.InventoryPage })))
+const SkillsPage = lazy(() => import('./components/skills/SkillsPage').then((m) => ({ default: m.SkillsPage })))
+const ProfilePage = lazy(() => import('./components/profile/ProfilePage').then((m) => ({ default: m.ProfilePage })))
+const SettingsPage = lazy(() => import('./components/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })))
 const StatsPage = lazy(() => import('./components/stats/StatsPage').then((m) => ({ default: m.StatsPage })))
 const FriendsPage = lazy(() => import('./components/friends/FriendsPage').then((m) => ({ default: m.FriendsPage })))
 const MarketplacePage = lazy(() => import('./components/marketplace/MarketplacePage').then((m) => ({ default: m.MarketplacePage })))
 const ArenaPage = lazy(() => import('./components/arena/ArenaPage').then((m) => ({ default: m.ArenaPage })))
 const FarmPage = lazy(() => import('./components/farm/FarmPage').then((m) => ({ default: m.FarmPage })))
 const CraftPage = lazy(() => import('./components/craft/CraftPage').then((m) => ({ default: m.CraftPage })))
+const CookingPage = lazy(() => import('./components/cooking/CookingPage').then((m) => ({ default: m.CookingPage })))
 
 function PageFallback() {
   return (
@@ -125,7 +130,7 @@ function MarketplaceFallback() {
   )
 }
 
-export type TabId = 'home' | 'inventory' | 'skills' | 'stats' | 'profile' | 'friends' | 'marketplace' | 'arena' | 'farm' | 'craft' | 'settings'
+export type TabId = 'home' | 'inventory' | 'skills' | 'stats' | 'profile' | 'friends' | 'marketplace' | 'arena' | 'farm' | 'craft' | 'cooking' | 'settings'
 
 const PAGE_SLIDE = {
   initial: { opacity: 0 },
@@ -159,6 +164,7 @@ export default function App() {
     setActiveTab(tab)
   }, [])
   useEffect(() => { useNavigationStore.getState().setNavigateTo(navigateTo) }, [navigateTo])
+  useEffect(() => { useAchievementStatsStore.getState().hydrate() }, [])
   const [showStreak, setShowStreak] = useState(false)
   const [streakCount, setStreakCount] = useState(0)
   const [healthIssues, setHealthIssues] = useState<string[]>([])
@@ -188,9 +194,12 @@ export default function App() {
   const friendsModel = useFriends() // single orchestrator for friends/presence/notifications
   useMessageNotifier() // sound, taskbar badge, toasts on new messages
   useAnnouncements()   // fetch missed + realtime announcements → notification bell
+  usePolls()           // fetch active polls → voting modal
   useMarketplaceSaleNotifier() // bell notification when someone buys the user's listing
   useArenaBattleTick(activeTab) // battle completion: toast+bell when off Arena, modal when on Arena
   useCraftTick()                // crafting job queue — runs on all tabs
+  useCookingTick()              // cooking job queue — runs on all tabs
+  const whatsNew = useWhatsNew()
   const arenaResultModal = useArenaStore((s) => s.resultModal)
   const setArenaResultModal = useArenaStore((s) => s.setResultModal)
   const arenaAutoRunning = useArenaStore((s) => s.isAutoRunning)
@@ -397,12 +406,16 @@ export default function App() {
               )}
               {activeTab === 'inventory' && (
                 <motion.div key="inventory" variants={PAGE_SLIDE} initial="initial" animate="animate">
-                  <InventoryPage onBack={() => navigateTo('home')} onNavigateFarm={handleNavigateFarm} />
+                  <Suspense fallback={<PageFallback />}>
+                    <InventoryPage onBack={() => navigateTo('home')} onNavigateFarm={handleNavigateFarm} />
+                  </Suspense>
                 </motion.div>
               )}
               {activeTab === 'skills' && (
                 <motion.div key="skills" variants={PAGE_SLIDE} initial="initial" animate="animate">
-                  <SkillsPage />
+                  <Suspense fallback={<PageFallback />}>
+                    <SkillsPage />
+                  </Suspense>
                 </motion.div>
               )}
               {activeTab === 'stats' && (
@@ -414,7 +427,9 @@ export default function App() {
               )}
               {activeTab === 'profile' && (
                 <motion.div key="profile" variants={PAGE_SLIDE} initial="initial" animate="animate">
-                  <ProfilePage onBack={() => navigateTo('home')} />
+                  <Suspense fallback={<PageFallback />}>
+                    <ProfilePage onBack={() => navigateTo('home')} />
+                  </Suspense>
                 </motion.div>
               )}
               {activeTab === 'friends' && (
@@ -456,9 +471,18 @@ export default function App() {
                   </Suspense>
                 </motion.div>
               )}
+              {activeTab === 'cooking' && (
+                <motion.div key="cooking" variants={PAGE_SLIDE} initial="initial" animate="animate">
+                  <Suspense fallback={<PageFallback />}>
+                    <CookingPage />
+                  </Suspense>
+                </motion.div>
+              )}
               {activeTab === 'settings' && (
                 <motion.div key="settings" variants={PAGE_SLIDE} initial="initial" animate="animate">
-                  <SettingsPage />
+                  <Suspense fallback={<PageFallback />}>
+                    <SettingsPage />
+                  </Suspense>
                 </motion.div>
               )}
             </>
@@ -491,6 +515,7 @@ export default function App() {
           />
           <MessageBanner onNavigateToChat={handleNavigateToChat} />
           <SkillLevelUpModal />
+          <WhatsNewModal patch={whatsNew.patch} open={whatsNew.showModal} onClose={whatsNew.closeModal} />
           </div>
       </MotionConfig>
     </AuthGate>

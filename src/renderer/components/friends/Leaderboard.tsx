@@ -104,16 +104,21 @@ export function Leaderboard({ onSelectUser }: LeaderboardProps) {
           // session_summaries table may not exist yet
         }
 
-        const skillsByUser = new Map<string, Map<string, { skill_id: string; level: number }>>()
+        const skillsByUser = new Map<string, Map<string, { skill_id: string; level: number; prestige_count: number }>>()
         try {
-          const { data: skillsRows } = await supabase.from('user_skills').select('user_id, skill_id, level, total_xp').in('user_id', ids)
+          const { data: skillsRows } = await supabase.from('user_skills').select('user_id, skill_id, level, total_xp, prestige_count').in('user_id', ids)
           for (const row of skillsRows || []) {
-            const r = row as { user_id: string; skill_id: string; level: number | null; total_xp?: number | null }
-            const userSkillMap = skillsByUser.get(r.user_id) || new Map<string, { skill_id: string; level: number }>()
+            const r = row as { user_id: string; skill_id: string; level: number | null; total_xp?: number | null; prestige_count?: number | null }
+            const userSkillMap = skillsByUser.get(r.user_id) || new Map<string, { skill_id: string; level: number; prestige_count: number }>()
             const skill_id = normalizeSkillId(r.skill_id)
             const level = Math.max(r.level ?? 0, skillLevelFromXP(r.total_xp ?? 0))
+            const prestige_count = Math.max(0, r.prestige_count ?? 0)
             const prev = userSkillMap.get(skill_id)
-            userSkillMap.set(skill_id, { skill_id, level: Math.max(prev?.level ?? 0, level) })
+            userSkillMap.set(skill_id, {
+              skill_id,
+              level: Math.max(prev?.level ?? 0, level),
+              prestige_count: Math.max(prev?.prestige_count ?? 0, prestige_count),
+            })
             skillsByUser.set(r.user_id, userSkillMap)
           }
         } catch {
@@ -122,9 +127,12 @@ export function Leaderboard({ onSelectUser }: LeaderboardProps) {
 
         const list: LeaderboardRow[] = (profiles || []).map((p) => {
           const allSkills = Array.from((skillsByUser.get(p.id) || new Map()).values())
-          const total_skill_level = allSkills.length > 0
+          const baseLevel = allSkills.length > 0
             ? computeTotalSkillLevelFromLevels(allSkills)
             : (p.level ?? 0)
+          // Add prestige bonus: each prestige = +99 bonus levels for that skill
+          const prestigeBonus = allSkills.reduce((sum, s) => sum + (s.prestige_count ?? 0) * 99, 0)
+          const total_skill_level = baseLevel + prestigeBonus
           return {
             id: p.id,
             username: p.username,

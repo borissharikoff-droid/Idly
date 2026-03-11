@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-export type NotificationType = 'friend_levelup' | 'update' | 'progression' | 'arena_result' | 'marketplace_sale'
+export type NotificationType = 'friend_levelup' | 'update' | 'progression' | 'arena_result' | 'marketplace_sale' | 'poll' | 'patch_notes'
 
 export interface Notification {
   id: string
@@ -30,6 +30,11 @@ export interface Notification {
     rewardId: string
     chestType: string
   }
+  poll?: {
+    pollId: string
+    options: Array<{ id: string; label: string }>
+  }
+  patchVersion?: string
 }
 
 interface NotificationStore {
@@ -42,7 +47,7 @@ interface NotificationStore {
 }
 
 const MAX = 50
-const ALLOWED_TYPES: NotificationType[] = ['update', 'friend_levelup', 'progression', 'arena_result', 'marketplace_sale']
+const ALLOWED_TYPES: NotificationType[] = ['update', 'friend_levelup', 'progression', 'arena_result', 'marketplace_sale', 'poll', 'patch_notes']
 
 export const useNotificationStore = create<NotificationStore>((set, get) => ({
   items: [],

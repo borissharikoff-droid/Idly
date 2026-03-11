@@ -33,6 +33,7 @@ export function ItemInspectModal({ item, locked = false, onClose }: ItemInspectM
   const consumed = isPotion
     ? item.id === 'atk_potion' ? permanentStats.atk
       : item.id === 'hp_potion' ? permanentStats.hp
+      : item.id === 'def_potion' ? (permanentStats.def ?? 0)
       : permanentStats.hpRegen
     : 0
   const qty = useInventoryStore.getState().items[item.id] ?? 0
@@ -49,6 +50,7 @@ export function ItemInspectModal({ item, locked = false, onClose }: ItemInspectM
       case 'xp_global_boost':  return [{ value: pct(v),  unit: 'XP',      desc: 'All skills',            color: '#a78bfa' }]
       case 'chest_drop_boost': return [{ value: `+${Math.round(v * 100)}%`, unit: 'Drop', desc: p.perkTarget ?? 'Chests', color: '#fbbf24' }]
       case 'focus_boost':      return [{ value: pct(v),  unit: 'Focus',   desc: 'Focus sessions',        color: '#38bdf8' }]
+      case 'def_boost':        return [{ value: `+${v}`, unit: 'DEF',     desc: 'Defense',               color: '#a3a3a3' }]
       case 'streak_shield':    return [{ value: '1x',    unit: 'Shield',  desc: 'Streak protect',        color: '#f97316' }]
       case 'status_title':     return [{ value: String.fromCharCode(10022), unit: String(p.perkValue || 'Title'), desc: 'Status title', color: theme.color }]
       default: return []

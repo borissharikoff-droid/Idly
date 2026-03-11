@@ -103,8 +103,8 @@ export function SkillLevelUpModal() {
             {appName && appName !== 'Grindly' && (
               <p className="text-[9px] text-gray-600 font-mono mt-1">via {appName}</p>
             )}
-            {reason && (
-              <p className="text-[9px] text-cyber-neon/70 font-mono mt-1">Reason: {reason.description}</p>
+            {reason && skillId && reason.skillXpDelta[skillId] && (
+              <p className="text-[9px] text-gray-500 font-mono mt-2">+{Math.round(reason.skillXpDelta[skillId])} XP earned</p>
             )}
             <div className="mt-4">
               <button

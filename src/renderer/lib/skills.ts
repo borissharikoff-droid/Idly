@@ -52,6 +52,7 @@ export const SKILLS: SkillDef[] = [
   { id: 'farmer', name: 'Farmer', icon: '🌾', color: '#84cc16', category: 'farming' },
   { id: 'warrior', name: 'Warrior', icon: '⚔️', color: '#EF4444', category: 'warrior' },
   { id: 'crafter', name: 'Crafter', icon: '⚒️', color: '#f97316', category: 'crafting' },
+  { id: 'chef', name: 'Chef', icon: '🍳', color: '#fb923c', category: 'cooking' },
   { id: 'grindly', name: 'Grindly', icon: '🏠', color: '#c084fc', category: 'grindly' },
 ]
 
@@ -71,6 +72,7 @@ const CATEGORY_TO_SKILL: Record<string, string> = {
   farming: 'farmer',
   warrior:  'warrior',
   crafting: 'crafter',
+  cooking:  'chef',
   grindly:  'grindly',
   other:    'researcher',
 }
@@ -177,6 +179,8 @@ export interface GrindlyBonuses {
   hp: number
   /** Flat bonus HP regen for combat */
   hpRegen: number
+  /** Flat bonus DEF for combat */
+  def: number
 }
 
 export const GRINDLY_PERK_TABLE: { level: number; label: string }[] = [
@@ -191,19 +195,19 @@ export const GRINDLY_PERK_TABLE: { level: number; label: string }[] = [
   { level: 45, label: '+1 ATK' },
   { level: 50, label: '-5% Craft Time' },
   { level: 55, label: '+5% All Skill XP' },
-  { level: 60, label: '+2 ATK, +10 HP' },
+  { level: 60, label: '+2 ATK, +10 HP, +2 DEF' },
   { level: 65, label: '-5% Craft Time' },
   { level: 70, label: '+5% All Skill XP' },
   { level: 75, label: '+2 ATK, +10 HP, +1 HP Regen' },
   { level: 80, label: '-5% Craft Time' },
   { level: 85, label: '+5% All Skill XP' },
-  { level: 90, label: '+2 ATK, +10 HP, +1 HP Regen' },
+  { level: 90, label: '+2 ATK, +10 HP, +1 HP Regen, +3 DEF' },
   { level: 95, label: '-5% Craft Time' },
   { level: 99, label: '+5% XP, +2 ATK, +10 HP, +1 HP Regen' },
 ]
 
 export function computeGrindlyBonuses(level: number): GrindlyBonuses {
-  let xpPct = 0, craftPct = 0, atk = 0, hp = 0, hpRegen = 0
+  let xpPct = 0, craftPct = 0, atk = 0, hp = 0, hpRegen = 0, def = 0
 
   if (level >= 5)  xpPct += 3
   if (level >= 10) craftPct += 5
@@ -216,22 +220,23 @@ export function computeGrindlyBonuses(level: number): GrindlyBonuses {
   if (level >= 45) atk += 1
   if (level >= 50) craftPct += 5
   if (level >= 55) xpPct += 5
-  if (level >= 60) { atk += 2; hp += 10 }
+  if (level >= 60) { atk += 2; hp += 10; def += 2 }
   if (level >= 65) craftPct += 5
   if (level >= 70) xpPct += 5
   if (level >= 75) { atk += 2; hp += 10; hpRegen += 1 }
   if (level >= 80) craftPct += 5
   if (level >= 85) xpPct += 5
-  if (level >= 90) { atk += 2; hp += 10; hpRegen += 1 }
+  if (level >= 90) { atk += 2; hp += 10; hpRegen += 1; def += 3 }
   if (level >= 95) craftPct += 5
   if (level >= 99) { xpPct += 5; atk += 2; hp += 10; hpRegen += 1 }
 
   return {
     xpMultiplier: 1 + xpPct / 100,
     craftSpeedMultiplier: 1 - craftPct / 100,
-    atk,    // Max: +10
-    hp,     // Max: +50
-    hpRegen // Max: +4
+    atk,     // Max: +10
+    hp,      // Max: +50
+    hpRegen, // Max: +4
+    def,     // Max: +5
   }
 }
 
@@ -243,6 +248,109 @@ export function getGrindlyLevel(): number {
   } catch {
     return 0
   }
+}
+
+// ── Prestige System ──────────────────────────────────────────────────────────
+
+const PRESTIGE_STORAGE_KEY = 'grindly_prestige'
+const MAX_PRESTIGE = 5
+/** XP bonus per prestige tier (+5% per prestige, stacks up to +25%) */
+const PRESTIGE_XP_BONUS_PER_TIER = 0.05
+
+export interface PrestigeTier {
+  tier: number
+  label: string
+  borderColor: string
+  reward?: { type: 'badge' | 'profile_frame' | 'avatar' | 'title'; value: string; label: string }
+}
+
+export const PRESTIGE_TIERS: PrestigeTier[] = [
+  { tier: 1, label: 'Bronze', borderColor: '#cd7f32', reward: { type: 'badge', value: '🥉', label: 'Bronze prestige badge' } },
+  { tier: 2, label: 'Silver', borderColor: '#c0c0c0', reward: { type: 'badge', value: '🥈', label: 'Silver prestige badge' } },
+  { tier: 3, label: 'Gold', borderColor: '#ffd700', reward: { type: 'profile_frame', value: 'prestige_gold', label: 'Gold prestige frame' } },
+  { tier: 4, label: 'Diamond', borderColor: '#b9f2ff', reward: { type: 'avatar', value: '💠', label: 'Diamond prestige avatar' } },
+  { tier: 5, label: 'Void', borderColor: '#9333ea', reward: { type: 'title', value: 'Transcendent', label: 'Transcendent title' } },
+]
+
+/** Get all prestige counts from localStorage. */
+export function getPrestigeCounts(): Record<string, number> {
+  try {
+    return JSON.parse(localStorage.getItem(PRESTIGE_STORAGE_KEY) || '{}') as Record<string, number>
+  } catch {
+    return {}
+  }
+}
+
+/** Get prestige count for a specific skill. */
+export function getPrestigeCount(skillId: string): number {
+  return getPrestigeCounts()[skillId] ?? 0
+}
+
+/** Whether a skill can be prestiged (level 99, under max prestige). */
+export function canPrestige(skillId: string, currentXp: number): boolean {
+  const level = skillLevelFromXP(currentXp)
+  const prestige = getPrestigeCount(skillId)
+  return level >= MAX_LEVEL && prestige < MAX_PRESTIGE
+}
+
+/** Prestige a skill: reset XP to 0, increment prestige counter. Returns new prestige tier or null if not allowed. */
+export function prestigeSkill(skillId: string): PrestigeTier | null {
+  const counts = getPrestigeCounts()
+  const current = counts[skillId] ?? 0
+  if (current >= MAX_PRESTIGE) return null
+
+  // Check current level
+  try {
+    const stored = JSON.parse(localStorage.getItem('grindly_skill_xp') || '{}') as Record<string, number>
+    const level = skillLevelFromXP(stored[skillId] ?? 0)
+    if (level < MAX_LEVEL) return null
+
+    // Reset skill XP to 0 in localStorage
+    stored[skillId] = 0
+    localStorage.setItem('grindly_skill_xp', JSON.stringify(stored))
+  } catch {
+    return null
+  }
+
+  // Reset skill XP in SQLite (Electron mode)
+  const api = (window as Window & typeof globalThis & { electronAPI?: { db?: { resetSkillXP?: (id: string) => Promise<void> } } }).electronAPI
+  if (api?.db?.resetSkillXP) {
+    api.db.resetSkillXP(skillId).catch(() => {})
+  }
+
+  // Increment prestige count
+  const newTier = current + 1
+  counts[skillId] = newTier
+  localStorage.setItem(PRESTIGE_STORAGE_KEY, JSON.stringify(counts))
+
+  return PRESTIGE_TIERS[newTier - 1] ?? null
+}
+
+/** Get the prestige XP multiplier for a skill (e.g. 1.04 for 2 prestiges). */
+export function getPrestigeXpMultiplier(skillId: string): number {
+  const count = getPrestigeCount(skillId)
+  return 1 + count * PRESTIGE_XP_BONUS_PER_TIER
+}
+
+/** Get the prestige tier info for a skill, or null if not prestiged. */
+export function getPrestigeTier(skillId: string): PrestigeTier | null {
+  const count = getPrestigeCount(skillId)
+  if (count <= 0) return null
+  return PRESTIGE_TIERS[count - 1] ?? null
+}
+
+/**
+ * Compute total skill level including prestige bonus for leaderboard.
+ * Each prestige counts as 99 bonus levels.
+ */
+export function computeTotalSkillLevelWithPrestige(rows: { skill_id: string; total_xp: number }[]): number {
+  const xpMap = new Map(rows.map((r) => [normalizeSkillId(r.skill_id), r.total_xp]))
+  const prestiges = getPrestigeCounts()
+  return SKILLS.reduce((sum, s) => {
+    const level = skillLevelFromXP(xpMap.get(s.id) ?? 0)
+    const prestigeBonus = (prestiges[s.id] ?? 0) * MAX_LEVEL
+    return sum + level + prestigeBonus
+  }, 0)
 }
 
 export interface ActivitySegmentForXP {

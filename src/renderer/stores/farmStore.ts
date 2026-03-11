@@ -11,9 +11,17 @@ import {
   rollHarvestSeedZipTier,
   CHEST_TO_ZIP_TIER,
   grantFarmerXP,
+  rollCropRot,
+  getEffectiveGrowTime,
+  getFarmhouseBonuses,
+  getNextFarmhouseUpgrade,
+  FARMHOUSE_UNLOCK_LEVEL,
+  canUnlockSlot,
   type SeedDef,
   type SeedZipTier,
+  type FieldId,
 } from '../lib/farming'
+import { skillLevelFromXP } from '../lib/skills'
 import type { ChestType } from '../lib/loot'
 import { recordHarvest } from '../services/dailyActivityService'
 import { useGoldStore } from './goldStore'
@@ -25,6 +33,10 @@ export interface PlantedSlot {
   plantedAt: number       // Date.now() ms
   growTimeSeconds: number
   composted?: boolean
+  /** If set, the crop will rot at this timestamp (ms). Null/undefined = no rot. */
+  rotAt?: number
+  /** True once rot has been checked and the crop was marked rotted. */
+  rotted?: boolean
 }
 
 export interface HarvestResult {
@@ -51,12 +63,16 @@ const HARVEST_COMPOST_DROP_CHANCE = 0.08
 export const COMPOST_PER_PLOT = 3
 
 interface FarmState {
-  unlockedSlots: number                           // 1–8
+  unlockedSlots: number                           // 1–16
   planted: Partial<Record<number, PlantedSlot>>   // slot index → planted info
   compostedSlots: Record<number, boolean>         // slot index → pre-composted (empty slot)
   seeds: Record<string, number>                   // seedId → count in storage
   seedZips: Record<SeedZipTier, number>           // tier → Seed Zip count
   seedCabinetUnlocked: boolean
+  farmhouseLevel: number                          // 0 = not built, 1–10 = upgrade level
+  farmhouseBuildStartedAt: number | null          // timestamp when build/upgrade started
+  farmhouseBuildTargetLevel: number | null        // which level is being built
+  activeField: FieldId                            // currently selected field tab
 
   unlockNextSlot: () => boolean
   plantSeed: (slotIndex: number, seedId: string) => void
@@ -82,6 +98,16 @@ interface FarmState {
   mergeSeedsFromCloud: (cloudSeeds: Record<string, number>) => void
   /** Merge cloud seed zips into local (takes max). Used after sync. */
   mergeSeedZipsFromCloud: (cloudSeedZips: Record<SeedZipTier, number>) => void
+  /** Switch active field tab. */
+  setActiveField: (field: FieldId) => void
+  /** Start farmhouse build/upgrade. Deducts costs and starts timer. Returns false if requirements not met. */
+  upgradeFarmhouse: () => boolean
+  /** Complete a finished farmhouse build. Returns true if build was complete. */
+  completeFarmhouseBuild: () => boolean
+  /** Check all planted slots for rot. Returns array of rotted slot indices. */
+  checkAllRots: () => number[]
+  /** Auto-harvest all ready crops (farmhouse L10). Returns results. */
+  autoHarvestReady: () => HarvestResult[]
 }
 
 function isSlotReady(slot: PlantedSlot): boolean {
@@ -102,6 +128,10 @@ export const useFarmStore = create<FarmState>()(
       seeds: {},
       seedZips: { common: 0, rare: 0, epic: 0, legendary: 0 },
       seedCabinetUnlocked: false,
+      farmhouseLevel: 0,
+      farmhouseBuildStartedAt: null,
+      farmhouseBuildTargetLevel: null,
+      activeField: 'field1',
 
       unlockNextSlot() {
         const { unlockedSlots } = get()
@@ -109,7 +139,11 @@ export const useFarmStore = create<FarmState>()(
         const cost = SLOT_UNLOCK_COSTS[unlockedSlots]
         if (cost == null) return false
         const gold = useGoldStore.getState().gold ?? 0
-        if (gold < cost) return false
+        // Check level requirements
+        let skillXP: Record<string, number> = {}
+        try { skillXP = JSON.parse(localStorage.getItem('grindly_skill_xp') || '{}') as Record<string, number> } catch { /* */ }
+        const check = canUnlockSlot(unlockedSlots, gold, skillXP)
+        if (!check.canUnlock) return false
         useGoldStore.getState().addGold(-cost)
         try {
           const userId = useAuthStore.getState().user?.id
@@ -122,7 +156,7 @@ export const useFarmStore = create<FarmState>()(
       },
 
       plantSeed(slotIndex, seedId) {
-        const { planted, seeds, unlockedSlots, compostedSlots } = get()
+        const { planted, seeds, unlockedSlots, compostedSlots, farmhouseLevel } = get()
         if (slotIndex >= unlockedSlots) return
         if (planted[slotIndex]) return
         const qty = seeds[seedId] ?? 0
@@ -130,18 +164,34 @@ export const useFarmStore = create<FarmState>()(
         const seed = getSeedById(seedId)
         if (!seed) return
 
-        const wasComposted = !!compostedSlots[slotIndex]
+        let wasComposted = !!compostedSlots[slotIndex]
         const newComposted = { ...compostedSlots }
         if (wasComposted) delete newComposted[slotIndex]
+
+        // Auto-compost chance from farmhouse
+        if (!wasComposted && farmhouseLevel > 0) {
+          const bonuses = getFarmhouseBonuses(farmhouseLevel)
+          if (bonuses.autoCompostPct > 0 && Math.random() * 100 < bonuses.autoCompostPct) {
+            wasComposted = true
+          }
+        }
+
+        const now = Date.now()
+        const effectiveGrowTime = getEffectiveGrowTime(seed.growTimeSeconds, farmhouseLevel)
+
+        // Roll for crop rot
+        const rotResult = rollCropRot(seed.rarity, farmhouseLevel)
+        const rotAt = rotResult ? now + Math.floor(effectiveGrowTime * rotResult.rotAtFraction * 1000) : undefined
 
         set({
           planted: {
             ...planted,
             [slotIndex]: {
               seedId,
-              plantedAt: Date.now(),
-              growTimeSeconds: seed.growTimeSeconds,
+              plantedAt: now,
+              growTimeSeconds: effectiveGrowTime,
               composted: wasComposted || undefined,
+              rotAt,
             },
           },
           seeds: { ...seeds, [seedId]: qty - 1 },
@@ -152,7 +202,7 @@ export const useFarmStore = create<FarmState>()(
       },
 
       plantAll(seedId) {
-        const { planted, seeds, unlockedSlots, compostedSlots } = get()
+        const { planted, seeds, unlockedSlots, compostedSlots, farmhouseLevel } = get()
         const seed = getSeedById(seedId)
         if (!seed) return 0
         let available = seeds[seedId] ?? 0
@@ -163,16 +213,25 @@ export const useFarmStore = create<FarmState>()(
         const newComposted = { ...compostedSlots }
         let count = 0
         const now = Date.now()
+        const effectiveGrowTime = getEffectiveGrowTime(seed.growTimeSeconds, farmhouseLevel)
+        const autoCompostPct = getFarmhouseBonuses(farmhouseLevel).autoCompostPct
 
         for (let i = 0; i < unlockedSlots; i++) {
           if (newPlanted[i] || available <= 0) continue
-          const wasComposted = !!newComposted[i]
+          let wasComposted = !!newComposted[i]
           if (wasComposted) delete newComposted[i]
+          // Auto-compost from farmhouse
+          if (!wasComposted && autoCompostPct > 0 && Math.random() * 100 < autoCompostPct) {
+            wasComposted = true
+          }
+          const rotResult = rollCropRot(seed.rarity, farmhouseLevel)
+          const rotAt = rotResult ? now + Math.floor(effectiveGrowTime * rotResult.rotAtFraction * 1000) : undefined
           newPlanted[i] = {
             seedId,
             plantedAt: now,
-            growTimeSeconds: seed.growTimeSeconds,
+            growTimeSeconds: effectiveGrowTime,
             composted: wasComposted || undefined,
+            rotAt,
           }
           available--
           count++
@@ -198,9 +257,10 @@ export const useFarmStore = create<FarmState>()(
       },
 
       harvestSlot(slotIndex) {
-        const { planted, seedZips } = get()
+        const { planted, seedZips, farmhouseLevel } = get()
         const slot = planted[slotIndex]
         if (!slot || !isSlotReady(slot)) return null
+        if (slot.rotted) return null // can't harvest rotted crops
 
         const seed: SeedDef | undefined = getSeedById(slot.seedId)
         if (!seed) return null
@@ -208,6 +268,9 @@ export const useFarmStore = create<FarmState>()(
         const isComposted = !!slot.composted
         let qty = randomBetween(seed.yieldMin, seed.yieldMax)
         if (isComposted) qty = Math.ceil(qty * 1.2)
+        // Farmhouse yield bonus
+        const yieldBonus = getFarmhouseBonuses(farmhouseLevel).yieldBonusPct
+        if (yieldBonus > 0) qty = Math.ceil(qty * (1 + yieldBonus / 100))
         useInventoryStore.getState().addItem(seed.yieldPlantId, qty)
 
         const newPlanted = { ...planted }
@@ -234,19 +297,22 @@ export const useFarmStore = create<FarmState>()(
       },
 
       harvestAll() {
-        const { planted, seedZips } = get()
+        const { planted, seedZips, farmhouseLevel } = get()
         const newPlanted = { ...planted }
         const newZips = { ...seedZips }
         const results: HarvestResult[] = []
+        const yieldBonus = getFarmhouseBonuses(farmhouseLevel).yieldBonusPct
 
         for (const [idxStr, slot] of Object.entries(planted)) {
           if (!slot) continue
           if (!isSlotReady(slot)) continue
+          if (slot.rotted) continue
           const seed = getSeedById(slot.seedId)
           if (!seed) continue
           const isComposted = !!slot.composted
           let qty = randomBetween(seed.yieldMin, seed.yieldMax)
           if (isComposted) qty = Math.ceil(qty * 1.2)
+          if (yieldBonus > 0) qty = Math.ceil(qty * (1 + yieldBonus / 100))
           useInventoryStore.getState().addItem(seed.yieldPlantId, qty)
           const xp = isComposted ? Math.ceil(seed.xpOnHarvest * 1.05) : seed.xpOnHarvest
           grantFarmerXP(xp).catch(() => undefined)
@@ -390,6 +456,103 @@ export const useFarmStore = create<FarmState>()(
         }
         set({ seedZips: merged })
       },
+
+      setActiveField(field) {
+        set({ activeField: field })
+      },
+
+      upgradeFarmhouse() {
+        const { farmhouseLevel, farmhouseBuildStartedAt } = get()
+        // Don't allow starting a new build while one is in progress
+        if (farmhouseBuildStartedAt != null) return false
+
+        // Check farmer level requirement
+        let skillXP: Record<string, number> = {}
+        try { skillXP = JSON.parse(localStorage.getItem('grindly_skill_xp') || '{}') as Record<string, number> } catch { /* */ }
+        const farmerLvl = skillLevelFromXP(skillXP['farmer'] ?? 0)
+        if (farmerLvl < FARMHOUSE_UNLOCK_LEVEL) return false
+
+        const upgrade = getNextFarmhouseUpgrade(farmhouseLevel)
+        if (!upgrade) return false
+
+        // Check gold
+        const gold = useGoldStore.getState().gold ?? 0
+        if (gold < upgrade.goldCost) return false
+
+        // Check materials
+        const inv = useInventoryStore.getState()
+        for (const [matId, qty] of Object.entries(upgrade.materials)) {
+          if ((inv.items[matId] ?? 0) < qty) return false
+        }
+
+        // Deduct costs
+        useGoldStore.getState().addGold(-upgrade.goldCost)
+        for (const [matId, qty] of Object.entries(upgrade.materials)) {
+          inv.deleteItem(matId, qty)
+        }
+
+        try {
+          const userId = useAuthStore.getState().user?.id
+          if (userId) {
+            useGoldStore.getState().syncToSupabase(userId).catch(() => {})
+          }
+        } catch { /* ignore */ }
+
+        // Start build timer
+        set({
+          farmhouseBuildStartedAt: Date.now(),
+          farmhouseBuildTargetLevel: upgrade.level,
+        })
+        return true
+      },
+
+      completeFarmhouseBuild() {
+        const { farmhouseBuildStartedAt, farmhouseBuildTargetLevel, farmhouseLevel } = get()
+        if (farmhouseBuildStartedAt == null || farmhouseBuildTargetLevel == null) return false
+
+        const upgrade = getNextFarmhouseUpgrade(farmhouseLevel)
+        if (!upgrade) return false
+
+        const elapsed = Date.now() - farmhouseBuildStartedAt
+        if (elapsed < upgrade.buildDurationMs) return false
+
+        set({
+          farmhouseLevel: farmhouseBuildTargetLevel,
+          farmhouseBuildStartedAt: null,
+          farmhouseBuildTargetLevel: null,
+        })
+        return true
+      },
+
+      checkAllRots() {
+        const { planted } = get()
+        const now = Date.now()
+        const rotted: number[] = []
+        const newPlanted = { ...planted }
+        let changed = false
+
+        for (const [idxStr, slot] of Object.entries(planted)) {
+          if (!slot || slot.rotted) continue
+          if (slot.rotAt && now >= slot.rotAt) {
+            const idx = Number(idxStr)
+            // Mark as rotted — remove the planted entry, give wilted_plant
+            delete newPlanted[idx]
+            useInventoryStore.getState().addItem('wilted_plant', 1)
+            rotted.push(idx)
+            changed = true
+          }
+        }
+
+        if (changed) set({ planted: newPlanted })
+        return rotted
+      },
+
+      autoHarvestReady() {
+        const { farmhouseLevel } = get()
+        const bonuses = getFarmhouseBonuses(farmhouseLevel)
+        if (!bonuses.autoHarvest) return []
+        return get().harvestAll()
+      },
     }),
     {
       name: 'grindly_farm_state',
@@ -400,6 +563,9 @@ export const useFarmStore = create<FarmState>()(
         seeds: s.seeds,
         seedZips: s.seedZips,
         seedCabinetUnlocked: s.seedCabinetUnlocked,
+        farmhouseLevel: s.farmhouseLevel,
+        farmhouseBuildStartedAt: s.farmhouseBuildStartedAt,
+        farmhouseBuildTargetLevel: s.farmhouseBuildTargetLevel,
       }),
     },
   ),

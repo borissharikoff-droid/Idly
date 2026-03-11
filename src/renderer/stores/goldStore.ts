@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { supabase } from '../lib/supabase'
+import { useAchievementStatsStore } from './achievementStatsStore'
 
 interface GoldState {
   gold: number
@@ -17,7 +18,11 @@ export const useGoldStore = create<GoldState>((set, get) => ({
   },
 
   addGold(amount: number) {
-    set((s) => ({ gold: Math.max(0, s.gold + amount) }))
+    set((s) => {
+      const newGold = Math.max(0, s.gold + amount)
+      if (newGold > 0) useAchievementStatsStore.getState().updateMaxGold(newGold)
+      return { gold: newGold }
+    })
   },
 
   async syncFromSupabase(userId: string) {

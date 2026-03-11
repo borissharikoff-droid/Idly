@@ -6,9 +6,13 @@ import { useArenaStore } from '../../stores/arenaStore'
 import { useInventoryStore } from '../../stores/inventoryStore'
 import { useFarmStore } from '../../stores/farmStore'
 import { useNavigationStore } from '../../stores/navigationStore'
+import { useAuthStore } from '../../stores/authStore'
 import { LOOT_ITEMS, type BonusMaterial, type ChestType } from '../../lib/loot'
 import { ChestOpenModal } from '../animations/ChestOpenModal'
+import { supabase } from '../../lib/supabase'
 import { playClickSound } from '../../lib/sounds'
+import { getLatestPatch } from '../../lib/changelog'
+import { WhatsNewModal } from '../WhatsNewModal'
 import type { TabId } from '../../App'
 
 function tabForNotifType(type: NotificationType): TabId | null {
@@ -44,10 +48,18 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
   const presentRecoveryComplete = useSessionStore((s) => s.presentRecoveryComplete)
   const claimPendingReward = useInventoryStore((s) => s.claimPendingReward)
   const openChestAndGrantItem = useInventoryStore((s) => s.openChestAndGrantItem)
-  const [filter, setFilter] = useState<'all' | 'update' | 'friend_levelup' | 'progression' | 'arena_result' | 'marketplace_sale'>('all')
+  const user = useAuthStore((s) => s.user)
+  const [filter, setFilter] = useState<'all' | 'update' | 'friend_levelup' | 'progression' | 'arena_result' | 'marketplace_sale' | 'poll'>('all')
   const [openedChest, setOpenedChest] = useState<{ chestType: ChestType; itemId: string; goldDropped?: number; bonusMaterials?: import('../../lib/loot').BonusMaterial[] } | null>(null)
+  const [votingId, setVotingId] = useState<string | null>(null)
+  const [votedPolls, setVotedPolls] = useState<Set<string>>(new Set())
+  const [patchModalOpen, setPatchModalOpen] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
-  const filteredItems = items.filter((i) => (filter === 'all' ? true : i.type === filter))
+  const filteredItems = items.filter((i) => {
+    if (filter === 'all') return true
+    if (filter === 'update') return i.type === 'update' || i.type === 'patch_notes'
+    return i.type === filter
+  })
 
   const openedItem = useMemo(
     () => (openedChest ? (LOOT_ITEMS.find((x) => x.id === openedChest.itemId) ?? null) : null),
@@ -108,7 +120,7 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
             )}
           </div>
           <div className="px-3 py-1.5 border-b border-white/[0.06] flex items-center gap-1.5 flex-wrap">
-            {(['all', 'update', 'friend_levelup', 'progression', 'arena_result', 'marketplace_sale'] as const).map((t) => (
+            {(['all', 'update', 'friend_levelup', 'progression', 'arena_result', 'marketplace_sale', 'poll'] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setFilter(t)}
@@ -118,7 +130,7 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                     : 'border-white/10 text-gray-500 hover:text-gray-300'
                 }`}
               >
-                {t === 'all' ? 'All' : t === 'update' ? 'Updates' : t === 'friend_levelup' ? 'Friends' : t === 'arena_result' ? 'Arena' : t === 'marketplace_sale' ? 'Market' : 'Progress'}
+                {t === 'all' ? 'All' : t === 'update' ? 'Updates' : t === 'friend_levelup' ? 'Friends' : t === 'arena_result' ? 'Arena' : t === 'marketplace_sale' ? 'Market' : t === 'poll' ? 'Polls' : 'Progress'}
               </button>
             ))}
           </div>
@@ -241,6 +253,73 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                       </div>
                     </div>
                   </div>
+                ) : item.poll ? (
+                  <div key={item.id} className="px-3 py-2 border-b border-white/[0.03] last:border-0">
+                    <div className="rounded-xl border border-purple-400/20 bg-purple-400/[0.06] px-3 py-2">
+                      <div className="flex items-start gap-2 mb-2">
+                        <span className="text-base shrink-0 mt-0.5">{item.icon}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[11px] text-white leading-snug font-semibold">{item.title}</p>
+                          {item.body && <p className="text-[10px] text-gray-400 leading-snug mt-0.5">{item.body}</p>}
+                        </div>
+                        <span className="text-[9px] text-gray-600 font-mono shrink-0 mt-0.5">{timeAgo(item.timestamp)}</span>
+                      </div>
+                      {votedPolls.has(item.poll.pollId) ? (
+                        <p className="text-[10px] text-green-400 font-semibold text-center py-1">Voted!</p>
+                      ) : (
+                        <div className="flex flex-col gap-1">
+                          {item.poll.options.map((opt) => (
+                            <button
+                              key={opt.id}
+                              disabled={votingId === item.poll!.pollId}
+                              onClick={async () => {
+                                if (!user) return
+                                playClickSound()
+                                setVotingId(item.poll!.pollId)
+                                const { error } = await supabase.from('poll_votes').insert({
+                                  poll_id: item.poll!.pollId,
+                                  option_id: opt.id,
+                                  user_id: user.id,
+                                })
+                                setVotingId(null)
+                                if (!error) {
+                                  setVotedPolls((prev) => new Set(prev).add(item.poll!.pollId))
+                                }
+                              }}
+                              className="w-full text-left px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/[0.03] text-[11px] text-gray-300 hover:border-purple-400/40 hover:bg-purple-400/10 transition-all"
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : item.patchVersion ? (
+                  <div key={item.id} className="px-3 py-2 border-b border-white/[0.03] last:border-0">
+                    <div className="rounded-xl border border-green-400/20 bg-green-400/[0.06] px-3 py-2">
+                      <div className="flex items-start gap-2">
+                        <span className="text-base shrink-0 mt-0.5">{item.icon}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[11px] text-white leading-snug font-semibold">{item.title}</p>
+                          <p className="text-[10px] text-gray-400 leading-snug mt-0.5">{item.body}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="text-[9px] text-gray-600 font-mono">{timeAgo(item.timestamp)}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              playClickSound()
+                              setPatchModalOpen(true)
+                            }}
+                            className="px-2.5 py-1 rounded-lg bg-green-400/15 border border-green-400/35 text-green-400 text-xs font-semibold hover:bg-green-400/25 transition-colors"
+                          >
+                            View
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 ) : (
                   <div
                     key={item.id}
@@ -273,6 +352,7 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
       bonusMaterials={openedChest?.bonusMaterials}
       onClose={() => setOpenedChest(null)}
     />
+    <WhatsNewModal patch={getLatestPatch()} open={patchModalOpen} onClose={() => setPatchModalOpen(false)} />
     </>
   )
 }
