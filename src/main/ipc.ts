@@ -132,6 +132,10 @@ export function registerIpcHandlers() {
     const parsed = restoreSkillXPSchema.parse(rows)
     db.restoreSkillXPFromCloud(parsed)
   })
+  ipcMain.handle(IPC_CHANNELS.db.forceSetSkillXP, (_, rows: unknown) => {
+    const parsed = restoreSkillXPSchema.parse(rows)
+    db.forceSetSkillXP(parsed)
+  })
 
   // Goals
   ipcMain.handle(IPC_CHANNELS.db.getActiveGoals, () => db.getActiveGoals())

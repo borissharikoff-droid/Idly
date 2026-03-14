@@ -49,7 +49,12 @@ export function useWhatsNew() {
     }
   }, [])
 
-  return { showModal, patch, closeModal: () => setShowModal(false) }
+  const showRemotePatch = (p: PatchNote) => {
+    setPatch(p)
+    setShowModal(true)
+  }
+
+  return { showModal, patch, closeModal: () => setShowModal(false), showRemotePatch }
 }
 
 /** Standalone trigger — call to show patch notes on demand (e.g. from Settings). */

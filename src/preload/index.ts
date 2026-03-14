@@ -67,6 +67,7 @@ const CH = {
     getCheckpoint: 'db:getCheckpoint',
     clearCheckpoint: 'db:clearCheckpoint',
     restoreSkillXP: 'db:restoreSkillXP',
+    forceSetSkillXP: 'db:forceSetSkillXP',
   },
   ai: {
     analyzeSession: 'ai:analyzeSession',
@@ -132,6 +133,7 @@ try {
       resetSkillXP: (skillId: string) => ipcRenderer.invoke(CH.db.resetSkillXP, skillId),
       getAllSkillXP: () => ipcRenderer.invoke(CH.db.getAllSkillXP),
       restoreSkillXP: (rows: { skill_id: string; total_xp: number }[]) => ipcRenderer.invoke(CH.db.restoreSkillXP, rows),
+      forceSetSkillXP: (rows: { skill_id: string; total_xp: number }[]) => ipcRenderer.invoke(CH.db.forceSetSkillXP, rows),
       getActiveGoals: () => ipcRenderer.invoke(CH.db.getActiveGoals),
       getAllGoals: () => ipcRenderer.invoke(CH.db.getAllGoals),
       createGoal: (goal: { id: string; type: string; target_seconds: number; target_category: string | null; period: string; start_date: string }) =>

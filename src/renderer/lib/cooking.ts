@@ -19,8 +19,8 @@ export const FOOD_ITEMS: FoodItemDef[] = [
     name: 'Bread',
     icon: '🍞',
     rarity: 'common',
-    effect: { heal: 30 },
-    description: 'Simple baked bread. Restores 30 HP.',
+    effect: { heal: 40 },
+    description: 'Simple baked bread. Restores 40 HP.',
   },
   {
     id: 'food_herb_soup',
@@ -53,8 +53,8 @@ export const FOOD_ITEMS: FoodItemDef[] = [
     name: 'Blossom Stew',
     icon: '🍜',
     rarity: 'rare',
-    effect: { heal: 50, buffDef: 4, buffDurationSec: 90 },
-    description: 'Fragrant blossom stew. Restores 50 HP + 4 DEF for 90s.',
+    effect: { heal: 50, buffDef: 3, buffDurationSec: 90 },
+    description: 'Fragrant blossom stew. Restores 50 HP + 3 DEF for 90s.',
   },
   {
     id: 'food_slime_jelly',
@@ -121,8 +121,8 @@ export const FOOD_ITEMS: FoodItemDef[] = [
     name: 'Troll Broth',
     icon: '🥘',
     rarity: 'legendary',
-    effect: { heal: 120, buffRegen: 6, buffDef: 8, buffDurationSec: 150 },
-    description: 'Bubbling troll-hide broth. Restores 120 HP + 6 regen + 8 DEF for 150s.',
+    effect: { heal: 130, buffAtk: 3, buffRegen: 5, buffDef: 6, buffDurationSec: 150 },
+    description: 'Bubbling troll-hide broth. Restores 130 HP + 3 ATK + 5 regen + 6 DEF for 150s.',
   },
 
   // ── Mythic (endgame) ─────────────────────────────────────────────────────────
@@ -131,16 +131,16 @@ export const FOOD_ITEMS: FoodItemDef[] = [
     name: 'Void Feast',
     icon: '🍽️',
     rarity: 'mythic',
-    effect: { heal: 250, buffAtk: 15, buffDef: 10, buffRegen: 5, buffDurationSec: 300 },
-    description: 'Ultimate feast. Restores 250 HP + 15 ATK + 10 DEF + 5 regen for 300s.',
+    effect: { heal: 250, buffAtk: 15, buffDef: 10, buffRegen: 5, buffDurationSec: 360 },
+    description: 'Ultimate feast. Restores 250 HP + 15 ATK + 10 DEF + 5 regen for 360s.',
   },
   {
     id: 'food_dragon_roast',
     name: 'Dragon Roast',
     icon: '🔥',
     rarity: 'mythic',
-    effect: { heal: 200, buffAtk: 20, buffDef: 5, buffDurationSec: 240 },
-    description: 'Fire-charred dragon cut. Restores 200 HP + 20 ATK + 5 DEF for 240s.',
+    effect: { heal: 200, buffAtk: 15, buffDef: 5, buffRegen: 3, buffDurationSec: 240 },
+    description: 'Fire-charred dragon cut. Restores 200 HP + 15 ATK + 5 DEF + 3 regen for 240s.',
   },
 ]
 
@@ -189,15 +189,15 @@ export const COOKING_RECIPES: CookingRecipe[] = [
   {
     id: 'cook_bread',
     outputItemId: 'food_bread',
-    outputQty: 1,
+    outputQty: 2,
     ingredients: [{ id: 'wheat', qty: 3 }],
     secPerItem: 8,
     xpPerItem: 15,
     chefLevelRequired: 0,
     steps: [
-      { label: 'Grind Wheat', icon: '⚗️', secPerItem: 2 },
-      { label: 'Knead Dough', icon: '🤲', secPerItem: 2 },
-      { label: 'Bake', icon: '🔥', secPerItem: 4 },
+      { label: 'Chop Wheat', icon: '🔪', secPerItem: 2 },
+      { label: 'Boil Dough', icon: '🍲', secPerItem: 3 },
+      { label: 'Simmer', icon: '🍲', secPerItem: 3 },
     ],
   },
   {
@@ -210,7 +210,7 @@ export const COOKING_RECIPES: CookingRecipe[] = [
     chefLevelRequired: 3,
     steps: [
       { label: 'Peel Apples', icon: '🔪', secPerItem: 2 },
-      { label: 'Mash & Mix', icon: '🥣', secPerItem: 3 },
+      { label: 'Chop & Dice', icon: '🔪', secPerItem: 3 },
       { label: 'Simmer', icon: '♨️', secPerItem: 5 },
     ],
   },
@@ -223,8 +223,8 @@ export const COOKING_RECIPES: CookingRecipe[] = [
     xpPerItem: 30,
     chefLevelRequired: 5,
     steps: [
-      { label: 'Wash Herbs', icon: '🌿', secPerItem: 3 },
-      { label: 'Chop & Dice', icon: '🔪', secPerItem: 4 },
+      { label: 'Chop Herbs', icon: '🔪', secPerItem: 3 },
+      { label: 'Dice', icon: '🔪', secPerItem: 4 },
       { label: 'Boil', icon: '♨️', secPerItem: 8 },
     ],
   },
@@ -255,8 +255,8 @@ export const COOKING_RECIPES: CookingRecipe[] = [
     chefLevelRequired: 15,
     steps: [
       { label: 'Sort Blossoms', icon: '🌸', secPerItem: 4 },
-      { label: 'Crush Petals', icon: '⚗️', secPerItem: 4 },
-      { label: 'Add Herbs', icon: '🌿', secPerItem: 3 },
+      { label: 'Chop Petals', icon: '🔪', secPerItem: 4 },
+      { label: 'Stew Herbs', icon: '♨️', secPerItem: 3 },
       { label: 'Slow Cook', icon: '♨️', secPerItem: 34 },
     ],
   },
@@ -269,9 +269,9 @@ export const COOKING_RECIPES: CookingRecipe[] = [
     xpPerItem: 50,
     chefLevelRequired: 10,
     steps: [
-      { label: 'Strain Gel', icon: '🧪', secPerItem: 5 },
+      { label: 'Chop Gel', icon: '🔪', secPerItem: 5 },
       { label: 'Boil & Stir', icon: '♨️', secPerItem: 7 },
-      { label: 'Set & Chill', icon: '🧊', secPerItem: 18 },
+      { label: 'Mix & Chill', icon: '🥣', secPerItem: 18 },
     ],
   },
   {
@@ -283,10 +283,10 @@ export const COOKING_RECIPES: CookingRecipe[] = [
     xpPerItem: 65,
     chefLevelRequired: 18,
     steps: [
-      { label: 'Grind Teeth', icon: '⚗️', secPerItem: 5 },
-      { label: 'Chop Herbs', icon: '🔪', secPerItem: 4 },
-      { label: 'Skewer & Marinate', icon: '🧂', secPerItem: 6 },
-      { label: 'Grill', icon: '🔥', secPerItem: 25 },
+      { label: 'Chop Teeth', icon: '🔪', secPerItem: 5 },
+      { label: 'Dice Herbs', icon: '🔪', secPerItem: 4 },
+      { label: 'Skewer & Fry', icon: '🍳', secPerItem: 6 },
+      { label: 'Grill', icon: '🍳', secPerItem: 25 },
     ],
   },
 

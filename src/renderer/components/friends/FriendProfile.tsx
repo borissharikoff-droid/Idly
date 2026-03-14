@@ -2,10 +2,10 @@ import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
 import type { FriendProfile as FriendProfileType } from '../../hooks/useFriends'
-import { BADGES, FRAMES } from '../../lib/cosmetics'
 import { normalizeEquippedLoot, type LootSlot } from '../../lib/loot'
 import { CharacterPanel } from '../character/CharacterPanel'
-import { SKILLS, computeTotalSkillLevelFromLevels, MAX_TOTAL_SKILL_LEVEL, normalizeSkillId, skillLevelFromXP, skillXPProgress } from '../../lib/skills'
+import { SKILLS, computeTotalSkillLevelFromLevels, MAX_TOTAL_SKILL_LEVEL, normalizeSkillId, skillLevelFromXP, skillXPProgress, computeGrindlyBonuses } from '../../lib/skills'
+import { computeWarriorBonuses } from '../../lib/combat'
 import { ACHIEVEMENTS, checkSkillAchievements } from '../../lib/xp'
 import { MOTION } from '../../lib/motion'
 import { formatSessionDurationCompact, parseFriendPresence } from '../../lib/friendPresence'
@@ -80,6 +80,7 @@ export function FriendProfile({ profile, onBack, onMessage, onRetrySync }: Frien
     equipped_badges?: string[]
     equipped_frame?: string | null
     status_title?: string | null
+    permanent_stats?: { atk: number; hp: number; hpRegen: number; def: number }
   } | null>(null)
 
   useEffect(() => {
@@ -123,7 +124,7 @@ export function FriendProfile({ profile, onBack, onMessage, onRetrySync }: Frien
           supabase.from('user_skills').select('skill_id, level, total_xp').eq('user_id', profile.id),
           supabase
             .from('profiles')
-            .select('equipped_loot, equipped_badges, equipped_frame, status_title')
+            .select('equipped_loot, equipped_badges, equipped_frame, status_title, permanent_stats')
             .eq('id', profile.id)
             .single(),
         ])
@@ -154,11 +155,13 @@ export function FriendProfile({ profile, onBack, onMessage, onRetrySync }: Frien
         }
         if (profileRes?.data && !cancelled) {
           const p = profileRes.data as Record<string, unknown>
+          const ps = p.permanent_stats as { atk?: number; hp?: number; hpRegen?: number; def?: number } | null
           setProfileCosmetics({
             equipped_loot: normalizeEquippedLoot(p.equipped_loot),
             equipped_badges: Array.isArray(p.equipped_badges) ? (p.equipped_badges as string[]) : [],
             equipped_frame: (p.equipped_frame as string | null) ?? null,
             status_title: (p.status_title as string | null) ?? null,
+            permanent_stats: ps ? { atk: ps.atk ?? 0, hp: ps.hp ?? 0, hpRegen: ps.hpRegen ?? 0, def: ps.def ?? 0 } : undefined,
           })
         }
         // Seed merged map from profile.all_skills (from useFriends batch query)
@@ -217,14 +220,9 @@ export function FriendProfile({ profile, onBack, onMessage, onRetrySync }: Frien
   }, [profile.id])
 
   const effectiveFrame = profileCosmetics?.equipped_frame ?? profile.equipped_frame
-  const effectiveBadges = profileCosmetics?.equipped_badges ?? profile.equipped_badges ?? []
   const fromCosmetics = normalizeEquippedLoot(profileCosmetics?.equipped_loot)
   const fromProfile = normalizeEquippedLoot(profile.equipped_loot)
   const effectiveEquippedLoot = Object.keys(fromCosmetics).length > 0 ? fromCosmetics : fromProfile
-  const frame = FRAMES.find(fr => fr.id === effectiveFrame)
-  const badges = (effectiveBadges as string[])
-    .map((bId) => BADGES.find((b) => b.id === bId))
-    .filter(Boolean)
   const equippedLootBySlot = effectiveEquippedLoot
   const { activityLabel, appName, sessionStartMs } = parseFriendPresence(profile.current_activity ?? null)
   const isLeveling = profile.is_online && activityLabel.startsWith('Leveling ')
@@ -340,24 +338,6 @@ export function FriendProfile({ profile, onBack, onMessage, onRetrySync }: Frien
                   : 'Offline'}
                 {profile.is_online && appName && ` · ${appName}`}
               </p>
-              {(badges.length > 0 || frame) && (
-                <div className="flex flex-wrap gap-1 mt-1.5">
-                  {badges.map((badge) => badge && (
-                    <span
-                      key={badge.id}
-                      className="grindly-badge font-medium text-[9px]"
-                      style={{ borderColor: `${badge.color}40`, backgroundColor: `${badge.color}12`, color: badge.color }}
-                    >
-                      {badge.icon} {badge.label}
-                    </span>
-                  ))}
-                  {frame && (
-                    <span className="grindly-badge font-medium text-[9px]" style={{ borderColor: `${frame.color}40`, backgroundColor: `${frame.color}12`, color: frame.color }}>
-                      {frame.name}
-                    </span>
-                  )}
-                </div>
-              )}
             </div>
             {onMessage && (
               <motion.button
@@ -393,9 +373,27 @@ export function FriendProfile({ profile, onBack, onMessage, onRetrySync }: Frien
 
       {/* Gear */}
       <div className="rounded-xl border border-white/[0.09] bg-discord-card/80 p-3">
-        <CharacterPanel
-          equippedBySlot={equippedLootBySlot as Partial<Record<LootSlot, string>>}
-        />
+        {(() => {
+          // Compute warrior + grindly bonuses from friend's skill data
+          const skillMap = new Map(allSkills.map((s) => [s.skill_id, s]))
+          const warriorLevel = skillMap.get('warrior')?.level ?? 0
+          const grindlyLevel = skillMap.get('grindly')?.level ?? 0
+          const wb = computeWarriorBonuses(warriorLevel)
+          const gb = computeGrindlyBonuses(grindlyLevel)
+          const combinedBonuses = {
+            atk: wb.atk + gb.atk,
+            hp: wb.hp + gb.hp,
+            hpRegen: wb.hpRegen + gb.hpRegen,
+            def: wb.def + gb.def,
+          }
+          return (
+            <CharacterPanel
+              equippedBySlot={equippedLootBySlot as Partial<Record<LootSlot, string>>}
+              permanentStats={profileCosmetics?.permanent_stats}
+              warriorBonuses={combinedBonuses}
+            />
+          )
+        })()}
       </div>
 
       {/* Skills — compact bars */}

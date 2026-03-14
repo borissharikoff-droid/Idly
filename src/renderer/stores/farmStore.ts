@@ -33,10 +33,8 @@ export interface PlantedSlot {
   plantedAt: number       // Date.now() ms
   growTimeSeconds: number
   composted?: boolean
-  /** If set, the crop will rot at this timestamp (ms). Null/undefined = no rot. */
-  rotAt?: number
-  /** True once rot has been checked and the crop was marked rotted. */
-  rotted?: boolean
+  rotAt?: number          // timestamp when crop will rot (if rolled)
+  rotted?: boolean        // true once crop has rotted
 }
 
 export interface HarvestResult {
@@ -46,6 +44,8 @@ export interface HarvestResult {
   seedZipTier: SeedZipTier | null
   composted?: boolean
   compostDrop?: boolean
+  /** True if harvest failed (crop wilted). */
+  failed?: boolean
   /** Aggregated: number of compost drops (when merging multiple plots) */
   compostDropCount?: number
   /** Aggregated: number of composted plots */
@@ -104,10 +104,10 @@ interface FarmState {
   upgradeFarmhouse: () => boolean
   /** Complete a finished farmhouse build. Returns true if build was complete. */
   completeFarmhouseBuild: () => boolean
-  /** Check all planted slots for rot. Returns array of rotted slot indices. */
-  checkAllRots: () => number[]
   /** Auto-harvest all ready crops (farmhouse L10). Returns results. */
   autoHarvestReady: () => HarvestResult[]
+  /** Check all planted slots for rot. Returns indices of newly rotted slots. */
+  checkAllRots: () => number[]
 }
 
 function isSlotReady(slot: PlantedSlot): boolean {
@@ -179,10 +179,6 @@ export const useFarmStore = create<FarmState>()(
         const now = Date.now()
         const effectiveGrowTime = getEffectiveGrowTime(seed.growTimeSeconds, farmhouseLevel)
 
-        // Roll for crop rot
-        const rotResult = rollCropRot(seed.rarity, farmhouseLevel)
-        const rotAt = rotResult ? now + Math.floor(effectiveGrowTime * rotResult.rotAtFraction * 1000) : undefined
-
         set({
           planted: {
             ...planted,
@@ -191,7 +187,6 @@ export const useFarmStore = create<FarmState>()(
               plantedAt: now,
               growTimeSeconds: effectiveGrowTime,
               composted: wasComposted || undefined,
-              rotAt,
             },
           },
           seeds: { ...seeds, [seedId]: qty - 1 },

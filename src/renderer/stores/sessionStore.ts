@@ -796,6 +796,7 @@ declare global {
         addSkillXP: (skillId: string, amount: number) => Promise<void>
         getAllSkillXP: () => Promise<{ skill_id: string; total_xp: number }[]>
         restoreSkillXP: (rows: { skill_id: string; total_xp: number }[]) => Promise<void>
+        forceSetSkillXP?: (rows: { skill_id: string; total_xp: number }[]) => Promise<void>
         // Grind Tasks
         getTasks: () => Promise<{ id: string; text: string; done: boolean; created_at: number }[]>
         createTask: (task: { id: string; text: string }) => Promise<void>

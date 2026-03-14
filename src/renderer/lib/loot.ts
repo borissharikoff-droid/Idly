@@ -1,5 +1,5 @@
 export type LootRarity = 'common' | 'rare' | 'epic' | 'legendary' | 'mythic'
-export type LootSlot = 'head' | 'body' | 'legs' | 'ring' | 'weapon' | 'consumable' | 'plant' | 'material'
+export type LootSlot = 'head' | 'body' | 'legs' | 'ring' | 'weapon' | 'consumable' | 'plant' | 'material' | 'food'
 export const LOOT_SLOTS: LootSlot[] = ['head', 'body', 'legs', 'ring', 'weapon']
 
 export const POTION_IDS = ['atk_potion', 'hp_potion', 'regen_potion', 'def_potion'] as const
@@ -257,6 +257,20 @@ const ITEM_DROP_CHANCE: Record<ChestType, number> = {
 const INLINE_LOOT_IMAGES = {} as Record<string, string>
 
 import { CRAFT_LOOT_ITEMS, CRAFT_INTERMEDIATE_ITEMS } from './crafting'
+import { FOOD_ITEMS } from './cooking'
+
+/** Convert cooking food items to LootItemDef so they show in inventory & marketplace */
+const FOOD_LOOT_ITEMS: LootItemDef[] = FOOD_ITEMS.map((f) => ({
+  id: f.id,
+  name: f.name,
+  slot: 'food' as LootSlot,
+  rarity: f.rarity,
+  icon: f.icon,
+  description: f.description,
+  perkType: 'cosmetic' as LootPerkType,
+  perkValue: 0,
+  perkDescription: f.description,
+}))
 
 export const LOOT_ITEMS: LootItemDef[] = [
   // Potions (consumable)
@@ -393,6 +407,9 @@ export const LOOT_ITEMS: LootItemDef[] = [
 
   // Crafted gear items (defined in crafting.ts, registered here so all inventory/marketplace lookups work)
   ...CRAFT_LOOT_ITEMS,
+
+  // Cooked food items (defined in cooking.ts, registered here for inventory/marketplace)
+  ...FOOD_LOOT_ITEMS,
 ]
 export const CHEST_DEFS: Record<ChestType, ChestDef> = {
   common_chest: {

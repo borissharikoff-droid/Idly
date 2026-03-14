@@ -70,7 +70,7 @@ interface ArenaState {
 }
 
 /** Fraction of current gold lost on death */
-const DEATH_GOLD_PENALTY = 0.10
+const DEATH_GOLD_PENALTY = 0.08
 
 /** Chance to lose an equipped item on death (12%) */
 export const ITEM_LOSS_CHANCE = 0.12
@@ -794,9 +794,9 @@ export const useArenaStore = create<ArenaState>()(
           }
         }
 
-        // Auto-farm gold tax: 15% removed to curb late-game inflation
+        // Auto-farm gold tax: 12% removed to curb late-game inflation
         if (totalGold > 0) {
-          totalGold = Math.floor(totalGold * 0.85)
+          totalGold = Math.floor(totalGold * 0.88)
           useGoldStore.getState().addGold(totalGold)
           const user = useAuthStore.getState().user
           if (user) useGoldStore.getState().syncToSupabase(user.id)

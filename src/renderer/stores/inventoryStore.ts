@@ -382,7 +382,8 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
       const current = state.items[itemId] ?? 0
       if (current <= 0) return state
       const nextItems = { ...state.items, [itemId]: Math.max(0, current - qty) }
-      if (nextItems[itemId] === 0) delete nextItems[itemId]
+      // Keep 0-value keys so cloud sync knows the item was consumed locally
+      // (deleting the key would let mergeFromCloud restore stale cloud quantities)
       const nextEquipped = { ...state.equippedBySlot }
       for (const [slot, equippedId] of Object.entries(nextEquipped) as Array<[LootSlot, string]>) {
         if (equippedId === itemId && !nextItems[itemId]) {
@@ -425,10 +426,11 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     set((state) => {
       const nextItems = { ...state.items }
       for (const [itemId, cloudQty] of Object.entries(items)) {
-        const localQty = nextItems[itemId] ?? 0
-        const merged = Math.max(localQty, cloudQty)
-        if (merged > 0) nextItems[itemId] = merged
-        else if (itemId in nextItems) delete nextItems[itemId]
+        // Only add items that don't exist locally (admin grants, marketplace purchases).
+        // Never override local quantities — local is authoritative for consumed items.
+        if (!(itemId in nextItems) && cloudQty > 0) {
+          nextItems[itemId] = cloudQty
+        }
       }
       const nextChests: ChestCounts = {
         common_chest: Math.max(state.chests.common_chest ?? 0, chests.common_chest ?? 0),

@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useSessionStore } from '../stores/sessionStore'
+import { triggerEscape } from '../lib/escapeStack'
 
 interface KeyboardShortcutOptions {
   onEscapeToHome?: () => void
@@ -19,7 +20,7 @@ export function useKeyboardShortcuts(options: KeyboardShortcutOptions = {}) {
       if (tag === 'input' || tag === 'textarea' || tag === 'select') return
 
       if (e.key === 'Escape') {
-        onEscapeToHome?.()
+        if (!triggerEscape()) onEscapeToHome?.()
         return
       }
 
@@ -44,7 +45,8 @@ export function useKeyboardShortcuts(options: KeyboardShortcutOptions = {}) {
       }
     }
 
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
+    // capture:true so Escape fires even when focus is inside a modal/dialog
+    window.addEventListener('keydown', handler, { capture: true })
+    return () => window.removeEventListener('keydown', handler, { capture: true })
   }, [status, start, stop, pause, resume, onEscapeToHome])
 }

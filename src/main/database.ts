@@ -300,6 +300,16 @@ export function getDatabaseApi() {
         stmt.run(row.skill_id, row.total_xp, now)
       }
     },
+    /** Force-set skill XP to an exact value (admin overrides — can reduce XP). */
+    forceSetSkillXP(rows: { skill_id: string; total_xp: number }[]): void {
+      const stmt = database.prepare(
+        'INSERT INTO skill_xp (skill_id, total_xp, updated_at) VALUES (?, ?, ?) ON CONFLICT(skill_id) DO UPDATE SET total_xp = ?, updated_at = ?'
+      )
+      const now = Date.now()
+      for (const row of rows) {
+        stmt.run(row.skill_id, row.total_xp, now, row.total_xp, now)
+      }
+    },
 
     // ── Goals ──
     getActiveGoals(): { id: string; type: string; target_seconds: number; target_category: string | null; period: string; start_date: string; completed_at: number | null }[] {

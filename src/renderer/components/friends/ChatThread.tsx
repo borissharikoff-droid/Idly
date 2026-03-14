@@ -57,13 +57,15 @@ function CopyToast({ visible }: { visible: boolean }) {
     <AnimatePresence>
       {visible && (
         <motion.div
-          initial={{ opacity: 0, y: 8, scale: 0.9 }}
+          initial={{ opacity: 0, y: -14, scale: 0.93 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: -4, scale: 0.95 }}
-          transition={{ duration: 0.15 }}
-          className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl bg-[#1e1e2e] border border-cyber-neon/30 text-cyber-neon text-xs font-medium shadow-lg shadow-cyber-neon/10"
+          exit={{ opacity: 0, y: -10, scale: 0.95 }}
+          transition={{ type: 'spring', stiffness: 400, damping: 32 }}
+          className="fixed top-10 left-1/2 -translate-x-1/2 z-[80] px-4 py-2 rounded-xl text-xs font-medium shadow-2xl"
+          style={{ background: 'rgba(16,16,26,0.97)', border: '1px solid rgba(0,255,170,0.25)', backdropFilter: 'blur(12px)' }}
         >
-          Copied to clipboard
+          <div className="h-px absolute top-0 left-0 right-0" style={{ background: 'linear-gradient(90deg, transparent, rgba(0,255,170,0.5), transparent)' }} />
+          <span className="text-cyber-neon">Copied to clipboard</span>
         </motion.div>
       )}
     </AnimatePresence>

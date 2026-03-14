@@ -205,32 +205,33 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                   </div>
                 ) : item.recovery ? (
                   <div key={item.id} className="px-3 py-2 border-b border-white/[0.03] last:border-0">
-                    <div className="rounded-xl border border-cyber-neon/20 bg-cyber-neon/[0.05] px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-base shrink-0">{item.icon}</span>
+                    <div className="rounded-xl border border-cyber-neon/20 bg-gradient-to-r from-cyber-neon/[0.07] to-transparent px-3 py-2">
+                      <div className="flex items-start gap-2">
+                        <span className="text-base shrink-0 mt-0.5">{item.icon}</span>
                         <div className="min-w-0 flex-1">
-                          <p className="text-[11px] text-white leading-snug">{item.title}</p>
-                          <p className="text-[10px] text-gray-400 leading-snug mt-px truncate">{item.body}</p>
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-[11px] font-semibold text-white leading-snug">{item.title}</p>
+                            <span className="text-[9px] text-gray-600 font-mono shrink-0 mt-0.5">{timeAgo(item.timestamp)}</span>
+                          </div>
+                          <p className="text-[10px] text-gray-400 leading-snug mt-0.5 line-clamp-2">{item.body}</p>
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span className="text-[9px] text-gray-600 font-mono">{timeAgo(item.timestamp)}</span>
-                          <button
-                            type="button"
-                            onClick={async () => {
-                              await presentRecoveryComplete({
-                                sessionId: item.recovery?.sessionId ?? crypto.randomUUID(),
-                                startTime: item.recovery?.startTime ?? Date.now(),
-                                elapsedSeconds: item.recovery?.elapsedSeconds ?? 0,
-                                sessionSkillXP: item.recovery?.sessionSkillXP || {},
-                              })
-                              window.electronAPI?.db?.clearCheckpoint?.().catch(() => {})
-                              dismiss(item.id)
-                            }}
-                            className="px-2.5 py-1 rounded-lg bg-cyber-neon/15 border border-cyber-neon/35 text-cyber-neon text-xs font-semibold hover:bg-cyber-neon/25 transition-colors"
-                          >
-                            Claim
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            playClickSound()
+                            await presentRecoveryComplete({
+                              sessionId: item.recovery?.sessionId ?? crypto.randomUUID(),
+                              startTime: item.recovery?.startTime ?? Date.now(),
+                              elapsedSeconds: item.recovery?.elapsedSeconds ?? 0,
+                              sessionSkillXP: item.recovery?.sessionSkillXP || {},
+                            })
+                            window.electronAPI?.db?.clearCheckpoint?.().catch(() => {})
+                            dismiss(item.id)
+                          }}
+                          className="shrink-0 mt-0.5 px-2.5 py-1 rounded-lg bg-cyber-neon/15 border border-cyber-neon/35 text-cyber-neon text-xs font-semibold hover:bg-cyber-neon/25 transition-colors"
+                        >
+                          Claim
+                        </button>
                       </div>
                     </div>
                   </div>

@@ -3,7 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
 import { getStreakMultiplier } from '../../lib/xp'
 import { computeTotalSkillLevel, MAX_TOTAL_SKILL_LEVEL } from '../../lib/skills'
-import { FRAMES, BADGES, getEquippedFrame, getEquippedBadges } from '../../lib/cosmetics'
+import { FRAMES, getEquippedFrame } from '../../lib/cosmetics'
 import { playClickSound } from '../../lib/sounds'
 import { useAlertStore } from '../../stores/alertStore'
 import { useNotificationStore } from '../../stores/notificationStore'
@@ -24,7 +24,6 @@ export function ProfileBar({ onNavigateProfile, onNavigateInventory }: ProfileBa
   const [avatar, setAvatar] = useState('🤖')
   const [totalSkillLevel, setTotalSkillLevel] = useState(0)
   const [frameId, setFrameId] = useState<string | null>(null)
-  const [badgeIds, setBadgeIds] = useState<string[]>([])
   const [streak, setStreak] = useState(0)
   const activeFrame = FRAMES.find(f => f.id === frameId)
   const streakMult = getStreakMultiplier(streak)
@@ -70,7 +69,6 @@ export function ProfileBar({ onNavigateProfile, onNavigateInventory }: ProfileBa
       })
     }
     setFrameId(getEquippedFrame())
-    setBadgeIds(getEquippedBadges())
     if (api?.db?.getStreak) {
       api.db.getStreak().then((s: number) => setStreak(s || 0))
     }
@@ -106,16 +104,6 @@ export function ProfileBar({ onNavigateProfile, onNavigateInventory }: ProfileBa
             <span className="text-cyber-neon font-mono text-[11px] leading-none cursor-default" title="Total skill level">
               {totalSkillLevel}/{MAX_TOTAL_SKILL_LEVEL}
             </span>
-
-            {badgeIds.map(bId => {
-              const badge = BADGES.find(b => b.id === bId)
-              return badge ? (
-                <span key={bId} className="text-[9px] leading-none px-1 py-0.5 rounded-md border font-medium"
-                  style={{ borderColor: `${badge.color}30`, backgroundColor: `${badge.color}10`, color: badge.color }} title={badge.name}>
-                  {badge.icon}
-                </span>
-              ) : null
-            })}
 
           </div>
           <div className="flex items-center gap-1 mt-0.5 text-[10px] text-amber-400/90">

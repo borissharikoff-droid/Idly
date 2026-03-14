@@ -513,10 +513,10 @@ export function getFarmItemDisplay(itemId: string): { name: string; icon: string
   return null
 }
 
-// ─── Crop Rot ────────────────────────────────────────────────────────────────
+// ─── Harvest Fail Chance ─────────────────────────────────────────────────────
 
-/** Base rot chance by seed rarity. Higher rarity = riskier. */
-export const ROT_CHANCE_BY_RARITY: Record<LootRarity, number> = {
+/** Base harvest-fail chance by seed rarity (1 – 50 %). Higher rarity = riskier. */
+export const FAIL_CHANCE_BY_RARITY: Record<LootRarity, number> = {
   common: 0.12,
   rare: 0.17,
   epic: 0.22,
@@ -524,21 +524,43 @@ export const ROT_CHANCE_BY_RARITY: Record<LootRarity, number> = {
   mythic: 0.32,
 }
 
+/** Farmer-skill reduction of harvest-fail chance by level tier. */
+export function getFarmerFailReduction(level: number): number {
+  if (level >= 80) return 0.15
+  if (level >= 60) return 0.12
+  if (level >= 40) return 0.08
+  if (level >= 25) return 0.05
+  if (level >= 10) return 0.02
+  return 0
+}
+
+/** Effective harvest-fail chance (accounts for farmhouse + farmer skill). Clamped 1 – 50 %. */
+export function getEffectiveFailChance(seedRarity: LootRarity, farmhouseLevel: number, farmerLevel: number = 0): number {
+  const base = FAIL_CHANCE_BY_RARITY[seedRarity] ?? 0.15
+  const farmhouseReduction = farmhouseLevel * 0.02
+  const farmerReduction = getFarmerFailReduction(farmerLevel)
+  return Math.min(0.50, Math.max(0.01, base - farmhouseReduction - farmerReduction))
+}
+
+/** Roll whether a harvest fails. Returns true if the harvest failed. */
+export function rollHarvestFail(seedRarity: LootRarity, farmhouseLevel: number, farmerLevel: number = 0): boolean {
+  return Math.random() < getEffectiveFailChance(seedRarity, farmhouseLevel, farmerLevel)
+}
+
 /** Roll whether a planted crop will rot, and if so at what fraction of grow time.
  *  Returns null if no rot, or { rotAtFraction } if it will rot. */
 export function rollCropRot(seedRarity: LootRarity, farmhouseLevel: number): { rotAtFraction: number } | null {
-  const baseChance = ROT_CHANCE_BY_RARITY[seedRarity] ?? 0.15
-  const reduction = farmhouseLevel * 0.02 // -2% per farmhouse level
+  const baseChance = FAIL_CHANCE_BY_RARITY[seedRarity] ?? 0.15
+  const reduction = farmhouseLevel * 0.02
   const effectiveChance = Math.max(0, baseChance - reduction)
   if (Math.random() >= effectiveChance) return null
-  // Rot happens between 30% and 70% of grow time
   const rotAtFraction = 0.3 + Math.random() * 0.4
   return { rotAtFraction }
 }
 
 /** Get effective rot chance for display (accounts for farmhouse). */
 export function getEffectiveRotChance(seedRarity: LootRarity, farmhouseLevel: number): number {
-  const baseChance = ROT_CHANCE_BY_RARITY[seedRarity] ?? 0.15
+  const baseChance = FAIL_CHANCE_BY_RARITY[seedRarity] ?? 0.15
   return Math.max(0, baseChance - farmhouseLevel * 0.02)
 }
 

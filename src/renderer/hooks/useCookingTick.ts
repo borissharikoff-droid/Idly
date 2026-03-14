@@ -3,7 +3,7 @@ import { useCookingStore } from '../stores/cookingStore'
 import { useInventoryStore } from '../stores/inventoryStore'
 import { useToastStore } from '../stores/toastStore'
 import { LOOT_ITEMS } from '../lib/loot'
-import { playCraftCompleteSound, playCookSoundForInstrument } from '../lib/sounds'
+import { playCookCompleteSound, playCookBurnSound, playCookSoundForInstrument } from '../lib/sounds'
 import { grantChefXP } from '../lib/farming'
 import { syncInventoryToSupabase } from '../services/supabaseSync'
 import { useAuthStore } from '../stores/authStore'
@@ -24,7 +24,7 @@ export function useCookingTick() {
   const tick = useCookingStore((s) => s.tick)
   const addItem = useInventoryStore((s) => s.addItem)
   const batchRef = useRef<{ jobId: string; itemId: string; qty: number; xp: number } | null>(null)
-  const prevStepRef = useRef<number>(-1)
+  const stepXpAccumRef = useRef(0)
 
   useEffect(() => {
     function run() {
@@ -33,7 +33,7 @@ export function useCookingTick() {
 
       tick(
         Date.now(),
-        // onGrant
+        // onGrant — final item completion only
         (itemId, qty, xpGained) => {
           if (qty > 0) addItem(itemId, qty)
           if (xpGained > 0) grantChefXP(xpGained).catch(() => {})
@@ -41,15 +41,19 @@ export function useCookingTick() {
           const cur = batchRef.current
           if (cur && cur.jobId === jobBefore?.id && cur.itemId === itemId) {
             cur.qty += qty
-            cur.xp += xpGained
+            // add accumulated step XP + final step XP so notification shows full total
+            cur.xp += xpGained + stepXpAccumRef.current
+            stepXpAccumRef.current = 0
           } else {
-            batchRef.current = { jobId: jobBefore?.id ?? '', itemId, qty, xp: xpGained }
+            batchRef.current = { jobId: jobBefore?.id ?? '', itemId, qty, xp: xpGained + stepXpAccumRef.current }
+            stepXpAccumRef.current = 0
           }
         },
         // onBurn
         (itemId, burnedQty) => {
           const def = findItemDef(itemId)
           if (def && burnedQty > 0) {
+            playCookBurnSound()
             useToastStore.getState().push({
               kind: 'cook_complete',
               itemName: `Burned ${def.name}`,
@@ -58,6 +62,11 @@ export function useCookingTick() {
               xp: 0,
             })
           }
+        },
+        // onStepXp — partial XP for each non-final step completed
+        (stepXp) => {
+          grantChefXP(stepXp).catch(() => {})
+          stepXpAccumRef.current += stepXp
         },
       )
 
@@ -70,14 +79,13 @@ export function useCookingTick() {
           playCookSoundForInstrument(stepToInstrument(step))
         }
       }
-      prevStepRef.current = jobAfter?.stepIndex ?? -1
-
       const batch = batchRef.current
 
       if (batch && jobBefore && jobAfter?.id !== jobBefore.id) {
         const def = findItemDef(batch.itemId)
         if (def) {
-          playCraftCompleteSound()
+          const foodDef = FOOD_ITEM_MAP[batch.itemId]
+          playCookCompleteSound(foodDef?.rarity ?? 'common')
 
           // Show quality/burn info from last roll
           const lastRoll = useCookingStore.getState().lastRoll

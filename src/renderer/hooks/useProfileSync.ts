@@ -11,6 +11,47 @@ import { ensureInventoryHydrated, useInventoryStore } from '../stores/inventoryS
 import { useFarmStore } from '../stores/farmStore'
 import { useGoldStore } from '../stores/goldStore'
 import { getEquippedPerkRuntime } from '../lib/loot'
+import { useCookingStore } from '../stores/cookingStore'
+
+/** Force-set admin overrides to both SQLite and localStorage (can reduce XP). */
+async function applyAdminOverrides(
+  api: typeof window.electronAPI,
+  overrides: { skill_id: string; total_xp: number }[],
+) {
+  // Force-set in SQLite first, then notify UI
+  try {
+    if (api.db.forceSetSkillXP) {
+      await api.db.forceSetSkillXP(overrides)
+    }
+  } catch { /* ignore */ }
+  // Force-set in localStorage
+  try {
+    const stored = JSON.parse(localStorage.getItem('grindly_skill_xp') || '{}') as Record<string, number>
+    for (const row of overrides) {
+      stored[row.skill_id] = row.total_xp
+    }
+    localStorage.setItem('grindly_skill_xp', JSON.stringify(stored))
+    // Also set a flag so next app launch applies overrides before React mounts
+    const pending: Record<string, number> = {}
+    for (const row of overrides) pending[row.skill_id] = row.total_xp
+    localStorage.setItem('grindly_admin_skill_overrides', JSON.stringify(pending))
+  } catch { /* ignore */ }
+
+  // Chef skill has a separate store (cookingStore.cookXp) — sync it too
+  const chefOverride = overrides.find((r) => r.skill_id === 'chef')
+  if (chefOverride) {
+    try {
+      const cookSnap = JSON.parse(localStorage.getItem('grindly_cooking_v1') || '{}')
+      cookSnap.cookXp = chefOverride.total_xp
+      localStorage.setItem('grindly_cooking_v1', JSON.stringify(cookSnap))
+      useCookingStore.setState({ cookXp: chefOverride.total_xp })
+    } catch { /* ignore */ }
+  }
+
+  // Notify UI after both stores are updated
+  window.dispatchEvent(new CustomEvent('grindly-skill-xp-updated'))
+  console.log('[profileSync] Applied admin skill overrides:', overrides)
+}
 
 /** Merge cloud skill XP into localStorage so secondary skills (farmer, chef, warrior, crafter)
  *  reflect admin grants or cross-device progress. Takes MAX of local vs cloud. */
@@ -28,6 +69,20 @@ function restoreCloudSkillsToLocalStorage(cloudRows: { skill_id: string; total_x
     if (changed) {
       localStorage.setItem('grindly_skill_xp', JSON.stringify(stored))
       window.dispatchEvent(new CustomEvent('grindly-skill-xp-updated'))
+
+      // Chef skill has a separate store — sync if cloud had higher XP
+      const chefRow = cloudRows.find((r) => r.skill_id === 'chef')
+      if (chefRow) {
+        const cookXp = useCookingStore.getState().cookXp
+        if (chefRow.total_xp > cookXp) {
+          try {
+            const cookSnap = JSON.parse(localStorage.getItem('grindly_cooking_v1') || '{}')
+            cookSnap.cookXp = chefRow.total_xp
+            localStorage.setItem('grindly_cooking_v1', JSON.stringify(cookSnap))
+            useCookingStore.setState({ cookXp: chefRow.total_xp })
+          } catch { /* ignore */ }
+        }
+      }
     }
   } catch {
     // ignore storage errors
@@ -88,11 +143,16 @@ export function useProfileSync() {
         .single()
       const currentProfileLevel = Math.max(0, Number(profileRes.data?.level ?? 0))
       const currentProfileXp = Math.max(0, Number(profileRes.data?.xp ?? 0))
+      // Permanent stats (potion boosts) — sync so friends can see correct combat stats
+      ensureInventoryHydrated()
+      const permStats = useInventoryStore.getState().permanentStats
+
       // Never downsync profile totals: cloud keeps the best-known values.
       const { error: baseProfileError } = await supabase.from('profiles').update({
         level: Math.max(totalSkillLevel, currentProfileLevel),
         xp: Math.max(totalSkillXp, currentProfileXp),
         streak_count: streak,
+        permanent_stats: permStats,
         updated_at: new Date().toISOString(),
       }).eq('id', user.id)
       if (baseProfileError) {
@@ -119,8 +179,7 @@ export function useProfileSync() {
         statusTitle: perk.statusTitle,
       }).catch(() => {})
 
-      // Periodic safety sync for per-skill levels (keeps friends view correct even
-      // if a previous sync failed due to temporary network/schema mismatch).
+      // Periodic skill re-sync (initial mount sync is handled separately below)
       if (api?.db?.getAllSkillXP) {
         const now = Date.now()
         const RETRY_EVERY_MS = 5 * 60 * 1000
@@ -131,8 +190,13 @@ export function useProfileSync() {
             .then((result) => {
               if (result.ok) {
                 setSyncState({ status: 'success', at: result.lastSkillSyncAt })
-                if (result.cloudSkillRows?.length) {
-                  restoreCloudSkillsToLocalStorage(result.cloudSkillRows)
+                if (result.adminOverrides?.length) {
+                  applyAdminOverrides(api, result.adminOverrides)
+                }
+                const periodicOverriddenIds = new Set((result.adminOverrides ?? []).map((o) => o.skill_id))
+                const periodicSafeRows = (result.cloudSkillRows ?? []).filter((r) => !periodicOverriddenIds.has(r.skill_id))
+                if (periodicSafeRows.length) {
+                  restoreCloudSkillsToLocalStorage(periodicSafeRows)
                 }
                 return
               }
@@ -153,17 +217,25 @@ export function useProfileSync() {
     if (window.electronAPI?.db?.getAllSkillXP) {
       const api = window.electronAPI
       setSyncState({ status: 'syncing' })
+      lastSkillSyncAttemptRef.current = Date.now()
       syncSkillsToSupabase(api, { maxAttempts: 3 })
         .then((result) => {
           if (result.ok) {
             setSyncState({ status: 'success', at: result.lastSkillSyncAt })
+            // Apply admin overrides first (force-set, can reduce XP)
+            if (result.adminOverrides?.length) {
+              applyAdminOverrides(api, result.adminOverrides)
+            }
             // Restore cloud skill XP to local SQLite if local was empty (e.g. fresh install)
-            if (result.cloudSkillRows?.length && api.db.restoreSkillXP) {
-              api.db.restoreSkillXP(result.cloudSkillRows).catch(() => {})
+            // Exclude admin-overridden skills so cloud restore doesn't revert them
+            const overriddenIds = new Set((result.adminOverrides ?? []).map((o) => o.skill_id))
+            const safeCloudRows = (result.cloudSkillRows ?? []).filter((r) => !overriddenIds.has(r.skill_id))
+            if (safeCloudRows.length && api.db.restoreSkillXP) {
+              api.db.restoreSkillXP(safeCloudRows).catch(() => {})
             }
             // Also restore cloud XP to localStorage (secondary skills like farmer/chef/warrior/crafter read from here)
-            if (result.cloudSkillRows?.length) {
-              restoreCloudSkillsToLocalStorage(result.cloudSkillRows)
+            if (safeCloudRows.length) {
+              restoreCloudSkillsToLocalStorage(safeCloudRows)
             }
             return
           }

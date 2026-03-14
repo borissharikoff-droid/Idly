@@ -27,6 +27,8 @@ npx vitest run src/tests/xp.test.ts   # Run a single test file
 
 ## Architecture
 
+This is a TypeScript Electron + Supabase RPG game with complex sync layers (localStorage, SQLite, Supabase). When modifying game state, trace the full sync chain before making changes - client state can overwrite server-side DB changes.
+
 ### Three-Process Electron Model
 
 - **Main process** (`src/main/`, CommonJS via `tsconfig.main.json`) — app lifecycle, tray, SQLite database, PowerShell activity tracker subprocess, IPC handlers, auto-updater
@@ -86,15 +88,28 @@ Copy `.env.example` to `.env`. Supabase keys are optional (social features disab
 ## UI/Design Guidelines
 
 - When creating UI components, prefer a clean, compact MMO/RPG style. Avoid flashy, over-engineered designs. Keep slots small and square, prioritize stats/data readability over decorative art.
+- Keep UI designs clean, compact, and MMO/RPG-style. Do NOT over-engineer or make things flashy/large. Prioritize functional stats and readability over decorative art. When in doubt, go simpler.
 
 ## Code Style
 
 - Always create shared/reusable components instead of duplicating code inline. If the same UI exists in multiple pages, extract it into a shared component.
 - When generating JavaScript strings in templates (e.g., for dashboard HTML), always escape quotes properly. Test that generated JS is syntactically valid.
 
+## Code Patterns
+
+- When modifying or creating components, always check if a shared/reusable component already exists or should be created. Never duplicate UI code inline - extract shared components first.
+
 ## Code Changes
 
 - When removing a function or feature, grep for all references across the entire codebase before deleting. Never remove an export without checking all import sites.
+
+## Workflow Rules
+
+- After any code edit, verify there are no broken references or imports in other files that depend on the changed code. Run a grep for the function/export name before considering the change complete.
+
+## Tools & Integrations
+
+- Use the configured Supabase MCP (`mcp__supabase__execute_sql`) for all database operations. Never fall back to manual curl commands or raw SQL scripts when MCP is available.
 
 ## Zustand Selectors
 

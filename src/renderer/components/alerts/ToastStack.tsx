@@ -27,6 +27,7 @@ function accentFor(t: Toast): string {
     case 'marketplace_listed': return '#fbbf24'
     case 'marketplace_sold':   return '#22c55e'
     case 'crop_rot':       return '#a0674a'
+    case 'generic':        return t.data.kind === 'generic' && t.data.type === 'success' ? '#22c55e' : '#f87171'
     default:               return '#6b7280'
   }
 }
@@ -70,6 +71,7 @@ function ToastItem({ toast, onDismiss, onNavigate }: { toast: Toast; onDismiss: 
     if (d.kind === 'marketplace_listed') return '🏷️'
     if (d.kind === 'marketplace_sold')   return '🛒'
     if (d.kind === 'crop_rot')           return '🥀'
+    if (d.kind === 'generic')            return d.type === 'success' ? '✓' : '✕'
   })()
 
   const title = (() => {
@@ -82,6 +84,7 @@ function ToastItem({ toast, onDismiss, onNavigate }: { toast: Toast; onDismiss: 
     if (d.kind === 'marketplace_listed') return 'Listed on marketplace'
     if (d.kind === 'marketplace_sold')   return 'Item sold!'
     if (d.kind === 'crop_rot')           return 'Crop rotted!'
+    if (d.kind === 'generic')            return d.message
   })()
 
   const body = (() => {
@@ -106,6 +109,7 @@ function ToastItem({ toast, onDismiss, onNavigate }: { toast: Toast; onDismiss: 
     if (d.kind === 'marketplace_listed') return `${d.itemName}${d.qty > 1 ? ` ×${d.qty}` : ''} — ${d.priceGold * d.qty} 🪙`
     if (d.kind === 'marketplace_sold')   return `${d.itemName}${d.qty > 1 ? ` ×${d.qty}` : ''} — +${d.totalGold} 🪙`
     if (d.kind === 'crop_rot') return d.count === 1 ? 'A crop has rotted! +1 wilted plant' : `${d.count} crops rotted! +${d.count} wilted plants`
+    if (d.kind === 'generic') return null
     return null
   })()
 

@@ -57,7 +57,12 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
     const id = crypto.randomUUID()
     const n: Notification = { ...payload, id, timestamp: Date.now(), read: false }
     set((s) => {
-      const items = [n, ...s.items].slice(0, MAX)
+      // Deduplicate: only keep the latest recovery notification
+      let base = s.items
+      if (payload.recovery) {
+        base = base.filter((i) => !i.recovery)
+      }
+      const items = [n, ...base].slice(0, MAX)
       return { items, unreadCount: items.filter((i) => !i.read).length }
     })
     return id

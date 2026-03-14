@@ -361,6 +361,13 @@ export function SkillsPage() {
 
   useEffect(() => { load() }, [reloadKey])
 
+  // Re-read skill data when admin overrides or cloud sync update localStorage
+  useEffect(() => {
+    const handler = () => load()
+    window.addEventListener('grindly-skill-xp-updated', handler)
+    return () => window.removeEventListener('grindly-skill-xp-updated', handler)
+  }, [])
+
   // Load top 3 apps for expanded skill
   useEffect(() => {
     if (!expandedId) return

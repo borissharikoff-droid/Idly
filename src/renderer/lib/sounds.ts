@@ -534,6 +534,114 @@ export function playTapMissSound() {
   setTimeout(() => playTone(120, 0.08, 'triangle', vol * 0.3), 40)
 }
 
+// ── Cooking polish sounds ────────────────────────────────────────────────────
+
+/** Descending two-note buzz — "wrong answer" feel */
+export function playCookErrorSound() {
+  loadSettings()
+  if (cachedMuted) return
+  const vol = cachedVolume * 0.8
+  playTone(350, 0.1, 'sine', vol * 0.5)
+  setTimeout(() => playTone(220, 0.12, 'sine', vol * 0.4), 100)
+}
+
+/** Cooking-specific completion fanfare, scales by rarity */
+export function playCookCompleteSound(rarity: string = 'common') {
+  loadSettings()
+  if (cachedMuted) return
+  const ctx = getAudioCtx()
+  const vol = cachedVolume
+  const key = String(rarity || '').toLowerCase()
+
+  if (key === 'legendary' || key === 'mythic') {
+    // 4-note fanfare with detuned dual oscillators
+    const notes = [523, 659, 784, 1047]
+    notes.forEach((freq, i) => {
+      setTimeout(() => {
+        playTone(freq, 0.25, 'triangle', vol * 0.9)
+        // Detuned second voice for richness
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'sine'
+        osc.frequency.setValueAtTime(freq * 1.005, ctx.currentTime)
+        gain.gain.setValueAtTime(vol * 0.15, ctx.currentTime)
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25)
+        osc.connect(gain); gain.connect(ctx.destination)
+        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.26)
+      }, i * 100)
+    })
+    return
+  }
+  if (key === 'epic') {
+    // 3-note ascending + shimmer overlay
+    const notes = [587, 740, 988]
+    notes.forEach((freq, i) => {
+      setTimeout(() => playTone(freq, 0.2, 'triangle', vol * 0.85), i * 90)
+    })
+    // Shimmer
+    setTimeout(() => playTone(1976, 0.15, 'sine', vol * 0.2), 270)
+    return
+  }
+  if (key === 'rare') {
+    // 2-note rising
+    playTone(523, 0.15, 'sine', vol * 0.7)
+    setTimeout(() => playTone(659, 0.2, 'triangle', vol * 0.8), 100)
+    return
+  }
+  // common: single warm chime
+  playTone(523, 0.2, 'triangle', vol * 0.6)
+}
+
+/** 5-note ascending arpeggio — magical sparkle for Cauldron discovery */
+export function playCookDiscoverySound() {
+  loadSettings()
+  if (cachedMuted) return
+  const vol = cachedVolume * 1.0
+  // C5→E5→G5→C6→E6 triangle waves
+  const notes = [523, 659, 784, 1047, 1319]
+  notes.forEach((freq, i) => {
+    setTimeout(() => playTone(freq, 0.22, 'triangle', vol * (0.6 + i * 0.08)), i * 75)
+  })
+}
+
+/** Brief sizzle + descending sine — burn sound */
+export function playCookBurnSound() {
+  loadSettings()
+  if (cachedMuted) return
+  const ctx = getAudioCtx()
+  const vol = cachedVolume * 0.8
+  // Sizzle noise burst
+  const noise = ctx.createBufferSource()
+  const dur = 0.1
+  const buf = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate)
+  const data = buf.getChannelData(0)
+  for (let i = 0; i < data.length; i++) {
+    const t = i / data.length
+    data[i] = (Math.random() * 2 - 1) * Math.exp(-t * 3) * 0.4
+  }
+  noise.buffer = buf
+  const hp = ctx.createBiquadFilter()
+  hp.type = 'highpass'
+  hp.frequency.value = 4000
+  const gain = ctx.createGain()
+  gain.gain.setValueAtTime(vol * 0.25, ctx.currentTime)
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur)
+  noise.connect(hp); hp.connect(gain); gain.connect(ctx.destination)
+  noise.start(ctx.currentTime); noise.stop(ctx.currentTime + dur + 0.01)
+  // Descending sine
+  setTimeout(() => {
+    const osc = ctx.createOscillator()
+    const g2 = ctx.createGain()
+    osc.type = 'sine'
+    osc.frequency.setValueAtTime(400, ctx.currentTime)
+    osc.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.12)
+    g2.gain.setValueAtTime(vol * 0.3, ctx.currentTime)
+    g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.14)
+    osc.connect(g2); g2.connect(ctx.destination)
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.15)
+  }, 60)
+}
+
 export function setSoundVolume(volume: number) {
   cachedVolume = Math.max(0, Math.min(1, volume))
   localStorage.setItem('grindly_sound_volume', String(cachedVolume))

@@ -8,7 +8,7 @@ import type { AchievementDef } from '../../lib/xp'
 import { useAlertStore } from '../../stores/alertStore'
 import { playClickSound } from '../../lib/sounds'
 import { detectPersona } from '../../lib/persona'
-import { BADGES, FRAMES, FREE_AVATARS, LOCKED_AVATARS, ACHIEVEMENT_COSMETIC_UNLOCKS, getUnlockedBadges, getUnlockedFrames, getEquippedBadges, getEquippedFrame, equipBadge, unequipBadge, equipFrame, getUnlockedAvatarEmojis, unlockCosmeticsFromAchievement, ensureCosmeticsForUnlockedAchievements } from '../../lib/cosmetics'
+import { BADGES, FRAMES, FREE_AVATARS, LOCKED_AVATARS, ACHIEVEMENT_COSMETIC_UNLOCKS, getUnlockedFrames, getEquippedFrame, equipFrame, getUnlockedAvatarEmojis, unlockCosmeticsFromAchievement, ensureCosmeticsForUnlockedAchievements } from '../../lib/cosmetics'
 import { syncCosmeticsToSupabase } from '../../services/supabaseSync'
 import { PageHeader } from '../shared/PageHeader'
 import { InlineSuccess } from '../shared/InlineSuccess'
@@ -55,9 +55,7 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
   const [claimedIds, setClaimedIds] = useState<string[]>([])
 
   // Cosmetics
-  const [equippedBadges, setEquippedBadges] = useState<string[]>([])
   const [equippedFrameId, setEquippedFrameId] = useState<string | null>(null)
-  const [unlockedBadgeIds, setUnlockedBadgeIds] = useState<string[]>([])
   const [unlockedFrameIds, setUnlockedFrameIds] = useState<string[]>([])
 
   // Achievement progress context (for "Next Unlock" tracker)
@@ -163,9 +161,7 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
     }
 
     // Cosmetics (loaded after migration runs above)
-    setEquippedBadges(getEquippedBadges())
     setEquippedFrameId(getEquippedFrame())
-    setUnlockedBadgeIds(getUnlockedBadges())
     setUnlockedFrameIds(getUnlockedFrames())
     ensureInventoryHydrated()
   }, [user])
@@ -176,7 +172,7 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
     ensureInventoryHydrated()
     const equippedLoot = useInventoryStore.getState().equippedBySlot
     const perk = getEquippedPerkRuntime(equippedLoot)
-    syncCosmeticsToSupabase(getEquippedBadges(), getEquippedFrame(), {
+    syncCosmeticsToSupabase([], getEquippedFrame(), {
       equippedLoot: (equippedLoot ?? {}) as Record<string, string>,
       statusTitle: perk.statusTitle,
     }).catch(() => {})
@@ -188,7 +184,6 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
     for (const achievementId of unlockedIds) {
       unlockCosmeticsFromAchievement(achievementId)
     }
-    setUnlockedBadgeIds(getUnlockedBadges())
     setUnlockedFrameIds(getUnlockedFrames())
   }, [unlockedIds])
 
@@ -269,33 +264,15 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
     pushAlert(def)
   }
 
-  const persistCosmeticsToSupabase = (badges: string[], frame: string | null) => {
+  const persistCosmeticsToSupabase = (frame: string | null) => {
     if (!supabase || !user) return
     const statusTitle = equippedLootItems.find((entry) => entry.item.slot === 'ring')?.item.perkType === 'status_title'
       ? String(equippedLootItems.find((entry) => entry.item.slot === 'ring')?.item.perkValue ?? '')
       : null
-    syncCosmeticsToSupabase(badges, frame, {
+    syncCosmeticsToSupabase([], frame, {
       equippedLoot: equippedBySlot as Record<string, string>,
       statusTitle,
     }).catch(() => {})
-  }
-
-  const handleEquipBadge = (badgeId: string) => {
-    playClickSound()
-    let newBadges: string[]
-    if (equippedBadges.includes(badgeId)) {
-      unequipBadge(badgeId)
-      newBadges = equippedBadges.filter(b => b !== badgeId)
-    } else {
-      if (equippedBadges.length >= 3) {
-        setMessage({ type: 'err', text: 'Max 3 badges equipped.' })
-        return
-      }
-      equipBadge(badgeId)
-      newBadges = [...equippedBadges, badgeId]
-    }
-    setEquippedBadges(newBadges)
-    persistCosmeticsToSupabase(newBadges, equippedFrameId)
   }
 
   const handleEquipFrame = (frameId: string) => {
@@ -303,7 +280,7 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
     const newFrame = equippedFrameId === frameId ? null : frameId
     equipFrame(newFrame)
     setEquippedFrameId(newFrame)
-    persistCosmeticsToSupabase(equippedBadges, newFrame)
+    persistCosmeticsToSupabase(newFrame)
   }
 
   // Find the active frame
@@ -346,7 +323,6 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
         avatar={profileLoaded ? avatar : '\uD83E\uDD16'}
         username={profileLoaded ? (username || 'Grindly') : 'Loading...'}
         frameId={equippedFrameId}
-        equippedBadges={equippedBadges}
         equippedLootItems={equippedLootItems}
         unlockedCount={unlockedCount}
         totalSkillLevel={totalSkillLevel}
@@ -365,7 +341,7 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
               ensureInventoryHydrated()
               const equippedLoot = useInventoryStore.getState().equippedBySlot
               const perk = getEquippedPerkRuntime(equippedLoot)
-              const res = await syncCosmeticsToSupabase(getEquippedBadges(), getEquippedFrame(), {
+              const res = await syncCosmeticsToSupabase([], getEquippedFrame(), {
                 equippedLoot: (equippedLoot ?? {}) as Record<string, string>,
                 statusTitle: perk.statusTitle,
               })
@@ -531,13 +507,13 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
               <div className="flex items-center justify-between mb-2">
                 <p className="text-[10px] uppercase tracking-wider text-gray-500 font-mono">Collection</p>
                 <p className="text-[9px] text-gray-600 font-mono">
-                  {unlockedBadgeIds.length + unlockedFrameIds.length + getUnlockedAvatarEmojis().length} / {BADGES.length + FRAMES.length + LOCKED_AVATARS.length} unlocked
+                  {unlockedFrameIds.length + getUnlockedAvatarEmojis().length} / {FRAMES.length + LOCKED_AVATARS.length} unlocked
                 </p>
               </div>
               <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
-                  animate={{ width: `${((unlockedBadgeIds.length + unlockedFrameIds.length + getUnlockedAvatarEmojis().length) / (BADGES.length + FRAMES.length + LOCKED_AVATARS.length)) * 100}%` }}
+                  animate={{ width: `${((unlockedFrameIds.length + getUnlockedAvatarEmojis().length) / (FRAMES.length + LOCKED_AVATARS.length)) * 100}%` }}
                   transition={{ duration: 0.8, ease: 'easeOut', delay: 0.2 }}
                   className="h-full rounded-full bg-gradient-to-r from-cyber-neon/70 via-purple-400/70 to-yellow-400/70"
                 />
@@ -550,12 +526,6 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full bg-yellow-400/60" />
-                  <span className="text-[9px] text-gray-500 font-mono">
-                    <span className="text-yellow-400 font-semibold">{unlockedBadgeIds.length}</span>/{BADGES.length} Badges
-                  </span>
-                </div>
-                <div className="flex items-center gap-1.5">
                   <div className="w-2 h-2 rounded-full bg-purple-400/60" />
                   <span className="text-[9px] text-gray-500 font-mono">
                     <span className="text-purple-400 font-semibold">{getUnlockedAvatarEmojis().length}</span>/{LOCKED_AVATARS.length} Avatars
@@ -565,103 +535,7 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
             </motion.div>
 
             {/* ── Rarity Breakdown ── */}
-            <RarityBreakdown unlockedFrameIds={unlockedFrameIds} unlockedBadgeIds={unlockedBadgeIds} />
-
-            {/* ── Badges section ── */}
-            <motion.div
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="rounded-xl bg-discord-card/80 border border-white/10 p-4 space-y-3"
-            >
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] uppercase tracking-wider text-gray-500 font-mono">Badges</p>
-                <div className="flex items-center gap-2">
-                  <div className="flex gap-0.5">
-                    {[0, 1, 2].map((i) => (
-                      <div
-                        key={i}
-                        className="w-1.5 h-1.5 rounded-full transition-colors duration-300"
-                        style={{ backgroundColor: i < equippedBadges.length ? (BADGES.find((b) => b.id === equippedBadges[i])?.color ?? '#888') + '80' : 'rgba(255,255,255,0.08)' }}
-                      />
-                    ))}
-                  </div>
-                  <p className="text-[9px] text-gray-600 font-mono">{equippedBadges.length}/3</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {BADGES.map((badge) => {
-                  const isUnlocked = unlockedBadgeIds.includes(badge.id) || (badge.achievementId ? unlockedIds.includes(badge.achievementId) : false)
-                  const isEquipped = equippedBadges.includes(badge.id)
-                  return (
-                    <motion.button
-                      key={badge.id}
-                      whileTap={isUnlocked ? { scale: 0.96 } : undefined}
-                      onClick={() => isUnlocked && handleEquipBadge(badge.id)}
-                      disabled={!isUnlocked}
-                      className={`p-3 rounded-xl border text-left transition-all relative overflow-hidden ${
-                        isEquipped
-                          ? 'bg-discord-dark/80'
-                          : isUnlocked
-                            ? 'border-white/10 bg-discord-dark/50 hover:border-white/20'
-                            : 'border-white/[0.06] bg-discord-dark/30 opacity-60'
-                      }`}
-                      style={{
-                        borderColor: isEquipped ? `${badge.color}50` : undefined,
-                        boxShadow: isEquipped ? `0 0 20px ${badge.color}18, inset 0 0 16px ${badge.color}06` : undefined,
-                      }}
-                    >
-                      {isEquipped && (
-                        <div
-                          className="absolute inset-0 pointer-events-none rounded-xl"
-                          style={{ background: `radial-gradient(ellipse 80% 60% at 50% 0%, ${badge.color}12, transparent 60%)` }}
-                        />
-                      )}
-                      {isEquipped ? (
-                        <div
-                          className="absolute top-1.5 right-1.5 px-1.5 py-0.5 rounded-md text-[7px] font-bold font-mono uppercase tracking-wider"
-                          style={{ backgroundColor: `${badge.color}20`, color: badge.color, border: `1px solid ${badge.color}35` }}
-                        >
-                          Equipped
-                        </div>
-                      ) : isUnlocked ? (
-                        <div className="absolute top-1.5 right-1.5 text-[8px] text-gray-600 font-mono">
-                          tap to equip
-                        </div>
-                      ) : null}
-                      <div className="flex items-center gap-2.5 mb-1.5 relative">
-                        <div
-                          className="w-10 h-10 rounded-lg flex items-center justify-center text-lg shrink-0 border transition-shadow"
-                          style={{
-                            borderColor: `${badge.color}${isUnlocked ? '60' : '25'}`,
-                            backgroundColor: `${badge.color}${isUnlocked ? '18' : '08'}`,
-                            boxShadow: isEquipped ? `0 0 14px ${badge.color}40` : undefined,
-                          }}
-                        >
-                          <span style={{ opacity: isUnlocked ? 1 : 0.35, filter: !isUnlocked ? 'grayscale(0.8)' : undefined }}>{badge.icon}</span>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <span className={`text-[11px] font-semibold block ${isUnlocked ? 'text-white' : 'text-gray-500'}`}>{badge.name}</span>
-                          <span
-                            className="inline-block text-[8px] px-1.5 py-[2px] rounded-md font-medium mt-0.5 border"
-                            style={{
-                              borderColor: `${badge.color}${isUnlocked ? '40' : '18'}`,
-                              backgroundColor: `${badge.color}${isUnlocked ? '15' : '06'}`,
-                              color: isUnlocked ? badge.color : `${badge.color}50`,
-                            }}
-                          >
-                            {badge.icon} {badge.label}
-                          </span>
-                        </div>
-                      </div>
-                      <p className={`text-[9px] leading-tight relative ${isUnlocked ? 'text-gray-400' : 'text-gray-600'}`}>
-                        {isUnlocked ? badge.description : badge.unlockHint}
-                      </p>
-                    </motion.button>
-                  )
-                })}
-              </div>
-            </motion.div>
+            <RarityBreakdown unlockedFrameIds={unlockedFrameIds} />
 
             {/* ── Frames section ── */}
             <motion.div
@@ -874,13 +748,12 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
 
 // ── Flex Card ─────────────────────────────────────────────────────────────────
 
-function FlexCard({ avatar, username, frameId, equippedBadges, equippedLootItems, unlockedCount, totalSkillLevel,
+function FlexCard({ avatar, username, frameId, equippedLootItems, unlockedCount, totalSkillLevel,
   onAvatarClick, onUsernameClick, isUsernameEditing, draftUsername, onDraftChange, onDraftSubmit, onDraftCancel, syncButton, onItemInspect,
 }: {
   avatar: string
   username: string
   frameId: string | null
-  equippedBadges: string[]
   equippedLootItems: { slot: LootSlot; item: (typeof LOOT_ITEMS)[number] }[]
   unlockedCount: number
   totalSkillLevel: number
@@ -1008,22 +881,8 @@ function FlexCard({ avatar, username, frameId, equippedBadges, equippedLootItems
             ) : (
               <button type="button" onClick={onUsernameClick} className="text-[13px] font-bold text-white hover:text-cyber-neon transition-colors cursor-pointer" title="Click to edit">{username}</button>
             )}
-            {equippedBadges.map((bid) => {
-              const b = BADGES.find((x) => x.id === bid)
-              return b ? (
-                <span key={bid} className="text-[7px] px-1.5 py-[2px] rounded-md font-semibold border" style={{ borderColor: `${b.color}40`, backgroundColor: `${b.color}15`, color: b.color }}>
-                  {b.icon} {b.label}
-                </span>
-              ) : null
-            })}
           </div>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
-            {frame && (
-              <span className="inline-flex items-center gap-1 text-[8px] font-mono px-1.5 py-0.5 rounded-md border" style={{ color: frame.color, borderColor: `${frame.color}20`, backgroundColor: `${frame.color}06` }}>
-                <span className="w-2.5 h-2.5 rounded-[2px] inline-block" style={{ background: frame.gradient, border: `1px solid ${frame.color}50` }} />
-                {frame.name}
-              </span>
-            )}
             {totalIP > 0 && (
               <span className="text-[8px] font-mono text-amber-400/80 px-1.5 py-0.5 rounded-md border border-amber-400/15 bg-amber-400/5">
                 {totalIP} IP
@@ -1230,9 +1089,8 @@ function NextUnlockTracker({ unlockedIds, progressCtx }: {
 
 // ── Rarity Breakdown ─────────────────────────────────────────────────────────
 
-function RarityBreakdown({ unlockedFrameIds, unlockedBadgeIds }: {
+function RarityBreakdown({ unlockedFrameIds }: {
   unlockedFrameIds: string[]
-  unlockedBadgeIds: string[]
 }) {
   const rarities = ['Rare', 'Epic', 'Legendary'] as const
   const rarityColors: Record<string, string> = { Rare: '#4FC3F7', Epic: '#C084FC', Legendary: '#FFD700' }
@@ -1243,9 +1101,6 @@ function RarityBreakdown({ unlockedFrameIds, unlockedBadgeIds }: {
     const ownedFrames = FRAMES.filter((f) => f.rarity === rarity && unlockedFrameIds.includes(f.id)).length
     return { rarity, totalFrames, ownedFrames }
   })
-
-  const totalBadgesOwned = unlockedBadgeIds.length
-  const totalBadges = BADGES.length
 
   return (
     <motion.div
@@ -1279,20 +1134,6 @@ function RarityBreakdown({ unlockedFrameIds, unlockedBadgeIds }: {
         })}
       </div>
 
-      <div className="flex items-center gap-2 pt-0.5 border-t border-white/5">
-        <span className="text-[8px] font-mono w-[70px] shrink-0 text-amber-400/80">
-          {'\uD83C\uDFC5'} Badges
-        </span>
-        <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all duration-500"
-            style={{ width: `${totalBadges > 0 ? (totalBadgesOwned / totalBadges) * 100 : 0}%`, backgroundColor: '#F59E0B80' }}
-          />
-        </div>
-        <span className="text-[8px] font-mono tabular-nums w-8 text-right" style={{ color: totalBadgesOwned === totalBadges && totalBadges > 0 ? '#F59E0B' : '#6B7280' }}>
-          {totalBadgesOwned}/{totalBadges}
-        </span>
-      </div>
     </motion.div>
   )
 }

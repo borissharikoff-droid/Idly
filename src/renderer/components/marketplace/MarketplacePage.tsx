@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { useEscapeHandler } from '../../hooks/useEscapeHandler'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { LOOT_ITEMS, getRarityTheme, getItemPower, MARKETPLACE_BLOCKED_ITEMS, getItemPerkDescription, isValidItemId, type LootRarity } from '../../lib/loot'
@@ -19,6 +20,7 @@ import { GoldDisplay } from './GoldDisplay'
 import { SkeletonBlock } from '../shared/PageLoading'
 import { playClickSound } from '../../lib/sounds'
 import { RARITY_THEME, LootVisual as LootVisualShared, normalizeRarity } from '../loot/LootUI'
+import { useToastStore } from '../../stores/toastStore'
 
 const RARITY_ORDER: LootRarity[] = ['common', 'rare', 'epic', 'legendary', 'mythic']
 type TabId = 'listings' | 'sell' | 'my_listings' | 'history'
@@ -294,6 +296,7 @@ function HistoryRow({ entry, userId, index }: { entry: TradeHistoryEntry; userId
 const SELL_FILTERS = [
   { id: 'all',       label: 'All',       icon: '🎒' },
   { id: 'gear',      label: 'Gear',      icon: '⚔️' },
+  { id: 'food',      label: 'Food',      icon: '🍽️' },
   { id: 'materials', label: 'Materials', icon: '🪨' },
   { id: 'plants',    label: 'Plants',    icon: '🌿' },
   { id: 'seeds',     label: 'Seeds',     icon: '🌱' },
@@ -305,6 +308,7 @@ function sellItemCategory(id: string): SellFilterId {
   if (isSeedId(id) || isSeedZipId(id)) return 'seeds'
   const item = LOOT_ITEMS.find((x) => x.id === id)
   if (!item) return 'materials'
+  if (item.slot === 'food') return 'food'
   if (item.slot === 'plant') return 'plants'
   if (item.slot === 'material') return 'materials'
   if (['head', 'body', 'legs', 'ring', 'weapon'].includes(item.slot)) return 'gear'
@@ -316,6 +320,7 @@ function SellTab({ onListed, onToast }: { onListed: () => void; onToast: (messag
   const seeds = useFarmStore((s) => s.seeds)
   const seedZips = useFarmStore((s) => s.seedZips)
   const [selectedItem, setSelectedItem] = useState<string | null>(null)
+  useEscapeHandler(() => setSelectedItem(null), selectedItem !== null)
   const [sellSearch, setSellSearch] = useState('')
   const [filterBy, setFilterBy] = useState<SellFilterId>('all')
 
@@ -374,6 +379,7 @@ function SellTab({ onListed, onToast }: { onListed: () => void; onToast: (messag
     if (filterBy !== 'all' || sellSearch.trim()) return null
     const cats: { key: SellFilterId; label: string; icon: string; items: { id: string; qty: number }[] }[] = [
       { key: 'gear', label: 'Gear', icon: '⚔️', items: [] },
+      { key: 'food', label: 'Food', icon: '🍽️', items: [] },
       { key: 'materials', label: 'Materials', icon: '🪨', items: [] },
       { key: 'plants', label: 'Plants', icon: '🌿', items: [] },
       { key: 'seeds', label: 'Seeds', icon: '🌱', items: [] },
@@ -550,63 +556,7 @@ function SellTab({ onListed, onToast }: { onListed: () => void; onToast: (messag
   )
 }
 
-// ─── No gold toast ───────────────────────────────────────────────────────────
 
-function NoGoldToast({ alert, gold, onClose }: { alert: ListingWithSeller; gold: number; onClose: () => void }) {
-  const meta = getItemMeta(alert.item_id)
-  const theme = RARITY_THEME[normalizeRarity(meta.rarity)] ?? RARITY_THEME.common
-  const deficit = alert.price_gold - gold
-  return (
-    <motion.div
-      key="no-gold"
-      initial={{ opacity: 0, x: 40 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 40 }}
-      transition={{ duration: 0.2, ease: 'easeOut' }}
-      className="fixed top-16 right-4 z-[200] w-[250px] rounded-xl border overflow-hidden shadow-2xl"
-      style={{ borderColor: theme.border, background: theme.panel, boxShadow: `0 0 30px ${theme.glow}` }}
-    >
-      <div className="p-3 flex items-center gap-2.5">
-        <div
-          className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-          style={{ backgroundColor: `${theme.color}18`, border: `1px solid ${theme.border}` }}
-        >
-          <LootVisualShared icon={meta.icon} image={meta.image} className="w-6 h-6 object-contain" scale={meta.scale} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-semibold text-white truncate">{meta.name}</p>
-          <p className="text-[10px] text-red-400">Need {deficit} more 🪙</p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="w-5 h-5 rounded flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 transition-colors text-[10px] shrink-0"
-        >✕</button>
-      </div>
-    </motion.div>
-  )
-}
-
-// ─── Buy status toast ────────────────────────────────────────────────────────
-
-function BuyToast({ message, type }: { message: string; type: 'success' | 'error' }) {
-  return (
-    <motion.div
-      key="toast"
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.2 }}
-      className={`fixed top-4 left-1/2 -translate-x-1/2 z-[300] px-4 py-2 rounded-xl border text-xs font-medium shadow-2xl backdrop-blur-sm ${
-        type === 'success'
-          ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
-          : 'bg-red-500/15 border-red-500/30 text-red-400'
-      }`}
-    >
-      {message}
-    </motion.div>
-  )
-}
 
 // ─── Main page ───────────────────────────────────────────────────────────────
 
@@ -623,15 +573,12 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
   const [buyTarget, setBuyTarget] = useState<OrderBookRow | null>(null)
   const [buyQty, setBuyQty] = useState(1)
   const [buying, setBuying] = useState(false)
-  const [noGoldAlert, setNoGoldAlert] = useState<ListingWithSeller | null>(null)
-  const noGoldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [cancellingId, setCancellingId] = useState<string | null>(null)
   const [cancelTarget, setCancelTarget] = useState<MergedMyListing | null>(null)
   const [cancelError, setCancelError] = useState<string | null>(null)
   const [showBackpack, setShowBackpack] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pushToast = useToastStore((s) => s.push)
 
   // Filters
   const [search, setSearch] = useState('')
@@ -656,10 +603,8 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
   useEffect(() => { useNavBadgeStore.getState().clearMarketplaceSale() }, [])
 
   const showToast = useCallback((message: string, type: 'success' | 'error') => {
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
-    setToast({ message, type })
-    toastTimerRef.current = setTimeout(() => setToast(null), 2500)
-  }, [])
+    pushToast({ kind: 'generic', message, type })
+  }, [pushToast])
 
   const loadListings = useCallback(async (withExpiry = false) => {
     if (exitingRef.current) return
@@ -705,11 +650,10 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
       if (e.key !== 'Escape') return
       if (buyTarget) { e.stopImmediatePropagation(); setBuyTarget(null); return }
       if (cancelTarget) { e.stopImmediatePropagation(); setCancelTarget(null); setCancelError(null); return }
-      if (noGoldAlert) { e.stopImmediatePropagation(); setNoGoldAlert(null) }
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [buyTarget, cancelTarget, noGoldAlert])
+  }, [buyTarget, cancelTarget])
 
   // ─── Filtering ──────────────────────────────────────────────────────────────
 
@@ -807,9 +751,8 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
   const handleBuyClick = (row: OrderBookRow) => {
     if (!user) return
     if ((gold ?? 0) < row.pricePerUnit) {
-      if (noGoldTimerRef.current) clearTimeout(noGoldTimerRef.current)
-      setNoGoldAlert(row.listings[0])
-      noGoldTimerRef.current = setTimeout(() => setNoGoldAlert(null), 4000)
+      const deficit = row.pricePerUnit - (gold ?? 0)
+      showToast(`Need ${deficit} more gold`, 'error')
       return
     }
     setBuyQty(1)
@@ -1504,23 +1447,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
         document.body,
       )}
 
-      {/* ─── No gold toast ─────────────────────────────────────────────────── */}
-      {createPortal(
-        <AnimatePresence>
-          {noGoldAlert && (
-            <NoGoldToast alert={noGoldAlert} gold={gold} onClose={() => setNoGoldAlert(null)} />
-          )}
-        </AnimatePresence>,
-        document.body,
-      )}
 
-      {/* ─── Toast ─────────────────────────────────────────────────────────── */}
-      {createPortal(
-        <AnimatePresence>
-          {toast && <BuyToast message={toast.message} type={toast.type} />}
-        </AnimatePresence>,
-        document.body,
-      )}
 
       {/* showBackpack handled above */}
     </div>

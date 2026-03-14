@@ -84,12 +84,13 @@ interface CookingState {
     qty: number,
     itemsOwned: Record<string, number>,
     onConsume: (id: string, qty: number) => void,
-  ) => 'ok' | 'not_enough' | 'invalid' | 'locked'
+  ) => 'ok' | 'not_enough' | 'invalid' | 'locked' | 'level_too_low'
   advanceStep: () => void
   tick: (
     now: number,
     onGrant: (itemId: string, qty: number, xpGained: number) => void,
     onBurn?: (itemId: string, burnedQty: number) => void,
+    onStepXp?: (xp: number) => void,
   ) => void
   cancelJob: (
     jobId: string,
@@ -223,6 +224,10 @@ export const useCookingStore = create<CookingState>((set, get) => ({
     if (!recipe) return 'invalid'
     if (!canAffordCookRecipe(recipe, qty, itemsOwned)) return 'not_enough'
 
+    // Check chef level requirement
+    const chefLvl = skillLevelFromXP(get().cookXp)
+    if (recipe.chefLevelRequired > 0 && chefLvl < recipe.chefLevelRequired) return 'level_too_low'
+
     // Check instruments are unlocked
     const { unlockedInstruments, instrumentTiers } = get()
     for (const step of recipe.steps) {
@@ -293,7 +298,7 @@ export const useCookingStore = create<CookingState>((set, get) => ({
     set({ activeJob: updated })
   },
 
-  tick(now, onGrant, onBurn) {
+  tick(now, onGrant, onBurn, onStepXp) {
     const { activeJob } = get()
     if (!activeJob) return
 
@@ -303,7 +308,11 @@ export const useCookingStore = create<CookingState>((set, get) => ({
 
     const isLastStep = activeJob.stepIndex === activeJob.steps.length - 1
 
-    // Non-final step: auto-advance to next step immediately
+    // XP split across steps: each non-final step awards its share via onStepXp
+    const totalSteps = activeJob.steps.length
+    const xpPerStep = totalSteps > 1 ? Math.floor(activeJob.xpPerItem / totalSteps) : 0
+
+    // Non-final step: auto-advance to next step and award partial XP
     if (!isLastStep) {
       const nextIdx = activeJob.stepIndex + 1
       const nextStep = activeJob.steps[nextIdx]
@@ -313,6 +322,16 @@ export const useCookingStore = create<CookingState>((set, get) => ({
         secPerItem: nextStep.secPerItem,
         startedAt: now,
         stepReady: false,
+      }
+      // Grant step XP via dedicated callback (keeps batch accumulator clean)
+      if (xpPerStep > 0 && onStepXp) {
+        const masteryCountEarly = get().discoveredRecipes[activeJob.recipeId] ?? 0
+        const masteryEarly = getMasteryBonus(getMasteryStars(masteryCountEarly))
+        const stepXp = Math.ceil(xpPerStep * masteryEarly.xpMultiplier)
+        if (stepXp > 0) {
+          onStepXp(stepXp)
+          set({ cookXp: get().cookXp + stepXp })
+        }
       }
       const snap = { cookXp: get().cookXp, activeJob: updated, queue: get().queue }
       save(snap)
@@ -376,7 +395,9 @@ export const useCookingStore = create<CookingState>((set, get) => ({
     }
 
     // XP is granted for all attempts (even burned — you learn from mistakes)
-    const xpGained = Math.ceil(completable * activeJob.xpPerItem * mastery.xpMultiplier)
+    // Final step XP = remainder after non-final steps already paid via onStepXp
+    const xpForFinalStep = activeJob.xpPerItem - xpPerStep * (totalSteps - 1)
+    const xpGained = Math.ceil(completable * xpForFinalStep * mastery.xpMultiplier)
     if (finalOutput > 0) onGrant(activeJob.outputItemId, finalOutput, xpGained)
     else if (xpGained > 0) onGrant(activeJob.outputItemId, 0, xpGained)
 
@@ -514,27 +535,55 @@ export const useCookingStore = create<CookingState>((set, get) => ({
       }
     }
 
-    // Recipe matched — check player can afford recipe amounts
-    for (const ing of recipe.ingredients) {
-      if ((itemsOwned[ing.id] ?? 0) < ing.qty) return 'not_enough'
-    }
-
-    // Mark discovered (if first time)
+    // Mark discovered (if first time) — persist to localStorage immediately
+    // but defer Zustand set() until end to avoid mid-callback re-render
     const { discoveredRecipes } = get()
     const wasKnown = (discoveredRecipes[recipe.id] ?? 0) > 0
     const type = wasKnown ? 'known' as const : 'discovered' as const
+    let pendingDiscovery: Record<string, number> | null = null
 
     if (!wasKnown) {
-      const updated = { ...discoveredRecipes, [recipe.id]: 0 }
-      saveDiscovery(updated)
-      set({ discoveredRecipes: updated })
+      pendingDiscovery = { ...discoveredRecipes, [recipe.id]: 0 }
+      saveDiscovery(pendingDiscovery)
+    }
+
+    const food = FOOD_ITEM_MAP[recipe.outputItemId]
+
+    // Helper to flush pending discovery to store
+    const flushDiscovery = () => {
+      if (pendingDiscovery) set({ discoveredRecipes: pendingDiscovery })
+    }
+
+    // Recipe matched — check player can afford recipe amounts
+    const canAfford = recipe.ingredients.every(
+      (ing) => (itemsOwned[ing.id] ?? 0) >= ing.qty,
+    )
+
+    if (!canAfford) {
+      flushDiscovery()
+      return {
+        type,
+        recipeId: recipe.id,
+        foodName: food?.name ?? recipe.outputItemId,
+        foodIcon: food?.icon ?? '🍳',
+        xpGained: 0,
+      }
     }
 
     // Start the actual cook job (consumes recipe ingredient amounts, starts timer/steps)
     const result = get().startCook(recipe.id, 1, itemsOwned, onConsume)
-    if (result !== 'ok') return 'not_enough'
+    if (result !== 'ok') {
+      flushDiscovery()
+      return {
+        type,
+        recipeId: recipe.id,
+        foodName: food?.name ?? recipe.outputItemId,
+        foodIcon: food?.icon ?? '🍳',
+        xpGained: 0,
+      }
+    }
 
-    const food = FOOD_ITEM_MAP[recipe.outputItemId]
+    flushDiscovery()
     return {
       type,
       recipeId: recipe.id,

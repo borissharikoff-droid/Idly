@@ -130,23 +130,25 @@ export function AutoFarmLootModal({ open, result, onClose }: AutoFarmLootModalPr
     }
 
     // Materials — aggregate all (dungeon drops + chest bonus materials)
-    const matTotals = new Map<string, { icon: string; name: string; qty: number }>()
+    const matTotals = new Map<string, { icon: string; image?: string; name: string; qty: number; rarity?: string }>()
     result.materials.forEach((m) => {
-      const existing = matTotals.get(m.name)
+      const existing = matTotals.get(m.id)
+      const matDef = LOOT_ITEMS.find((x) => x.id === m.id)
       if (existing) { existing.qty += m.qty }
-      else { matTotals.set(m.name, { icon: m.icon, name: m.name, qty: m.qty }) }
+      else { matTotals.set(m.id, { icon: matDef?.icon ?? m.icon, image: matDef?.image, name: matDef?.name ?? m.name, qty: m.qty, rarity: matDef?.rarity }) }
     })
     result.chestResults.forEach((cr) => {
       cr.bonusMaterials.forEach((bm) => {
         const matDef = LOOT_ITEMS.find((x) => x.id === bm.itemId)
         if (!matDef) return
-        const existing = matTotals.get(matDef.name)
+        const existing = matTotals.get(bm.itemId)
         if (existing) { existing.qty += bm.qty }
-        else { matTotals.set(matDef.name, { icon: matDef.icon, name: matDef.name, qty: bm.qty }) }
+        else { matTotals.set(bm.itemId, { icon: matDef.icon, image: matDef.image, name: matDef.name, qty: bm.qty, rarity: matDef.rarity }) }
       })
     })
     matTotals.forEach((m) => {
-      entries.push({ type: 'material', icon: m.icon, value: `×${m.qty}`, label: m.name, color: '#10b981' })
+      const theme = getRarityTheme(m.rarity ?? 'common')
+      entries.push({ type: 'material', icon: m.icon, image: m.image, value: `×${m.qty}`, label: m.name, color: theme.color })
     })
 
     // Warrior XP
@@ -461,19 +463,24 @@ function BonusCard({ icon, image, value, label, color, delay }: {
 }) {
   return (
     <motion.div
-      className="flex-none w-[130px] snap-start rounded-xl border flex flex-col items-center justify-center gap-2 py-4 relative overflow-hidden"
+      className="flex-none w-[130px] snap-start rounded-xl border flex flex-col items-center justify-center gap-1.5 py-3.5 relative overflow-hidden"
       style={{ borderColor: `${color}40`, background: `linear-gradient(160deg, ${color}10 0%, rgba(8,8,16,0.95) 65%)` }}
       initial={{ opacity: 0, x: 20, scale: 0.88 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
       transition={{ type: 'spring', stiffness: 280, damping: 24, delay }}
     >
       <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(circle at 50% 35%, ${color}18 0%, transparent 65%)` }} />
-      {image ? (
-        <img src={image} alt="" className="w-8 h-8 object-contain relative" style={{ imageRendering: 'pixelated' }} />
-      ) : (
-        <span className="text-3xl relative">{icon}</span>
-      )}
-      <span className="text-xl font-bold tabular-nums relative" style={{ color }}>{value}</span>
+      <div
+        className="w-12 h-12 rounded-xl flex items-center justify-center relative"
+        style={{ backgroundColor: `${color}15`, border: `1px solid ${color}30`, boxShadow: `0 0 12px ${color}22` }}
+      >
+        {image ? (
+          <img src={image} alt="" className="w-8 h-8 object-contain" style={{ imageRendering: 'pixelated' }} draggable={false} />
+        ) : (
+          <span className="text-2xl">{icon}</span>
+        )}
+      </div>
+      <span className="text-lg font-bold tabular-nums relative" style={{ color }}>{value}</span>
       <span className="text-[9px] font-mono uppercase tracking-widest relative" style={{ color: `${color}88` }}>{label}</span>
     </motion.div>
   )

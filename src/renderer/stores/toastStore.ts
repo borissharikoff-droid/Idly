@@ -10,6 +10,7 @@ export type ToastKind =
   | { kind: 'marketplace_listed'; itemName: string; qty: number; priceGold: number }
   | { kind: 'marketplace_sold'; itemName: string; qty: number; totalGold: number }
   | { kind: 'crop_rot'; count: number }
+  | { kind: 'generic'; message: string; type: 'success' | 'error' }
 
 export interface Toast {
   id: string
@@ -29,6 +30,7 @@ const TTL: Record<ToastKind['kind'], number> = {
   marketplace_listed:  3500,
   marketplace_sold:    5000,
   crop_rot:            4000,
+  generic:             3000,
 }
 
 const MAX_TOASTS = 4

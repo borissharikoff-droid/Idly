@@ -17,6 +17,8 @@ export interface SkillSyncResult {
   error?: string
   /** Non-empty when local SQLite was all-zeros but cloud had XP — caller should restore to SQLite */
   cloudSkillRows?: { skill_id: string; total_xp: number }[]
+  /** Admin overrides that should force-set local XP (can reduce XP) */
+  adminOverrides?: { skill_id: string; total_xp: number }[]
 }
 
 export interface AchievementSyncResult {
@@ -201,6 +203,50 @@ export async function syncSkillsToSupabase(
         }
       }
 
+      // Apply any pending local skill overrides to SQLite BEFORE reading it
+      // (set by one-shot admin fixes in main.tsx)
+      const overriddenSkillIds = new Set<string>()
+      let pendingOverrides: { skill_id: string; total_xp: number }[] | undefined
+      try {
+        const pendingRaw = localStorage.getItem('grindly_pending_skill_overrides')
+        if (pendingRaw) {
+          const pending = JSON.parse(pendingRaw) as { skill_id: string; total_xp: number }[]
+          if (pending.length > 0 && api.db.forceSetSkillXP) {
+            await api.db.forceSetSkillXP(pending)
+            pendingOverrides = pending.map(p => ({ skill_id: normalizeSkillId(p.skill_id), total_xp: p.total_xp }))
+            for (const p of pendingOverrides) overriddenSkillIds.add(p.skill_id)
+            console.log('[supabaseSync] Applied pending skill overrides to SQLite:', pending)
+          }
+          localStorage.removeItem('grindly_pending_skill_overrides')
+        }
+      } catch { /* ignore */ }
+
+      // Check for admin skill overrides BEFORE reading local data
+      // so overrides are applied to SQLite first and the upsert carries the correct values.
+      let adminOverrides: { skill_id: string; total_xp: number }[] | undefined
+      try {
+        const overrideRes = await supabase
+          .from('admin_skill_overrides')
+          .select('id, skill_id, total_xp')
+          .eq('user_id', user.id)
+        if (overrideRes.data?.length) {
+          adminOverrides = overrideRes.data.map((r: { skill_id: string; total_xp: number }) => ({
+            skill_id: normalizeSkillId(r.skill_id),
+            total_xp: r.total_xp,
+          }))
+          for (const ov of adminOverrides) overriddenSkillIds.add(ov.skill_id)
+          // Apply overrides to SQLite immediately
+          if (api.db.forceSetSkillXP) {
+            await api.db.forceSetSkillXP(adminOverrides)
+          }
+          // Delete applied overrides from Supabase
+          const ids = overrideRes.data.map((r: { id: string }) => r.id)
+          await supabase.from('admin_skill_overrides').delete().in('id', ids)
+        }
+      } catch {
+        // Non-fatal: overrides will be retried next sync
+      }
+
       const allRows = (await api.db.getAllSkillXP()) as { skill_id: string; total_xp: number }[]
       const xpMap = new Map<string, number>()
       for (const row of allRows) {
@@ -236,15 +282,21 @@ export async function syncSkillsToSupabase(
         const typed = row as ExistingSkillRow
         existingBySkill.set(normalizeSkillId(typed.skill_id), typed)
       }
-      const payload = localPayload.map((entry) => mergeSkillPayload(entry, existingBySkill.get(entry.skill_id)))
+      // For overridden skills, use local payload directly (already force-set); skip merge which would take MAX
+      const payload = localPayload.map((entry) =>
+        overriddenSkillIds.has(entry.skill_id)
+          ? entry
+          : mergeSkillPayload(entry, existingBySkill.get(entry.skill_id))
+      )
 
       // Detect skills where cloud has MORE XP than local → restore to SQLite so local is never behind cloud.
-      // This handles: fresh installs, reinstalls, account logins on new machines, admin corrections.
-      // restoreSkillXPFromCloud uses MAX() in SQL so it never reduces existing local XP.
+      // Exclude admin-overridden skills — their authoritative value is the override, not the old cloud value.
       const cloudHigherRows = [...existingBySkill.values()]
         .filter((r) => {
+          const sid = normalizeSkillId(r.skill_id)
+          if (overriddenSkillIds.has(sid)) return false
           const cloudXp = r.total_xp ?? 0
-          const localXp = xpMap.get(normalizeSkillId(r.skill_id)) ?? 0
+          const localXp = xpMap.get(sid) ?? 0
           return cloudXp > localXp
         })
         .map((r) => ({ skill_id: normalizeSkillId(r.skill_id), total_xp: r.total_xp ?? 0 }))
@@ -279,12 +331,16 @@ export async function syncSkillsToSupabase(
         }
       }
 
+      // Merge pending + admin overrides so callers know which skills were force-set
+      const allOverrides = [...(pendingOverrides ?? []), ...(adminOverrides ?? [])]
+
       return {
         ok: true,
         attempts,
         syncedSkills: payload.length,
         lastSkillSyncAt: syncAt,
         cloudSkillRows,
+        adminOverrides: allOverrides.length > 0 ? allOverrides : undefined,
       }
     } catch (err) {
       lastError = err instanceof Error ? err.message : String(err)
@@ -514,12 +570,25 @@ export async function syncInventoryToSupabase(
       itemsToSync = { ...items }
       for (const [itemId, cloudQty] of cloudItems) {
         let localQty: number
-        if (isSeedId(itemId)) localQty = seeds[itemId] ?? 0
-        else if (isSeedZipId(itemId)) {
+        let existsLocally: boolean
+        if (isSeedId(itemId)) {
+          localQty = seeds[itemId] ?? 0
+          existsLocally = itemId in seeds
+        } else if (isSeedZipId(itemId)) {
           const tier = seedZipTierFromItemId(itemId)
           localQty = tier ? (seedZips[tier] ?? 0) : 0
-        } else localQty = items[itemId] ?? 0
-        itemsToSync[itemId] = Math.max(localQty, cloudQty)
+          existsLocally = tier ? tier in seedZips : false
+        } else {
+          localQty = items[itemId] ?? 0
+          existsLocally = itemId in items
+        }
+        // Local is authoritative for items that exist locally (prevents consumed items from being restored).
+        // Only pull cloud-only items (e.g. admin grants, marketplace purchases).
+        if (existsLocally) {
+          itemsToSync[itemId] = localQty
+        } else if (cloudQty > 0) {
+          itemsToSync[itemId] = cloudQty
+        }
       }
 
       const cloudChests: Record<string, number> = {
@@ -556,7 +625,7 @@ export async function syncInventoryToSupabase(
       }
     }
     const itemPayload = Object.entries(allItems)
-      .filter(([, qty]) => qty > 0)
+      .filter(([, qty]) => qty >= 0)
       .map(([item_id, quantity]) => ({
         user_id: user.id,
         item_id,

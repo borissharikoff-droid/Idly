@@ -233,24 +233,15 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
       if (!loginEmail.includes('@')) {
         if (!supabase) { setError('Supabase not available'); setBusy(false); return }
-        const { data: profileData, error: profileErr } = await supabase
-          .from('profiles')
-          .select('id, email')
-          .ilike('username', loginEmail)
-          .limit(1)
-        if (profileErr || !profileData?.length) {
-          setError('User not found')
+        const { data: email, error: rpcErr } = await supabase
+          .rpc('get_email_by_username', { p_username: loginEmail })
+        console.log('[auth] username lookup:', { loginEmail, email, rpcErr })
+        if (rpcErr || !email) {
+          setError(rpcErr ? rpcErr.message : 'User not found')
           setBusy(false)
           return
         }
-        const emailFromProfile = profileData[0]?.email
-        if (emailFromProfile) {
-          loginEmail = emailFromProfile
-        } else {
-          setError('Use the email you signed up with to log in.')
-          setBusy(false)
-          return
-        }
+        loginEmail = email as string
       }
 
       const { error: err } = await signIn(loginEmail, password)
@@ -289,24 +280,40 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         >
           <motion.div variants={itemVariants}>
             <HeroBanner />
-            <p className="text-gray-400 text-sm text-center mb-4">
-              {isSignUp ? 'Create your account to start focus tracking' : 'Welcome back'}
-            </p>
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={isSignUp ? 'sub-signup' : 'sub-signin'}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.25 }}
+                className="text-gray-400 text-sm text-center mb-4"
+              >
+                {isSignUp ? 'Create your account to start focus tracking' : 'Welcome back'}
+              </motion.p>
+            </AnimatePresence>
           </motion.div>
 
         <motion.div
           variants={itemVariants}
+          layout
+          transition={{ layout: { duration: 0.35, ease: [0.16, 1, 0.3, 1] } }}
           className="rounded-2xl bg-discord-card border border-white/10 p-6 overflow-hidden"
         >
           <form onSubmit={handleAuth} className="space-y-3">
-            <AnimatePresence mode="wait">
+            <motion.div
+              animate={{ height: 'auto' }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              style={{ overflow: 'hidden' }}
+            >
+            <AnimatePresence mode="wait" initial={false}>
               {isSignUp ? (
                 <motion.div
                   key="signup-fields"
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 8 }}
-                  transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                   className="space-y-3"
                 >
                   <div>
@@ -359,10 +366,10 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
               ) : (
                 <motion.div
                   key="signin-field"
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 8 }}
-                  transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
                 >
                   <input
                     type="text"
@@ -375,6 +382,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                 </motion.div>
               )}
             </AnimatePresence>
+            </motion.div>
 
             <motion.div
               initial={{ opacity: 0 }}
@@ -422,7 +430,17 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                 whileHover={!busy ? { scale: 1.01 } : undefined}
                 whileTap={!busy ? { scale: 0.99 } : undefined}
               >
-                {busy ? '...' : isSignUp ? 'Create account' : 'Sign in'}
+                <AnimatePresence mode="wait">
+                  <motion.span
+                    key={busy ? 'busy' : isSignUp ? 'btn-signup' : 'btn-signin'}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    {busy ? '...' : isSignUp ? 'Create account' : 'Sign in'}
+                  </motion.span>
+                </AnimatePresence>
               </motion.button>
             </motion.div>
           </form>

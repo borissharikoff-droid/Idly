@@ -33,8 +33,6 @@ const FRAME_RARITY_SCORE: Record<string, number> = {
   Legendary: 320,
 }
 
-const BADGE_SCORE = 30
-
 function computeFlexScore(row: LeaderboardRow, equippedLootOverride?: Partial<Record<LootSlot, string>>): number {
   let score = 0
   const loot = equippedLootOverride ?? normalizeEquippedLoot(row.equipped_loot) ?? {}
@@ -47,7 +45,6 @@ function computeFlexScore(row: LeaderboardRow, equippedLootOverride?: Partial<Re
     const frame = FRAMES.find((f) => f.id === row.equipped_frame)
     if (frame) score += FRAME_RARITY_SCORE[frame.rarity] ?? 0
   }
-  score += (row.equipped_badges?.length ?? 0) * BADGE_SCORE
   return score
 }
 
@@ -73,22 +70,18 @@ export function Leaderboard({ onSelectUser }: LeaderboardProps) {
     }
     ;(async () => {
       try {
-        const { data: fs } = await supabase
-          .from('friendships')
-          .select('user_id, friend_id')
-          .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`)
-          .eq('status', 'accepted')
-        const ids = (fs || []).map((f) => (f.user_id === user.id ? f.friend_id : f.user_id))
-        ids.push(user.id)
-
+        // Fetch ALL profiles for global leaderboard (top 50 by level)
         const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
           .select('*')
-          .in('id', ids)
+          .order('level', { ascending: false })
+          .limit(50)
 
         if (profilesError) {
           console.warn('Leaderboard profiles error:', profilesError.message)
         }
+
+        const ids = (profiles || []).map((p) => p.id)
 
         // Fetch session totals and user_skills for total skill level
         const byUser: Record<string, number> = {}

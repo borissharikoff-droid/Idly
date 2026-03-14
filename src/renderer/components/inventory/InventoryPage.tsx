@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import { useEscapeHandler } from '../../hooks/useEscapeHandler'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CHEST_DEFS, ITEM_POWER_BY_RARITY, LOOT_ITEMS, MARKETPLACE_BLOCKED_ITEMS, POTION_IDS, POTION_MAX, estimateLootDropRate, getItemPower, getItemPerks, type ChestType, getItemPerkDescription } from '../../lib/loot'
@@ -14,6 +15,7 @@ import { syncInventoryToSupabase } from '../../services/supabaseSync'
 import { useNotificationStore } from '../../stores/notificationStore'
 import { useFarmStore } from '../../stores/farmStore'
 import { SEED_DEFS, formatGrowTime } from '../../lib/farming'
+import { getFoodItemById } from '../../lib/cooking'
 import { SLOT_LABEL, LootVisual, RARITY_THEME, normalizeRarity } from '../loot/LootUI'
 import { CharacterCard } from '../character/CharacterCard'
 import { MOTION } from '../../lib/motion'
@@ -29,7 +31,7 @@ type SlotEntry =
 const RARITY_ORDER: Record<string, number> = { mythic: 5, legendary: 4, epic: 3, rare: 2, common: 1 }
 
 const SLOT_SORT_ORDER: Record<string, number> = {
-  weapon: 0, head: 1, body: 2, legs: 3, ring: 4, consumable: 5, plant: 6,
+  weapon: 0, head: 1, body: 2, legs: 3, ring: 4, consumable: 5, food: 6, plant: 7,
 }
 
 const FILTERS = [
@@ -39,6 +41,7 @@ const FILTERS = [
   { id: 'xp',        label: 'XP',        icon: '📈' },
   { id: 'drops',     label: 'Drops',     icon: '🎁' },
   { id: 'potions',   label: 'Potions',   icon: '⚗️' },
+  { id: 'food',      label: 'Food',      icon: '🍽️' },
   { id: 'resources', label: 'Resources', icon: '🪨' },
   { id: 'chests',    label: 'Bags',      icon: '📦' },
   { id: 'cosmetic',  label: 'Cosmetic',  icon: '✨' },
@@ -60,6 +63,7 @@ function slotMatchesFilter(slot: SlotEntry, fid: string): boolean {
   if (slot.kind !== 'item') return false
   const item = LOOT_ITEMS.find((x) => x.id === slot.itemId)
   if (!item) return false
+  if (fid === 'food')     return item.slot === 'food'
   if (fid === 'weapons')  return item.slot === 'weapon'
   if (fid === 'combat')   return ['atk_boost', 'hp_boost', 'hp_regen_boost'].includes(item.perkType as string)
   if (fid === 'xp')       return ['xp_skill_boost', 'xp_global_boost', 'focus_boost'].includes(item.perkType as string)
@@ -95,7 +99,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
   const [viewMode, setViewModeRaw] = useState<'list' | 'grid' | 'compact'>(() => {
     try { return (localStorage.getItem('inv_viewMode') as 'list' | 'grid' | 'compact') || 'grid' } catch { return 'grid' }
   })
-  type FilterById = 'all' | 'combat' | 'weapons' | 'xp' | 'drops' | 'potions' | 'resources' | 'chests' | 'cosmetic' | 'plants' | 'seeds'
+  type FilterById = 'all' | 'combat' | 'weapons' | 'xp' | 'drops' | 'potions' | 'food' | 'resources' | 'chests' | 'cosmetic' | 'plants' | 'seeds'
   const [filterBy, setFilterByRaw] = useState<FilterById>(() => {
     try { return (localStorage.getItem('inv_filterBy') as FilterById) || 'all' } catch { return 'all' }
   })
@@ -110,6 +114,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
   const [chestModalAnimSeed, setChestModalAnimSeed] = useState(0)
   const [chestChainMessage, setChestChainMessage] = useState<string | null>(null)
   const [bulkOpenModal, setBulkOpenModal] = useState<{ chestType: ChestType; result: BulkOpenResult } | null>(null)
+  useEscapeHandler(() => setBulkOpenModal(null), bulkOpenModal !== null)
 
   const slots = useMemo<SlotEntry[]>(() => {
     const out: SlotEntry[] = []
@@ -220,11 +225,15 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
     const items = sortedSlots.filter((s) => s.kind === 'item')
     const gear = items.filter((s) => {
       const it = LOOT_ITEMS.find((x) => x.id === (s as Extract<SlotEntry, { kind: 'item' }>).itemId)
-      return it && !['consumable', 'plant', 'material'].includes(it.slot)
+      return it && !['consumable', 'plant', 'material', 'food'].includes(it.slot)
     })
     const potions = items.filter((s) => {
       const it = LOOT_ITEMS.find((x) => x.id === (s as Extract<SlotEntry, { kind: 'item' }>).itemId)
       return it?.slot === 'consumable'
+    })
+    const food = items.filter((s) => {
+      const it = LOOT_ITEMS.find((x) => x.id === (s as Extract<SlotEntry, { kind: 'item' }>).itemId)
+      return it?.slot === 'food'
     })
     const plants = items.filter((s) => {
       const it = LOOT_ITEMS.find((x) => x.id === (s as Extract<SlotEntry, { kind: 'item' }>).itemId)
@@ -239,6 +248,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
     if (bags.length > 0) groups.push({ label: 'Bags', icon: '📦', slots: bags })
     if (gear.length > 0) groups.push({ label: 'Gear', icon: '⚔️', slots: gear })
     if (potions.length > 0) groups.push({ label: 'Potions', icon: '⚗️', slots: potions })
+    if (food.length > 0) groups.push({ label: 'Food', icon: '🍽️', slots: food })
     if (materials.length > 0) groups.push({ label: 'Materials', icon: '🪨', slots: materials })
     if (plants.length > 0) groups.push({ label: 'Plants', icon: '🌿', slots: plants })
     if (seeds.length > 0) groups.push({ label: 'Seeds', icon: '🌱', slots: seeds })
@@ -307,6 +317,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
     if (itemId === 'atk_potion') return permanentStats.atk >= POTION_MAX
     if (itemId === 'hp_potion') return permanentStats.hp >= POTION_MAX
     if (itemId === 'regen_potion') return permanentStats.hpRegen >= POTION_MAX
+    if (itemId === 'def_potion') return permanentStats.def >= POTION_MAX
     return false
   }
 
@@ -352,7 +363,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
     if (slot.kind === 'chest') return 'Open'
     if (slot.kind === 'item') {
       const item = LOOT_ITEMS.find((x) => x.id === slot.itemId)
-      if (item?.slot === 'plant' || item?.slot === 'material') return '—'
+      if (item?.slot === 'plant' || item?.slot === 'material' || item?.slot === 'food') return '—'
       if (item?.slot === 'consumable') return isPotionMaxed(slot.itemId) ? 'Maxed' : 'Drink'
       if (inBattle) return '⚔ Locked'
       return slot.equipped ? 'Unequip' : 'Equip'
@@ -847,7 +858,32 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                       )}
 
                       {isPlant && <p className="text-[10px] text-lime-400/80 font-mono">🌾 Farm harvest · sell on Marketplace</p>}
-                      {inspectItem.perkType === 'cosmetic' && <p className="text-[10px] text-gray-400">Visual cosmetic — no gameplay effect.</p>}
+                      {inspectItem.slot === 'food' && (() => {
+                        const foodDef = getFoodItemById(inspectItem.id)
+                        if (!foodDef) return null
+                        const fx = foodDef.effect
+                        const stats: { value: string; unit: string; desc: string; color: string }[] = []
+                        if (fx.heal) stats.push({ value: `+${fx.heal}`, unit: 'HP', desc: 'Heal', color: '#4ade80' })
+                        if (fx.buffAtk) stats.push({ value: `+${fx.buffAtk}`, unit: 'ATK', desc: 'Attack buff', color: '#f87171' })
+                        if (fx.buffDef) stats.push({ value: `+${fx.buffDef}`, unit: 'DEF', desc: 'Defense buff', color: '#a3a3a3' })
+                        if (fx.buffRegen) stats.push({ value: `+${fx.buffRegen}`, unit: 'HP/s', desc: 'Regen buff', color: '#22d3ee' })
+                        if (fx.buffDurationSec) stats.push({ value: `${fx.buffDurationSec}s`, unit: '', desc: 'Buff duration', color: '#fbbf24' })
+                        return (
+                          <div className={`grid gap-1.5 ${stats.length <= 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
+                            {stats.map((s, i) => (
+                              <div key={i} className="rounded-lg px-2.5 py-2 border flex flex-col gap-0.5"
+                                style={{ borderColor: `${s.color}35`, background: `${s.color}0e` }}>
+                                <div className="flex items-baseline gap-1">
+                                  <span className="font-bold font-mono tabular-nums leading-none" style={{ fontSize: stats.length <= 2 ? 18 : 14, color: s.color, textShadow: `0 0 14px ${s.color}55` }}>{s.value}</span>
+                                  {s.unit && <span className="text-[10px] font-mono font-semibold" style={{ color: `${s.color}cc` }}>{s.unit}</span>}
+                                </div>
+                                <span className="text-[9px] text-gray-400 capitalize leading-none">{s.desc}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )
+                      })()}
+                      {inspectItem.perkType === 'cosmetic' && inspectItem.slot !== 'food' && <p className="text-[10px] text-gray-400">Visual cosmetic — no gameplay effect.</p>}
 
                       {isPotion && (
                         <div>
@@ -920,11 +956,14 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                   ) : (
                     <>
                       {(() => {
-                        const isPlant = inspectSlot.kind === 'item' && LOOT_ITEMS.find((x) => x.id === inspectSlot.itemId)?.slot === 'plant'
-                        const isConsumable = inspectSlot.kind === 'item' && LOOT_ITEMS.find((x) => x.id === inspectSlot.itemId)?.slot === 'consumable'
+                        const itemSlot = inspectSlot.kind === 'item' ? LOOT_ITEMS.find((x) => x.id === inspectSlot.itemId)?.slot : undefined
+                        const isPlant = itemSlot === 'plant'
+                        const isFood = itemSlot === 'food'
+                        const isMaterial = itemSlot === 'material'
+                        const isConsumable = itemSlot === 'consumable'
                         const isMaxed = isConsumable && isPotionMaxed(inspectSlot.kind === 'item' ? inspectSlot.itemId : '')
                         const isGearLocked = inBattle && inspectSlot.kind === 'item' && !isConsumable
-                        const disabled = isPlant || isMaxed
+                        const disabled = isPlant || isFood || isMaterial || isMaxed
                         return (
                           <button
                             type="button"

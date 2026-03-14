@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
+import { useEscapeHandler } from '../../hooks/useEscapeHandler'
 import { motion } from 'framer-motion'
 import { useChat } from '../../hooks/useChat'
 import { FriendList } from './FriendList'
@@ -100,6 +101,8 @@ export function FriendsPage({ friendsModel }: FriendsPageProps) {
     }
   }, [view, profileFromChat, backToList])
 
+  useEscapeHandler(handleBack, isSubview)
+
   useEffect(() => {
     if (!isSubview) return
     const isEditableTarget = (target: EventTarget | null): boolean => {
@@ -110,13 +113,6 @@ export function FriendsPage({ friendsModel }: FriendsPageProps) {
     }
     const isMouseBack = (button: number) => button === 3 || button === 4
 
-    const onKeyDownCapture = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return
-      if (isEditableTarget(e.target)) return
-      e.preventDefault()
-      e.stopPropagation()
-      handleBack()
-    }
     const onMouseBackCapture = (e: MouseEvent) => {
       if (!isMouseBack(e.button)) return
       if (isEditableTarget(e.target)) return
@@ -125,11 +121,9 @@ export function FriendsPage({ friendsModel }: FriendsPageProps) {
       handleBack()
     }
 
-    window.addEventListener('keydown', onKeyDownCapture, true)
     window.addEventListener('mousedown', onMouseBackCapture, true)
     window.addEventListener('auxclick', onMouseBackCapture, true)
     return () => {
-      window.removeEventListener('keydown', onKeyDownCapture, true)
       window.removeEventListener('mousedown', onMouseBackCapture, true)
       window.removeEventListener('auxclick', onMouseBackCapture, true)
     }
@@ -237,7 +231,7 @@ export function FriendsPage({ friendsModel }: FriendsPageProps) {
                 />
               )}
               {!loading && friends.length === 0 && (
-                <EmptyState title="No friends data yet" description="Reconnect to refresh your friends list." icon="🛰" actionLabel="Reconnect" onAction={() => refresh()} />
+                <EmptyState title="No squad yet" description="Add your first friend by username to compete and flex stats." icon="👾" />
               )}
               {!loading && pendingRequests.filter((r) => r.direction === 'outgoing').length > 0 && (
                 <div className="mt-3">

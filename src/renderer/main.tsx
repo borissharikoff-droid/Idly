@@ -3,6 +3,29 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import './styles/globals.css'
 
+// ── One-time admin skill fixes ──
+// Fix 003: Phil — farmer→21 (1500 XP), chef→1 (0 XP)
+// Force-sets localStorage, cookingStore, and queues SQLite override
+if (!localStorage.getItem('grindly_admin_fix_003')) {
+  try {
+    const stored = JSON.parse(localStorage.getItem('grindly_skill_xp') || '{}') as Record<string, number>
+    stored['farmer'] = 1500
+    stored['chef'] = 0
+    localStorage.setItem('grindly_skill_xp', JSON.stringify(stored))
+    // Reset cookingStore's separate cookXp
+    const cookSnap = JSON.parse(localStorage.getItem('grindly_cooking_v1') || '{}')
+    cookSnap.cookXp = 0
+    localStorage.setItem('grindly_cooking_v1', JSON.stringify(cookSnap))
+    // Queue SQLite override — applied by syncSkillsToSupabase before it reads SQLite
+    localStorage.setItem('grindly_pending_skill_overrides', JSON.stringify([
+      { skill_id: 'farmer', total_xp: 1500 },
+      { skill_id: 'chef', total_xp: 0 },
+    ]))
+    localStorage.setItem('grindly_admin_fix_003', '1')
+    console.log('[admin] Fix 003: Phil farmer→21 (1500 XP), chef→1 (0 XP)')
+  } catch { /* ignore */ }
+}
+
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
   { error: Error | null }

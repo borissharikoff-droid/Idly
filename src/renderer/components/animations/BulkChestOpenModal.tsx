@@ -187,7 +187,7 @@ export function BulkChestOpenModal({ open, chestType, result, onClose }: BulkChe
                           }}
                         >
                           <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(circle at 30% 40%, ${theme.glow}20 0%, transparent 60%)` }} />
-                          <div className="relative flex-none">
+                          <div className="relative flex-none w-10 h-10 rounded-md flex items-center justify-center" style={{ background: `${theme.color}12`, border: `1px solid ${theme.color}20` }}>
                             {entry.def.image ? (
                               <img src={entry.def.image} alt="" className="w-8 h-8 object-contain" style={{ imageRendering: 'pixelated' }} />
                             ) : (
@@ -228,26 +228,32 @@ export function BulkChestOpenModal({ open, chestType, result, onClose }: BulkChe
               {sortedMaterials.length > 0 && (
                 <div className="mt-2.5 space-y-1.5">
                   <p className="text-[10px] font-mono text-gray-500 uppercase tracking-wider text-left">Materials</p>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {sortedMaterials.map((mat) => {
+                  <div className="grid grid-cols-2 gap-2">
+                    {sortedMaterials.map((mat, i) => {
                       const theme = getRarityTheme(mat.def.rarity)
                       return (
-                        <div
+                        <motion.div
                           key={mat.def.id}
-                          className="rounded-lg border p-1.5 flex flex-col items-center gap-1"
+                          initial={{ opacity: 0, scale: 0.85 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.05 + i * 0.03, type: 'spring', stiffness: 300, damping: 22 }}
+                          className="rounded-xl border p-2.5 flex flex-col items-center gap-1.5 relative overflow-hidden"
                           style={{
-                            borderColor: `${theme.color}30`,
-                            background: `linear-gradient(160deg, ${theme.glow}12 0%, rgba(8,8,16,0.95) 65%)`,
+                            borderColor: `${theme.color}35`,
+                            background: `linear-gradient(160deg, ${theme.glow}15 0%, rgba(8,8,16,0.95) 65%)`,
                           }}
                         >
-                          {mat.def.image ? (
-                            <img src={mat.def.image} className="w-6 h-6 object-contain" />
-                          ) : (
-                            <span className="text-lg">{mat.def.icon}</span>
-                          )}
-                          <span className="text-[11px] font-bold tabular-nums" style={{ color: theme.color }}>×{mat.qty}</span>
-                          <span className="text-[8px] text-center leading-tight text-gray-400 truncate w-full">{mat.def.name}</span>
-                        </div>
+                          <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(circle at 50% 30%, ${theme.glow}20 0%, transparent 60%)` }} />
+                          <div className="relative w-14 h-14 rounded-lg flex items-center justify-center" style={{ background: `${theme.color}12`, border: `1px solid ${theme.color}25`, boxShadow: `0 0 12px ${theme.glow}30` }}>
+                            {mat.def.image ? (
+                              <img src={mat.def.image} className="w-10 h-10 object-contain" style={{ imageRendering: 'pixelated' }} draggable={false} />
+                            ) : (
+                              <span className="text-3xl">{mat.def.icon}</span>
+                            )}
+                          </div>
+                          <span className="relative text-sm font-bold tabular-nums" style={{ color: theme.color }}>×{mat.qty}</span>
+                          <span className="relative text-[9px] text-center leading-tight text-gray-400 truncate w-full">{mat.def.name}</span>
+                        </motion.div>
                       )
                     })}
                   </div>
@@ -268,9 +274,11 @@ export function BulkChestOpenModal({ open, chestType, result, onClose }: BulkChe
                           className="rounded-lg border p-1.5 flex flex-col items-center gap-1"
                           style={{ borderColor: theme.border, background: `linear-gradient(160deg, ${theme.glow}12 0%, rgba(8,8,16,0.95) 65%)` }}
                         >
-                          {display.image
-                            ? <img src={display.image} className="w-6 h-6 object-contain" />
-                            : <span className="text-lg">{display.icon}</span>}
+                          <div className="w-9 h-9 rounded-md flex items-center justify-center" style={{ background: `${theme.color}12`, border: `1px solid ${theme.color}20` }}>
+                            {display.image
+                              ? <img src={display.image} className="w-7 h-7 object-contain" style={{ imageRendering: 'pixelated' }} draggable={false} />
+                              : <span className="text-xl">{display.icon}</span>}
+                          </div>
                           <span className="text-[11px] font-bold tabular-nums" style={{ color: theme.color }}>×{sz.qty}</span>
                           <span className="text-[8px] text-center leading-tight text-gray-400 truncate w-full">{display.name}</span>
                         </div>

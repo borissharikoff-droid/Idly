@@ -333,7 +333,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     isIntermediate: true,
     ingredients: [{ id: 'wheat', qty: 5 }, { id: 'herbs', qty: 3 }],
     levelRequired: 0,
-    xpPerItem: 30,
+    xpPerItem: 60,
     secPerItem: 6,
   },
   {
@@ -343,7 +343,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     isIntermediate: true,
     ingredients: [{ id: 'wheat', qty: 5 }, { id: 'herbs', qty: 3 }],
     levelRequired: 5,
-    xpPerItem: 40,
+    xpPerItem: 80,
     secPerItem: 15,
   },
   {
@@ -353,7 +353,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     isIntermediate: true,
     ingredients: [{ id: 'iron_bar', qty: 1 }, { id: 'magic_essence', qty: 2 }],
     levelRequired: 20,
-    xpPerItem: 80,
+    xpPerItem: 120,
     secPerItem: 60,
   },
   // ── Tier 1 — Refine raw materials into intermediate components ─────────────
@@ -362,9 +362,9 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     outputItemId: 'iron_bar',
     outputQty: 1,
     isIntermediate: true,
-    ingredients: [{ id: 'ore_iron', qty: 5 }],
+    ingredients: [{ id: 'ore_iron', qty: 3 }],
     levelRequired: 0,
-    xpPerItem: 45,
+    xpPerItem: 90,
     secPerItem: 8,
   },
   {
@@ -372,9 +372,9 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     outputItemId: 'fang_shard',
     outputQty: 1,
     isIntermediate: true,
-    ingredients: [{ id: 'monster_fang', qty: 4 }],
+    ingredients: [{ id: 'monster_fang', qty: 3 }],
     levelRequired: 0,
-    xpPerItem: 55,
+    xpPerItem: 110,
     secPerItem: 10,
   },
   {
@@ -384,7 +384,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     isIntermediate: true,
     ingredients: [{ id: 'magic_essence', qty: 3 }],
     levelRequired: 15,
-    xpPerItem: 20,
+    xpPerItem: 40,
     secPerItem: 120,
   },
   {
@@ -394,7 +394,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     isIntermediate: true,
     ingredients: [{ id: 'ancient_scale', qty: 2 }],
     levelRequired: 30,
-    xpPerItem: 35,
+    xpPerItem: 70,
     secPerItem: 150,
   },
   {
@@ -404,7 +404,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     isIntermediate: true,
     ingredients: [{ id: 'void_crystal', qty: 2 }],
     levelRequired: 55,
-    xpPerItem: 60,
+    xpPerItem: 120,
     secPerItem: 240,
   },
 
@@ -515,7 +515,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'iron_bar',  qty: 1 },
       { id: 'blossoms',  qty: 2 },
     ],
-    levelRequired: 20,
+    levelRequired: 15,
     xpPerItem: 100,
     secPerItem: 480,
     goldCost: 300,
@@ -530,7 +530,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'fang_shard',  qty: 2 },
       { id: 'orchids',     qty: 2 },
     ],
-    levelRequired: 35,
+    levelRequired: 25,
     xpPerItem: 200,
     secPerItem: 900,
     goldCost: 800,
@@ -705,9 +705,9 @@ export function rollSessionMaterialDrops(
   const drops: SessionMaterialDrop[] = []
 
   if (durationHours >= 1.0) {
+    drops.push({ id: primaryId, name: MATERIAL_NAMES[primaryId], qty: 4 })
+  } else {
     drops.push({ id: primaryId, name: MATERIAL_NAMES[primaryId], qty: 2 })
-  } else if (Math.random() < 0.80) {
-    drops.push({ id: primaryId, name: MATERIAL_NAMES[primaryId], qty: 1 })
   }
 
   if (durationHours >= 2.0 && clearedZones.includes('zone3')) {

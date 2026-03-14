@@ -36,6 +36,7 @@ export const IPC_CHANNELS = {
     resetSkillXP: 'db:resetSkillXP',
     getAllSkillXP: 'db:getAllSkillXP',
     restoreSkillXP: 'db:restoreSkillXP',
+    forceSetSkillXP: 'db:forceSetSkillXP',
     getActiveGoals: 'db:getActiveGoals',
     getAllGoals: 'db:getAllGoals',
     createGoal: 'db:createGoal',

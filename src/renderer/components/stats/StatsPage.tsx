@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
+import { useEscapeHandler } from '../../hooks/useEscapeHandler'
 import { motion, AnimatePresence } from 'framer-motion'
 import { SessionDetail } from './SessionDetail'
 import { TrendsChart } from './TrendsChart'
@@ -262,6 +263,7 @@ export function StatsPage() {
   const [offset, setOffset] = useState(0)
   const [hasMore, setHasMore] = useState(false)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  useEscapeHandler(() => setSelectedId(null), selectedId !== null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [filter, setFilter] = useState<TimeFilter>('all')

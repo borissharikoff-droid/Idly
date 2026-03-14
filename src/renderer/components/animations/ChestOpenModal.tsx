@@ -578,9 +578,15 @@ export function ChestOpenModal({
                             transition={{ type: 'spring', stiffness: 280, damping: 24, delay: 0.1 + i * 0.04 }}
                           >
                             <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(circle at 50% 35%, ${matTheme.glow}28 0%, transparent 65%)` }} />
-                            <span className="text-2xl relative">{matDef.image ? <img src={matDef.image} className="w-8 h-8 object-contain" /> : matDef.icon}</span>
-                            <span className="text-xl font-bold tabular-nums relative" style={{ color: matTheme.color }}>×{mat.qty}</span>
-                            <span className="text-[10px] font-medium text-center leading-tight px-2 relative" style={{ color: `${matTheme.color}cc` }}>{matDef.name}</span>
+                            <div className="w-14 h-14 rounded-lg flex items-center justify-center relative" style={{ background: `${matTheme.color}12`, border: `1px solid ${matTheme.color}25`, boxShadow: `0 0 12px ${matTheme.glow}30` }}>
+                              {matDef.image ? (
+                                <img src={matDef.image} className="w-10 h-10 object-contain" style={{ imageRendering: 'pixelated' }} draggable={false} />
+                              ) : (
+                                <span className="text-3xl">{matDef.icon}</span>
+                              )}
+                            </div>
+                            <span className="text-lg font-bold tabular-nums relative" style={{ color: matTheme.color }}>×{mat.qty}</span>
+                            <span className="text-[9px] font-medium text-center leading-tight px-2 relative" style={{ color: `${matTheme.color}cc` }}>{matDef.name}</span>
                           </motion.div>
                         )
                       })}

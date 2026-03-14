@@ -41,7 +41,9 @@ import { applyAdminConfig, syncAdminConfigFromSupabase } from './lib/itemConfig'
 import { useAdminConfigStore } from './stores/adminConfigStore'
 import { supabase } from './lib/supabase'
 import { useNavigationStore } from './stores/navigationStore'
+import { useEscapeHandler } from './hooks/useEscapeHandler'
 import { useWhatsNew, WhatsNewModal } from './components/WhatsNewModal'
+import { useRemotePatchNotes } from './hooks/useRemotePatchNotes'
 
 // Apply cached admin overrides before first render (populated after first Supabase sync)
 applyAdminConfig(LOOT_ITEMS, BOSSES, ZONES, CRAFT_RECIPES)
@@ -200,9 +202,24 @@ export default function App() {
   useCraftTick()                // crafting job queue — runs on all tabs
   useCookingTick()              // cooking job queue — runs on all tabs
   const whatsNew = useWhatsNew()
+  useRemotePatchNotes(whatsNew.showRemotePatch)
   const arenaResultModal = useArenaStore((s) => s.resultModal)
   const setArenaResultModal = useArenaStore((s) => s.setResultModal)
   const arenaAutoRunning = useArenaStore((s) => s.isAutoRunning)
+  const closeArenaModal = useCallback(() => {
+    const pending = arenaResultModal?.pendingGold ?? 0
+    setArenaResultModal(null)
+    if (pending > 0) {
+      useGoldStore.getState().addGold(pending)
+      const user = useAuthStore.getState().user
+      if (user) useGoldStore.getState().syncToSupabase(user.id)
+    }
+  }, [arenaResultModal, setArenaResultModal])
+
+  // App-level modals close on Escape (ordered: arena result → streak → whats new)
+  useEscapeHandler(closeArenaModal, Boolean(arenaResultModal))
+  useEscapeHandler(() => setShowStreak(false), showStreak)
+  useEscapeHandler(whatsNew.closeModal, whatsNew.showModal)
 
   useEffect(() => {
     if (!localStorage.getItem('grindly_migration_done')) {
@@ -503,15 +520,7 @@ export default function App() {
             goldDropped={arenaResultModal?.goldDropped ?? 0}
             bonusMaterials={arenaResultModal?.bonusMaterials}
             warriorXP={arenaResultModal?.warriorXP ?? 0}
-            onClose={() => {
-              const pending = arenaResultModal?.pendingGold ?? 0
-              setArenaResultModal(null)
-              if (pending > 0) {
-                useGoldStore.getState().addGold(pending)
-                const user = useAuthStore.getState().user
-                if (user) useGoldStore.getState().syncToSupabase(user.id)
-              }
-            }}
+            onClose={closeArenaModal}
           />
           <MessageBanner onNavigateToChat={handleNavigateToChat} />
           <SkillLevelUpModal />

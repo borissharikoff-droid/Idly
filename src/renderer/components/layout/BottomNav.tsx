@@ -33,6 +33,14 @@ const SECONDARY_TABS_DEFAULT: { id: TabId; icon: string; label: string }[] = [
 
 const SECONDARY_IDS = new Set<TabId>(SECONDARY_TABS_DEFAULT.map((t) => t.id))
 
+/** Render icon — if it's a data URI or URL, show <img>; otherwise show emoji text */
+function NavIcon({ icon, className }: { icon: string; className?: string }) {
+  if (icon.startsWith('data:') || icon.startsWith('http')) {
+    return <img src={icon} alt="" className={className ?? 'w-[18px] h-[18px] object-contain'} draggable={false} />
+  }
+  return <>{icon}</>
+}
+
 interface BottomNavProps {
   activeTab: TabId
   onTabChange: (tab: TabId) => void
@@ -126,7 +134,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
                           : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.06]'
                       }`}
                     >
-                      <span className="text-lg leading-none">{tab.icon}</span>
+                      <span className="text-lg leading-none"><NavIcon icon={tab.icon} /></span>
                       <span className="text-[9px] font-mono leading-none tracking-wide">{tab.label}</span>
                       {tabBadge > 0 && (
                         <span className="absolute top-1 right-1.5 min-w-[13px] h-[13px] px-0.5 flex items-center justify-center rounded-full text-[8px] font-bold text-white bg-lime-500">
@@ -172,7 +180,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
                     : 'text-gray-500 hover:text-gray-300 hover:bg-white/5 hover:-translate-y-[1px]'
                 }`}
               >
-                <span className="grindly-tab-icon" aria-hidden>{tab.icon}</span>
+                <span className="grindly-tab-icon" aria-hidden><NavIcon icon={tab.icon} /></span>
                 {badgeCount > 0 && (
                   <span
                     className={`absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-1 flex items-center justify-center rounded-full text-[10px] font-bold text-white border-2 border-discord-nav ${
