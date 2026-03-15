@@ -1,4 +1,5 @@
 import type { TabId } from '../../App'
+import type { ReactNode } from 'react'
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { playTabSound, playClickSound } from '../../lib/sounds'
@@ -10,9 +11,27 @@ import { useCraftingStore } from '../../stores/craftingStore'
 import { useCookingStore } from '../../stores/cookingStore'
 import { useFarmStore } from '../../stores/farmStore'
 import { useBountyStore } from '../../stores/bountyStore'
+import { useWeeklyStore } from '../../stores/weeklyStore'
 import { MOTION } from '../../lib/motion'
 import { getUIIcons } from '../../lib/itemConfig'
 import { useAdminConfigStore } from '../../stores/adminConfigStore'
+import { Home, Zap, Users, BarChart3, MoreHorizontal, Package, ShoppingCart, Sword, Sprout, Hammer, User, Settings } from '../../lib/icons'
+
+// Lucide icon components for each tab (used when no admin override is set)
+const TAB_LUCIDE_ICONS: Partial<Record<TabId, ReactNode>> = {
+  home:        <Home className="w-[18px] h-[18px]" />,
+  skills:      <Zap className="w-[18px] h-[18px]" />,
+  friends:     <Users className="w-[18px] h-[18px]" />,
+  stats:       <BarChart3 className="w-[18px] h-[18px]" />,
+  inventory:   <Package className="w-[18px] h-[18px]" />,
+  marketplace: <ShoppingCart className="w-[18px] h-[18px]" />,
+  arena:       <Sword className="w-[18px] h-[18px]" />,
+  farm:        <Sprout className="w-[18px] h-[18px]" />,
+  craft:       <Hammer className="w-[18px] h-[18px]" />,
+  cooking:     <span className="text-[15px] leading-none">🍳</span>,
+  profile:     <User className="w-[18px] h-[18px]" />,
+  settings:    <Settings className="w-[18px] h-[18px]" />,
+}
 
 const PRIMARY_TABS_DEFAULT: { id: TabId; icon: string }[] = [
   { id: 'home',    icon: '⏱' },
@@ -34,12 +53,12 @@ const SECONDARY_TABS_DEFAULT: { id: TabId; icon: string; label: string }[] = [
 
 const SECONDARY_IDS = new Set<TabId>(SECONDARY_TABS_DEFAULT.map((t) => t.id))
 
-/** Render icon — if it's a data URI or URL, show <img>; otherwise show emoji text */
-function NavIcon({ icon, className }: { icon: string; className?: string }) {
-  if (icon.startsWith('data:') || icon.startsWith('http')) {
-    return <img src={icon} alt="" className={className ?? 'w-[18px] h-[18px] object-contain'} draggable={false} />
+/** Render icon — admin overrides (data URI / URL) take priority; otherwise use Lucide icon */
+function NavIcon({ tabId, adminIcon, className }: { tabId: TabId; adminIcon: string; className?: string }) {
+  if (adminIcon.startsWith('data:') || adminIcon.startsWith('http')) {
+    return <img src={adminIcon} alt="" className={className ?? 'w-[18px] h-[18px] object-contain'} draggable={false} />
   }
-  return <>{icon}</>
+  return <>{TAB_LUCIDE_ICONS[tabId]}</>
 }
 
 interface BottomNavProps {
@@ -57,6 +76,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   const { incomingRequestsCount, unreadMessagesCount, marketplaceSaleCount } = useNavBadgeStore()
   const isArenaBattleActive = useArenaStore((s) => !!s.activeBattle)
   const claimableBounties = useBountyStore((s) => s.bounties.filter((b) => !b.claimed && b.progress >= b.targetCount).length)
+  const claimableWeekly = useWeeklyStore((s) => s.bounties.filter((b) => !b.claimed && b.progress >= b.targetCount).length)
   const isCraftingActive = useCraftingStore((s) => !!s.activeJob)
   const isCookingActive = useCookingStore((s) => !!s.activeJob)
   const planted = useFarmStore((s) => s.planted)
@@ -86,7 +106,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   void tick // re-read on tick
 
   const secondaryIsActive = SECONDARY_IDS.has(activeTab)
-  const secondaryHasBadge = badgeFarm > 0 || isArenaBattleActive || isCraftingActive || isCookingActive || marketplaceSaleCount > 0 || profileUnclaimed > 0 || claimableBounties > 0
+  const secondaryHasBadge = badgeFarm > 0 || isArenaBattleActive || isCraftingActive || isCookingActive || marketplaceSaleCount > 0 || profileUnclaimed > 0 || claimableBounties > 0 || claimableWeekly > 0
 
   const navigate = (id: TabId) => {
     playTabSound()
@@ -121,9 +141,9 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
               <div className="p-1.5 grid grid-cols-3 gap-0.5">
                 {SECONDARY_TABS.map((tab) => {
                   const isActive = activeTab === tab.id
-                  const tabBadge = tab.id === 'farm' ? badgeFarm : tab.id === 'marketplace' ? marketplaceSaleCount : tab.id === 'arena' ? claimableBounties : 0
-                  const tabPulse = (tab.id === 'arena' && isArenaBattleActive && claimableBounties === 0) || (tab.id === 'craft' && isCraftingActive) || (tab.id === 'cooking' && isCookingActive)
-                  const tabOrangeDot = tab.id === 'profile' && profileUnclaimed > 0
+                  const tabBadge = tab.id === 'farm' ? badgeFarm : tab.id === 'marketplace' ? marketplaceSaleCount : tab.id === 'profile' ? claimableBounties + claimableWeekly : 0
+                  const tabPulse = (tab.id === 'arena' && isArenaBattleActive) || (tab.id === 'craft' && isCraftingActive) || (tab.id === 'cooking' && isCookingActive)
+                  const tabOrangeDot = tab.id === 'profile' && profileUnclaimed > 0 && tabBadge === 0
                   return (
                     <motion.button
                       key={tab.id}
@@ -136,7 +156,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
                           : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.06]'
                       }`}
                     >
-                      <span className="text-lg leading-none"><NavIcon icon={tab.icon} /></span>
+                      <span className="text-lg leading-none"><NavIcon tabId={tab.id} adminIcon={tab.icon} /></span>
                       <span className="text-[9px] font-mono leading-none tracking-wide">{tab.label}</span>
                       {tabBadge > 0 && (
                         <span className="absolute top-1 right-1.5 min-w-[13px] h-[13px] px-0.5 flex items-center justify-center rounded-full text-[8px] font-bold text-white bg-lime-500">
@@ -182,7 +202,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
                     : 'text-gray-500 hover:text-gray-300 hover:bg-white/5 hover:-translate-y-[1px]'
                 }`}
               >
-                <span className="grindly-tab-icon" aria-hidden><NavIcon icon={tab.icon} /></span>
+                <span className="grindly-tab-icon" aria-hidden><NavIcon tabId={tab.id} adminIcon={tab.icon} /></span>
                 {badgeCount > 0 && (
                   <span
                     className={`absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-1 flex items-center justify-center rounded-full text-[10px] font-bold text-white border-2 border-discord-nav ${
@@ -209,12 +229,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
             aria-label="More"
             aria-expanded={moreOpen}
           >
-            {/* Three-dot icon */}
-            <svg width="16" height="4" viewBox="0 0 16 4" fill="currentColor" aria-hidden>
-              <circle cx="2"  cy="2" r="1.8" />
-              <circle cx="8"  cy="2" r="1.8" />
-              <circle cx="14" cy="2" r="1.8" />
-            </svg>
+            <MoreHorizontal className="w-[18px] h-[18px]" aria-hidden />
             {/* Badge dot when secondary tabs have activity */}
             {secondaryHasBadge && !moreOpen && (
               <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-discord-nav bg-lime-500" />
