@@ -5,7 +5,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { LOOT_ITEMS, getRarityTheme, getItemPower, MARKETPLACE_BLOCKED_ITEMS, getItemPerkDescription, isValidItemId, type LootRarity } from '../../lib/loot'
 import { getFarmItemDisplay, isSeedId, isSeedZipId, seedZipTierFromItemId } from '../../lib/farming'
 import { SKILLS } from '../../lib/skills'
-import { fetchActiveListings, partialBuyListing, cancelListing, expireOldListings, fetchTradeHistory, type ListingWithSeller, type CancelListingResult, type TradeHistoryEntry } from '../../services/marketplaceService'
+import { fetchActiveListings, partialBuyListing, cancelListing, expireOldListings, fetchTradeHistory, fetchPriceHistory, type ListingWithSeller, type CancelListingResult, type TradeHistoryEntry, type PriceHistoryEntry } from '../../services/marketplaceService'
+import { PriceSparkline } from './PriceSparkline'
 import { useGoldStore } from '../../stores/goldStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useInventoryStore } from '../../stores/inventoryStore'
@@ -13,6 +14,7 @@ import { useNavBadgeStore } from '../../stores/navBadgeStore'
 import { syncInventoryToSupabase } from '../../services/supabaseSync'
 import { useFarmStore } from '../../stores/farmStore'
 import { PageHeader } from '../shared/PageHeader'
+import { ShoppingCart, RefreshCw, X } from '../../lib/icons'
 import { BackpackButton } from '../shared/BackpackButton'
 import { InventoryPage } from '../inventory/InventoryPage'
 import { ListForSaleModal } from '../inventory/ListForSaleModal'
@@ -104,9 +106,10 @@ function buildOrderBook(listings: ListingWithSeller[]): OrderBookRow[] {
 
 // ─── Compact listing tile ────────────────────────────────────────────────────
 
-function OrderBookTile({ row, onBuy, index }: { row: OrderBookRow; onBuy: (row: OrderBookRow) => void; index: number }) {
+function OrderBookTile({ row, onBuy, index, floorPrice }: { row: OrderBookRow; onBuy: (row: OrderBookRow) => void; index: number; floorPrice?: number }) {
   const meta = getItemMeta(row.itemId)
   const theme = getRarityTheme(meta.rarity)
+  const isFloor = floorPrice !== undefined && row.pricePerUnit === floorPrice
   return (
     <motion.button
       {...LIST_ITEM}
@@ -150,10 +153,15 @@ function OrderBookTile({ row, onBuy, index }: { row: OrderBookRow; onBuy: (row: 
           </span>
         </div>
       </div>
-      {/* price */}
-      <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 shrink-0 group-hover:bg-amber-500/15 transition-colors">
-        <span className="text-amber-400 text-[10px]">🪙</span>
-        <span className="text-amber-400 font-bold text-[11px] tabular-nums">{row.pricePerUnit}</span>
+      {/* price + floor badge */}
+      <div className="flex flex-col items-end gap-0.5 shrink-0">
+        <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 group-hover:bg-amber-500/15 transition-colors">
+          <span className="text-amber-400 text-[10px]">🪙</span>
+          <span className="text-amber-400 font-bold text-[11px] tabular-nums">{row.pricePerUnit}</span>
+        </div>
+        {isFloor && (
+          <span className="text-[8px] font-mono text-green-400/70 px-1">🏷 floor</span>
+        )}
       </div>
     </motion.button>
   )
@@ -466,7 +474,7 @@ function SellTab({ onListed, onToast }: { onListed: () => void; onToast: (messag
         />
         <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 pointer-events-none">🔍</span>
         {sellSearch && (
-          <button type="button" onClick={() => setSellSearch('')} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 hover:text-gray-300 px-1">✕</button>
+          <button type="button" onClick={() => setSellSearch('')} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 px-1"><X className="w-3 h-3" /></button>
         )}
       </div>
 
@@ -574,6 +582,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
   const [buyQty, setBuyQty] = useState(1)
   const [buying, setBuying] = useState(false)
   const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [priceHistory, setPriceHistory] = useState<PriceHistoryEntry[]>([])
   const [cancelTarget, setCancelTarget] = useState<MergedMyListing | null>(null)
   const [cancelError, setCancelError] = useState<string | null>(null)
   const [showBackpack, setShowBackpack] = useState(false)
@@ -599,7 +608,13 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
   const exitingRef = useRef(false)
 
   useEffect(() => { return () => { exitingRef.current = true } }, [])
-  useEffect(() => { setBuyQty(1) }, [buyTarget])
+  useEffect(() => {
+    setBuyQty(1)
+    setPriceHistory([])
+    if (buyTarget) {
+      fetchPriceHistory(buyTarget.itemId, 10).then(setPriceHistory).catch(() => {})
+    }
+  }, [buyTarget])
   useEffect(() => { useNavBadgeStore.getState().clearMarketplaceSale() }, [])
 
   const showToast = useCallback((message: string, type: 'success' | 'error') => {
@@ -722,6 +737,17 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
 
   // Order-book: stack other listings by item+price
   const orderBook = useMemo(() => buildOrderBook(otherListings), [otherListings])
+
+  // Floor price per item (minimum active listing price, from all listings including own)
+  const floorPriceMap = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const l of listings) {
+      if (MARKETPLACE_BLOCKED_ITEMS.includes(l.item_id) || !isValidItemId(l.item_id)) continue
+      const cur = map.get(l.item_id)
+      if (cur === undefined || l.price_gold < cur) map.set(l.item_id, l.price_gold)
+    }
+    return map
+  }, [listings])
 
   // Merged my listings (group same item+price) — from unfiltered
   const mergedMyListings = useMemo(() => {
@@ -856,6 +882,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
     <div className="p-4 pb-20 space-y-3">
       <PageHeader
         title="Marketplace"
+        icon={<ShoppingCart className="w-4 h-4 text-yellow-400" />}
         onBack={onBack}
         rightSlot={
           <div className="flex items-center gap-1.5">
@@ -867,16 +894,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
               className="w-7 h-7 flex items-center justify-center rounded-lg border border-white/10 text-gray-400 hover:text-white hover:border-white/25 transition-colors disabled:opacity-40 active:scale-95"
               title="Refresh"
             >
-              <svg
-                className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`}
-                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}
-                strokeLinecap="round" strokeLinejoin="round"
-              >
-                <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
-                <path d="M21 3v5h-5" />
-                <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
-                <path d="M3 21v-5h5" />
-              </svg>
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
             <GoldDisplay />
           </div>
@@ -1156,7 +1174,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
             ) : (
               <div className="space-y-1.5">
                 {orderBook.map((row, i) => (
-                  <OrderBookTile key={`${row.itemId}::${row.pricePerUnit}`} row={row} onBuy={handleBuyClick} index={i} />
+                  <OrderBookTile key={`${row.itemId}::${row.pricePerUnit}`} row={row} onBuy={handleBuyClick} index={i} floorPrice={floorPriceMap.get(row.itemId)} />
                 ))}
               </div>
             )}
@@ -1296,6 +1314,13 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                         </span>
                         {meta.item && getItemPerkDescription(meta.item) && (
                           <p className="text-[10px] text-gray-400 text-center mt-1.5 leading-snug max-w-[220px]">{getItemPerkDescription(meta.item)}</p>
+                        )}
+                        {/* Price history sparkline */}
+                        {priceHistory.length >= 2 && (
+                          <div className="flex flex-col items-center gap-1 mt-2">
+                            <PriceSparkline prices={priceHistory.map((p) => p.price_gold)} width={120} height={28} />
+                            <p className="text-[8px] text-gray-600 font-mono">last {priceHistory.length} sales</p>
+                          </div>
                         )}
                       </div>
 

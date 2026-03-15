@@ -21,6 +21,7 @@ import { useAdminConfigStore } from '../../stores/adminConfigStore'
 import { LOOT_ITEMS, getRarityTheme } from '../../lib/loot'
 import { RARITY_THEME, normalizeRarity } from '../loot/LootUI'
 import { PageHeader } from '../shared/PageHeader'
+import { Sprout } from '../../lib/icons'
 import { GoldDisplay } from '../marketplace/GoldDisplay'
 import { PixelConfetti } from '../home/PixelConfetti'
 import { MOTION } from '../../lib/motion'
@@ -2065,6 +2066,7 @@ export function FarmPage() {
     >
       <PageHeader
         title="Farm"
+        icon={<Sprout className="w-4 h-4 text-green-400" />}
         rightSlot={
           <div className="flex items-center gap-2">
             {/* Plant All — unlocks at Farmer LVL 10 */}

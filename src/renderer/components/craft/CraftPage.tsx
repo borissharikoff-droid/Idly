@@ -16,6 +16,7 @@ import { useInventoryStore } from '../../stores/inventoryStore'
 import { playClickSound, playLootRaritySound } from '../../lib/sounds'
 import { MOTION } from '../../lib/motion'
 import { PageHeader } from '../shared/PageHeader'
+import { Hammer } from '../../lib/icons'
 import { BackpackButton } from '../shared/BackpackButton'
 import { InventoryPage } from '../inventory/InventoryPage'
 import { LootVisual } from '../loot/LootUI'
@@ -100,6 +101,22 @@ function ActiveJob({ onCancel }: { onCancel: (id: string) => void }) {
             <span className="text-[9px] font-mono text-gray-500">+{queue.length} queued</span>}
         </div>
       </div>
+
+      {queue.length > 0 && (
+        <div className="space-y-0.5">
+          {queue.map((job, i) => {
+            const qOut = CRAFT_ITEM_MAP[job.outputItemId]
+            return (
+              <div key={job.id} className="flex items-center gap-1.5 px-1 py-0.5 rounded text-[9px] font-mono text-gray-500">
+                <span className="text-gray-600">{i + 1}.</span>
+                {qOut ? <LootVisual icon={qOut.icon} image={qOut.image} className="w-3.5 h-3.5 object-contain opacity-60" /> : null}
+                <span className="truncate">{qOut?.name ?? job.outputItemId}</span>
+                <span className="ml-auto shrink-0 text-gray-600">×{job.totalQty}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </motion.div>
   )
 }
@@ -380,6 +397,7 @@ export function CraftPage() {
       <div className="px-4 pt-4 pb-2">
         <PageHeader
           title="Craft"
+          icon={<Hammer className="w-4 h-4 text-orange-400" />}
           rightSlot={
             <BackpackButton onClick={() => setShowBackpack(true)} />
           }

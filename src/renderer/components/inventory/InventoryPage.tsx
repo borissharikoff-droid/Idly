@@ -10,6 +10,7 @@ import { ChestOpenModal } from '../animations/ChestOpenModal'
 import { BulkChestOpenModal, type BulkOpenResult } from '../animations/BulkChestOpenModal'
 import { ListForSaleModal } from './ListForSaleModal'
 import { PageHeader } from '../shared/PageHeader'
+import { Package, X } from '../../lib/icons'
 import { playClickSound, playPotionSound } from '../../lib/sounds'
 import { syncInventoryToSupabase } from '../../services/supabaseSync'
 import { useNotificationStore } from '../../stores/notificationStore'
@@ -448,7 +449,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
       transition={{ duration: MOTION.duration.base, ease: MOTION.easingSoft }}
       className="p-4 pb-20 space-y-3"
     >
-      <PageHeader title="Inventory" onBack={onBack} />
+      <PageHeader title="Inventory" icon={<Package className="w-4 h-4 text-gray-400" />} onBack={onBack} />
 
       <CharacterCard
         locked={inBattle}
@@ -510,7 +511,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
               type="button"
               onClick={() => setSearchQuery('')}
               className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 hover:text-gray-300 px-1"
-            >✕</button>
+            ><X className="w-3 h-3" /></button>
           )}
         </div>
 

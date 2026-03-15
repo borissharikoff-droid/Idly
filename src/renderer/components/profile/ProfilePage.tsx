@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
@@ -11,6 +11,7 @@ import { detectPersona } from '../../lib/persona'
 import { BADGES, FRAMES, FREE_AVATARS, LOCKED_AVATARS, ACHIEVEMENT_COSMETIC_UNLOCKS, getUnlockedFrames, getEquippedFrame, equipFrame, getUnlockedAvatarEmojis, unlockCosmeticsFromAchievement, ensureCosmeticsForUnlockedAchievements } from '../../lib/cosmetics'
 import { syncCosmeticsToSupabase } from '../../services/supabaseSync'
 import { PageHeader } from '../shared/PageHeader'
+import { User } from '../../lib/icons'
 import { InlineSuccess } from '../shared/InlineSuccess'
 import { getEquippedPerkRuntime, getItemPower, getRarityTheme, LOOT_ITEMS, type LootSlot } from '../../lib/loot'
 import { computePlayerStats } from '../../lib/combat'
@@ -21,10 +22,12 @@ import { getDailyActivities, getWeeklyActivities, getBestStreak } from '../../se
 import { QuestsSection } from '../quests/QuestsSection'
 import { AvatarWithFrame } from '../shared/AvatarWithFrame'
 import { ItemInspectModal } from '../shared/ItemInspectModal'
+import { useBountyStore } from '../../stores/bountyStore'
+import { useWeeklyStore } from '../../stores/weeklyStore'
+import { hotZoneResetsInDays } from '../../lib/hotZone'
+import { useNavigationStore } from '../../stores/navigationStore'
 
-
-
-type ProfileTab = 'achievements' | 'cosmetics'
+type ProfileTab = 'quests' | 'achievements' | 'cosmetics'
 
 export function ProfilePage({ onBack }: { onBack?: () => void }) {
   const inventory = useInventoryStore((s) => s.items)
@@ -63,8 +66,31 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
     totalSessions: 0, streakCount: 0, friendCount: 0, skillLevels: {},
   })
 
-  // Tab
-  const [activeTab, setActiveTab] = useState<ProfileTab>('achievements')
+  // Tab — respect profileInitialTab from navigationStore (set by other pages)
+  const profileInitialTab = useNavigationStore((s) => s.profileInitialTab)
+  const setProfileInitialTab = useNavigationStore((s) => s.setProfileInitialTab)
+  const initialTabApplied = useRef(false)
+  const [activeTab, setActiveTab] = useState<ProfileTab>('quests')
+  useEffect(() => {
+    if (!initialTabApplied.current && profileInitialTab) {
+      initialTabApplied.current = true
+      setActiveTab(profileInitialTab as ProfileTab)
+      setProfileInitialTab(null)
+    }
+  }, [profileInitialTab, setProfileInitialTab])
+
+  // Daily bounties
+  const bounties = useBountyStore((s) => s.bounties)
+  const ensureToday = useBountyStore((s) => s.ensureToday)
+  const claimBounty = useBountyStore((s) => s.claimBounty)
+  useEffect(() => { ensureToday() }, [ensureToday])
+
+  // Weekly challenges
+  const weeklyBounties = useWeeklyStore((s) => s.bounties)
+  const ensureThisWeek = useWeeklyStore((s) => s.ensureThisWeek)
+  const claimWeekly = useWeeklyStore((s) => s.claimWeekly)
+  useEffect(() => { ensureThisWeek() }, [ensureThisWeek])
+  const weeklyDaysLeft = useMemo(() => hotZoneResetsInDays(), [])
 
   useEffect(() => {
     if (user) {
@@ -316,7 +342,7 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
       className="p-4 pb-20 space-y-4 overflow-auto"
     >
       {/* Header */}
-      <PageHeader title="Profile" onBack={onBack} />
+      <PageHeader title="Profile" icon={<User className="w-4 h-4 text-indigo-400" />} onBack={onBack} />
 
       {/* Flex Card — single source of truth for profile display */}
       <FlexCard
@@ -428,31 +454,124 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
       {/* Sub-tabs */}
       <div className="flex gap-1 bg-discord-darker/50 rounded-xl p-1">
         {([
-          { id: 'achievements' as const, label: `Quests (${unlockedCount}/${ACHIEVEMENTS.length})`, icon: '🏆' },
+          { id: 'quests' as const, label: 'Quests', icon: '📋' },
+          { id: 'achievements' as const, label: `Achievements`, icon: '🏆' },
           { id: 'cosmetics' as const, label: 'Cosmetics', icon: '✨' },
-        ]).map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => { setActiveTab(tab.id); playClickSound() }}
-            className={`flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-all ${
-              activeTab === tab.id
-                ? 'bg-discord-card text-white shadow-sm'
-                : 'text-gray-500 hover:text-gray-300'
-            }`}
-          >
-            <span className="mr-1">{tab.icon}</span>
-            {tab.label}
-            {tab.id === 'achievements' && hasQuestAttention && (
-              <span
-                className={`ml-1.5 inline-block w-1.5 h-1.5 rounded-full ${hasClaimableQuest ? 'bg-cyber-neon' : 'bg-orange-400'}`}
-                title={hasClaimableQuest ? 'Quests ready to claim' : 'Daily quests available'}
-              />
-            )}
-          </button>
-        ))}
+        ]).map(tab => {
+          const claimableQ = bounties.filter((b) => !b.claimed && b.progress >= b.targetCount).length + weeklyBounties.filter((b) => !b.claimed && b.progress >= b.targetCount).length
+          const claimableA = hasClaimableQuest
+          return (
+            <button
+              key={tab.id}
+              onClick={() => { setActiveTab(tab.id); playClickSound() }}
+              className={`relative flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-all ${
+                activeTab === tab.id
+                  ? 'bg-discord-card text-white shadow-sm'
+                  : 'text-gray-500 hover:text-gray-300'
+              }`}
+            >
+              <span className="mr-1">{tab.icon}</span>
+              {tab.label}
+              {tab.id === 'quests' && claimableQ > 0 && (
+                <span className="ml-1.5 inline-block w-1.5 h-1.5 rounded-full bg-lime-400" />
+              )}
+              {tab.id === 'achievements' && claimableA && (
+                <span className="ml-1.5 inline-block w-1.5 h-1.5 rounded-full bg-orange-400" />
+              )}
+            </button>
+          )
+        })}
       </div>
 
       <AnimatePresence mode="wait">
+        {/* QUESTS TAB */}
+        {activeTab === 'quests' && (
+          <motion.div
+            key="quests"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="space-y-3"
+          >
+            {/* Weekly Challenges */}
+            <div className="rounded-xl border border-white/[0.10] bg-discord-card p-3">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] uppercase tracking-wider text-amber-400 font-mono">Weekly Challenges</p>
+                <span className="text-[9px] text-gray-500 font-mono">resets in {weeklyDaysLeft}d</span>
+              </div>
+              {weeklyBounties.length > 0 ? (
+                <div className="space-y-2">
+                  {[...weeklyBounties].sort((a, b) => {
+                    const rank = (x: typeof a) => (!x.claimed && x.progress >= x.targetCount) ? 0 : !x.claimed ? 1 : 2
+                    return rank(a) - rank(b)
+                  }).map((b) => {
+                    const done = b.progress >= b.targetCount
+                    const typeIcon = b.type === 'craft' ? '⚒️' : b.type === 'farm' ? '🌱' : b.type === 'cook' ? '🍳' : '⚔️'
+                    return (
+                      <div key={b.id} className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg border ${b.claimed ? 'border-white/[0.06] opacity-50' : done ? 'border-amber-500/40 bg-amber-500/[0.06]' : 'border-white/[0.08]'}`}>
+                        <span className="text-base shrink-0">{typeIcon}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] text-white font-medium leading-tight">{b.description}</p>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <div className="flex-1 h-1 rounded-full bg-white/[0.08] overflow-hidden">
+                              <div className="h-full rounded-full transition-[width] duration-300" style={{ width: `${Math.min(100, (b.progress / b.targetCount) * 100)}%`, backgroundColor: done ? '#f59e0b' : '#6366f1' }} />
+                            </div>
+                            <span className="text-[9px] text-gray-400 font-mono shrink-0">{b.progress}/{b.targetCount}</span>
+                          </div>
+                          <p className="text-[9px] text-gray-500 font-mono mt-0.5">+{b.goldReward}g{b.chestReward ? ` · ${b.chestReward.replace('_chest', ' chest')}` : ''}</p>
+                        </div>
+                        {done && !b.claimed && (
+                          <button type="button" onClick={() => claimWeekly(b.id)} className="shrink-0 px-2 py-1 rounded-lg text-[10px] font-bold bg-amber-500/20 border border-amber-500/50 text-amber-400 hover:bg-amber-500/30 transition-colors">Claim</button>
+                        )}
+                        {b.claimed && <span className="shrink-0 text-[10px] text-gray-500 font-mono">✓</span>}
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <p className="text-[10px] text-gray-500 font-mono">Generating challenges…</p>
+              )}
+            </div>
+
+            {/* Daily Bounties */}
+            <div className="rounded-xl border border-white/[0.10] bg-discord-card p-3">
+              <p className="text-[10px] uppercase tracking-wider text-gray-400 font-mono mb-2">Daily Bounties</p>
+              {bounties.length > 0 ? (
+                <div className="space-y-2">
+                  {[...bounties].sort((a, b) => {
+                    const rank = (x: typeof a) => (!x.claimed && x.progress >= x.targetCount) ? 0 : !x.claimed ? 1 : 2
+                    return rank(a) - rank(b)
+                  }).map((b) => {
+                    const done = b.progress >= b.targetCount
+                    const typeIcon = b.type === 'craft' ? '⚒️' : b.type === 'farm' ? '🌱' : '🍳'
+                    return (
+                      <div key={b.id} className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg border ${b.claimed ? 'border-white/[0.06] opacity-50' : done ? 'border-lime-500/40 bg-lime-500/[0.08]' : 'border-white/[0.08]'}`}>
+                        <span className="text-base shrink-0">{typeIcon}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] text-white font-medium leading-tight">{b.description}</p>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            <div className="flex-1 h-1 rounded-full bg-white/[0.08] overflow-hidden">
+                              <div className="h-full rounded-full transition-[width] duration-300" style={{ width: `${Math.min(100, (b.progress / b.targetCount) * 100)}%`, backgroundColor: done ? '#84cc16' : '#6366f1' }} />
+                            </div>
+                            <span className="text-[9px] text-gray-400 font-mono shrink-0">{b.progress}/{b.targetCount}</span>
+                          </div>
+                          <p className="text-[9px] text-gray-500 font-mono mt-0.5">+{b.goldReward}g{b.chestReward ? ` · ${b.chestReward.replace('_chest', ' chest')}` : ''}</p>
+                        </div>
+                        {done && !b.claimed && (
+                          <button type="button" onClick={() => claimBounty(b.id)} className="shrink-0 px-2 py-1 rounded-lg text-[10px] font-bold bg-lime-500/20 border border-lime-500/50 text-lime-400 hover:bg-lime-500/30 transition-colors">Claim</button>
+                        )}
+                        {b.claimed && <span className="shrink-0 text-[10px] text-gray-500 font-mono">✓</span>}
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : (
+                <p className="text-[10px] text-gray-500 font-mono">Generating bounties…</p>
+              )}
+            </div>
+          </motion.div>
+        )}
+
         {/* ACHIEVEMENTS TAB */}
         {activeTab === 'achievements' && (
           <motion.div

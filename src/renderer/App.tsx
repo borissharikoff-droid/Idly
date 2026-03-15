@@ -102,35 +102,6 @@ function PageFallback() {
   )
 }
 
-function MarketplaceFallback() {
-  return (
-    <div className="p-4 pb-20 space-y-4">
-      <div className="h-10" />
-      <div className="h-4 w-3/4 rounded bg-white/5" />
-      <div className="rounded-2xl bg-[#1e1e2e]/90 border border-white/[0.06] p-4 space-y-3">
-        <div className="h-4 w-16 rounded bg-white/10" />
-        <div className="h-10 w-full rounded-xl bg-white/10" />
-        <div className="flex gap-2 flex-wrap">
-          <div className="h-9 w-24 rounded-xl bg-white/10" />
-          <div className="h-9 w-24 rounded-xl bg-white/10" />
-          <div className="h-9 w-20 rounded-xl bg-white/10" />
-        </div>
-      </div>
-      <div className="space-y-3">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="rounded-2xl border border-white/[0.06] bg-[#1e1e2e]/50 p-4 flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-white/10 shrink-0" />
-            <div className="flex-1 space-y-2">
-              <div className="h-4 w-32 rounded bg-white/10" />
-              <div className="h-3 w-48 rounded bg-white/10" />
-            </div>
-            <div className="h-10 w-20 rounded-xl bg-white/10 shrink-0" />
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 export type TabId = 'home' | 'inventory' | 'skills' | 'stats' | 'profile' | 'friends' | 'marketplace' | 'arena' | 'farm' | 'craft' | 'cooking' | 'settings'
 
@@ -460,7 +431,7 @@ export default function App() {
               {activeTab === 'marketplace' && (
                 <motion.div key="marketplace" variants={PAGE_SLIDE} initial="initial" animate="animate">
                   <PageErrorBoundary onReset={() => navigateTo('home')}>
-                    <Suspense fallback={<MarketplaceFallback />}>
+                    <Suspense fallback={<PageFallback />}>
                       <MarketplacePage />
                     </Suspense>
                   </PageErrorBoundary>

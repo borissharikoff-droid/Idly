@@ -5,10 +5,9 @@ import {
   isZoneUnlocked, getMissingGateItems, canAffordEntry, getDailyBossId, effectiveBossDps, type ZoneDef,
 } from '../../lib/combat'
 import { getHotZoneId, hotZoneResetsInDays } from '../../lib/hotZone'
-import { useBountyStore } from '../../stores/bountyStore'
 import { LOOT_ITEMS, type ChestType, type BonusMaterial } from '../../lib/loot'
 import { FOOD_ITEMS, type FoodItemDef } from '../../lib/cooking'
-import type { FoodLoadout, FoodLoadoutSlot } from '../../lib/combat'
+import { computePlayerStats, type FoodLoadout, type FoodLoadoutSlot } from '../../lib/combat'
 import { useInventoryStore } from '../../stores/inventoryStore'
 import { ChestOpenModal } from '../animations/ChestOpenModal'
 import { AutoFarmLootModal } from '../animations/AutoFarmLootModal'
@@ -18,11 +17,14 @@ import { useAdminConfigStore } from '../../stores/adminConfigStore'
 import { SKILLS, skillLevelFromXP } from '../../lib/skills'
 import { CharacterCard } from '../character/CharacterCard'
 import { PageHeader } from '../shared/PageHeader'
+import { Sword } from '../../lib/icons'
 import { BackpackButton } from '../shared/BackpackButton'
 import { GoldDisplay } from '../marketplace/GoldDisplay'
 import { InventoryPage } from '../inventory/InventoryPage'
 import { MOTION } from '../../lib/motion'
 import { playClickSound } from '../../lib/sounds'
+import { logFriendActivity } from '../../services/friendActivityService'
+import { useAuthStore } from '../../stores/authStore'
 
 
 function formatShort(n: number): string {
@@ -123,7 +125,14 @@ function FoodSelector({
                           <span className="text-base">{f.icon}</span>
                           <div className="flex-1 min-w-0">
                             <p className="text-[10px] font-semibold text-gray-200 truncate">{f.name}</p>
-                            <p className="text-[8px] text-gray-500">{f.description.split('·')[0].trim()}{(f.effect.goldBonusPct || f.effect.dropBonusPct) ? ` · ${[f.effect.goldBonusPct ? `+${f.effect.goldBonusPct}%g` : '', f.effect.dropBonusPct ? `+${f.effect.dropBonusPct}%d` : ''].filter(Boolean).join(' ')}` : ''}</p>
+                            <div className="flex flex-wrap gap-0.5 mt-0.5">
+                              {f.effect.heal && <span className="text-[8px] font-medium px-1 rounded" style={{ color: '#4ade80', background: 'rgba(74,222,128,0.12)' }}>+{f.effect.heal}HP</span>}
+                              {f.effect.buffAtk && <span className="text-[8px] font-medium px-1 rounded" style={{ color: '#f87171', background: 'rgba(248,113,113,0.12)' }}>+{f.effect.buffAtk}ATK</span>}
+                              {f.effect.buffDef && <span className="text-[8px] font-medium px-1 rounded" style={{ color: '#818cf8', background: 'rgba(129,140,248,0.12)' }}>+{f.effect.buffDef}DEF</span>}
+                              {f.effect.buffRegen && <span className="text-[8px] font-medium px-1 rounded" style={{ color: '#34d399', background: 'rgba(52,211,153,0.12)' }}>+{f.effect.buffRegen}reg</span>}
+                              {f.effect.goldBonusPct && <span className="text-[8px] font-medium px-1 rounded" style={{ color: '#fbbf24', background: 'rgba(251,191,36,0.12)' }}>+{f.effect.goldBonusPct}%g</span>}
+                              {f.effect.dropBonusPct && <span className="text-[8px] font-medium px-1 rounded" style={{ color: '#a78bfa', background: 'rgba(167,139,250,0.12)' }}>+{f.effect.dropBonusPct}%drop</span>}
+                            </div>
                           </div>
                           <span className="text-[9px] text-gray-400">×{owned - usedOther}</span>
                         </button>
@@ -164,6 +173,7 @@ function ZoneCard({
   onFoodChange,
   lastInsuranceUsed,
   isHotZone,
+  playerAtk,
 }: {
   zone: ZoneDef
   skillLevels: Record<string, number>
@@ -186,6 +196,7 @@ function ZoneCard({
   onFoodChange?: (slots: (FoodLoadoutSlot | null)[]) => void
   lastInsuranceUsed?: boolean
   isHotZone?: boolean
+  playerAtk?: number
 }) {
   const unlocked = isZoneUnlocked(zone, skillLevels, clearedZones, ownedItems)
   const cleared = clearedZones.includes(zone.id)
@@ -334,13 +345,23 @@ function ZoneCard({
             {!isActive && (
               <div className="mt-1.5 space-y-1">
                 {/* Boss stats row */}
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="text-[9px] text-gray-400 font-mono">
                     <span className="text-red-400/70">♥</span> Boss HP {formatShort(zone.boss.hp)}
                   </span>
                   <span className="text-[9px] text-gray-400 font-mono">
                     <span className="text-orange-400/70">⚔</span> Boss ATK {zone.boss.atk}/s
                   </span>
+                  {playerAtk !== undefined && (() => {
+                    const ratio = playerAtk / zone.boss.atk
+                    const color = ratio >= 1.2 ? '#4ade80' : ratio >= 0.85 ? '#fbbf24' : '#f87171'
+                    const label = ratio >= 1.2 ? '✓' : ratio >= 0.85 ? '~' : '✗'
+                    return (
+                      <span className="text-[9px] font-mono" style={{ color }}>
+                        {label} You: {playerAtk}/s
+                      </span>
+                    )
+                  })()}
                 </div>
                 {/* Unified requirements */}
                 {(reqTexts.length > 0 || (zone.entryCost && zone.entryCost.length > 0)) && (
@@ -728,12 +749,6 @@ export function ArenaPage() {
   const hotZoneDaysLeft = useMemo(() => hotZoneResetsInDays(), [])
   const hotZone = ZONES.find((z) => z.id === hotZoneId)
 
-  // Daily bounties
-  const bounties = useBountyStore((s) => s.bounties)
-  const ensureToday = useBountyStore((s) => s.ensureToday)
-  const claimBounty = useBountyStore((s) => s.claimBounty)
-  useEffect(() => { ensureToday() }, [ensureToday])
-
   // Restore auto-mode state on mount (survives tab switches)
   useEffect(() => {
     if (isAutoRunning && !autoAccRef.current) {
@@ -1099,6 +1114,20 @@ export function ArenaPage() {
           // Normal mode (no auto)
           if (victory) {
             const matBonuses: BonusMaterial[] = materialDrop ? [{ itemId: materialDrop.id, qty: materialDrop.qty }] : []
+            // Log boss kill for friend activity feed
+            const uid = useAuthStore.getState().user?.id
+            if (uid) {
+              const zone = ZONES.find((z) => z.id === activeBattle.dungeonZoneId)
+              if (zone) {
+                logFriendActivity(uid, {
+                  type: 'boss_kill',
+                  zoneId: zone.id,
+                  zoneName: zone.name,
+                  bossName: activeBattle.bossSnapshot.name,
+                  goldEarned: dungeonGold,
+                })
+              }
+            }
             if (chest) {
               // Claim the pending reward first (endBattle adds to pendingRewards, not chest count)
               const inv = useInventoryStore.getState()
@@ -1154,6 +1183,8 @@ export function ArenaPage() {
   const killCounts = useArenaStore((s) => s.killCounts)
   const ownedItems = useInventoryStore((s) => s.items)
   const equippedBySlot = useInventoryStore((s) => s.equippedBySlot)
+  const permanentStats = useInventoryStore((s) => s.permanentStats)
+  const playerAtk = computePlayerStats(equippedBySlot, permanentStats).atk
   // Merge owned + equipped into a single lookup for gate checks
   const ownedOrEquipped = { ...ownedItems }
   for (const itemId of Object.values(equippedBySlot)) {
@@ -1177,6 +1208,7 @@ export function ArenaPage() {
       {/* ── Header ── */}
       <PageHeader
         title="Arena"
+        icon={<Sword className="w-4 h-4 text-red-400" />}
         rightSlot={
           <div className="flex items-center gap-2">
             <BackpackButton onClick={() => setShowBackpack(true)} />
@@ -1190,13 +1222,20 @@ export function ArenaPage() {
 
       {/* ── Hot Zone Banner ── */}
       {hotZone && (
-        <div className="rounded-xl border border-orange-500/40 bg-orange-500/8 px-3 py-2 flex items-center gap-2.5">
+        <motion.div
+          animate={{ boxShadow: ['0 0 0px rgba(249,115,22,0)', '0 0 12px rgba(249,115,22,0.35)', '0 0 0px rgba(249,115,22,0)'] }}
+          transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+          className="rounded-xl border border-orange-500/50 bg-orange-500/[0.08] px-3 py-2 flex items-center gap-2.5"
+        >
           <span className="text-lg">{hotZone.icon}</span>
           <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-semibold text-orange-400">🔥 Hot Zone this week: {hotZone.name}</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-[11px] font-semibold text-orange-400">🔥 Hot Zone this week: {hotZone.name}</p>
+              <span className="text-[8px] font-bold font-mono px-1 py-0.5 rounded bg-orange-500/20 text-orange-300 border border-orange-500/30 animate-pulse">LIVE</span>
+            </div>
             <p className="text-[9px] text-gray-400 font-mono">2× gold · 2× drops · +1 chest tier · resets in {hotZoneDaysLeft}d</p>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* ── Zone Map ── */}
@@ -1226,54 +1265,10 @@ export function ArenaPage() {
             isAutoMode={isAutoMode}
             lastInsuranceUsed={lastInsuranceUsed}
             isHotZone={zone.id === hotZoneId}
+            playerAtk={playerAtk}
           />
         ))}
       </div>
-
-      {/* ── Daily Bounties ── */}
-      {bounties.length > 0 && (
-        <div className="rounded-xl border border-white/[0.10] bg-discord-card p-3">
-          <p className="text-[10px] uppercase tracking-wider text-gray-400 font-mono mb-2">Daily Bounties</p>
-          <div className="space-y-2">
-            {bounties.map((b) => {
-              const done = b.progress >= b.targetCount
-              const typeIcon = b.type === 'craft' ? '⚒️' : b.type === 'farm' ? '🌱' : '🍳'
-              return (
-                <div key={b.id} className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg border ${b.claimed ? 'border-white/[0.06] opacity-50' : done ? 'border-lime-500/40 bg-lime-500/8' : 'border-white/[0.08]'}`}>
-                  <span className="text-base shrink-0">{typeIcon}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[11px] text-white font-medium leading-tight">{b.description}</p>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <div className="flex-1 h-1 rounded-full bg-white/[0.08] overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-[width] duration-300"
-                          style={{ width: `${Math.min(100, (b.progress / b.targetCount) * 100)}%`, backgroundColor: done ? '#84cc16' : '#6366f1' }}
-                        />
-                      </div>
-                      <span className="text-[9px] text-gray-400 font-mono shrink-0">{b.progress}/{b.targetCount}</span>
-                    </div>
-                    <p className="text-[9px] text-gray-500 font-mono mt-0.5">
-                      +{b.goldReward}g{b.chestReward ? ` · ${b.chestReward.replace('_chest', ' chest')}` : ''}
-                    </p>
-                  </div>
-                  {done && !b.claimed && (
-                    <button
-                      type="button"
-                      onClick={() => claimBounty(b.id)}
-                      className="shrink-0 px-2 py-1 rounded-lg text-[10px] font-bold bg-lime-500/20 border border-lime-500/50 text-lime-400 hover:bg-lime-500/30 transition-colors"
-                    >
-                      Claim
-                    </button>
-                  )}
-                  {b.claimed && (
-                    <span className="shrink-0 text-[10px] text-gray-500 font-mono">✓</span>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
 
       <div className="text-center">
         <p className="text-[9px] text-gray-400 font-mono">

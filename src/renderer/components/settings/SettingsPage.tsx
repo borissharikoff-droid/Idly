@@ -6,6 +6,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { getSoundSettings, setSoundVolume, setSoundMuted, playClickSound } from '../../lib/sounds'
 import { MOTION } from '../../lib/motion'
 import { PageHeader } from '../shared/PageHeader'
+import { Settings as SettingsIcon } from '../../lib/icons'
 import { InlineSuccess } from '../shared/InlineSuccess'
 
 // ─── Helpers ───────────────────────────────────────────────
@@ -137,7 +138,7 @@ export function SettingsPage() {
       className="p-4 pb-2 space-y-3 overflow-y-auto"
       style={{ maxHeight: 'calc(100vh - 60px)' }}
     >
-      <PageHeader title="Settings" />
+      <PageHeader title="Settings" icon={<SettingsIcon className="w-4 h-4 text-gray-400" />} />
 
       {/* ─── LINKS ──────────────────────────────────────────── */}
       <Section id="links" title="Links & Resources" icon="link" open={openSections.has('links')} onToggle={toggleSection}>
