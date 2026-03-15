@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { X } from '../../lib/icons'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useMessageToastStore } from '../../stores/messageToastStore'
 import type { MessageToast } from '../../stores/messageToastStore'
@@ -122,10 +123,7 @@ export function MessageBanner({ onNavigateToChat }: MessageBannerProps) {
               className="shrink-0 w-6 h-6 rounded flex items-center justify-center text-gray-500 hover:text-white hover:bg-white/10 transition-colors"
               aria-label="Dismiss"
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
+              <X className="w-3 h-3" />
             </button>
           </div>
         </motion.div>

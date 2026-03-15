@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { MessageCircle } from '../../lib/icons'
 import { motion } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
 import type { FriendProfile as FriendProfileType } from '../../hooks/useFriends'
@@ -12,6 +13,9 @@ import { formatSessionDurationCompact, parseFriendPresence } from '../../lib/fri
 import { PageHeader } from '../shared/PageHeader'
 import { fetchUserPublicProgressHistory, type SocialFeedEvent } from '../../services/socialFeed'
 import { AvatarWithFrame } from '../shared/AvatarWithFrame'
+import { useGuildStore } from '../../stores/guildStore'
+import { useAuthStore } from '../../stores/authStore'
+import { useToastStore } from '../../stores/toastStore'
 
 interface FriendProfileProps {
   profile: FriendProfileType
@@ -61,6 +65,24 @@ function formatDuration(s: number): string {
 }
 
 export function FriendProfile({ profile, onBack, onMessage, onRetrySync }: FriendProfileProps) {
+  const guildMembership = useGuildStore((s) => s.membership)
+  const myGuild = useGuildStore((s) => s.myGuild)
+  const sendInvite = useGuildStore((s) => s.sendInvite)
+  const currentUser = useAuthStore((s) => s.user)
+  const pushToast = useToastStore((s) => s.push)
+  const [inviteSent, setInviteSent] = useState(false)
+
+  const canInvite = !!myGuild && !!guildMembership && ['owner', 'officer'].includes(guildMembership.role) && profile.id !== currentUser?.id
+
+  const handleInvite = useCallback(async () => {
+    const result = await sendInvite(profile.id)
+    if (result.ok) {
+      setInviteSent(true)
+      pushToast({ kind: 'generic', message: `Invited ${profile.username} to [${myGuild!.tag}]`, type: 'success' })
+    } else {
+      pushToast({ kind: 'generic', message: result.error ?? 'Failed to invite', type: 'error' })
+    }
+  }, [profile.id, profile.username, sendInvite, pushToast, myGuild])
   const [sessions, setSessions] = useState<SessionSummary[]>([])
   const [totalGrindSeconds, setTotalGrindSeconds] = useState(0)
   const [loadingProfile, setLoadingProfile] = useState(true)
@@ -299,6 +321,16 @@ export function FriendProfile({ profile, onBack, onMessage, onRetrySync }: Frien
       <PageHeader
         title={profile.username || 'Friend'}
         onBack={onBack}
+        rightSlot={canInvite ? (
+          <button
+            type="button"
+            onClick={handleInvite}
+            disabled={inviteSent}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-mono border border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 disabled:opacity-50 disabled:cursor-default transition-colors"
+          >
+            {inviteSent ? '✓ Invited' : `⚔ Invite to [${myGuild!.tag}]`}
+          </button>
+        ) : undefined}
       />
       {/* Profile Hero */}
       <div
@@ -348,9 +380,7 @@ export function FriendProfile({ profile, onBack, onMessage, onRetrySync }: Frien
                 title="Message"
                 aria-label="Message"
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
+                <MessageCircle className="w-[15px] h-[15px]" />
               </motion.button>
             )}
           </div>

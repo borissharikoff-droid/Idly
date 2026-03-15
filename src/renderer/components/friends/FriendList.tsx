@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { MessageCircle } from '../../lib/icons'
 import type { FriendProfile } from '../../hooks/useFriends'
 import { getSkillByName, MAX_TOTAL_SKILL_LEVEL } from '../../lib/skills'
 import { playClickSound } from '../../lib/sounds'
@@ -146,9 +147,7 @@ export function FriendList({ friends, onSelectFriend, onMessageFriend, unreadByF
                   className="relative p-1.5 rounded-lg text-gray-400 hover:text-cyber-neon hover:bg-white/5 transition-colors"
                   title="Message"
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                  </svg>
+                  <MessageCircle className="w-[18px] h-[18px]" />
                   {unread > 0 && (
                     <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-1 flex items-center justify-center rounded-full bg-discord-red text-[10px] font-bold text-white">
                       {unread > 99 ? '99+' : unread}

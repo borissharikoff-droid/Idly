@@ -30,6 +30,11 @@ export {
   Flame,
   Bell,
   Lock,
+  Send,
+  Copy,
+  CornerUpLeft,
+  MessageCircle,
+  ShoppingBag,
   // Misc
   TrendingUp,
   Trophy,
