@@ -138,13 +138,17 @@ function TributeModal({
                     <span className="text-xl shrink-0">{item.icon}</span>
                     <div className="flex-1 min-w-0">
                       <p className="text-[11px] font-semibold truncate" style={{ color: isSelected ? color : '#e5e7eb' }}>{item.name}</p>
-                      <p className="text-[8px] font-mono" style={{ color: `${color}99` }}>{item.rarity} · IP {ITEM_POWER_BY_RARITY[item.rarity]}</p>
+                      <p className="text-[8px] font-mono" style={{ color: `${color}99` }}>
+                        {item.rarity} · IP {ITEM_POWER_BY_RARITY[item.rarity]}
+                        {items[item.id] > 1 && <span className="text-gray-600"> · owned {items[item.id]}</span>}
+                      </p>
                     </div>
-                    <span className="text-[9px] font-mono text-gray-600 shrink-0">×{items[item.id]}</span>
-                    {isSelected && (
+                    {isSelected ? (
                       <div className="w-4 h-4 rounded-full flex items-center justify-center shrink-0" style={{ background: color }}>
                         <span className="text-[8px] text-black font-bold">✓</span>
                       </div>
+                    ) : (
+                      <span className="text-[9px] text-red-500/50 font-mono shrink-0">burn</span>
                     )}
                   </button>
                 )
