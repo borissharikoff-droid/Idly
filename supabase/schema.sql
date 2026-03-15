@@ -388,13 +388,10 @@ CREATE TABLE IF NOT EXISTS public.raids (
 
 ALTER TABLE public.raids ENABLE ROW LEVEL SECURITY;
 
+-- Read access: open to all authenticated users (UUIDs are unguessable;
+-- cross-table policies between raids↔raid_participants cause infinite recursion)
 CREATE POLICY "raids_select" ON public.raids
-  FOR SELECT USING (
-    auth.uid() = leader_id
-    OR auth.uid() IN (
-      SELECT user_id FROM public.raid_participants WHERE raid_id = id
-    )
-  );
+  FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "raids_insert" ON public.raids
   FOR INSERT WITH CHECK (auth.uid() = leader_id);
@@ -420,13 +417,7 @@ CREATE TABLE IF NOT EXISTS public.raid_participants (
 ALTER TABLE public.raid_participants ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "raid_participants_select" ON public.raid_participants
-  FOR SELECT USING (
-    auth.uid() = user_id
-    OR EXISTS (
-      SELECT 1 FROM public.raids r
-      WHERE r.id = raid_id AND r.leader_id = auth.uid()
-    )
-  );
+  FOR SELECT TO authenticated USING (true);
 
 CREATE POLICY "raid_participants_insert" ON public.raid_participants
   FOR INSERT WITH CHECK (auth.uid() = user_id);
