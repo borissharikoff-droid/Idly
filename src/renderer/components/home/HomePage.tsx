@@ -20,6 +20,8 @@ import { useCraftingStore } from '../../stores/craftingStore'
 import { useCookingStore } from '../../stores/cookingStore'
 import { useFarmStore } from '../../stores/farmStore'
 import { useNavigationStore } from '../../stores/navigationStore'
+import { useRaidStore } from '../../stores/raidStore'
+import { RAID_TIER_CONFIGS, getRaidPhase } from '../../services/raidService'
 
 interface HomePageProps {
   onNavigateProfile: () => void
@@ -40,6 +42,18 @@ function formatRecoveryDuration(secs: number): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`
 }
 
+function raidCountdown(dateStr: string | null): string {
+  if (!dateStr) return ''
+  const ms = new Date(dateStr).getTime() - Date.now()
+  if (ms <= 0) return 'Ended'
+  const d = Math.floor(ms / 86_400_000)
+  const h = Math.floor((ms % 86_400_000) / 3_600_000)
+  const m = Math.floor((ms % 3_600_000) / 60_000)
+  if (d > 0) return `${d}d ${h}h left`
+  if (h > 0) return `${h}h ${m}m left`
+  return `${m}m left`
+}
+
 export function HomePage({ onNavigateProfile, onNavigateInventory, onNavigateFriends }: HomePageProps) {
   const { showComplete, status } = useSessionStore()
   const user = useAuthStore((s) => s.user)
@@ -58,6 +72,7 @@ export function HomePage({ onNavigateProfile, onNavigateInventory, onNavigateFri
   const planted = useFarmStore((s) => s.planted)
   const navigateTo = useNavigationStore((s) => s.navigateTo)
   const setProfileInitialTab = useNavigationStore((s) => s.setProfileInitialTab)
+  const activeRaid = useRaidStore((s) => s.activeRaid)
 
   const now = Date.now() + ambientTick * 0
   const farmReady = Object.values(planted).filter((s) => !!s && (now - s.plantedAt) / 1000 >= s.growTimeSeconds).length
@@ -65,6 +80,11 @@ export function HomePage({ onNavigateProfile, onNavigateInventory, onNavigateFri
   const craftRemaining = craftJob ? jobRemainingItems(now, craftJob.startedAt, craftJob.secPerItem, craftJob.totalQty, craftJob.doneQty) : 0
   const cookRemaining = cookJob ? jobRemainingItems(now, cookJob.startedAt, cookJob.secPerItem, cookJob.totalQty, cookJob.doneQty) : 0
   const showAmbientBar = farmReady > 0 || !!craftJob || !!cookJob
+
+  const raidCfg = activeRaid ? RAID_TIER_CONFIGS[activeRaid.tier] : null
+  const raidPhase = activeRaid ? getRaidPhase(activeRaid.boss_hp_remaining, activeRaid.boss_hp_max) : 1
+  const raidHpPct = activeRaid ? (activeRaid.boss_hp_remaining / activeRaid.boss_hp_max) * 100 : 0
+  const raidCountdownStr = activeRaid ? raidCountdown(activeRaid.ends_at) : ''
 
   const bounties = useBountyStore((s) => s.bounties)
   const weeklyBounties = useWeeklyStore((s) => s.bounties)
@@ -146,6 +166,20 @@ export function HomePage({ onNavigateProfile, onNavigateInventory, onNavigateFri
       <OrbBlast />
 
       <ProfileBar onNavigateProfile={onNavigateProfile} onNavigateInventory={onNavigateInventory} />
+
+      {/* Active raid ambient bar */}
+      {activeRaid && raidCfg && activeRaid.status === 'active' && (
+        <div className="mx-4 mt-2 mb-0 rounded-xl border px-3 py-2 flex items-center gap-2" style={{ borderColor: `${raidCfg.color}30`, background: `${raidCfg.color}08` }}>
+          <span className="text-base">{raidCfg.icon}</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-bold text-white truncate">{raidCfg.name}</p>
+            <p className="text-[8px] font-mono text-gray-500">{raidCountdownStr} — Phase {raidPhase}</p>
+          </div>
+          <span className="text-[8px] font-mono shrink-0" style={{ color: raidCfg.color }}>
+            {raidHpPct.toFixed(0)}% HP
+          </span>
+        </div>
+      )}
 
       {/* Welcome banner — only for new users, before first grind */}
       <AnimatePresence>
