@@ -8,8 +8,9 @@ import {
   type BossDef,
 } from '../../lib/combat'
 import { useInventoryStore } from '../../stores/inventoryStore'
+import { useRaidStore } from '../../stores/raidStore'
 import { skillLevelFromXP } from '../../lib/skills'
-import { RAID_TIER_CONFIGS, type RaidTierId } from '../../services/raidService'
+import { RAID_TIER_CONFIGS, getRaidPhase, RAID_PHASE_ATK_MULT, type RaidTierId } from '../../services/raidService'
 
 const TICK_MS = 500
 
@@ -21,10 +22,11 @@ interface Props {
 
 export function RaidFightModal({ tier, onClose, onComplete }: Props) {
   const cfg = RAID_TIER_CONFIGS[tier]
-  const boss = cfg.encounter as BossDef
+  const baseBoss = cfg.encounter as BossDef
 
   const equippedBySlot = useInventoryStore((s) => s.equippedBySlot)
   const permanentStats = useInventoryStore((s) => s.permanentStats)
+  const activeRaid = useRaidStore((s) => s.activeRaid)
 
   const warriorLevel = (() => {
     try {
@@ -35,6 +37,9 @@ export function RaidFightModal({ tier, onClose, onComplete }: Props) {
 
   const warriorBonuses = computeWarriorBonuses(warriorLevel)
   const player = computePlayerStats(equippedBySlot, permanentStats, warriorBonuses)
+
+  const currentPhase = getRaidPhase(activeRaid?.boss_hp_remaining ?? cfg.boss_hp, cfg.boss_hp)
+  const boss: BossDef = { ...baseBoss, atk: baseBoss.atk * RAID_PHASE_ATK_MULT[currentPhase] }
 
   const [elapsed, setElapsed] = useState(0)
   const [phase, setPhase] = useState<'fighting' | 'result'>('fighting')
@@ -111,11 +116,16 @@ export function RaidFightModal({ tier, onClose, onComplete }: Props) {
           <span className="text-2xl" style={{ filter: `drop-shadow(0 0 6px ${cfg.color})` }}>{cfg.icon}</span>
           <div className="flex-1 min-w-0">
             <p className="text-[12px] font-bold text-white">{cfg.name}</p>
-            <p className="text-[9px] font-mono" style={{ color: `${cfg.color}cc` }}>Daily Attack — {boss.name}</p>
+            <p className="text-[9px] font-mono" style={{ color: `${cfg.color}cc` }}>Daily Attack — {baseBoss.name}</p>
           </div>
-          <span className="text-[8px] font-mono text-gray-600 uppercase tracking-wider">
-            {phase === 'fighting' ? `${Math.floor(elapsed)}s` : victory ? 'WIN' : 'DEFEAT'}
-          </span>
+          <div className="flex flex-col items-end gap-0.5">
+            <span className="text-[8px] font-mono text-gray-600 uppercase tracking-wider">
+              {phase === 'fighting' ? `${Math.floor(elapsed)}s` : victory ? 'WIN' : 'DEFEAT'}
+            </span>
+            <span className={`text-[8px] font-mono font-bold ${currentPhase === 1 ? 'text-gray-500' : currentPhase === 2 ? 'text-amber-400' : 'text-red-400'}`}>
+              {currentPhase === 1 ? 'Phase 1' : currentPhase === 2 ? '⚠ Phase 2 — Enraged' : '🔥 Phase 3 — Berserk'}
+            </span>
+          </div>
         </div>
 
         {/* Battle arena */}
@@ -202,41 +212,55 @@ export function RaidFightModal({ tier, onClose, onComplete }: Props) {
 
         {/* Result */}
         <AnimatePresence>
-          {phase === 'result' && (
+          {phase === 'result' && victory && (
             <motion.div
-              key="result"
+              key="victory"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               className="px-4 pb-4"
             >
               <div
                 className="rounded-xl p-3 text-center border"
-                style={{
-                  borderColor: victory ? `${cfg.color}40` : 'rgba(248,113,113,0.25)',
-                  background: victory ? `${cfg.color}0c` : 'rgba(248,113,113,0.06)',
-                }}
+                style={{ borderColor: `${cfg.color}40`, background: `${cfg.color}0c` }}
               >
-                <p className="text-lg mb-1">{victory ? '🏆' : '💀'}</p>
-                <p className="text-sm font-bold text-white">{victory ? 'Victory!' : 'Defeated'}</p>
-                {victory ? (
-                  <p className="text-[10px] font-mono mt-0.5" style={{ color: cfg.color }}>
-                    +{(RAID_TIER_CONFIGS[tier].contribution_per_win / 1_000).toFixed(0)}K raid damage dealt
-                  </p>
-                ) : (
-                  <p className="text-[10px] font-mono text-gray-500 mt-0.5">No damage contribution</p>
-                )}
+                <p className="text-lg mb-1">🏆</p>
+                <p className="text-sm font-bold text-white">Victory!</p>
+                <p className="text-[10px] font-mono mt-0.5" style={{ color: cfg.color }}>
+                  +{(RAID_TIER_CONFIGS[tier].contribution_per_win / 1_000).toFixed(0)}K raid damage dealt
+                </p>
               </div>
               <button
                 type="button"
                 onClick={handleResult}
                 className="w-full mt-3 py-2.5 rounded-xl text-[11px] font-bold transition-colors"
-                style={{
-                  background: `${cfg.color}20`,
-                  border: `1px solid ${cfg.color}40`,
-                  color: cfg.color,
-                }}
+                style={{ background: `${cfg.color}20`, border: `1px solid ${cfg.color}40`, color: cfg.color }}
               >
                 Continue
+              </button>
+            </motion.div>
+          )}
+          {phase === 'result' && !victory && (
+            <motion.div
+              key="defeat"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="px-4 pb-4"
+            >
+              <div className="text-center py-6">
+                <p className="text-4xl mb-2">💀</p>
+                <p className="text-[14px] font-bold text-red-400">You Fell in Battle</p>
+                <p className="text-[10px] text-gray-500 mt-1 font-mono">No damage dealt today.</p>
+                <p className="text-[9px] text-gray-600 mt-2 font-mono leading-relaxed">
+                  Your party fights on...<br />Return tomorrow with better gear.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleResult}
+                className="w-full py-2.5 rounded-xl text-[11px] font-bold transition-colors"
+                style={{ background: 'rgba(248,113,113,0.12)', border: '1px solid rgba(248,113,113,0.3)', color: '#f87171' }}
+              >
+                Back to Raid
               </button>
             </motion.div>
           )}

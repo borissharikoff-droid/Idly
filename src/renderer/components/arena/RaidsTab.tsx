@@ -3,13 +3,15 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useRaidStore } from '../../stores/raidStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useInventoryStore } from '../../stores/inventoryStore'
+import { useArenaStore } from '../../stores/arenaStore'
 import { useToastStore } from '../../stores/toastStore'
 import { LOOT_ITEMS, ITEM_POWER_BY_RARITY, type LootRarity } from '../../lib/loot'
 import {
-  RAID_TIER_CONFIGS, rarityMeetsMin,
+  RAID_TIER_CONFIGS, rarityMeetsMin, checkRaidGates,
   fetchFriends,
   type RaidTierId, type TributeItem, type Friend,
 } from '../../services/raidService'
+import { skillLevelFromXP } from '../../lib/skills'
 import { RaidFightModal } from './RaidFightModal'
 import { playClickSound } from '../../lib/sounds'
 
@@ -192,13 +194,33 @@ function TierCard({ tier, onStart }: { tier: RaidTierId; onStart: () => void }) 
   const cfg = RAID_TIER_CONFIGS[tier]
   const items = useInventoryStore((s) => s.items)
   const user = useAuthStore((s) => s.user)
+  const clearedZones = useArenaStore((s) => s.clearedZones)
 
   const gearSlots = new Set(['head', 'body', 'legs', 'ring', 'weapon'])
   const eligibleCount = LOOT_ITEMS.filter((item) =>
     gearSlots.has(item.slot) && (items[item.id] ?? 0) >= 1 && rarityMeetsMin(item.rarity, cfg.tribute_min_rarity)
   ).length
 
-  const canEnter = eligibleCount >= cfg.tribute_count && Boolean(user)
+  const skillXp = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('grindly_skill_xp') || '{}') as Record<string, number>
+    } catch { return {} as Record<string, number> }
+  })()
+
+  const warriorLevel = (() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem('grindly_skill_xp') || '{}') as Record<string, number>
+      return skillLevelFromXP(stored['warrior'] ?? 0)
+    } catch { return 0 }
+  })()
+
+  const clearedZoneIds = clearedZones ?? []
+  const gateCheck = checkRaidGates(tier, clearedZoneIds, warriorLevel, skillXp, 1)
+  const canEnter = eligibleCount >= cfg.tribute_count && Boolean(user) && gateCheck.ok
+
+  const qualifiedSkills = Object.values(skillXp).filter(
+    (xp) => skillLevelFromXP(xp) >= cfg.skill_level_req,
+  ).length
 
   return (
     <motion.div
@@ -240,22 +262,44 @@ function TierCard({ tier, onStart }: { tier: RaidTierId; onStart: () => void }) 
       {/* Requirements */}
       <div className="px-4 pb-3 space-y-1.5 border-t" style={{ borderColor: `${cfg.color}12` }}>
         <p className="text-[8px] uppercase tracking-wider font-mono text-gray-600 mt-2.5">Requirements</p>
+
         <div className="flex items-center gap-2">
-          <span className={`text-[10px] ${canEnter ? 'text-green-400' : 'text-red-400'}`}>
-            {canEnter ? '✓' : '✗'}
+          <span className={`text-[10px] ${clearedZoneIds.length >= 8 ? 'text-green-400' : 'text-red-400'}`}>
+            {clearedZoneIds.length >= 8 ? '✓' : '✗'}
+          </span>
+          <span className="text-[10px] text-gray-400">All 8 zones cleared</span>
+          <span className="ml-auto text-[9px] font-mono text-gray-600">{clearedZoneIds.length}/8</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className={`text-[10px] ${warriorLevel >= cfg.warrior_level_req ? 'text-green-400' : 'text-red-400'}`}>
+            {warriorLevel >= cfg.warrior_level_req ? '✓' : '✗'}
+          </span>
+          <span className="text-[10px] text-gray-400">Warrior level</span>
+          <span className="ml-auto text-[9px] font-mono text-gray-600">{warriorLevel}/{cfg.warrior_level_req}</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className={`text-[10px] ${qualifiedSkills >= 4 ? 'text-green-400' : 'text-red-400'}`}>
+            {qualifiedSkills >= 4 ? '✓' : '✗'}
+          </span>
+          <span className="text-[10px] text-gray-400">4+ skills at level {cfg.skill_level_req}</span>
+          <span className="ml-auto text-[9px] font-mono text-gray-600">{qualifiedSkills}/4</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <span className={`text-[10px] ${eligibleCount >= cfg.tribute_count ? 'text-green-400' : 'text-red-400'}`}>
+            {eligibleCount >= cfg.tribute_count ? '✓' : '✗'}
           </span>
           <span className="text-[10px] text-gray-400">
             {cfg.tribute_count}× <span style={{ color: RARITY_COLORS[cfg.tribute_min_rarity] }}>{cfg.tribute_min_rarity}+</span> gear to sacrifice
           </span>
-          <span className="ml-auto text-[9px] font-mono text-gray-600">
-            {eligibleCount}/{cfg.tribute_count} available
-          </span>
+          <span className="ml-auto text-[9px] font-mono text-gray-600">{eligibleCount}/{cfg.tribute_count}</span>
         </div>
+
         <div className="flex items-center gap-2">
-          <span className={`text-[10px] ${user ? 'text-green-400' : 'text-red-400'}`}>
-            {user ? '✓' : '✗'}
-          </span>
-          <span className="text-[10px] text-gray-400">Logged in</span>
+          <span className="text-[10px] text-gray-500">ℹ</span>
+          <span className="text-[10px] text-gray-500">Min {cfg.party_min} players required</span>
         </div>
       </div>
 
@@ -273,7 +317,7 @@ function TierCard({ tier, onStart }: { tier: RaidTierId; onStart: () => void }) 
             textShadow: canEnter ? `0 0 12px ${cfg.color}` : 'none',
           }}
         >
-          {canEnter ? `⚔ Begin Raid` : `Insufficient tribute`}
+          {canEnter ? `⚔ Begin Raid` : (gateCheck.reason ?? 'Requirements not met')}
         </button>
       </div>
     </motion.div>
@@ -406,7 +450,7 @@ function ActiveRaidPanel({ onAttack }: { onAttack: () => void }) {
 // ── Main RaidsTab ─────────────────────────────────────────────────────────────
 
 export function RaidsTab() {
-  const { activeRaid, isLoading, fetchRaid, startRaid } = useRaidStore()
+  const { activeRaid, isLoading, fetchRaid, startRaid, pendingInvites, fetchInvites, acceptInvite, declineInvite } = useRaidStore()
   const pushToast = useToastStore((s) => s.push)
   const user = useAuthStore((s) => s.user)
 
@@ -414,7 +458,10 @@ export function RaidsTab() {
   const [showFight, setShowFight] = useState(false)
 
   useEffect(() => {
-    if (user) fetchRaid()
+    if (user) {
+      fetchRaid()
+      fetchInvites()
+    }
   }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleTributeConfirm = async (tributeItems: import('../../services/raidService').TributeItem[]) => {
@@ -434,6 +481,11 @@ export function RaidsTab() {
     const result = await store.attackBoss(damageDealt, wonFight)
     if (result.raidWon) {
       pushToast({ kind: 'generic', message: '🏆 RAID CLEARED! Check your inventory for rewards.', type: 'success' })
+      if (result.lootItemId) {
+        const item = LOOT_ITEMS.find((i) => i.id === result.lootItemId)
+        const name = item?.name ?? result.lootItemId
+        pushToast({ kind: 'generic', message: `🏆 Raid exclusive drop: ${name}!`, type: 'success' })
+      }
     } else if (wonFight) {
       pushToast({ kind: 'generic', message: `+${formatHp(damageDealt)} raid damage dealt!`, type: 'success' })
     }
@@ -449,6 +501,40 @@ export function RaidsTab() {
 
   return (
     <div className="space-y-4">
+      {/* Pending invites */}
+      {!activeRaid && pendingInvites.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-[8px] uppercase tracking-wider font-mono text-gray-600">Raid Invites</p>
+          {pendingInvites.map((invite) => {
+            const invCfg = RAID_TIER_CONFIGS[invite.tier]
+            return (
+              <div key={invite.id} className="flex items-center gap-2.5 px-3 py-2 rounded-xl border" style={{ borderColor: `${invCfg.color}30`, background: `${invCfg.color}08` }}>
+                <span className="text-base shrink-0">{invCfg.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] text-white truncate">{invite.from_username ?? 'Unknown'} invited you</p>
+                  <p className="text-[9px] font-mono text-gray-500">{invCfg.name}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => acceptInvite(invite.id)}
+                  className="text-[9px] font-mono px-2 py-1 rounded-lg border transition-colors"
+                  style={{ borderColor: `${invCfg.color}40`, color: invCfg.color, background: `${invCfg.color}10` }}
+                >
+                  Accept
+                </button>
+                <button
+                  type="button"
+                  onClick={() => declineInvite(invite.id)}
+                  className="text-[9px] font-mono px-2 py-1 rounded-lg border border-white/10 text-gray-500 hover:text-gray-300 transition-colors"
+                >
+                  Decline
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
       {/* Intro text */}
       {!activeRaid && (
         <div className="text-center px-2 py-2">
