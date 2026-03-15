@@ -301,3 +301,136 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute procedure public.handle_new_user();
+
+-- ── Guild System (v3.8) ──────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.guilds (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT UNIQUE NOT NULL CHECK (char_length(name) BETWEEN 3 AND 30),
+  tag TEXT NOT NULL CHECK (char_length(tag) BETWEEN 2 AND 5),
+  description TEXT,
+  owner_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  member_count INT DEFAULT 1,
+  chest_gold INT DEFAULT 0 CHECK (chest_gold >= 0),
+  weekly_goal_progress JSONB DEFAULT '{}'::jsonb,
+  weekly_goal_reset_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS public.guild_members (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  guild_id UUID REFERENCES guilds(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  role TEXT DEFAULT 'member' CHECK (role IN ('owner', 'officer', 'member')),
+  joined_at TIMESTAMPTZ DEFAULT NOW(),
+  contribution_gold INT DEFAULT 0,
+  UNIQUE(user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_guild_members_guild ON guild_members(guild_id);
+
+CREATE TABLE IF NOT EXISTS public.guild_chest_items (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  guild_id UUID REFERENCES guilds(id) ON DELETE CASCADE,
+  item_id TEXT NOT NULL,
+  quantity INT DEFAULT 1 CHECK (quantity >= 1),
+  deposited_by UUID REFERENCES profiles(id),
+  deposited_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.guild_activity_log (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  guild_id UUID REFERENCES guilds(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES profiles(id),
+  event_type TEXT NOT NULL,
+  payload JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_guild_activity_guild_created ON guild_activity_log(guild_id, created_at DESC);
+
+-- RPC: increment guild weekly goal progress
+CREATE OR REPLACE FUNCTION increment_guild_progress(p_guild_id UUID, p_type TEXT, p_delta INT DEFAULT 1)
+RETURNS VOID AS $$
+  UPDATE guilds
+  SET weekly_goal_progress = jsonb_set(
+    weekly_goal_progress,
+    ARRAY[p_type],
+    to_jsonb(COALESCE((weekly_goal_progress->p_type)::INT, 0) + p_delta)
+  )
+  WHERE id = p_guild_id;
+$$ LANGUAGE sql SECURITY DEFINER;
+
+-- RPC: get price history for marketplace sparkline
+CREATE OR REPLACE FUNCTION get_price_history(p_item_id TEXT, p_limit INT DEFAULT 20)
+RETURNS TABLE(price_gold INT, sold_at TIMESTAMPTZ) AS $$
+  SELECT price_gold, created_at as sold_at
+  FROM marketplace_listings
+  WHERE item_id = p_item_id AND status = 'sold'
+  ORDER BY created_at DESC
+  LIMIT p_limit;
+$$ LANGUAGE sql SECURITY DEFINER;
+
+-- ── Raids ─────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.raids (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  tier TEXT NOT NULL CHECK (tier IN ('ancient', 'mythic', 'eternal')),
+  leader_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'won', 'failed')),
+  boss_hp_remaining BIGINT NOT NULL,
+  boss_hp_max BIGINT NOT NULL,
+  started_at TIMESTAMPTZ DEFAULT NOW(),
+  ends_at TIMESTAMPTZ NOT NULL,
+  tribute_items JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.raids ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "raids_select" ON public.raids
+  FOR SELECT USING (
+    auth.uid() = leader_id
+    OR auth.uid() IN (
+      SELECT user_id FROM public.raid_participants WHERE raid_id = id
+    )
+  );
+
+CREATE POLICY "raids_insert" ON public.raids
+  FOR INSERT WITH CHECK (auth.uid() = leader_id);
+
+CREATE POLICY "raids_update" ON public.raids
+  FOR UPDATE USING (
+    auth.uid() = leader_id
+    OR auth.uid() IN (
+      SELECT user_id FROM public.raid_participants WHERE raid_id = id
+    )
+  );
+
+CREATE TABLE IF NOT EXISTS public.raid_participants (
+  raid_id UUID REFERENCES raids(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  username TEXT,
+  joined_at TIMESTAMPTZ DEFAULT NOW(),
+  tribute_paid BOOLEAN DEFAULT FALSE,
+  daily_attacks JSONB DEFAULT '[]'::jsonb,
+  PRIMARY KEY (raid_id, user_id)
+);
+
+ALTER TABLE public.raid_participants ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "raid_participants_select" ON public.raid_participants
+  FOR SELECT USING (
+    auth.uid() IN (
+      SELECT user_id FROM public.raid_participants rp2 WHERE rp2.raid_id = raid_id
+    )
+  );
+
+CREATE POLICY "raid_participants_insert" ON public.raid_participants
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "raid_participants_update" ON public.raid_participants
+  FOR UPDATE USING (auth.uid() = user_id);
+
+-- Add raid_medals column to profiles if not exists
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS raid_medals INTEGER DEFAULT 0;
