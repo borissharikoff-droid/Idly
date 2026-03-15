@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { X } from '../../lib/icons'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CHEST_DEFS, estimateChestDropRate } from '../../lib/loot'
 import { useNotificationStore } from '../../stores/notificationStore'
@@ -367,7 +368,7 @@ function GoalTypePicker({ onPickTime, onPickTask, onCancel }: { onPickTime: () =
     <div className="rounded-xl bg-discord-card/70 border border-white/10 p-3 space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-[10px] font-mono text-gray-500 uppercase tracking-wider">New goal</span>
-        <button onClick={onCancel} className="text-gray-600 hover:text-gray-400 transition-colors text-xs">✕</button>
+        <button onClick={onCancel} className="text-gray-600 hover:text-gray-400 transition-colors"><X className="w-3.5 h-3.5" /></button>
       </div>
       <div className="flex gap-2">
         <button
@@ -492,7 +493,7 @@ function TaskCreator({ onCreated, onCancel }: { onCreated: () => void; onCancel:
     <div className="rounded-xl bg-discord-card/70 border border-white/10 p-3 space-y-2.5">
       <div className="flex items-center justify-between">
         <span className="text-[10px] font-mono text-gray-500 uppercase tracking-wider">New task</span>
-        <button onClick={onCancel} className="text-gray-600 hover:text-gray-400 transition-colors text-xs">✕</button>
+        <button onClick={onCancel} className="text-gray-600 hover:text-gray-400 transition-colors"><X className="w-3.5 h-3.5" /></button>
       </div>
       <input
         type="text"
@@ -685,7 +686,7 @@ function GoalEditor({
     <div className="rounded-xl bg-discord-card/80 border border-cyber-neon/20 p-3.5 space-y-2.5">
       <div className="flex items-center justify-between">
         <span className="text-[10px] font-mono text-gray-500 uppercase tracking-wider">Edit goal</span>
-        <button onClick={onCancel} className="text-gray-600 hover:text-gray-400 transition-colors text-xs">✕</button>
+        <button onClick={onCancel} className="text-gray-600 hover:text-gray-400 transition-colors"><X className="w-3.5 h-3.5" /></button>
       </div>
       <div className="flex gap-2">
         {(['daily', 'weekly'] as const).map((p) => (
@@ -762,7 +763,7 @@ function GoalCreator({ onCreated, onCancel }: { onCreated: () => void; onCancel:
     <div className="rounded-xl bg-discord-card/70 border border-white/10 p-3.5 space-y-2.5">
       <div className="flex items-center justify-between">
         <span className="text-[10px] font-mono text-gray-500 uppercase tracking-wider">Time goal</span>
-        <button onClick={onCancel} className="text-gray-600 hover:text-gray-400 transition-colors text-xs">✕</button>
+        <button onClick={onCancel} className="text-gray-600 hover:text-gray-400 transition-colors"><X className="w-3.5 h-3.5" /></button>
       </div>
       <div className="flex gap-2">
         {(['daily', 'weekly'] as const).map((p) => (
