@@ -1255,7 +1255,8 @@ describe('Full dungeon run — deterministic simulation', () => {
     const bonuses = computeWarriorBonuses(80)
     const player = computePlayerStats(equipped, undefined, bonuses)
 
-    for (const zone of ZONES) {
+    // Void set covers zones 1–6; zones 7–8 require post-void gear
+    for (const zone of ZONES.slice(0, 6)) {
       for (const mob of zone.mobs) {
         const r = computeBattleOutcome(player, mob as unknown as BossDef)
         expect(r.willWin).toBe(true)
@@ -1497,7 +1498,8 @@ describe('Stat progression — gear sets vs zone boss requirements', () => {
 
   it('void set meets all boss requirements', () => {
     const voidStats = computePlayerStats(sets[4].equipped)
-    for (const zone of ZONES) {
+    // Void set covers zones 1–6; zones 7–8 require post-void gear
+    for (const zone of ZONES.slice(0, 6)) {
       expect(meetsBossRequirements(voidStats, {}, zone.boss)).toBe(true)
     }
   })

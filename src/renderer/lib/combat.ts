@@ -225,6 +225,48 @@ export const ZONES: ZoneDef[] = [
       materialDropId: 'dragon_heart', materialDropQty: 1,
     },
   },
+  // ── Zone 7 — Shadow Crypt (target: post-Void, needs dragon materials to enter)
+  {
+    id: 'zone7',
+    name: 'Shadow Crypt',
+    icon: '💀',
+    themeColor: '#a855f7',
+    prevZoneId: 'zone6',
+    warriorLevelRequired: 55,
+    entryCost: [{ itemId: 'dragon_scale', quantity: 2 }, { itemId: 'dragon_heart', quantity: 1 }],
+    mobs: [
+      { id: 'skeleton_archer', name: 'Skeleton Archer', icon: '💀', hp: 2800, atk: 16,   def: 8,  atkSpread: 0.3,  xpReward: 35000,  goldMin: 280, goldMax: 420,  materialDropId: 'shadow_dust', materialDropChance: 0.3, materialDropQty: 2 },
+      { id: 'zombie_knight',   name: 'Zombie Knight',   icon: '💀', hp: 4000, atk: 17,   def: 10, atkSpread: 0.3,  xpReward: 55000,  goldMin: 380, goldMax: 580,  materialDropId: 'shadow_dust', materialDropChance: 0.4, materialDropQty: 3 },
+      { id: 'lich_apprentice', name: 'Lich Apprentice', icon: '💀', hp: 5200, atk: 18.5, def: 11, atkSpread: 0.35, xpReward: 80000,  goldMin: 480, goldMax: 700,  materialDropId: 'shadow_dust', materialDropChance: 0.5, materialDropQty: 4 },
+    ],
+    boss: {
+      id: 'lich', name: 'Necromancer Lord', icon: '💀', hp: 6500, atk: 20, def: 13, atkSpread: 0.4,
+      rewards: { chestTier: 'legendary_chest' },
+      requirements: { minAtk: 75, minHp: 380, minHpRegen: 13, minDef: 8 },
+      materialDropId: 'lich_crystal', materialDropQty: 1,
+    },
+  },
+  // ── Zone 8 — Celestial Spire (target: endgame, requires lich_crystal to enter)
+  {
+    id: 'zone8',
+    name: 'Celestial Spire',
+    icon: '⚡',
+    themeColor: '#38bdf8',
+    prevZoneId: 'zone7',
+    warriorLevelRequired: 75,
+    entryCost: [{ itemId: 'lich_crystal', quantity: 2 }, { itemId: 'troll_heart', quantity: 1 }],
+    mobs: [
+      { id: 'sky_serpent',     name: 'Sky Serpent',     icon: '🐍', hp: 4500, atk: 21, def: 11, atkSpread: 0.3,  xpReward: 100000, goldMin: 450, goldMax: 650,  materialDropId: 'storm_shard', materialDropChance: 0.3, materialDropQty: 2 },
+      { id: 'thunder_drake',   name: 'Thunder Drake',   icon: '🦅', hp: 6200, atk: 23, def: 13, atkSpread: 0.35, xpReward: 160000, goldMin: 600, goldMax: 900,  materialDropId: 'storm_shard', materialDropChance: 0.4, materialDropQty: 3 },
+      { id: 'storm_elemental', name: 'Storm Elemental', icon: '🌪️', hp: 8000, atk: 25, def: 15, atkSpread: 0.4,  xpReward: 230000, goldMin: 750, goldMax: 1100, materialDropId: 'storm_shard', materialDropChance: 0.5, materialDropQty: 4 },
+    ],
+    boss: {
+      id: 'titan', name: 'Storm Titan', icon: '⚡', hp: 10000, atk: 28, def: 18, atkSpread: 0.45,
+      rewards: { chestTier: 'legendary_chest' },
+      requirements: { minAtk: 100, minHp: 500, minHpRegen: 18, minDef: 15 },
+      materialDropId: 'titan_core', materialDropQty: 1,
+    },
+  },
 ]
 
 /** Warrior XP granted on boss kill by boss id */
@@ -235,6 +277,8 @@ export const BOSS_WARRIOR_XP: Record<string, number> = {
   orc: 2000,
   troll: 5000,
   dragon: 12000,
+  lich: 30000,
+  titan: 80000,
 }
 
 /** Backward compat: flat list of boss defs */
