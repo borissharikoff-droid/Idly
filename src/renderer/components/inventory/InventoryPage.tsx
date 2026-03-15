@@ -545,6 +545,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
         <div className="border-t border-white/[0.05]" />
 
         {/* Items */}
+        <div className="overflow-y-auto max-h-[300px] pr-0.5 -mr-0.5">
         {slots.length === 0 ? (
           <p className="text-[11px] text-gray-500 py-2">No loot yet.</p>
         ) : sortedSlots.length === 0 ? (
@@ -702,6 +703,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
 
           return <div className={gridClass}>{sortedSlots.map(renderCard)}</div>
         })()}
+        </div>
       </div>
 
       {inspectSlot &&
