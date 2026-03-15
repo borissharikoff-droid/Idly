@@ -427,3 +427,55 @@ CREATE POLICY "raid_participants_update" ON public.raid_participants
 
 -- Add raid_medals column to profiles if not exists
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS raid_medals INTEGER DEFAULT 0;
+
+-- ── Raid Invites ──────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.raid_invites (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  from_user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  to_user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  raid_id UUID REFERENCES raids(id) ON DELETE CASCADE NOT NULL,
+  tier TEXT NOT NULL CHECK (tier IN ('ancient', 'mythic', 'eternal')),
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'declined')),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '48 hours')
+);
+
+CREATE INDEX IF NOT EXISTS idx_raid_invites_to_user ON raid_invites(to_user_id, status);
+
+ALTER TABLE public.raid_invites ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "raid_invites_select" ON public.raid_invites
+  FOR SELECT TO authenticated USING (auth.uid() = from_user_id OR auth.uid() = to_user_id);
+
+CREATE POLICY "raid_invites_insert" ON public.raid_invites
+  FOR INSERT WITH CHECK (auth.uid() = from_user_id);
+
+CREATE POLICY "raid_invites_update" ON public.raid_invites
+  FOR UPDATE USING (auth.uid() = to_user_id OR auth.uid() = from_user_id);
+
+-- ── Raid phase column ─────────────────────────────────────────────────────────
+
+ALTER TABLE public.raids ADD COLUMN IF NOT EXISTS current_phase INTEGER NOT NULL DEFAULT 1 CHECK (current_phase IN (1, 2, 3));
+
+-- ── Raid history ──────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS public.raid_history (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  raid_id UUID NOT NULL,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE NOT NULL,
+  tier TEXT NOT NULL,
+  damage_dealt BIGINT NOT NULL DEFAULT 0,
+  survived BOOLEAN NOT NULL DEFAULT TRUE,
+  completed_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_raid_history_user ON raid_history(user_id, completed_at DESC);
+
+ALTER TABLE public.raid_history ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "raid_history_select" ON public.raid_history
+  FOR SELECT TO authenticated USING (auth.uid() = user_id);
+
+CREATE POLICY "raid_history_insert" ON public.raid_history
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
