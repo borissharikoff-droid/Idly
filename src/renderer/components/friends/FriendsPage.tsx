@@ -12,9 +12,11 @@ import { GuildTab } from './GuildTab'
 import { ActivityFeed } from './ActivityFeed'
 import { FriendCompare } from './FriendCompare'
 import { ChatThread } from './ChatThread'
+import { RaidPartyPanel } from './RaidPartyPanel'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
 import { useChatTargetStore } from '../../stores/chatTargetStore'
+import { useRaidStore } from '../../stores/raidStore'
 import type { FriendProfile as FriendProfileType, FriendsModel } from '../../hooks/useFriends'
 import { syncSkillsToSupabase } from '../../services/supabaseSync'
 import { useSkillSyncStore } from '../../stores/skillSyncStore'
@@ -38,6 +40,8 @@ export function FriendsPage({ friendsModel }: FriendsPageProps) {
   const [showLeaderboard, setShowLeaderboard] = useState(false)
   const [showGuild, setShowGuild] = useState(false)
   const [showFeed, setShowFeed] = useState(false)
+  const hasActiveRaid = useRaidStore((s) => !!s.activeRaid)
+  const fetchInvites = useRaidStore((s) => s.fetchInvites)
   const peerId = view === 'chat' && selected ? selected.id : null
   const chat = useChat(peerId)
   const chatTargetFriendId = useChatTargetStore((s) => s.friendId)
@@ -81,6 +85,8 @@ export function FriendsPage({ friendsModel }: FriendsPageProps) {
       setView('chat')
     }
   }, [chatTargetFriendId, friends, setChatTargetFriendId])
+
+  useEffect(() => { if (user) fetchInvites() }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Wrap markConversationRead to also refresh friend unread badges
   const markConversationReadAndRefresh = useCallback(async (otherUserId: string) => {
@@ -217,8 +223,11 @@ export function FriendsPage({ friendsModel }: FriendsPageProps) {
             )}
           />
 
-          <AddFriend onAdded={refresh} />
-          {incomingCount > 0 && !showLeaderboard && (
+          {!showGuild && !showFeed && !showLeaderboard && <AddFriend onAdded={refresh} />}
+          {hasActiveRaid && !showLeaderboard && !showGuild && !showFeed && (
+            <RaidPartyPanel friends={friends} />
+          )}
+          {incomingCount > 0 && !showLeaderboard && !showGuild && (
             <PendingRequests
               requests={pendingRequests}
               onAccept={acceptRequest}
@@ -234,7 +243,15 @@ export function FriendsPage({ friendsModel }: FriendsPageProps) {
           ) : showGuild ? (
             <div className="space-y-3">
               <BackButton onClick={() => setShowGuild(false)} />
-              <GuildTab />
+              <GuildTab onSelectMember={(userId) => {
+                const friend = friends.find((f) => f.id === userId)
+                if (friend) {
+                  setSelected(friend)
+                  setProfileFromChat(false)
+                  setView('profile')
+                  setShowGuild(false)
+                }
+              }} />
             </div>
           ) : showLeaderboard ? (
             <div className="space-y-3">
