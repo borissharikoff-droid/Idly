@@ -1,5 +1,5 @@
 import 'dotenv/config'
-import { app, BrowserWindow, Tray, nativeImage, Notification, Menu } from 'electron'
+import { app, BrowserWindow, Tray, nativeImage, Notification, Menu, screen } from 'electron'
 import path from 'path'
 import { registerIpcHandlers, setMainWindow, setNotificationSender } from './ipc'
 import { startSmartNotifications, stopSmartNotifications } from './notifications'
@@ -74,9 +74,14 @@ function showNativeNotification(title: string, body: string) {
 }
 
 function createWindow() {
+  const { workAreaSize } = screen.getPrimaryDisplay()
+  // Cap window height so it fits on screen (workArea excludes taskbar)
+  const windowHeight = Math.min(820, workAreaSize.height - 8)
+
   mainWindow = new BrowserWindow({
     width: 600,
-    height: 820,
+    height: windowHeight,
+    useContentSize: true,
     icon: getIconPath(),
     webPreferences: {
       preload: path.join(__dirname, '../../preload/index.js'),
@@ -129,6 +134,7 @@ function createWindow() {
 
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show()
+    mainWindow?.center()
     // Start auto-updater after window is visible (production only)
     if (!isDev && mainWindow) initAutoUpdater(mainWindow)
   })

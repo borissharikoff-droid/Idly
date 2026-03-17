@@ -28,6 +28,7 @@ import { InventoryPage } from '../inventory/InventoryPage'
 import { playClickSound } from '../../lib/sounds'
 import { logFriendActivity } from '../../services/friendActivityService'
 import { useAuthStore } from '../../stores/authStore'
+import { useToastStore } from '../../stores/toastStore'
 
 
 function formatShort(n: number): string {
@@ -343,22 +344,37 @@ function ZoneCard({
                 <div className="w-full py-2.5 rounded-xl text-[10px] font-mono text-center text-amber-500/70 border border-amber-500/20 bg-amber-500/05">
                   🔒 Raid in progress — dungeons locked
                 </div>
-              ) : unlocked && !activeBattle && affordable ? (
+              ) : activeBattle ? (
+                <div className="w-full py-2.5 rounded-xl text-[10px] font-mono text-center text-gray-500 border border-white/[0.06]">
+                  In battle...
+                </div>
+              ) : unlocked ? (
                 <div className="flex gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => { playClickSound(); onEnter(zone.id) }}
-                    className="flex-1 py-2.5 rounded-xl text-[12px] font-bold transition-all active:scale-[0.98]"
-                    style={{
-                      background: `linear-gradient(135deg, ${tc}30, ${tc}18)`,
-                      border: `1px solid ${tc}60`,
-                      color: '#fff',
-                      textShadow: `0 0 12px ${tc}`,
-                    }}
-                  >
-                    ⚔ Enter
-                  </button>
-                  {cleared && passCount > 0 && (
+                  {affordable ? (
+                    <button
+                      type="button"
+                      onClick={() => { playClickSound(); onEnter(zone.id) }}
+                      className="flex-1 py-2.5 rounded-xl text-[12px] font-bold transition-all active:scale-[0.98]"
+                      style={{
+                        background: `linear-gradient(135deg, ${tc}30, ${tc}18)`,
+                        border: `1px solid ${tc}60`,
+                        color: '#fff',
+                        textShadow: `0 0 12px ${tc}`,
+                      }}
+                    >
+                      ⚔ Enter
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      className="flex-1 py-2.5 rounded-xl text-[12px] font-bold disabled:opacity-35"
+                      style={{ background: 'transparent', border: `1px solid ${tc}25`, color: tc }}
+                    >
+                      Insufficient entry cost
+                    </button>
+                  )}
+                  {passCount > 0 && (
                     <button
                       type="button"
                       title={`Auto-run ${passCount} dungeon pass${passCount === 1 ? '' : 'es'} — runs automatically without manual battles`}
@@ -370,22 +386,14 @@ function ZoneCard({
                     </button>
                   )}
                 </div>
-              ) : activeBattle ? (
-                <div className="w-full py-2.5 rounded-xl text-[10px] font-mono text-center text-gray-500 border border-white/[0.06]">
-                  In battle...
-                </div>
               ) : (
                 <button
                   type="button"
                   disabled
                   className="w-full py-2.5 rounded-xl text-[12px] font-bold disabled:opacity-35"
-                  style={{
-                    background: 'transparent',
-                    border: `1px solid ${tc}${unlocked ? '25' : '15'}`,
-                    color: unlocked ? tc : '#6b7280',
-                  }}
+                  style={{ background: 'transparent', border: `1px solid ${tc}15`, color: '#6b7280' }}
                 >
-                  {unlocked ? 'Insufficient entry cost' : '🔒 Locked'}
+                  🔒 Locked
                 </button>
               )}
             </div>
@@ -673,6 +681,7 @@ export function ArenaPage() {
   const endBattle = useArenaStore((s) => s.endBattle)
   const startDungeon = useArenaStore((s) => s.startDungeon)
   const passCount = useInventoryStore((s) => s.items['dungeon_pass'] ?? 0)
+  const pushToast = useToastStore((s) => s.push)
   const [autoRunResult, setAutoRunResult] = useState<AutoRunResult | null>(null)
   const [battleState, setBattleState] = useState<ReturnType<typeof getBattleState>>(null)
   const [skillLevels, setSkillLevels] = useState<Record<string, number>>({})
@@ -751,6 +760,17 @@ export function ArenaPage() {
     const started = startDungeon(zoneId, null, activeFood)
     if (!started) {
       inv.addItem('dungeon_pass', 1)
+      // Also refund food since startDungeon failed
+      for (const slot of foodSlots) { if (slot) inv.addItem(slot.foodId, 1) }
+      const zone = ZONES.find((z) => z.id === zoneId)
+      const missingItems = zone?.entryCost?.filter((c) => (inv.items[c.itemId] ?? 0) < c.quantity)
+      if (missingItems?.length) {
+        const names = missingItems.map((c) => {
+          const item = LOOT_ITEMS.find((x) => x.id === c.itemId)
+          return `${item?.icon ?? '📦'} ${item?.name ?? c.itemId} ×${c.quantity}`
+        }).join(', ')
+        pushToast({ kind: 'generic', message: `Need entry cost: ${names}`, type: 'error' })
+      }
       return
     }
 

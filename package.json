@@ -7,13 +7,14 @@
     "dev": "vite",
     "build": "tsc -p tsconfig.main.json && tsc -p tsconfig.preload.json && vite build",
     "preview": "vite preview",
-    "electron:dev": "npm run build:electron && concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "electron:dev": "npm run build:electron && concurrently \"vite\" \"wait-on http://localhost:5173 && electron . --remote-debugging-port=9222\"",
     "build:electron": "tsc -p tsconfig.main.json && tsc -p tsconfig.preload.json",
     "clean:release": "node -e \"try{require('fs').rmSync('release/win-unpacked',{recursive:true,force:true});console.log('Cleaned release/win-unpacked')}catch(e){console.warn('Clean skipped:',e.message)}\"",
     "electron:build": "npm run build && npm run clean:release && electron-builder --config electron-builder.yml",
     "test": "vitest run",
     "test:watch": "vitest",
-    "push": "git push"
+    "push": "git push",
+    "qa": "node scripts/qa-full-check.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.0",
