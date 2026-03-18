@@ -52,12 +52,49 @@ export const SKILLS: SkillDef[] = [
   { id: 'farmer', name: 'Farmer', icon: '🌾', color: '#84cc16', category: 'farming' },
   { id: 'warrior', name: 'Warrior', icon: '⚔️', color: '#EF4444', category: 'warrior' },
   { id: 'crafter', name: 'Crafter', icon: '⚒️', color: '#f97316', category: 'crafting' },
-  { id: 'chef', name: 'Chef', icon: '🍳', color: '#fb923c', category: 'cooking' },
+  { id: 'chef', name: 'Cooking', icon: '🍳', color: '#fb923c', category: 'cooking' },
   { id: 'grindly', name: 'Grindly', icon: '🏠', color: '#c084fc', category: 'grindly' },
 ]
 
 /** Max total skill level (all skills at 99). */
 export const MAX_TOTAL_SKILL_LEVEL = SKILLS.length * 99
+
+/**
+ * Activity verb used in friend status lines, keyed by skill id.
+ * - Skills with a meaningful app context include the appName after the verb.
+ * - Skills where the appName adds no value (researcher, farmer, warrior, etc.)
+ *   should be displayed without appName by the calling component.
+ */
+export const SKILL_ACTIVITY_VERB: Record<string, string> = {
+  developer:    'Coding in',
+  designer:     'Designing in',
+  gamer:        'Playing',
+  communicator: 'Chatting on',
+  researcher:   'Browsing',    // appName is just a browser — not shown
+  creator:      'Creating in',
+  learner:      'Studying',
+  listener:     'Listening to',
+  farmer:       'Farming in',
+  warrior:      'Fighting in',
+  crafter:      'Crafting in',
+  chef:         'Cooking in',
+  grindly:      'On',
+}
+
+/** Skills whose appName ("Grindly", "Chrome"…) adds no useful context for friends. */
+const SKILLS_SKIP_APPNAME = new Set(['researcher', 'farmer', 'warrior', 'crafter', 'chef', 'grindly'])
+
+/**
+ * Returns the formatted activity line shown below the skill status:
+ *   e.g. "Playing World of Warcraft", "Coding in VS Code", "Browsing"
+ * Pass `appName = null` or the actual app display name.
+ */
+export function getSkillActivityLine(skillId: string | null | undefined, appName: string | null): string {
+  const id = skillId ?? ''
+  const verb = SKILL_ACTIVITY_VERB[id] ?? 'Using'
+  if (!appName || SKILLS_SKIP_APPNAME.has(id)) return verb
+  return `${verb} ${appName}`
+}
 
 /** Category from tracker -> skill id. "other" falls back to researcher. */
 const CATEGORY_TO_SKILL: Record<string, string> = {

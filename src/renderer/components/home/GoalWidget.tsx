@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { X } from '../../lib/icons'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CHEST_DEFS, estimateChestDropRate } from '../../lib/loot'
 import { useNotificationStore } from '../../stores/notificationStore'
@@ -112,7 +113,11 @@ export function GoalWidget({ trailingAction }: { trailingAction?: React.ReactNod
     const api = window.electronAPI
     if (api?.db?.getTasks) {
       try {
-        const t = await api.db.getTasks()
+        const raw = await api.db.getTasks()
+        // Normalize done: DB may return boolean (SQLite), Task type uses number (0/1)
+        const t: Task[] = (raw as { id: string; text: string; done: boolean | number; created_at: number }[]).map(
+          (r) => ({ ...r, done: r.done ? 1 : 0 })
+        )
         setTasks(t)
       } catch (e) { console.error('loadTasks failed', e) }
       return
@@ -367,7 +372,7 @@ function GoalTypePicker({ onPickTime, onPickTask, onCancel }: { onPickTime: () =
     <div className="rounded-xl bg-discord-card/70 border border-white/10 p-3 space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-[10px] font-mono text-gray-500 uppercase tracking-wider">New goal</span>
-        <button onClick={onCancel} className="text-gray-600 hover:text-gray-400 transition-colors text-xs">✕</button>
+        <button onClick={onCancel} className="text-gray-600 hover:text-gray-400 transition-colors"><X className="w-3.5 h-3.5" /></button>
       </div>
       <div className="flex gap-2">
         <button
@@ -376,7 +381,7 @@ function GoalTypePicker({ onPickTime, onPickTask, onCancel }: { onPickTime: () =
         >
           <span className="text-lg">⏱</span>
           <span className="text-[11px] text-gray-300 font-medium">Time goal</span>
-          <span className="text-[9px] text-gray-600">Track hours</span>
+          <span className="text-[10px] text-gray-600">Track hours</span>
         </button>
         <button
           onClick={onPickTask}
@@ -384,7 +389,7 @@ function GoalTypePicker({ onPickTime, onPickTask, onCancel }: { onPickTime: () =
         >
           <span className="text-lg">✅</span>
           <span className="text-[11px] text-gray-300 font-medium">Task</span>
-          <span className="text-[9px] text-gray-600">Checklist item</span>
+          <span className="text-[10px] text-gray-600">Checklist item</span>
         </button>
       </div>
     </div>
@@ -492,7 +497,7 @@ function TaskCreator({ onCreated, onCancel }: { onCreated: () => void; onCancel:
     <div className="rounded-xl bg-discord-card/70 border border-white/10 p-3 space-y-2.5">
       <div className="flex items-center justify-between">
         <span className="text-[10px] font-mono text-gray-500 uppercase tracking-wider">New task</span>
-        <button onClick={onCancel} className="text-gray-600 hover:text-gray-400 transition-colors text-xs">✕</button>
+        <button onClick={onCancel} className="text-gray-600 hover:text-gray-400 transition-colors"><X className="w-3.5 h-3.5" /></button>
       </div>
       <input
         type="text"
@@ -539,6 +544,8 @@ function GoalReachedModal({
 }) {
   if (!goal) return null
   const categoryLabel = goal.target_category ? (CATEGORY_ICONS[goal.target_category] || '') + ' ' + goal.target_category : ''
+  const chestType = goal.period === 'weekly' ? 'rare_chest' : 'common_chest'
+  const chest = CHEST_DEFS[chestType]
   return (
     <AnimatePresence>
       <motion.div
@@ -550,29 +557,52 @@ function GoalReachedModal({
         onClick={(e) => e.target === e.currentTarget && onClose()}
       >
         <motion.div
-          initial={{ scale: 0.95, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.95, opacity: 0 }}
-          className="rounded-2xl bg-discord-card border border-white/10 shadow-xl max-w-sm w-full p-5 space-y-4"
+          initial={{ scale: 0.92, opacity: 0, y: 14 }}
+          animate={{ scale: 1, opacity: 1, y: 0 }}
+          exit={{ scale: 0.95, opacity: 0, y: 6 }}
+          transition={{ type: 'spring', damping: 20, stiffness: 260 }}
+          className="rounded-2xl bg-discord-card border border-cyber-neon/25 shadow-[0_0_40px_rgba(0,255,136,0.10)] max-w-sm w-full p-5 space-y-3"
           onClick={(e) => e.stopPropagation()}
         >
-          <p className="text-center text-gray-100 font-medium">
-            Goal reached!
-          </p>
-          <p className="text-center text-sm text-gray-400">
-            {formatDuration(goal.target_seconds)}
-            {categoryLabel ? ` ${categoryLabel}` : ''}
-          </p>
-          <div className="flex gap-2 pt-1">
+          <div className="text-center space-y-1">
+            <motion.div
+              initial={{ scale: 0, rotate: -12 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ delay: 0.05, type: 'spring', damping: 14, stiffness: 240 }}
+              className="text-3xl mb-2"
+            >
+              🎯
+            </motion.div>
+            <p className="text-white font-semibold text-sm">Goal Complete!</p>
+            <p className="text-gray-500 text-[11px]">
+              {formatDuration(goal.target_seconds)}{categoryLabel ? ` · ${categoryLabel}` : ''}
+            </p>
+          </div>
+          {chest && (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.18 }}
+              className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-cyber-neon/[0.06] border border-cyber-neon/20"
+            >
+              <span className="text-xl shrink-0">{chest.icon}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-semibold text-cyber-neon">{chest.name}</p>
+                <p className="text-[10px] text-gray-600">Sent to your inbox</p>
+              </div>
+              <span className="text-[10px] font-mono text-gray-600 uppercase tracking-wide shrink-0">Reward</span>
+            </motion.div>
+          )}
+          <div className="flex gap-2 pt-0.5">
             <button
               onClick={onClose}
               className="flex-1 py-2.5 rounded-xl bg-discord-darker text-gray-300 border border-white/10 hover:bg-white/5 font-medium text-sm transition-colors"
             >
-              Ok
+              Claim
             </button>
             <button
               onClick={onAddOneHour}
-              className="flex-1 py-2.5 rounded-xl bg-cyber-neon/20 text-cyber-neon border border-cyber-neon/30 hover:bg-cyber-neon/30 font-medium text-sm transition-colors"
+              className="flex-1 py-2.5 rounded-xl bg-cyber-neon/15 text-cyber-neon border border-cyber-neon/25 hover:bg-cyber-neon/25 font-medium text-sm transition-colors"
             >
               +1 hour
             </button>
@@ -588,6 +618,8 @@ function GoalReachedModal({
 function GoalCard({ goal, onEdit }: { goal: GoalWithProgress; onEdit: () => void }) {
   const pct = Math.min(100, (goal.progress / goal.target_seconds) * 100)
   const isComplete = pct >= 100
+  const rewardChestType = goal.period === 'weekly' ? 'rare_chest' : 'common_chest'
+  const rewardChest = CHEST_DEFS[rewardChestType]
 
   return (
     <div
@@ -619,6 +651,13 @@ function GoalCard({ goal, onEdit }: { goal: GoalWithProgress; onEdit: () => void
           style={{ width: `${pct}%` }}
         />
       </div>
+      {!isComplete && rewardChest && (
+        <div className="mt-1.5 flex items-center gap-1">
+          <span className="text-[10px] text-gray-600 font-mono">
+            {rewardChest.icon} {rewardChest.name} on completion
+          </span>
+        </div>
+      )}
     </div>
   )
 }
@@ -651,7 +690,7 @@ function GoalEditor({
     <div className="rounded-xl bg-discord-card/80 border border-cyber-neon/20 p-3.5 space-y-2.5">
       <div className="flex items-center justify-between">
         <span className="text-[10px] font-mono text-gray-500 uppercase tracking-wider">Edit goal</span>
-        <button onClick={onCancel} className="text-gray-600 hover:text-gray-400 transition-colors text-xs">✕</button>
+        <button onClick={onCancel} className="text-gray-600 hover:text-gray-400 transition-colors"><X className="w-3.5 h-3.5" /></button>
       </div>
       <div className="flex gap-2">
         {(['daily', 'weekly'] as const).map((p) => (
@@ -728,7 +767,7 @@ function GoalCreator({ onCreated, onCancel }: { onCreated: () => void; onCancel:
     <div className="rounded-xl bg-discord-card/70 border border-white/10 p-3.5 space-y-2.5">
       <div className="flex items-center justify-between">
         <span className="text-[10px] font-mono text-gray-500 uppercase tracking-wider">Time goal</span>
-        <button onClick={onCancel} className="text-gray-600 hover:text-gray-400 transition-colors text-xs">✕</button>
+        <button onClick={onCancel} className="text-gray-600 hover:text-gray-400 transition-colors"><X className="w-3.5 h-3.5" /></button>
       </div>
       <div className="flex gap-2">
         {(['daily', 'weekly'] as const).map((p) => (

@@ -38,10 +38,10 @@ function wait(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+function withTimeout<T>(promise: PromiseLike<T>, ms: number, label: string): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(`${label} timed out`)), ms)
-    promise
+    Promise.resolve(promise)
       .then((value) => {
         clearTimeout(timer)
         resolve(value)

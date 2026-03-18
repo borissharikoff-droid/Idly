@@ -107,6 +107,20 @@ Copy `.env.example` to `.env`. Supabase keys are optional (social features disab
 
 - After any code edit, verify there are no broken references or imports in other files that depend on the changed code. Run a grep for the function/export name before considering the change complete.
 
+## gstack
+
+Use the `/browse` skill from gstack for all web browsing. Never use `mcp__claude-in-chrome__*` tools.
+
+Available gstack skills:
+- `/plan-ceo-review` — high-level product/strategy review of a plan
+- `/plan-eng-review` — engineering review of a plan
+- `/review` — code review
+- `/ship` — ship a feature end-to-end
+- `/browse` — headless browser for QA testing, verifying deployments, and dogfooding user flows
+- `/qa` — structured QA testing
+- `/setup-browser-cookies` — configure browser cookies for authenticated browsing
+- `/retro` — run a retrospective
+
 ## Tools & Integrations
 
 - Use the configured Supabase MCP (`mcp__supabase__execute_sql`) for all database operations. Never fall back to manual curl commands or raw SQL scripts when MCP is available.

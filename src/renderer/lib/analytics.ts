@@ -11,9 +11,8 @@ const APP_VERSION = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '
 export function track(event: string, properties: Record<string, unknown> = {}): void {
   const user = useAuthStore.getState().user
   if (!user) return
-  supabase
+  void Promise.resolve(supabase
     .from('analytics_events')
     .insert({ user_id: user.id, event_name: event, properties, app_version: APP_VERSION })
-    .then(() => {})
-    .catch(() => {})
+  ).then(() => {}).catch(() => {})
 }

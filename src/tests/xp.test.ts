@@ -138,9 +138,18 @@ describe('getStreakMultiplier', () => {
     expect(getStreakMultiplier(1)).toBe(1.0)
   })
 
-  it('returns day2 multiplier for streak 2-6', () => {
+  it('returns day2 multiplier for streak 2', () => {
     expect(getStreakMultiplier(2)).toBe(STREAK_MULTIPLIERS.day2)
-    expect(getStreakMultiplier(6)).toBe(STREAK_MULTIPLIERS.day2)
+  })
+
+  it('returns day3 multiplier for streak 3-4', () => {
+    expect(getStreakMultiplier(3)).toBe(STREAK_MULTIPLIERS.day3)
+    expect(getStreakMultiplier(4)).toBe(STREAK_MULTIPLIERS.day3)
+  })
+
+  it('returns day5 multiplier for streak 5-6', () => {
+    expect(getStreakMultiplier(5)).toBe(STREAK_MULTIPLIERS.day5)
+    expect(getStreakMultiplier(6)).toBe(STREAK_MULTIPLIERS.day5)
   })
 
   it('returns day7 multiplier for streak 7-13', () => {

@@ -6,6 +6,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { getSoundSettings, setSoundVolume, setSoundMuted, playClickSound } from '../../lib/sounds'
 import { MOTION } from '../../lib/motion'
 import { PageHeader } from '../shared/PageHeader'
+import { Settings as SettingsIcon } from '../../lib/icons'
 import { InlineSuccess } from '../shared/InlineSuccess'
 
 // ─── Helpers ───────────────────────────────────────────────
@@ -50,13 +51,20 @@ export function SettingsPage() {
   // Window behavior
   const [showWindowOnSessionEnd, setShowWindowOnSessionEnd] = useState(true)
 
-  // Accordion
-  const [openSections, setOpenSections] = useState<Set<string>>(new Set(['links', 'general', 'notifications']))
+  // Accordion — persisted
+  const [openSections, setOpenSections] = useState<Set<string>>(() => {
+    try {
+      const saved = localStorage.getItem('grindly_settings_open_sections')
+      if (saved) return new Set(JSON.parse(saved) as string[])
+    } catch { /* ignore */ }
+    return new Set(['links', 'general', 'notifications'])
+  })
   const toggleSection = useCallback((id: string) => {
     setOpenSections((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
+      try { localStorage.setItem('grindly_settings_open_sections', JSON.stringify([...next])) } catch { /* ignore */ }
       return next
     })
   }, [])
@@ -137,7 +145,7 @@ export function SettingsPage() {
       className="p-4 pb-2 space-y-3 overflow-y-auto"
       style={{ maxHeight: 'calc(100vh - 60px)' }}
     >
-      <PageHeader title="Settings" />
+      <PageHeader title="Settings" icon={<SettingsIcon className="w-4 h-4 text-gray-400" />} />
 
       {/* ─── LINKS ──────────────────────────────────────────── */}
       <Section id="links" title="Links & Resources" icon="link" open={openSections.has('links')} onToggle={toggleSection}>

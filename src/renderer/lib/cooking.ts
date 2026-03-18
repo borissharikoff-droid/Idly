@@ -35,8 +35,8 @@ export const FOOD_ITEMS: FoodItemDef[] = [
     name: 'Apple Jam',
     icon: '🫙',
     rarity: 'common',
-    effect: { heal: 35, buffAtk: 1, buffDurationSec: 45 },
-    description: 'Sweet apple preserve. Restores 35 HP + 1 ATK for 45s.',
+    effect: { heal: 35, buffAtk: 1, buffDurationSec: 45, goldBonusPct: 5 },
+    description: 'Sweet apple preserve. Restores 35 HP + 1 ATK for 45s · +5% gold this run.',
   },
 
   // ── Rare (mixed farm + early arena materials) ────────────────────────────────
@@ -69,8 +69,8 @@ export const FOOD_ITEMS: FoodItemDef[] = [
     name: 'Goblin Kebab',
     icon: '🍢',
     rarity: 'rare',
-    effect: { heal: 45, buffAtk: 4, buffDurationSec: 60 },
-    description: 'Spicy goblin-style skewers. Restores 45 HP + 4 ATK for 60s.',
+    effect: { heal: 45, buffAtk: 4, buffDurationSec: 60, dropBonusPct: 10 },
+    description: 'Spicy goblin-style skewers. Restores 45 HP + 4 ATK for 60s · +10% drop chance this run.',
   },
 
   // ── Epic (mid-game arena materials + higher farm) ────────────────────────────
@@ -79,16 +79,16 @@ export const FOOD_ITEMS: FoodItemDef[] = [
     name: 'Clover Feast',
     icon: '🍱',
     rarity: 'epic',
-    effect: { heal: 100, buffAtk: 5, buffDef: 4, buffDurationSec: 120 },
-    description: 'Lucky feast. Restores 100 HP + 5 ATK + 4 DEF for 120s.',
+    effect: { heal: 100, buffAtk: 5, buffDef: 4, buffDurationSec: 120, goldBonusPct: 15 },
+    description: 'Lucky feast. Restores 100 HP + 5 ATK + 4 DEF for 120s · +15% gold this run.',
   },
   {
     id: 'food_wolf_steak',
     name: 'Wolf Steak',
     icon: '🥩',
     rarity: 'epic',
-    effect: { heal: 80, buffAtk: 7, buffDurationSec: 90 },
-    description: 'Seared wolf-cut steak. Restores 80 HP + 7 ATK for 90s.',
+    effect: { heal: 80, buffAtk: 7, buffDurationSec: 90, dropBonusPct: 15 },
+    description: 'Seared wolf-cut steak. Restores 80 HP + 7 ATK for 90s · +15% drop chance this run.',
   },
   {
     id: 'food_orchid_tea',
@@ -113,16 +113,16 @@ export const FOOD_ITEMS: FoodItemDef[] = [
     name: 'Starbloom Elixir',
     icon: '🧃',
     rarity: 'legendary',
-    effect: { heal: 150, buffAtk: 8, buffDef: 6, buffRegen: 3, buffDurationSec: 180 },
-    description: 'Cosmic elixir. Restores 150 HP + 8 ATK + 6 DEF + 3 regen for 180s.',
+    effect: { heal: 150, buffAtk: 8, buffDef: 6, buffRegen: 3, buffDurationSec: 180, goldBonusPct: 20, dropBonusPct: 10 },
+    description: 'Cosmic elixir. Restores 150 HP + 8 ATK + 6 DEF + 3 regen for 180s · +20% gold · +10% drops this run.',
   },
   {
     id: 'food_troll_broth',
     name: 'Troll Broth',
     icon: '🥘',
     rarity: 'legendary',
-    effect: { heal: 130, buffAtk: 3, buffRegen: 5, buffDef: 6, buffDurationSec: 150 },
-    description: 'Bubbling troll-hide broth. Restores 130 HP + 3 ATK + 5 regen + 6 DEF for 150s.',
+    effect: { heal: 130, buffAtk: 3, buffRegen: 5, buffDef: 6, buffDurationSec: 150, dropBonusPct: 20 },
+    description: 'Bubbling troll-hide broth. Restores 130 HP + 3 ATK + 5 regen + 6 DEF for 150s · +20% drop chance this run.',
   },
 
   // ── Mythic (endgame) ─────────────────────────────────────────────────────────
@@ -131,16 +131,16 @@ export const FOOD_ITEMS: FoodItemDef[] = [
     name: 'Void Feast',
     icon: '🍽️',
     rarity: 'mythic',
-    effect: { heal: 250, buffAtk: 15, buffDef: 10, buffRegen: 5, buffDurationSec: 360 },
-    description: 'Ultimate feast. Restores 250 HP + 15 ATK + 10 DEF + 5 regen for 360s.',
+    effect: { heal: 250, buffAtk: 15, buffDef: 10, buffRegen: 5, buffDurationSec: 360, goldBonusPct: 30, dropBonusPct: 25 },
+    description: 'Ultimate feast. Restores 250 HP + 15 ATK + 10 DEF + 5 regen for 360s · +30% gold · +25% drops this run.',
   },
   {
     id: 'food_dragon_roast',
     name: 'Dragon Roast',
     icon: '🔥',
     rarity: 'mythic',
-    effect: { heal: 200, buffAtk: 15, buffDef: 5, buffRegen: 3, buffDurationSec: 240 },
-    description: 'Fire-charred dragon cut. Restores 200 HP + 15 ATK + 5 DEF + 3 regen for 240s.',
+    effect: { heal: 200, buffAtk: 15, buffDef: 5, buffRegen: 3, buffDurationSec: 240, goldBonusPct: 25, dropBonusPct: 20 },
+    description: 'Fire-charred dragon cut. Restores 200 HP + 15 ATK + 5 DEF + 3 regen for 240s · +25% gold · +20% drops this run.',
   },
 ]
 

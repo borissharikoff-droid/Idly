@@ -21,6 +21,7 @@ import { useAdminConfigStore } from '../../stores/adminConfigStore'
 import { LOOT_ITEMS, getRarityTheme } from '../../lib/loot'
 import { RARITY_THEME, normalizeRarity } from '../loot/LootUI'
 import { PageHeader } from '../shared/PageHeader'
+import { Sprout } from '../../lib/icons'
 import { GoldDisplay } from '../marketplace/GoldDisplay'
 import { PixelConfetti } from '../home/PixelConfetti'
 import { MOTION } from '../../lib/motion'
@@ -170,7 +171,7 @@ function PlotUnlockCelebration({ slotIndex, onDone }: { slotIndex: number; onDon
           initial={{ scale: 1.6, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ type: 'spring', stiffness: 500, damping: 22, delay: 0.05 }}
-          className="text-[9px] font-black tracking-[0.25em] px-3 py-1 rounded-full border"
+          className="text-[10px] font-black tracking-[0.25em] px-3 py-1 rounded-full border"
           style={{ color: '#84cc16', borderColor: 'rgba(132,204,22,0.3)', background: 'rgba(132,204,22,0.09)', zIndex: 2 }}
         >
           PLOT {slotIndex + 1}
@@ -266,7 +267,7 @@ function PlotUnlockCelebration({ slotIndex, onDone }: { slotIndex: number; onDon
           initial={{ opacity: 0 }}
           animate={{ opacity: 0.32 }}
           transition={{ delay: 0.7 }}
-          className="text-[9px] font-mono text-gray-500 -mt-2"
+          className="text-[10px] font-mono text-gray-500 -mt-2"
           style={{ zIndex: 2 }}
         >
           tap anywhere to dismiss
@@ -304,7 +305,7 @@ const ZIP_SCALE_FRAMES: Record<string, number[]> = Object.fromEntries(
   Object.entries(ZIP_OPEN_ANIM).map(([k, cfg]) => [k, zipScaleFrames(cfg.shakeCount)]),
 )
 
-function SeedZipRevealModal({ tier, seedId, remainingCount, onClose, onOpenAnother }: { tier: SeedZipTier; seedId: string; remainingCount: number; onClose: () => void; onOpenAnother?: () => void }) {
+function SeedZipRevealModal({ tier, seedId, remainingCount, onClose, onOpenAnother, onOpenAll }: { tier: SeedZipTier; seedId: string; remainingCount: number; onClose: () => void; onOpenAnother?: () => void; onOpenAll?: () => void }) {
   const seed = getSeedById(seedId)
   const plant = seed ? LOOT_ITEMS.find((x) => x.id === seed.yieldPlantId) : null
   const animCfg = ZIP_OPEN_ANIM[seed?.rarity ?? 'common'] ?? ZIP_OPEN_ANIM.common
@@ -531,21 +532,30 @@ function SeedZipRevealModal({ tier, seedId, remainingCount, onClose, onOpenAnoth
               transition={{ duration: 0.28, delay: isRevealed ? 0.18 : 0, ease: 'easeOut' }}
               style={{ pointerEvents: isRevealed ? 'auto' : 'none' }}
             >
+              {remainingCount > 1 && onOpenAll && (
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); playClickSound(); onOpenAll() }}
+                  className="w-full h-10 rounded-xl text-[13px] font-semibold transition-all active:scale-[0.97]"
+                  style={{ color: zipTheme.color, border: `1px solid ${zipTheme.border}`, background: `${zipTheme.color}22` }}
+                >
+                  Open All ({remainingCount} left)
+                </button>
+              )}
               {remainingCount > 0 && onOpenAnother && (
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); playClickSound(); onOpenAnother() }}
-                  className="w-full h-10 rounded-xl text-[13px] font-semibold transition-all active:scale-[0.97]"
-                  style={{ color: zipTheme.color, border: `1px solid ${zipTheme.border}`, background: `${zipTheme.color}22` }}
+                  className="w-full h-10 rounded-xl text-[13px] font-semibold transition-all active:scale-[0.97] text-white/50 border border-white/[0.08] bg-white/[0.04] hover:text-white/70 hover:bg-white/[0.07]"
                 >
-                  Open Another ({remainingCount} left)
+                  Open Another
                 </button>
               )}
               <button
                 type="button"
                 onClick={() => { playClickSound(); onClose() }}
-                className={`w-full h-10 rounded-xl text-[13px] font-semibold transition-all active:scale-[0.97] ${remainingCount > 0 && onOpenAnother ? 'text-gray-400 border border-white/[0.08] bg-white/[0.04]' : ''}`}
-                style={remainingCount > 0 && onOpenAnother ? undefined : { color: zipTheme.color, border: `1px solid ${zipTheme.border}`, background: `${zipTheme.color}22` }}
+                className={`w-full h-10 rounded-xl text-[13px] font-semibold transition-all active:scale-[0.97] ${remainingCount > 0 ? 'text-gray-400 border border-white/[0.08] bg-white/[0.04]' : ''}`}
+                style={remainingCount > 0 ? undefined : { color: zipTheme.color, border: `1px solid ${zipTheme.border}`, background: `${zipTheme.color}22` }}
               >
                 Done
               </button>
@@ -555,6 +565,223 @@ function SeedZipRevealModal({ tier, seedId, remainingCount, onClose, onOpenAnoth
       </motion.div>
     </motion.div>,
     document.body
+  )
+}
+
+// ─── Bulk seed zip open modal ─────────────────────────────────────────────────
+
+interface BulkZipResult { tier: SeedZipTier; seeds: { seedId: string; qty: number }[]; totalOpened: number }
+
+function LoadingDotsGreen({ color }: { color: string }) {
+  return (
+    <span className="inline-flex items-center gap-[3px] ml-1 translate-y-[1px]">
+      {[0, 1, 2].map((i) => (
+        <motion.span
+          key={i}
+          className="w-[3px] h-[3px] rounded-full inline-block"
+          style={{ background: color }}
+          animate={{ opacity: [0.3, 1, 0.3], y: [0, -2, 0] }}
+          transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.18, ease: 'easeInOut' }}
+        />
+      ))}
+    </span>
+  )
+}
+
+function BulkSeedZipOpenModal({ result, onClose }: { result: BulkZipResult | null; onClose: () => void }) {
+  const zipTheme = getRarityTheme(result?.tier ?? 'common')
+  const zipDisplay = result ? getSeedZipDisplay(result.tier) : null
+  const [phase, setPhase] = useState<'opening' | 'revealed'>('opening')
+  const openMs = result ? Math.min(600 + result.totalOpened * 40, 2500) : 800
+
+  useEffect(() => {
+    if (!result) { setPhase('opening'); return }
+    setPhase('opening')
+    const t = setTimeout(() => setPhase('revealed'), openMs)
+    return () => clearTimeout(t)
+  }, [result])
+
+  const isRevealed = phase === 'revealed'
+
+  if (typeof document === 'undefined' || !result || !zipDisplay) return null
+  return createPortal(
+    <AnimatePresence>
+      {result && (
+        <motion.div
+          key="bulk-zip-modal"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-[120] flex items-center justify-center p-4"
+          onClick={isRevealed ? onClose : undefined}
+        >
+          <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" />
+
+          {isRevealed && (
+            <PixelConfetti
+              key="bulk-zip-confetti"
+              originX={0.5}
+              originY={0.35}
+              accentColor={zipTheme.color}
+              count={Math.min(20 + result.totalOpened * 2, 60)}
+              duration={1.5}
+            />
+          )}
+
+          <motion.div
+            key="bulk-zip-card"
+            initial={{ scale: 0.82, opacity: 0, y: 24 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.88, opacity: 0, y: 16 }}
+            transition={{ type: 'spring', stiffness: 340, damping: 28, mass: 0.9 }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-[340px] max-h-[80vh] rounded-2xl border p-5 text-center relative overflow-hidden flex flex-col"
+            style={{
+              borderColor: zipTheme.border,
+              background: `linear-gradient(160deg, ${zipTheme.glow}1A 0%, rgba(8,8,16,0.97) 55%)`,
+              boxShadow: isRevealed
+                ? `0 0 32px ${zipTheme.glow}, 0 4px 32px rgba(0,0,0,0.7)`
+                : `0 0 20px ${zipTheme.glow}66, 0 4px 24px rgba(0,0,0,0.6)`,
+              transition: 'box-shadow 0.5s ease',
+            }}
+          >
+            <motion.div
+              aria-hidden
+              className="absolute inset-0 pointer-events-none rounded-2xl"
+              style={{ background: `radial-gradient(circle at 50% 12%, ${zipTheme.glow} 0%, transparent 55%)` }}
+              animate={{ opacity: isRevealed ? [0.45, 0.65, 0.5] : [0.25, 0.45, 0.25] }}
+              transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+            />
+
+            {/* Zip icon */}
+            <motion.div
+              className="mx-auto w-fit"
+              animate={!isRevealed ? { y: [0, -6, 0], rotate: [-3, 3, -3] } : { y: 0, rotate: 0 }}
+              transition={!isRevealed
+                ? { duration: 0.4, repeat: Infinity, ease: 'easeInOut' }
+                : { type: 'spring', stiffness: 200, damping: 18 }
+              }
+            >
+              <div
+                className="w-[80px] h-[80px] rounded-2xl border flex items-center justify-center"
+                style={{
+                  borderColor: zipTheme.border,
+                  background: `radial-gradient(circle at 50% 35%, ${zipTheme.glow}60 0%, rgba(8,8,16,0.92) 70%)`,
+                  boxShadow: `0 0 22px ${zipTheme.glow}99`,
+                }}
+              >
+                {zipDisplay.image
+                  ? <img src={zipDisplay.image} alt="" className="w-14 h-14 object-contain select-none" style={{ imageRendering: 'pixelated' }} draggable={false} />
+                  : <span className="text-4xl">{zipDisplay.icon}</span>
+                }
+              </div>
+            </motion.div>
+
+            {/* Status */}
+            <div className="mt-2 h-[18px] relative overflow-hidden">
+              <AnimatePresence mode="wait">
+                {isRevealed ? (
+                  <motion.p
+                    key="done"
+                    className="absolute inset-0 text-[11px] font-mono uppercase tracking-wider text-center"
+                    style={{ color: zipTheme.color }}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    Opened {result.totalOpened} zip{result.totalOpened !== 1 ? 's' : ''}
+                  </motion.p>
+                ) : (
+                  <motion.span
+                    key="opening"
+                    className="absolute inset-0 text-[11px] font-mono uppercase tracking-wider text-center flex items-center justify-center"
+                    style={{ color: zipTheme.color }}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    Opening {result.totalOpened} zip{result.totalOpened !== 1 ? 's' : ''}<LoadingDotsGreen color={zipTheme.color} />
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <p className="text-sm text-white/80 font-medium mt-0.5">{zipDisplay.name}</p>
+
+            {/* Seeds received — scrollable */}
+            <motion.div
+              className="mt-3 flex-1 overflow-y-auto min-h-0"
+              style={{ scrollbarWidth: 'thin', scrollbarColor: `${zipTheme.color}44 transparent` } as React.CSSProperties}
+              animate={{ opacity: isRevealed ? 1 : 0, y: isRevealed ? 0 : 16 }}
+              transition={{ type: 'spring', stiffness: 280, damping: 24, delay: isRevealed ? 0.04 : 0 }}
+            >
+              {result.seeds.length > 0 ? (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-mono text-gray-500 uppercase tracking-wider text-left">Seeds</p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {result.seeds.map((entry, i) => {
+                      const seed = getSeedById(entry.seedId)
+                      if (!seed) return null
+                      const theme = getRarityTheme(seed.rarity)
+                      return (
+                        <motion.div
+                          key={`${entry.seedId}-${i}`}
+                          initial={{ opacity: 0, scale: 0.85 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.05 + i * 0.03, type: 'spring', stiffness: 300, damping: 22 }}
+                          className="rounded-lg border p-2 flex items-center gap-2 relative overflow-hidden"
+                          style={{
+                            borderColor: `${theme.color}35`,
+                            background: `linear-gradient(135deg, ${theme.glow}15 0%, rgba(8,8,16,0.95) 60%)`,
+                          }}
+                        >
+                          <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(circle at 30% 40%, ${theme.glow}20 0%, transparent 60%)` }} />
+                          <div className="relative flex-none w-10 h-10 rounded-md flex items-center justify-center" style={{ background: `${theme.color}12`, border: `1px solid ${theme.color}20` }}>
+                            {seed.image
+                              ? <img src={seed.image} alt="" className="w-8 h-8 object-contain" style={{ imageRendering: 'pixelated' }} />
+                              : <span className="text-xl">{seed.icon}</span>
+                            }
+                          </div>
+                          <div className="relative text-left min-w-0">
+                            <p className="text-[11px] font-medium text-white/90 truncate leading-tight">{seed.name}</p>
+                            <p className="text-[10px] font-mono uppercase" style={{ color: theme.color }}>
+                              {seed.rarity}{entry.qty > 1 ? ` ×${entry.qty}` : ''}
+                            </p>
+                          </div>
+                        </motion.div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 mt-4">No seeds this time</p>
+              )}
+            </motion.div>
+
+            {/* Done button */}
+            <motion.div
+              className="mt-4"
+              animate={{ opacity: isRevealed ? 1 : 0, y: isRevealed ? 0 : 8 }}
+              transition={{ duration: 0.28, delay: isRevealed ? 0.18 : 0, ease: 'easeOut' }}
+              style={{ pointerEvents: isRevealed ? 'auto' : 'none' }}
+            >
+              <button
+                type="button"
+                onClick={() => { playClickSound(); onClose() }}
+                className="w-full h-10 rounded-xl text-[13px] font-semibold transition-all active:scale-[0.97]"
+                style={{ color: zipTheme.color, border: `1px solid ${zipTheme.border}`, background: `${zipTheme.color}22` }}
+              >
+                Done
+              </button>
+            </motion.div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    document.body,
   )
 }
 
@@ -610,7 +837,7 @@ function SeedCabinetSection() {
             <div key={label} className="flex items-center gap-2">
               <span className="text-[11px]">{met ? '✓' : '✗'}</span>
               <span className={`text-[10px] font-mono flex-1 ${met ? 'text-green-400' : 'text-gray-500'}`}>{label}</span>
-              <span className="text-[9px] font-mono text-gray-500">{progress}</span>
+              <span className="text-[10px] font-mono text-gray-500">{progress}</span>
             </div>
           ))}
         </div>
@@ -690,7 +917,7 @@ function SeedCabinetSection() {
                   : <span className="text-lg shrink-0">{seed.icon}</span>}
                 <div className="flex-1 min-w-0">
                   <p className="text-[11px] font-medium text-white truncate">{seed.name}</p>
-                  <p className="text-[8px] font-mono uppercase mt-0.5" style={{ color: t.color }}>
+                  <p className="text-[10px] font-mono uppercase mt-0.5" style={{ color: t.color }}>
                     {seed.rarity} · {formatGrowTime(seed.growTimeSeconds)}
                   </p>
                 </div>
@@ -717,6 +944,7 @@ function SeedZipSection() {
   const openSeedZip = useFarmStore((s) => s.openSeedZip)
   const removeSeedZip = useFarmStore((s) => s.removeSeedZip)
   const [lastOpened, setLastOpened] = useState<{ tier: SeedZipTier; seedId: string } | null>(null)
+  const [bulkZipResult, setBulkZipResult] = useState<BulkZipResult | null>(null)
   const [sellTarget, setSellTarget] = useState<SeedZipTier | null>(null)
   useAdminConfigStore((s) => s.rev) // re-render when admin config changes
 
@@ -750,6 +978,31 @@ function SeedZipSection() {
     setTimeout(() => doOpen(tier), 80)
   }, [lastOpened, doOpen])
 
+  const handleOpenAll = useCallback(() => {
+    if (!lastOpened) return
+    const tier = lastOpened.tier
+    // Open all remaining of this tier (current already opened, open the rest)
+    const count = useFarmStore.getState().seedZips[tier] ?? 0
+    const seedCounts = new Map<string, number>()
+    // Include the first zip already opened
+    seedCounts.set(lastOpened.seedId, 1)
+    for (let i = 0; i < count; i++) {
+      const seedId = openSeedZip(tier)
+      if (seedId) seedCounts.set(seedId, (seedCounts.get(seedId) ?? 0) + 1)
+    }
+    setLastOpened(null)
+    const total = count + 1 // +1 for the first one already opened
+    const seeds = Array.from(seedCounts.entries()).map(([seedId, qty]) => ({ seedId, qty }))
+    setBulkZipResult({ tier, seeds, totalOpened: total })
+    // Sync to Supabase
+    const user = useAuthStore.getState().user
+    if (supabase && user) {
+      const { items, chests } = useInventoryStore.getState()
+      const { seeds: farmSeeds, seedZips: sz } = useFarmStore.getState()
+      syncInventoryToSupabase(items, chests, { merge: false, seeds: farmSeeds, seedZips: sz }).catch(() => {})
+    }
+  }, [lastOpened, openSeedZip])
+
   if (totalZips === 0 && !lastOpened) return null
 
   return (
@@ -769,7 +1022,7 @@ function SeedZipSection() {
               {(() => { const d = getSeedZipDisplay(tier); return d.image ? <img src={d.image} className="w-6 h-6 object-contain shrink-0" /> : <span className="text-xl shrink-0">{d.icon}</span> })()}
               <div className="flex-1 min-w-0">
                 <p className="text-[11px] font-semibold text-white">{getSeedZipDisplay(tier).name}</p>
-                <p className="text-[9px] text-gray-400 mt-0.5">Contains a {tier} seed</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">Contains a {tier} seed</p>
               </div>
               <span className="text-sm font-mono font-bold shrink-0 mr-2" style={{ color: t.color }}>×{count}</span>
               <motion.button
@@ -805,9 +1058,15 @@ function SeedZipSection() {
             remainingCount={(seedZips[lastOpened.tier] ?? 0)}
             onClose={() => setLastOpened(null)}
             onOpenAnother={handleOpenAnother}
+            onOpenAll={handleOpenAll}
           />
         )}
       </AnimatePresence>
+
+      <BulkSeedZipOpenModal
+        result={bulkZipResult}
+        onClose={() => setBulkZipResult(null)}
+      />
 
       {sellTarget && (
         <ListForSaleModal
@@ -833,6 +1092,8 @@ function HarvestRevealModal({ result, remaining = 0, onClose }: { result: Harves
   const compostDrops = result.compostDropCount ?? (result.compostDrop ? 1 : 0)
   const compostedCount = result.compostedCount ?? (result.composted ? 1 : 0)
   const plotCount = result.plotCount ?? 1
+  const seedDrops = result.seedDropCount ?? (result.seedDrop ? 1 : 0)
+  const seedDropId = result.seedDrop
 
   useEffect(() => {
     if (plant) playLootRaritySound(plant.rarity)
@@ -931,10 +1192,24 @@ function HarvestRevealModal({ result, remaining = 0, onClose }: { result: Harves
               <span className="text-base">🧪</span>
               <div className="flex-1 text-left">
                 <p className="text-[10px] font-bold text-amber-400 leading-none">Bonus drop!</p>
-                <p className="text-[9px] text-gray-400 font-mono mt-0.5">Compost ×{compostDrops}</p>
+                <p className="text-[10px] text-gray-400 font-mono mt-0.5">Compost ×{compostDrops}</p>
               </div>
             </div>
           )}
+
+          {/* Seed return drop */}
+          {seedDrops > 0 && seedDropId && (() => {
+            const sd = getSeedById(seedDropId)
+            return sd ? (
+              <div className="flex items-center gap-2 rounded-lg border border-green-500/25 px-2.5 py-1.5 bg-green-500/8 relative">
+                <span className="text-base">{sd.icon}</span>
+                <div className="flex-1 text-left">
+                  <p className="text-[10px] font-bold text-green-400 leading-none">Seed returned!</p>
+                  <p className="text-[10px] text-gray-400 font-mono mt-0.5">{sd.name} ×{seedDrops}</p>
+                </div>
+              </div>
+            ) : null
+          })()}
 
           {/* Seed Zip drops */}
           {zipDrops.map(({ tier, count }) => {
@@ -949,7 +1224,7 @@ function HarvestRevealModal({ result, remaining = 0, onClose }: { result: Harves
                 {d.image ? <img src={d.image} className="w-5 h-5 object-contain" /> : <span className="text-base">{d.icon}</span>}
                 <div className="flex-1 text-left">
                   <p className="text-[10px] font-bold leading-none" style={{ color: zt.color }}>Bonus drop!</p>
-                  <p className="text-[9px] text-gray-400 font-mono mt-0.5">{d.name}{count > 1 ? ` ×${count}` : ''}</p>
+                  <p className="text-[10px] text-gray-400 font-mono mt-0.5">{d.name}{count > 1 ? ` ×${count}` : ''}</p>
                 </div>
               </div>
             )
@@ -1038,7 +1313,7 @@ function FarmSlot({
             <span className={`text-2xl ${slotComposted ? 'text-amber-400/60' : 'text-gray-700 group-hover:text-lime-400/50'} transition-colors`}>
               {slotComposted ? '🧪' : '🌱'}
             </span>
-            <span className="text-[9px] text-gray-600 font-mono group-hover:text-gray-400 transition-colors tracking-wider uppercase">
+            <span className="text-[10px] text-gray-600 font-mono group-hover:text-gray-400 transition-colors tracking-wider uppercase">
               {slotComposted ? 'Composted · Plant seed' : 'Plant seed'}
             </span>
           </motion.button>
@@ -1052,7 +1327,7 @@ function FarmSlot({
                 compostSlot(slotIndex)
               }}
               disabled={compostCount < COMPOST_PER_PLOT}
-              className={`text-[8px] font-mono px-2 py-0.5 rounded border transition-colors ${
+              className={`text-[10px] font-mono px-2 py-0.5 rounded border transition-colors ${
                 compostCount >= COMPOST_PER_PLOT
                   ? 'bg-amber-500/10 border-amber-500/25 text-amber-400 hover:bg-amber-500/20'
                   : 'bg-white/[0.03] border-white/[0.06] text-gray-600 cursor-not-allowed'
@@ -1131,7 +1406,7 @@ function FarmSlot({
                   : <span className="text-base leading-none shrink-0">{seed?.icon ?? '🌱'}</span>}
                 <p className="text-[10px] font-medium text-white/80 truncate flex-1">{seed?.name}</p>
                 {isComposted && <span className="text-[7px] font-mono px-1 py-px rounded bg-amber-500/15 text-amber-400 border border-amber-500/25 shrink-0">🧪</span>}
-                <span className="text-[8px] font-mono font-bold text-lime-400 shrink-0 tracking-wider">READY</span>
+                <span className="text-[10px] font-mono font-bold text-lime-400 shrink-0 tracking-wider">READY</span>
               </div>
 
               {/* Big harvest button */}
@@ -1227,7 +1502,7 @@ function FarmSlot({
                   </motion.div>
                 </div>
                 <div className="flex items-center justify-end mt-1">
-                  <p className="text-[8px] font-mono text-gray-400 tabular-nums">
+                  <p className="text-[10px] font-mono text-gray-400 tabular-nums">
                     {Math.floor(progress * 100)}%
                   </p>
                 </div>
@@ -1245,7 +1520,7 @@ function FarmSlot({
                     className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 p-3 rounded-xl bg-discord-darker/95"
                   >
                     <p className="text-[11px] font-bold text-white">Cancel crop?</p>
-                    <p className="text-[9px] text-gray-400 font-mono">Seed will be lost.</p>
+                    <p className="text-[10px] text-gray-400 font-mono">Seed will be lost.</p>
                     <div className="flex gap-2 mt-1">
                       <button
                         type="button"
@@ -1300,12 +1575,12 @@ function LockedSlot({ slotIndex, onUnlock }: { slotIndex: number; onUnlock: () =
       <span className="text-xl">{check.canUnlock ? '🔓' : '🔒'}</span>
       <span className="text-[10px] font-mono font-semibold text-amber-400">🪙 {cost.toLocaleString()}</span>
       {req.farmerLevel > 0 && (
-        <span className={`text-[8px] font-mono ${check.missingFarmer ? 'text-red-400' : 'text-emerald-400'}`}>
+        <span className={`text-[10px] font-mono ${check.missingFarmer ? 'text-red-400' : 'text-emerald-400'}`}>
           {check.missingFarmer ? '✗' : '✓'} Farmer LVL {req.farmerLevel}
         </span>
       )}
       {req.secondarySkill && (
-        <span className={`text-[8px] font-mono ${check.missingSecondary ? 'text-red-400' : 'text-emerald-400'}`}>
+        <span className={`text-[10px] font-mono ${check.missingSecondary ? 'text-red-400' : 'text-emerald-400'}`}>
           {check.missingSecondary ? '✗' : '✓'} {SKILL_LABELS[req.secondarySkill.skillId] ?? req.secondarySkill.skillId} LVL {req.secondarySkill.level}
         </span>
       )}
@@ -1415,7 +1690,7 @@ function SeedPicker({ slotIndex, seeds, onClose }: { slotIndex: number; seeds: R
                     <div className="flex items-center gap-2 mb-0.5">
                       <p className="text-sm font-semibold text-white">{seed.name}</p>
                       <span
-                        className="text-[8px] font-mono uppercase px-1.5 py-0.5 rounded shrink-0"
+                        className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded shrink-0"
                         style={{ color: t.color, backgroundColor: `${t.color}1A` }}
                       >
                         {seed.rarity}
@@ -1425,7 +1700,7 @@ function SeedPicker({ slotIndex, seeds, onClose }: { slotIndex: number; seeds: R
                       ⏱ {formatGrowTime(seed.growTimeSeconds)}
                       {plant && <span className="ml-2">· yields {plant.image ? <img src={plant.image} className="w-3 h-3 object-contain inline" /> : plant.icon} ×{seed.yieldMin}–{seed.yieldMax}</span>}
                     </p>
-                    <p className="text-[9px] text-gray-600 font-mono mt-0.5">+{seed.xpOnHarvest} Farmer XP on harvest</p>
+                    <p className="text-[10px] text-gray-600 font-mono mt-0.5">+{seed.xpOnHarvest} Farmer XP on harvest</p>
                   </div>
                   <span
                     className="text-xs font-mono font-bold shrink-0 px-2 py-0.5 rounded-lg"
@@ -1540,7 +1815,7 @@ function PlantAllPicker({ seeds, emptyCount, onClose }: { seeds: Record<string, 
                     <div className="flex items-center gap-2 mb-0.5">
                       <p className="text-sm font-semibold text-white">{seed.name}</p>
                       <span
-                        className="text-[8px] font-mono uppercase px-1.5 py-0.5 rounded shrink-0"
+                        className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded shrink-0"
                         style={{ color: t.color, backgroundColor: `${t.color}1A` }}
                       >
                         {seed.rarity}
@@ -1558,7 +1833,7 @@ function PlantAllPicker({ seeds, emptyCount, onClose }: { seeds: Record<string, 
                     >
                       ×{qty}
                     </span>
-                    <span className="text-[9px] text-gray-500 font-mono mt-0.5">
+                    <span className="text-[10px] text-gray-500 font-mono mt-0.5">
                       plant {willPlant}
                     </span>
                   </div>
@@ -1652,7 +1927,7 @@ function FarmhouseSection({ farmerLevel, farmhouseLevel, onUpgrade }: { farmerLe
           <div className="relative">
             <span className="text-3xl opacity-30 grayscale">🏚️</span>
             <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-gray-800 border border-gray-700 flex items-center justify-center">
-              <span className="text-[8px]">🔒</span>
+              <span className="text-[10px]">🔒</span>
             </div>
           </div>
           <div className="flex-1">
@@ -1706,7 +1981,7 @@ function FarmhouseSection({ farmerLevel, farmhouseLevel, onUpgrade }: { farmerLe
             <span className="text-2xl">{icon}</span>
           </motion.div>
           {farmhouseLevel > 0 && (
-            <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-[8px] font-black border"
+            <div className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full flex items-center justify-center text-[10px] font-black border"
               style={{
                 background: isMaxed ? '#84cc16' : '#f59e0b',
                 borderColor: isMaxed ? '#65a30d' : '#d97706',
@@ -1723,7 +1998,7 @@ function FarmhouseSection({ farmerLevel, farmhouseLevel, onUpgrade }: { farmerLe
           <div className="flex items-center gap-2">
             <p className="text-[13px] font-bold text-white">Farmhouse</p>
             {isMaxed && (
-              <span className="text-[8px] font-mono font-black px-1.5 py-0.5 rounded bg-lime-400/15 text-lime-400 border border-lime-400/25 tracking-wider">
+              <span className="text-[10px] font-mono font-black px-1.5 py-0.5 rounded bg-lime-400/15 text-lime-400 border border-lime-400/25 tracking-wider">
                 MAX
               </span>
             )}
@@ -1739,7 +2014,7 @@ function FarmhouseSection({ farmerLevel, farmhouseLevel, onUpgrade }: { farmerLe
                 transition={{ duration: 0.5, ease: 'easeOut' }}
               />
             </div>
-            <span className="text-[8px] font-mono text-gray-500 shrink-0 tabular-nums">{farmhouseLevel}/10</span>
+            <span className="text-[10px] font-mono text-gray-500 shrink-0 tabular-nums">{farmhouseLevel}/10</span>
           </div>
           {/* Inline bonus summary */}
           {farmhouseLevel > 0 && !isBuilding ? (
@@ -1808,7 +2083,7 @@ function FarmhouseSection({ farmerLevel, farmhouseLevel, onUpgrade }: { farmerLe
                         <span className="text-[10px] font-mono text-gray-500 uppercase tracking-wider">{stat.label}</span>
                       </div>
                       <p className="text-[15px] font-mono font-black" style={{ color: stat.color }}>{stat.value}</p>
-                      <p className="text-[9px] text-gray-600 font-mono mt-0.5">{stat.desc}</p>
+                      <p className="text-[10px] text-gray-600 font-mono mt-0.5">{stat.desc}</p>
                     </div>
                   ))}
                   {bonuses.autoHarvest && (
@@ -1819,7 +2094,7 @@ function FarmhouseSection({ farmerLevel, farmhouseLevel, onUpgrade }: { farmerLe
                         <span className="text-lg">✨</span>
                         <div>
                           <p className="text-[11px] font-bold text-lime-400">Auto-Harvest Active</p>
-                          <p className="text-[9px] text-gray-500 font-mono">Ready crops are automatically collected</p>
+                          <p className="text-[10px] text-gray-500 font-mono">Ready crops are automatically collected</p>
                         </div>
                       </div>
                     </div>
@@ -1859,7 +2134,6 @@ function FarmhouseSection({ farmerLevel, farmhouseLevel, onUpgrade }: { farmerLe
                         const have = inventoryItems[matId] ?? 0
                         const ok = have >= qty
                         const item = LOOT_ITEMS.find((x) => x.id === matId)
-                        const rt = item ? rarityTheme(item.rarity) : null
                         return (
                           <div key={matId} className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border transition-colors"
                             style={{
@@ -1937,7 +2211,7 @@ function FarmhouseSection({ farmerLevel, farmhouseLevel, onUpgrade }: { farmerLe
                           initial={{ opacity: 0, y: -4 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0 }}
-                          className="text-[9px] text-red-400 font-mono text-center mt-1.5"
+                          className="text-[10px] text-red-400 font-mono text-center mt-1.5"
                         >
                           {upgradeError}
                         </motion.p>
@@ -1949,7 +2223,7 @@ function FarmhouseSection({ farmerLevel, farmhouseLevel, onUpgrade }: { farmerLe
                           exit={{ opacity: 0 }}
                           className="text-center mt-1.5"
                         >
-                          <span className="text-[9px] text-emerald-400 font-mono font-bold">✨ Farmhouse upgraded!</span>
+                          <span className="text-[10px] text-emerald-400 font-mono font-bold">✨ Farmhouse upgraded!</span>
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -2061,10 +2335,11 @@ export function FarmPage() {
       animate={MOTION.page.animate}
       exit={MOTION.page.exit}
       transition={{ duration: MOTION.duration.base, ease: MOTION.easingSoft }}
-      className="p-4 pb-20 space-y-4 max-w-lg mx-auto"
+      className="p-4 pb-20 space-y-4"
     >
       <PageHeader
         title="Farm"
+        icon={<Sprout className="w-4 h-4 text-green-400" />}
         rightSlot={
           <div className="flex items-center gap-2">
             {/* Plant All — unlocks at Farmer LVL 10 */}
@@ -2087,7 +2362,7 @@ export function FarmPage() {
               </button>
               {farmerLevel < 10 && (
                 <div className="absolute right-0 top-full mt-1 z-50 hidden group-hover:block w-44">
-                  <div className="bg-discord-darker border border-white/10 rounded-lg px-2.5 py-1.5 text-[9px] text-gray-300 font-mono shadow-lg">
+                  <div className="bg-discord-darker border border-white/10 rounded-lg px-2.5 py-1.5 text-[10px] text-gray-300 font-mono shadow-lg">
                     Unlocks at <span className="text-emerald-400 font-bold">Farmer LVL 10</span>
                     <br />Current level: <span className="text-white">{farmerLevel}</span>
                     <br />Plant one seed in all empty plots
@@ -2115,7 +2390,7 @@ export function FarmPage() {
               </button>
               {farmerLevel < 50 && (
                 <div className="absolute right-0 top-full mt-1 z-50 hidden group-hover:block w-44">
-                  <div className="bg-discord-darker border border-white/10 rounded-lg px-2.5 py-1.5 text-[9px] text-gray-300 font-mono shadow-lg">
+                  <div className="bg-discord-darker border border-white/10 rounded-lg px-2.5 py-1.5 text-[10px] text-gray-300 font-mono shadow-lg">
                     Unlocks at <span className="text-amber-400 font-bold">Farmer LVL 50</span>
                     <br />Current level: <span className="text-white">{farmerLevel}</span>
                     <br />Compost empty plots automatically
@@ -2139,12 +2414,12 @@ export function FarmPage() {
             {(growingCount > 0 || readyCount > 0) && (
               <div className="flex items-center gap-1.5">
                 {growingCount > 0 && (
-                  <span className="text-[8px] font-mono px-1.5 py-px rounded bg-white/[0.08] text-gray-300">
+                  <span className="text-[10px] font-mono px-1.5 py-px rounded bg-white/[0.08] text-gray-300">
                     {growingCount} growing
                   </span>
                 )}
                 {readyCount > 0 && (
-                  <span className="text-[8px] font-mono px-1.5 py-px rounded bg-lime-400/15 text-lime-400 border border-lime-400/25">
+                  <span className="text-[10px] font-mono px-1.5 py-px rounded bg-lime-400/15 text-lime-400 border border-lime-400/25">
                     {readyCount} ready
                   </span>
                 )}
@@ -2174,6 +2449,7 @@ export function FarmPage() {
                         existing.plotCount = (existing.plotCount ?? 1) + 1
                         if (r.composted) existing.compostedCount = (existing.compostedCount ?? (existing.composted ? 1 : 0)) + 1
                         if (r.compostDrop) existing.compostDropCount = (existing.compostDropCount ?? (existing.compostDrop ? 1 : 0)) + 1
+                        if (r.seedDrop) existing.seedDropCount = (existing.seedDropCount ?? (existing.seedDrop ? 1 : 0)) + 1
                         if (r.seedZipTier) {
                           if (!existing.seedZipDrops) {
                             existing.seedZipDrops = existing.seedZipTier ? [{ tier: existing.seedZipTier, count: 1 }] : []
@@ -2234,12 +2510,12 @@ export function FarmPage() {
                 >
                   <span>{isLocked ? '🔒 ' : ''}{field.label}</span>
                   {!isLocked && (fieldGrowing > 0 || fieldReady > 0) && (
-                    <span className="ml-1.5 text-[8px]">
+                    <span className="ml-1.5 text-[10px]">
                       {fieldGrowing > 0 && <span className="text-gray-500">{fieldGrowing}⏳</span>}
                       {fieldReady > 0 && <span className="text-lime-400 ml-0.5">{fieldReady}✓</span>}
                     </span>
                   )}
-                  {!isLocked && <span className="text-[8px] text-gray-600 ml-1">{fieldUnlocked}/8</span>}
+                  {!isLocked && <span className="text-[10px] text-gray-600 ml-1">{fieldUnlocked}/8</span>}
                 </button>
                 {isLocked && (
                   <div className="absolute left-1/2 -translate-x-1/2 top-full mt-1.5 z-50 hidden group-hover:block w-48">
@@ -2247,15 +2523,15 @@ export function FarmPage() {
                       <p className="text-[10px] font-bold text-white mb-1.5">Unlock Field 2</p>
                       <div className="space-y-1">
                         <div className="flex items-center gap-1.5">
-                          <span className={`text-[9px] ${unlockedSlots > 8 ? 'text-emerald-400' : 'text-red-400'}`}>{unlockedSlots > 8 ? '✓' : '✗'}</span>
+                          <span className={`text-[10px] ${unlockedSlots > 8 ? 'text-emerald-400' : 'text-red-400'}`}>{unlockedSlots > 8 ? '✓' : '✗'}</span>
                           <span className="text-[10px] text-gray-300 font-mono">Unlock all Field 1 plots</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className={`text-[9px] ${farmerLevel >= field2Req.farmerLevel ? 'text-emerald-400' : 'text-red-400'}`}>{farmerLevel >= field2Req.farmerLevel ? '✓' : '✗'}</span>
+                          <span className={`text-[10px] ${farmerLevel >= field2Req.farmerLevel ? 'text-emerald-400' : 'text-red-400'}`}>{farmerLevel >= field2Req.farmerLevel ? '✓' : '✗'}</span>
                           <span className="text-[10px] text-gray-300 font-mono">Farmer LVL {field2Req.farmerLevel}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
-                          <span className={`text-[9px] ${(useGoldStore.getState().gold ?? 0) >= (SLOT_UNLOCK_COSTS[8] ?? 0) ? 'text-emerald-400' : 'text-red-400'}`}>{(useGoldStore.getState().gold ?? 0) >= (SLOT_UNLOCK_COSTS[8] ?? 0) ? '✓' : '✗'}</span>
+                          <span className={`text-[10px] ${(useGoldStore.getState().gold ?? 0) >= (SLOT_UNLOCK_COSTS[8] ?? 0) ? 'text-emerald-400' : 'text-red-400'}`}>{(useGoldStore.getState().gold ?? 0) >= (SLOT_UNLOCK_COSTS[8] ?? 0) ? '✓' : '✗'}</span>
                           <span className="text-[10px] text-amber-400 font-mono">🪙 {(SLOT_UNLOCK_COSTS[8] ?? 0).toLocaleString()}</span>
                         </div>
                       </div>
@@ -2281,7 +2557,7 @@ export function FarmPage() {
               >
                 <span className="text-gray-500 text-base">🔒</span>
                 {SLOT_UNLOCK_COSTS[i] != null && (
-                  <span className="text-[8px] font-mono text-gray-500">🪙 {SLOT_UNLOCK_COSTS[i]!.toLocaleString()}</span>
+                  <span className="text-[10px] font-mono text-gray-500">🪙 {SLOT_UNLOCK_COSTS[i]!.toLocaleString()}</span>
                 )}
                 {SLOT_UNLOCK_REQUIREMENTS[i]?.farmerLevel > 0 && (
                   <span className="text-[7px] font-mono text-gray-600">Farmer LVL {SLOT_UNLOCK_REQUIREMENTS[i].farmerLevel}</span>
@@ -2305,7 +2581,7 @@ export function FarmPage() {
           )}
         </AnimatePresence>
         {!unlockError && unlockedSlots < MAX_FARM_SLOTS && (
-          <p className="text-[9px] text-gray-400 font-mono text-center mt-2">
+          <p className="text-[10px] text-gray-400 font-mono text-center mt-2">
             Next plot · 🪙 {(SLOT_UNLOCK_COSTS[unlockedSlots] ?? 0).toLocaleString()} gold
             {(SLOT_UNLOCK_REQUIREMENTS[unlockedSlots]?.farmerLevel ?? 0) > 0 && (
               <span> · Farmer LVL {SLOT_UNLOCK_REQUIREMENTS[unlockedSlots].farmerLevel}</span>

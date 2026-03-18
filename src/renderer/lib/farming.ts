@@ -25,8 +25,8 @@ export const SEED_DEFS: SeedDef[] = [
     icon: '🌾',
     growTimeSeconds: 5 * 60,
     yieldPlantId: 'wheat',
-    yieldMin: 1,
-    yieldMax: 3,
+    yieldMin: 8,
+    yieldMax: 15,
     xpOnPlant: 10,
     xpOnHarvest: 50,
   },
@@ -40,7 +40,7 @@ export const SEED_DEFS: SeedDef[] = [
     yieldMin: 1,
     yieldMax: 2,
     xpOnPlant: 10,
-    xpOnHarvest: 50,
+    xpOnHarvest: 80,
   },
   {
     id: 'apple_seed',
@@ -52,7 +52,7 @@ export const SEED_DEFS: SeedDef[] = [
     yieldMin: 1,
     yieldMax: 4,
     xpOnPlant: 20,
-    xpOnHarvest: 100,
+    xpOnHarvest: 200,
   },
   {
     id: 'blossom_seed',
@@ -64,7 +64,7 @@ export const SEED_DEFS: SeedDef[] = [
     yieldMin: 1,
     yieldMax: 3,
     xpOnPlant: 20,
-    xpOnHarvest: 100,
+    xpOnHarvest: 250,
   },
   {
     id: 'clover_seed',
@@ -76,7 +76,7 @@ export const SEED_DEFS: SeedDef[] = [
     yieldMin: 1,
     yieldMax: 5,
     xpOnPlant: 40,
-    xpOnHarvest: 200,
+    xpOnHarvest: 600,
   },
   {
     id: 'orchid_seed',
@@ -88,7 +88,7 @@ export const SEED_DEFS: SeedDef[] = [
     yieldMin: 1,
     yieldMax: 3,
     xpOnPlant: 40,
-    xpOnHarvest: 200,
+    xpOnHarvest: 900,
   },
   {
     id: 'starbloom_seed',
@@ -100,7 +100,7 @@ export const SEED_DEFS: SeedDef[] = [
     yieldMin: 1,
     yieldMax: 4,
     xpOnPlant: 80,
-    xpOnHarvest: 400,
+    xpOnHarvest: 1800,
   },
   {
     id: 'crystal_seed',
@@ -112,7 +112,7 @@ export const SEED_DEFS: SeedDef[] = [
     yieldMin: 1,
     yieldMax: 3,
     xpOnPlant: 80,
-    xpOnHarvest: 400,
+    xpOnHarvest: 2400,
   },
   {
     id: 'void_spore',
@@ -124,7 +124,7 @@ export const SEED_DEFS: SeedDef[] = [
     yieldMin: 1,
     yieldMax: 6,
     xpOnPlant: 160,
-    xpOnHarvest: 800,
+    xpOnHarvest: 4800,
   },
 ]
 

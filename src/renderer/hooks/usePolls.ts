@@ -43,35 +43,34 @@ export function usePolls() {
     const lastSeen = localStorage.getItem(LS_KEY) ?? new Date(0).toISOString()
 
     // Fetch active polls created after last seen
-    supabase
+    void Promise.resolve(supabase
       .from('polls')
       .select('id, title, description, icon, expires_at, created_at, is_active, poll_options(id, label, sort_order)')
       .eq('is_active', true)
       .gt('created_at', lastSeen)
       .order('created_at', { ascending: true })
-      .then(({ data }) => {
-        if (!data || data.length === 0) return
+    ).then(({ data }) => {
+      if (!data || data.length === 0) return
 
-        // Check which polls the user already voted on
-        const pollIds = data.map((p) => p.id)
-        supabase
-          .from('poll_votes')
-          .select('poll_id')
-          .eq('user_id', user.id)
-          .in('poll_id', pollIds)
-          .then(({ data: votes }) => {
-            const votedSet = new Set((votes ?? []).map((v) => v.poll_id))
+      // Check which polls the user already voted on
+      const pollIds = data.map((p) => p.id)
+      void Promise.resolve(supabase
+        .from('poll_votes')
+        .select('poll_id')
+        .eq('user_id', user.id)
+        .in('poll_id', pollIds)
+      ).then(({ data: votes }) => {
+        const votedSet = new Set((votes ?? []).map((v) => v.poll_id))
 
-            for (const poll of data as PollRow[]) {
-              if (poll.expires_at && new Date(poll.expires_at) < new Date()) continue
-              if (votedSet.has(poll.id)) continue
-              pushPoll(poll)
-            }
+        for (const poll of data as PollRow[]) {
+          if (poll.expires_at && new Date(poll.expires_at) < new Date()) continue
+          if (votedSet.has(poll.id)) continue
+          pushPoll(poll)
+        }
 
-            localStorage.setItem(LS_KEY, new Date().toISOString())
-          })
+        localStorage.setItem(LS_KEY, new Date().toISOString())
       })
-      .catch(() => {})
+    }).catch(() => {})
 
     // Real-time subscription for new polls
     const channel = supabase

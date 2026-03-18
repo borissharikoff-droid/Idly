@@ -2,10 +2,11 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { useEscapeHandler } from '../../hooks/useEscapeHandler'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { LOOT_ITEMS, getRarityTheme, getItemPower, MARKETPLACE_BLOCKED_ITEMS, getItemPerkDescription, isValidItemId, type LootRarity } from '../../lib/loot'
+import { LOOT_ITEMS, CHEST_DEFS, getRarityTheme, getItemPower, MARKETPLACE_BLOCKED_ITEMS, getItemPerkDescription, isValidItemId, type LootRarity } from '../../lib/loot'
 import { getFarmItemDisplay, isSeedId, isSeedZipId, seedZipTierFromItemId } from '../../lib/farming'
 import { SKILLS } from '../../lib/skills'
-import { fetchActiveListings, partialBuyListing, cancelListing, expireOldListings, fetchTradeHistory, type ListingWithSeller, type CancelListingResult, type TradeHistoryEntry } from '../../services/marketplaceService'
+import { fetchActiveListings, partialBuyListing, cancelListing, expireOldListings, fetchTradeHistory, fetchPriceHistory, type ListingWithSeller, type CancelListingResult, type TradeHistoryEntry, type PriceHistoryEntry } from '../../services/marketplaceService'
+import { PriceSparkline } from './PriceSparkline'
 import { useGoldStore } from '../../stores/goldStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useInventoryStore } from '../../stores/inventoryStore'
@@ -13,6 +14,7 @@ import { useNavBadgeStore } from '../../stores/navBadgeStore'
 import { syncInventoryToSupabase } from '../../services/supabaseSync'
 import { useFarmStore } from '../../stores/farmStore'
 import { PageHeader } from '../shared/PageHeader'
+import { ShoppingCart, RefreshCw, X } from '../../lib/icons'
 import { BackpackButton } from '../shared/BackpackButton'
 import { InventoryPage } from '../inventory/InventoryPage'
 import { ListForSaleModal } from '../inventory/ListForSaleModal'
@@ -25,7 +27,7 @@ import { useToastStore } from '../../stores/toastStore'
 const RARITY_ORDER: LootRarity[] = ['common', 'rare', 'epic', 'legendary', 'mythic']
 type TabId = 'listings' | 'sell' | 'my_listings' | 'history'
 
-const MODAL_OVERLAY = { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 }, transition: { duration: 0.15 } }
+const MODAL_OVERLAY = { initial: { opacity: 0, pointerEvents: 'none' as const }, animate: { opacity: 1, pointerEvents: 'auto' as const }, exit: { opacity: 0, pointerEvents: 'none' as const }, transition: { duration: 0.15 } }
 const MODAL_CARD = { initial: { opacity: 0, scale: 0.95, y: 8 }, animate: { opacity: 1, scale: 1, y: 0 }, exit: { opacity: 0, scale: 0.95, y: 8 }, transition: { duration: 0.18, ease: [0.16, 1, 0.3, 1] } }
 const LIST_ITEM = { initial: { opacity: 0, y: 6 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -4 } }
 
@@ -39,12 +41,13 @@ function getItemName(itemId: string) {
 function getItemMeta(itemId: string) {
   const item = LOOT_ITEMS.find((x) => x.id === itemId)
   const farm = !item ? getFarmItemDisplay(itemId) : null
+  const chest = !item && !farm ? CHEST_DEFS[itemId as keyof typeof CHEST_DEFS] : null
   return {
     item, farm,
-    name: item?.name ?? farm?.name ?? itemId,
-    rarity: item?.rarity ?? farm?.rarity ?? 'common' as LootRarity,
-    icon: item?.icon ?? farm?.icon ?? '📦',
-    image: item?.image ?? farm?.image,
+    name: item?.name ?? farm?.name ?? chest?.name ?? itemId,
+    rarity: (item?.rarity ?? farm?.rarity ?? chest?.rarity ?? 'common') as LootRarity,
+    icon: item?.icon ?? farm?.icon ?? chest?.icon ?? '📦',
+    image: item?.image ?? farm?.image ?? chest?.image,
     scale: item?.renderScale ?? 1,
   }
 }
@@ -69,29 +72,36 @@ function getSellableQty(itemId: string, rawQty: number): number {
   return isEquipped ? Math.max(0, rawQty - 1) : rawQty
 }
 
-// ─── Order-book row: stacked listings for same item+price ─────────────────────
+// ─── Order-book: one row per item, multiple price-level offers inside ─────────
 
-interface OrderBookRow {
-  itemId: string
+interface OrderBookOffer {
   pricePerUnit: number
   totalQty: number
   listings: ListingWithSeller[]
   sellers: string[]
 }
 
+interface OrderBookRow {
+  itemId: string
+  floorPrice: number
+  totalQty: number
+  offers: OrderBookOffer[]  // sorted cheapest first
+}
+
 function buildOrderBook(listings: ListingWithSeller[]): OrderBookRow[] {
-  const map = new Map<string, OrderBookRow>()
+  // Step 1: group by itemId → pricePerUnit
+  const byItem = new Map<string, Map<number, OrderBookOffer>>()
   for (const l of listings) {
-    const key = `${l.item_id}::${l.price_gold}`
-    const existing = map.get(key)
+    if (!byItem.has(l.item_id)) byItem.set(l.item_id, new Map())
+    const byPrice = byItem.get(l.item_id)!
+    const existing = byPrice.get(l.price_gold)
     if (existing) {
       existing.totalQty += l.quantity
       existing.listings.push(l)
       if (!existing.sellers.includes(l.seller_username ?? 'Anon'))
         existing.sellers.push(l.seller_username ?? 'Anon')
     } else {
-      map.set(key, {
-        itemId: l.item_id,
+      byPrice.set(l.price_gold, {
         pricePerUnit: l.price_gold,
         totalQty: l.quantity,
         listings: [l],
@@ -99,21 +109,29 @@ function buildOrderBook(listings: ListingWithSeller[]): OrderBookRow[] {
       })
     }
   }
-  return Array.from(map.values())
+  // Step 2: build rows sorted by floor price (cheapest first per item)
+  const rows: OrderBookRow[] = []
+  for (const [itemId, byPrice] of byItem) {
+    const offers = Array.from(byPrice.values()).sort((a, b) => a.pricePerUnit - b.pricePerUnit)
+    const totalQty = offers.reduce((s, o) => s + o.totalQty, 0)
+    rows.push({ itemId, floorPrice: offers[0].pricePerUnit, totalQty, offers })
+  }
+  return rows
 }
 
-// ─── Compact listing tile ────────────────────────────────────────────────────
+// ─── Compact listing tile (one row per item) ─────────────────────────────────
 
-function OrderBookTile({ row, onBuy, index }: { row: OrderBookRow; onBuy: (row: OrderBookRow) => void; index: number }) {
+function OrderBookTile({ row, onOpenOffers, index }: { row: OrderBookRow; onOpenOffers: (row: OrderBookRow) => void; index: number }) {
   const meta = getItemMeta(row.itemId)
   const theme = getRarityTheme(meta.rarity)
+  const allSellers = Array.from(new Set(row.offers.flatMap((o) => o.sellers)))
   return (
     <motion.button
       {...LIST_ITEM}
       transition={{ duration: 0.2, delay: Math.min(index * 0.03, 0.3) }}
       layout
       type="button"
-      onClick={() => onBuy(row)}
+      onClick={() => onOpenOffers(row)}
       className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-colors hover:border-white/20 text-left group"
       style={{ borderColor: theme.border, backgroundColor: `${theme.color}06` }}
     >
@@ -125,7 +143,7 @@ function OrderBookTile({ row, onBuy, index }: { row: OrderBookRow; onBuy: (row: 
         <LootVisualShared icon={meta.icon} image={meta.image} className="w-6 h-6 object-contain" scale={meta.scale} />
         {row.totalQty > 1 && (
           <span
-            className="absolute -top-1.5 -right-1.5 text-[8px] font-bold px-1 py-px rounded-full border leading-none"
+            className="absolute -top-1.5 -right-1.5 text-[10px] font-bold px-1 py-px rounded-full border leading-none"
             style={{ color: theme.color, backgroundColor: '#11111b', borderColor: theme.border }}
           >
             ×{row.totalQty}
@@ -137,23 +155,28 @@ function OrderBookTile({ row, onBuy, index }: { row: OrderBookRow; onBuy: (row: 
         <p className="text-[11px] font-semibold text-white truncate">{meta.name}</p>
         <div className="flex items-center gap-1.5 mt-0.5">
           <span
-            className="text-[8px] font-medium px-1.5 py-px rounded capitalize"
+            className="text-[10px] font-medium px-1.5 py-px rounded capitalize"
             style={{ color: theme.color, backgroundColor: `${theme.color}18` }}
           >
             {meta.rarity}
           </span>
           {meta.item && !['consumable', 'plant', 'material'].includes(meta.item.slot) && (
-            <span className="text-[9px] text-gray-500">IP {getItemPower(meta.item)}</span>
+            <span className="text-[10px] text-gray-500">IP {getItemPower(meta.item)}</span>
           )}
-          <span className="text-[9px] text-gray-600 truncate">
-            {row.sellers.length === 1 ? row.sellers[0] : `${row.sellers.length} sellers`}
+          <span className="text-[10px] text-gray-600 truncate">
+            {row.offers.length > 1
+              ? `${row.offers.length} offers · ${allSellers.length === 1 ? allSellers[0] : `${allSellers.length} sellers`}`
+              : (allSellers[0] ?? 'Unknown')}
           </span>
         </div>
       </div>
-      {/* price */}
-      <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 shrink-0 group-hover:bg-amber-500/15 transition-colors">
-        <span className="text-amber-400 text-[10px]">🪙</span>
-        <span className="text-amber-400 font-bold text-[11px] tabular-nums">{row.pricePerUnit}</span>
+      {/* floor price chip (always green since it's the cheapest offer) */}
+      <div className="shrink-0">
+        <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border transition-colors bg-green-500/10 border-green-500/25 group-hover:bg-green-500/16">
+          <span className="text-[10px] text-green-400">🪙</span>
+          <span className="font-bold text-[11px] tabular-nums text-green-400">{row.floorPrice.toLocaleString()}</span>
+          <span className="text-[7px] font-mono text-green-400/55 ml-0.5 tracking-wide">floor</span>
+        </div>
       </div>
     </motion.button>
   )
@@ -192,7 +215,7 @@ function MyListingRow({ group, cancellingId, onCancel, index }: {
         <LootVisualShared icon={meta.icon} image={meta.image} className="w-6 h-6 object-contain" scale={meta.scale} />
         {group.totalQty > 1 && (
           <span
-            className="absolute -top-1.5 -right-1.5 text-[8px] font-bold px-1 py-px rounded-full border leading-none"
+            className="absolute -top-1.5 -right-1.5 text-[10px] font-bold px-1 py-px rounded-full border leading-none"
             style={{ color: theme.color, backgroundColor: '#11111b', borderColor: theme.border }}
           >
             ×{group.totalQty}
@@ -201,7 +224,7 @@ function MyListingRow({ group, cancellingId, onCancel, index }: {
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-[11px] font-semibold text-white truncate">{meta.name}</p>
-        <p className="text-[9px] text-gray-500 mt-0.5">
+        <p className="text-[10px] text-gray-500 mt-0.5">
           {group.ids.length > 1 ? `${group.ids.length} orders · ` : ''}{group.pricePerUnit}🪙{group.totalQty > 1 ? '/ea' : ''}
         </p>
       </div>
@@ -270,7 +293,7 @@ function HistoryRow({ entry, userId, index }: { entry: TradeHistoryEntry; userId
         <p className="text-[11px] font-semibold text-white truncate">
           {meta.name}{entry.quantity > 1 ? ` ×${entry.quantity}` : ''}
         </p>
-        <p className="text-[9px] text-gray-500 truncate mt-0.5">
+        <p className="text-[10px] text-gray-500 truncate mt-0.5">
           {isSeller ? `→ ${otherUser}` : `← ${otherUser}`} · {timeAgo(entry.created_at)}
         </p>
       </div>
@@ -281,7 +304,7 @@ function HistoryRow({ entry, userId, index }: { entry: TradeHistoryEntry; userId
           </span>
         )}
         <span
-          className="text-[9px] font-medium px-1.5 py-0.5 rounded-md border"
+          className="text-[10px] font-medium px-1.5 py-0.5 rounded-md border"
           style={{ color: statusColor, borderColor: `${statusColor}30`, backgroundColor: `${statusColor}12` }}
         >
           {statusLabel}
@@ -315,11 +338,12 @@ function sellItemCategory(id: string): SellFilterId {
   return 'materials'
 }
 
-function SellTab({ onListed, onToast }: { onListed: () => void; onToast: (message: string, type: 'success' | 'error') => void }) {
+function SellTab({ onListed, onToast, floorPriceMap }: { onListed: () => void; onToast: (message: string, type: 'success' | 'error') => void; floorPriceMap: Map<string, number> }) {
   const items = useInventoryStore((s) => s.items)
   const seeds = useFarmStore((s) => s.seeds)
   const seedZips = useFarmStore((s) => s.seedZips)
   const [selectedItem, setSelectedItem] = useState<string | null>(null)
+  const [quickListPrice, setQuickListPrice] = useState<number | undefined>(undefined)
   useEscapeHandler(() => setSelectedItem(null), selectedItem !== null)
   const [sellSearch, setSellSearch] = useState('')
   const [filterBy, setFilterBy] = useState<SellFilterId>('all')
@@ -407,42 +431,67 @@ function SellTab({ onListed, onToast }: { onListed: () => void; onToast: (messag
     }
   }, [selectedItem]) // eslint-disable-line react-hooks/exhaustive-deps -- snapshot qty at open, not when sellable changes
 
+  const handleQuickList = (e: React.MouseEvent, entry: { id: string; qty: number }) => {
+    e.stopPropagation()
+    playClickSound()
+    // Use active listing floor (undercut by 1g) — no async needed
+    const activeFloor = floorPriceMap.get(entry.id)
+    setQuickListPrice(activeFloor !== undefined ? Math.max(1, activeFloor - 1) : undefined)
+    setSelectedItem(entry.id)
+  }
+
   const renderSellCard = (entry: { id: string; qty: number }, i: number) => {
     const meta = getItemMeta(entry.id)
     const theme = RARITY_THEME[normalizeRarity(meta.rarity)] ?? RARITY_THEME.common
     const lootItem = LOOT_ITEMS.find((x) => x.id === entry.id)
     const perkChip = lootItem && lootItem.perkType !== 'cosmetic' && lootItem.slot !== 'consumable' && lootItem.slot !== 'plant'
       ? getItemPerkDescription(lootItem) : null
+    const activeFloor = floorPriceMap.get(entry.id)
     return (
-      <motion.button
+      <motion.div
         key={entry.id}
         {...LIST_ITEM}
         transition={{ duration: 0.15, delay: Math.min(i * 0.02, 0.25) }}
-        type="button"
-        onClick={() => { playClickSound(); setSelectedItem(entry.id) }}
-        className="relative flex items-center gap-2 p-2 rounded-lg border border-white/[0.06] bg-discord-darker/50 hover:bg-discord-darker/80 active:scale-[0.98] transition-all text-left overflow-hidden group"
+        className="relative"
       >
-        {/* Left rarity accent */}
-        <div className="absolute left-0 top-1 bottom-1 w-[2px] rounded-full" style={{ background: theme.color, opacity: normalizeRarity(meta.rarity) === 'common' ? 0.3 : 0.7 }} />
-        {/* Icon box */}
-        <div
-          className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden transition-transform group-hover:scale-105"
-          style={{ background: '#0a0a14', border: `1px solid ${theme.color}30` }}
+        <button
+          type="button"
+          onClick={() => { playClickSound(); setQuickListPrice(undefined); setSelectedItem(entry.id) }}
+          className="relative w-full flex items-center gap-2 p-2 rounded-lg border border-white/[0.06] bg-discord-darker/50 hover:bg-discord-darker/80 active:scale-[0.98] transition-all text-left overflow-hidden group"
         >
-          <LootVisualShared icon={meta.icon} image={meta.image} className="w-6 h-6 object-contain" scale={meta.scale} />
-        </div>
-        {/* Info */}
-        <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-semibold text-gray-100 leading-tight truncate">{meta.name}</p>
-          <div className="flex items-center gap-1 mt-0.5">
-            <span className="text-[8px] font-mono uppercase" style={{ color: theme.color }}>{meta.rarity}</span>
+          {/* Left rarity accent */}
+          <div className="absolute left-0 top-1 bottom-1 w-[2px] rounded-full" style={{ background: theme.color, opacity: normalizeRarity(meta.rarity) === 'common' ? 0.3 : 0.7 }} />
+          {/* Icon box */}
+          <div
+            className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden transition-transform group-hover:scale-105"
+            style={{ background: '#0a0a14', border: `1px solid ${theme.color}30` }}
+          >
+            <LootVisualShared icon={meta.icon} image={meta.image} className="w-6 h-6 object-contain" scale={meta.scale} />
           </div>
-          {perkChip && <p className="text-[8px] text-gray-500 truncate mt-0.5">{perkChip}</p>}
-        </div>
-        {/* Qty + Sell label */}
-        {entry.qty > 1 && <span className="text-[9px] font-mono font-bold shrink-0" style={{ color: theme.color }}>×{entry.qty}</span>}
-        <span className="text-[10px] text-amber-400/70 font-medium shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">Sell</span>
-      </motion.button>
+          {/* Info */}
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-semibold text-gray-100 leading-tight truncate">{meta.name}</p>
+            <div className="flex items-center gap-1 mt-0.5">
+              <span className="text-[10px] font-mono uppercase" style={{ color: theme.color }}>{meta.rarity}</span>
+            </div>
+            {perkChip && <p className="text-[10px] text-gray-500 truncate mt-0.5">{perkChip}</p>}
+          </div>
+          {/* Qty + Sell label */}
+          {entry.qty > 1 && <span className="text-[10px] font-mono font-bold shrink-0" style={{ color: theme.color }}>×{entry.qty}</span>}
+          <span className="text-[10px] text-amber-400/70 font-medium shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">Sell</span>
+        </button>
+        {/* Quick List button — only shown when active floor exists */}
+        {activeFloor !== undefined && (
+          <button
+            type="button"
+            onClick={(e) => handleQuickList(e, entry)}
+            title={`Quick list at ${activeFloor - 1}g (floor − 1)`}
+            className="absolute top-0.5 right-0.5 px-1 py-0.5 rounded text-[10px] font-bold border text-amber-400 border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 transition-colors leading-none z-10"
+          >
+            ⚡
+          </button>
+        )}
+      </motion.div>
     )
   }
 
@@ -466,7 +515,7 @@ function SellTab({ onListed, onToast }: { onListed: () => void; onToast: (messag
         />
         <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 pointer-events-none">🔍</span>
         {sellSearch && (
-          <button type="button" onClick={() => setSellSearch('')} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 hover:text-gray-300 px-1">✕</button>
+          <button type="button" onClick={() => setSellSearch('')} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 px-1"><X className="w-3 h-3" /></button>
         )}
       </div>
 
@@ -480,7 +529,7 @@ function SellTab({ onListed, onToast }: { onListed: () => void; onToast: (messag
               key={f.id}
               type="button"
               onClick={() => { playClickSound(); setFilterBy(f.id) }}
-              className={`flex items-center gap-1 px-2 py-0.5 rounded-md border text-[9px] font-medium transition-all ${
+              className={`flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-medium transition-all ${
                 active
                   ? 'border-amber-500/40 bg-amber-500/10 text-amber-400'
                   : 'border-white/[0.08] bg-discord-darker/30 text-gray-400 hover:text-gray-200 hover:border-white/20'
@@ -488,7 +537,7 @@ function SellTab({ onListed, onToast }: { onListed: () => void; onToast: (messag
             >
               <span className="text-[10px] leading-none">{f.icon}</span>
               <span>{f.label}</span>
-              {!active && count > 0 && <span className="ml-0.5 text-[8px] font-mono opacity-50">{count}</span>}
+              {!active && count > 0 && <span className="ml-0.5 text-[10px] font-mono opacity-50">{count}</span>}
             </button>
           )
         })}
@@ -510,10 +559,10 @@ function SellTab({ onListed, onToast }: { onListed: () => void; onToast: (messag
           </p>
         </motion.div>
       ) : grouped ? (
-        <div className="grid grid-cols-2 gap-1">
+        <div className="grid grid-cols-3 gap-1">
           {grouped.map(({ key, label, icon, items: grpItems }) => (
             <React.Fragment key={key}>
-              <div className="col-span-full text-[9px] font-mono uppercase tracking-widest text-gray-500 pt-1 pb-0.5 flex items-center gap-2">
+              <div className="col-span-full text-[10px] font-mono uppercase tracking-widest text-gray-500 pt-1 pb-0.5 flex items-center gap-2">
                 <span className="flex items-center gap-1.5">{icon} {label}</span>
                 <div className="flex-1 border-t border-white/[0.05]" />
                 <span>{grpItems.length}</span>
@@ -523,7 +572,7 @@ function SellTab({ onListed, onToast }: { onListed: () => void; onToast: (messag
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-1">
+        <div className="grid grid-cols-3 gap-1">
           {filtered.map((entry, i) => renderSellCard(entry, i))}
         </div>
       )}
@@ -533,12 +582,13 @@ function SellTab({ onListed, onToast }: { onListed: () => void; onToast: (messag
           key={selectedItem}
           itemId={selectedItem}
           maxQty={modalMaxQty}
-          onClose={() => setSelectedItem(null)}
+          suggestedPrice={quickListPrice}
+          activeFloorPrice={floorPriceMap.get(selectedItem)}
+          onClose={() => { setSelectedItem(null); setQuickListPrice(undefined) }}
           onListed={() => {
-            const name = getItemMeta(selectedItem).name
             setSelectedItem(null)
+            setQuickListPrice(undefined)
             onListedRef.current()
-            onToastRef.current(`Listed ${name} on marketplace`, 'success')
           }}
           onDeductItem={isSeedId(selectedItem) ? (qty) => useFarmStore.getState().removeSeed(selectedItem, qty)
             : isSeedZipId(selectedItem) ? (qty) => {
@@ -570,10 +620,12 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
   const [loading, setLoading] = useState(true)
   const [historyLoading, setHistoryLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<TabId>('listings')
-  const [buyTarget, setBuyTarget] = useState<OrderBookRow | null>(null)
+  const [offersTarget, setOffersTarget] = useState<OrderBookRow | null>(null)
+  const [buyTarget, setBuyTarget] = useState<{ itemId: string; offer: OrderBookOffer } | null>(null)
   const [buyQty, setBuyQty] = useState(1)
   const [buying, setBuying] = useState(false)
   const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [priceHistory, setPriceHistory] = useState<PriceHistoryEntry[]>([])
   const [cancelTarget, setCancelTarget] = useState<MergedMyListing | null>(null)
   const [cancelError, setCancelError] = useState<string | null>(null)
   const [showBackpack, setShowBackpack] = useState(false)
@@ -590,6 +642,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
   const [sortBy, setSortBy] = useState<'price_asc' | 'price_desc' | 'newest'>('price_asc')
   const [filtersExpanded, setFiltersExpanded] = useState(false)
   const [showInfo, setShowInfo] = useState(false)
+  const [showFloorBoard, setShowFloorBoard] = useState(false)
   const infoRef = useRef<HTMLDivElement>(null)
 
   const gold = useGoldStore((s) => s.gold)
@@ -599,7 +652,21 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
   const exitingRef = useRef(false)
 
   useEffect(() => { return () => { exitingRef.current = true } }, [])
-  useEffect(() => { setBuyQty(1) }, [buyTarget])
+  useEffect(() => {
+    setBuyQty(1)
+    setPriceHistory([])
+    const itemId = buyTarget?.itemId ?? offersTarget?.itemId
+    if (itemId) {
+      fetchPriceHistory(itemId, 10).then(setPriceHistory).catch(() => {})
+    }
+  }, [buyTarget, offersTarget])
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && offersTarget) { e.stopImmediatePropagation(); setOffersTarget(null) }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [offersTarget])
   useEffect(() => { useNavBadgeStore.getState().clearMarketplaceSale() }, [])
 
   const showToast = useCallback((message: string, type: 'success' | 'error') => {
@@ -653,7 +720,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [buyTarget, cancelTarget])
+  }, [buyTarget, cancelTarget])  // offersTarget escape is handled by its own effect above
 
   // ─── Filtering ──────────────────────────────────────────────────────────────
 
@@ -723,6 +790,17 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
   // Order-book: stack other listings by item+price
   const orderBook = useMemo(() => buildOrderBook(otherListings), [otherListings])
 
+  // Floor price per item (minimum active listing price, from all listings including own)
+  const floorPriceMap = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const l of listings) {
+      if (MARKETPLACE_BLOCKED_ITEMS.includes(l.item_id) || !isValidItemId(l.item_id)) continue
+      const cur = map.get(l.item_id)
+      if (cur === undefined || l.price_gold < cur) map.set(l.item_id, l.price_gold)
+    }
+    return map
+  }, [listings])
+
   // Merged my listings (group same item+price) — from unfiltered
   const mergedMyListings = useMemo(() => {
     const groups = new Map<string, MergedMyListing>()
@@ -748,24 +826,26 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
     }
   }
 
-  const handleBuyClick = (row: OrderBookRow) => {
+  const handleBuyClick = (itemId: string, offer: OrderBookOffer) => {
     if (!user) return
-    if ((gold ?? 0) < row.pricePerUnit) {
-      const deficit = row.pricePerUnit - (gold ?? 0)
+    if ((gold ?? 0) < offer.pricePerUnit) {
+      const deficit = offer.pricePerUnit - (gold ?? 0)
       showToast(`Need ${deficit} more gold`, 'error')
       return
     }
     setBuyQty(1)
-    setBuyTarget(row)
+    setBuyTarget({ itemId, offer })
   }
 
-  const handleBuy = async (row: OrderBookRow, qty: number) => {
+  const handleBuy = async (qty: number) => {
+    if (!buyTarget) return
     setBuying(true)
     if (!user) { setBuying(false); return }
+    const { itemId, offer } = buyTarget
 
     let remaining = qty
     let totalBought = 0
-    const sorted = [...row.listings].sort((a, b) => a.price_gold - b.price_gold)
+    const sorted = [...offer.listings].sort((a, b) => a.price_gold - b.price_gold)
 
     for (const listing of sorted) {
       if (remaining <= 0) break
@@ -805,7 +885,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
       setBuyTarget(null)
       if (totalBought > 0) {
         playClickSound()
-        showToast(`Bought ${totalBought}× ${getItemName(row.itemId)}`, 'success')
+        showToast(`Bought ${totalBought}× ${getItemName(itemId)}`, 'success')
       } else {
         showToast('Purchase failed — listing may have sold out', 'error')
       }
@@ -856,6 +936,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
     <div className="p-4 pb-20 space-y-3">
       <PageHeader
         title="Marketplace"
+        icon={<ShoppingCart className="w-4 h-4 text-yellow-400" />}
         onBack={onBack}
         rightSlot={
           <div className="flex items-center gap-1.5">
@@ -867,16 +948,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
               className="w-7 h-7 flex items-center justify-center rounded-lg border border-white/10 text-gray-400 hover:text-white hover:border-white/25 transition-colors disabled:opacity-40 active:scale-95"
               title="Refresh"
             >
-              <svg
-                className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`}
-                viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}
-                strokeLinecap="round" strokeLinejoin="round"
-              >
-                <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
-                <path d="M21 3v5h-5" />
-                <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
-                <path d="M3 21v-5h5" />
-              </svg>
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
             </button>
             <GoldDisplay />
           </div>
@@ -907,12 +979,12 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                   <ul className="space-y-1.5">
                     {[
                       'Buy and sell items with other players.',
-                      'Identical items at the same price are stacked.',
+                      'Each item shows the floor price — tap to see all offers.',
                       '5% commission charged on listing.',
                       'Listings expire after 7 days.',
                     ].map((tip) => (
                       <li key={tip} className="flex items-start gap-1.5">
-                        <span className="text-cyber-neon/60 mt-px text-[9px] leading-tight shrink-0">▸</span>
+                        <span className="text-cyber-neon/60 mt-px text-[10px] leading-tight shrink-0">▸</span>
                         <span className="text-[11px] text-gray-300 leading-snug">{tip}</span>
                       </li>
                     ))}
@@ -952,7 +1024,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
             <span className="relative z-10">
               {tab.label}
               {tab.count != null && tab.count > 0 && (
-                <span className="ml-1 text-[9px] opacity-50">{tab.count}</span>
+                <span className="ml-1 text-[10px] opacity-50">{tab.count}</span>
               )}
             </span>
           </button>
@@ -1067,7 +1139,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                   className="rounded-lg border border-white/[0.07] bg-[#11111b]/60 p-2 space-y-1.5 overflow-hidden"
                 >
                   <div className="flex items-center gap-1 flex-wrap">
-                    <span className="text-[9px] font-mono uppercase tracking-wider text-gray-600 mr-1">Rarity</span>
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-gray-600 mr-1">Rarity</span>
                     {RARITY_ORDER.map((r) => {
                       const t = RARITY_THEME[normalizeRarity(r)]
                       const active = rarityFilter === r
@@ -1087,7 +1159,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                     })}
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[9px] font-mono uppercase tracking-wider text-gray-600 mr-1">Price 🪙</span>
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-gray-600 mr-1">Price 🪙</span>
                     <input
                       type="number" min={0} value={priceMin}
                       onChange={(e) => setPriceMin(e.target.value)}
@@ -1155,16 +1227,57 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
               </motion.div>
             ) : (
               <div className="space-y-1.5">
-                {orderBook.map((row, i) => (
-                  <OrderBookTile key={`${row.itemId}::${row.pricePerUnit}`} row={row} onBuy={handleBuyClick} index={i} />
-                ))}
+                {/* Floor Board toggle */}
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="text-[10px] text-gray-600 font-mono">{orderBook.length} item{orderBook.length !== 1 ? 's' : ''}</span>
+                  <button
+                    type="button"
+                    onClick={() => { playClickSound(); setShowFloorBoard((v) => !v) }}
+                    className={`flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-mono transition-colors ${showFloorBoard ? 'bg-green-500/15 border-green-500/35 text-green-400' : 'border-white/10 text-gray-500 hover:border-white/20 hover:text-gray-400'}`}
+                  >
+                    🏷 {showFloorBoard ? 'List' : 'Floors'}
+                  </button>
+                </div>
+
+                {showFloorBoard ? (
+                  /* ── Compact floor board ── */
+                  <div className="rounded-xl border border-white/[0.07] bg-[#11111b]/60 overflow-hidden">
+                    <div className="flex items-center px-3 py-1.5 border-b border-white/[0.05]">
+                      <span className="text-[10px] uppercase tracking-widest text-gray-600 font-mono flex-1">Item</span>
+                      <span className="text-[10px] uppercase tracking-widest text-gray-600 font-mono w-12 text-right">Floor</span>
+                      <span className="text-[10px] uppercase tracking-widest text-gray-600 font-mono w-10 text-right">Qty</span>
+                    </div>
+                    {orderBook.map((row) => {
+                      const m = getItemMeta(row.itemId)
+                      const theme = getRarityTheme(m.rarity)
+                      return (
+                        <button
+                          key={row.itemId}
+                          type="button"
+                          onClick={() => { playClickSound(); setOffersTarget(row) }}
+                          className="w-full flex items-center px-3 py-1.5 border-b border-white/[0.04] last:border-0 hover:bg-white/[0.03] transition-colors gap-2"
+                        >
+                          <span className="text-sm shrink-0">{m.icon}</span>
+                          <span className="flex-1 text-[10px] text-gray-300 truncate text-left">{m.name}</span>
+                          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: theme.color }} />
+                          <span className="w-12 text-right text-[11px] font-bold font-mono text-green-400">{row.floorPrice.toLocaleString()}</span>
+                          <span className="w-10 text-right text-[10px] text-gray-600 font-mono">×{row.totalQty}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  orderBook.map((row, i) => (
+                    <OrderBookTile key={row.itemId} row={row} onOpenOffers={(r) => { playClickSound(); setOffersTarget(r) }} index={i} />
+                  ))
+                )}
               </div>
             )}
           </motion.div>
         )}
 
         {activeTab === 'sell' && (
-          <SellTab onListed={loadListings} onToast={showToast} />
+          <SellTab onListed={loadListings} onToast={showToast} floorPriceMap={floorPriceMap} />
         )}
 
         {activeTab === 'my_listings' && (
@@ -1255,6 +1368,116 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
         )}
       </AnimatePresence>
 
+      {/* ─── Offers modal (all price tiers for an item) ─────────────────────── */}
+      {createPortal(
+        <AnimatePresence>
+          {offersTarget && (
+            <motion.div
+              key="offers-overlay"
+              {...MODAL_OVERLAY}
+              className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-[2px] flex items-center justify-center p-4"
+              onClick={() => setOffersTarget(null)}
+            >
+              <motion.div
+                {...MODAL_CARD}
+                className="w-[320px] rounded-2xl bg-[#1a1a2e] border border-white/10 p-4 flex flex-col shadow-2xl max-h-[80vh] overflow-y-auto"
+                style={{ boxShadow: '0 0 60px rgba(0,0,0,0.5)' }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {(() => {
+                  const meta = getItemMeta(offersTarget.itemId)
+                  const theme = RARITY_THEME[normalizeRarity(meta.rarity)] ?? RARITY_THEME.common
+                  return (
+                    <>
+                      {/* Header */}
+                      <div className="flex items-center gap-3 mb-4">
+                        <div
+                          className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                          style={{ backgroundColor: `${theme.color}18`, border: `1px solid ${theme.border}`, boxShadow: `0 0 16px ${theme.glow}` }}
+                        >
+                          <LootVisualShared icon={meta.icon} image={meta.image} className="w-7 h-7 object-contain" scale={meta.scale} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-white truncate">{meta.name}</p>
+                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            <span
+                              className="text-[10px] font-medium px-1.5 py-px rounded capitalize"
+                              style={{ color: theme.color, backgroundColor: `${theme.color}18` }}
+                            >{meta.rarity}</span>
+                            <span className="text-[10px] text-gray-500">{offersTarget.offers.length} offer{offersTarget.offers.length !== 1 ? 's' : ''} · {offersTarget.totalQty} total</span>
+                            <span className="flex items-center gap-0.5 px-1.5 py-px rounded bg-green-500/12 border border-green-500/25 text-[10px] font-bold text-green-400 font-mono">
+                              🏷 {offersTarget.floorPrice.toLocaleString()}g
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setOffersTarget(null)}
+                          className="w-6 h-6 flex items-center justify-center rounded-md border border-white/10 text-gray-500 hover:text-gray-300 hover:border-white/20 text-xs shrink-0 transition-colors"
+                        >✕</button>
+                      </div>
+
+                      {/* Price history sparkline */}
+                      {priceHistory.length >= 2 && (
+                        <div className="flex flex-col items-center gap-1 mb-3 pb-3 border-b border-white/[0.06]">
+                          <PriceSparkline prices={priceHistory.map((p) => p.price_gold)} width={120} height={28} />
+                          <p className="text-[10px] text-gray-600 font-mono">last {priceHistory.length} sales</p>
+                        </div>
+                      )}
+
+                      {/* Offer rows */}
+                      <div className="space-y-1.5">
+                        {offersTarget.offers.map((offer, i) => {
+                          const canAfford = (gold ?? 0) >= offer.pricePerUnit
+                          const isFloor = i === 0
+                          const aboveFloor = !isFloor ? offer.pricePerUnit - offersTarget.floorPrice : 0
+                          const abovePct = !isFloor && offersTarget.floorPrice > 0 ? Math.round((aboveFloor / offersTarget.floorPrice) * 100) : 0
+                          return (
+                            <div
+                              key={offer.pricePerUnit}
+                              className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg border transition-colors ${isFloor ? 'border-green-500/20 bg-green-500/[0.04]' : 'border-white/[0.07] bg-white/[0.02]'}`}
+                            >
+                              {/* Price */}
+                              <div className="shrink-0 flex flex-col items-center gap-0.5">
+                                <div className={`flex items-center gap-1 px-2 py-1 rounded-md border ${isFloor ? 'bg-green-500/10 border-green-500/25' : 'bg-amber-500/8 border-amber-500/15'}`}>
+                                  <span className={`text-[10px] ${isFloor ? 'text-green-400' : 'text-amber-400'}`}>🪙</span>
+                                  <span className={`font-bold text-[11px] tabular-nums ${isFloor ? 'text-green-400' : 'text-amber-400'}`}>{offer.pricePerUnit.toLocaleString()}</span>
+                                </div>
+                                {isFloor
+                                  ? <span className="text-[10px] font-mono text-green-400/70 tracking-wide">floor</span>
+                                  : <span className="text-[10px] font-mono text-gray-600">+{aboveFloor}g ({abovePct}%)</span>
+                                }
+                              </div>
+                              {/* Info */}
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[10px] text-gray-300 truncate">
+                                  {offer.sellers.length === 1 ? offer.sellers[0] : `${offer.sellers.length} sellers`}
+                                </p>
+                                <p className="text-[10px] text-gray-600">×{offer.totalQty} available</p>
+                              </div>
+                              {/* Buy button */}
+                              <button
+                                type="button"
+                                onClick={() => { setOffersTarget(null); handleBuyClick(offersTarget.itemId, offer) }}
+                                disabled={!canAfford}
+                                className="px-2.5 py-1.5 rounded-lg border text-[10px] font-semibold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0 bg-cyber-neon/15 border-cyber-neon/35 text-cyber-neon hover:bg-cyber-neon/25"
+                              >
+                                {canAfford ? 'Buy' : 'Can\'t afford'}
+                              </button>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </>
+                  )
+                })()}
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
+
       {/* ─── Buy confirmation modal ────────────────────────────────────────── */}
       {createPortal(
         <AnimatePresence>
@@ -1262,7 +1485,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
             <motion.div
               key="buy-overlay"
               {...MODAL_OVERLAY}
-              className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-[2px] flex items-center justify-center p-4"
+              className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-[2px] flex items-center justify-center p-4"
               onClick={() => { if (!buying) setBuyTarget(null) }}
             >
               <motion.div
@@ -1272,11 +1495,12 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                 onClick={(e) => e.stopPropagation()}
               >
                 {(() => {
-                  const meta = getItemMeta(buyTarget.itemId)
+                  const { itemId, offer } = buyTarget
+                  const meta = getItemMeta(itemId)
                   const theme = RARITY_THEME[normalizeRarity(meta.rarity)] ?? RARITY_THEME.common
-                  const maxQty = buyTarget.totalQty
+                  const maxQty = offer.totalQty
                   const clampedBuyQty = Math.max(1, Math.min(maxQty, buyQty))
-                  const buyCost = buyTarget.pricePerUnit * clampedBuyQty
+                  const buyCost = offer.pricePerUnit * clampedBuyQty
                   const canAfford = (gold ?? 0) >= buyCost
                   return (
                     <>
@@ -1289,7 +1513,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                         </div>
                         <p className="text-sm font-semibold text-white text-center">{meta.name}</p>
                         <span
-                          className="inline-flex mt-1 text-[9px] px-2 py-0.5 rounded-md border font-mono uppercase tracking-wide"
+                          className="inline-flex mt-1 text-[10px] px-2 py-0.5 rounded-md border font-mono uppercase tracking-wide"
                           style={{ color: theme.color, borderColor: theme.border, backgroundColor: `${theme.color}1A` }}
                         >
                           {meta.rarity}
@@ -1297,12 +1521,19 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                         {meta.item && getItemPerkDescription(meta.item) && (
                           <p className="text-[10px] text-gray-400 text-center mt-1.5 leading-snug max-w-[220px]">{getItemPerkDescription(meta.item)}</p>
                         )}
+                        {/* Price history sparkline */}
+                        {priceHistory.length >= 2 && (
+                          <div className="flex flex-col items-center gap-1 mt-2">
+                            <PriceSparkline prices={priceHistory.map((p) => p.price_gold)} width={120} height={28} />
+                            <p className="text-[10px] text-gray-600 font-mono">last {priceHistory.length} sales</p>
+                          </div>
+                        )}
                       </div>
 
                       {maxQty > 1 && (
                         <div className="mb-3 rounded-xl bg-black/20 border border-white/[0.06] p-3">
                           <p className="text-[10px] text-gray-500 font-mono mb-2.5 text-center">
-                            Available: {maxQty} · {buyTarget.pricePerUnit} 🪙 each
+                            Available: {maxQty} · {offer.pricePerUnit} 🪙 each
                           </p>
                           <div className="flex items-center justify-center gap-2">
                             <button
@@ -1343,7 +1574,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                         </div>
                         {clampedBuyQty > 1 && (
                           <p className="text-[10px] text-gray-500 font-mono">
-                            {clampedBuyQty} × {buyTarget.pricePerUnit} 🪙
+                            {clampedBuyQty} × {offer.pricePerUnit} 🪙
                           </p>
                         )}
                       </div>
@@ -1357,7 +1588,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                         >Cancel</button>
                         <button
                           type="button"
-                          onClick={() => handleBuy(buyTarget, clampedBuyQty)}
+                          onClick={() => handleBuy(clampedBuyQty)}
                           disabled={!canAfford || buying}
                           className="flex-1 py-2.5 rounded-xl bg-cyber-neon/20 border border-cyber-neon/40 text-cyber-neon text-xs font-semibold hover:bg-cyber-neon/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-[0.97]"
                         >

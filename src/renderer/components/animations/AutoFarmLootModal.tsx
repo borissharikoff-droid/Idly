@@ -445,7 +445,7 @@ function GearCard({ item, count, hasMultiple, delay }: {
       </div>
       <p className="text-sm text-white font-semibold mt-2 leading-tight">{item.name}</p>
       <p className="text-[10px] font-mono uppercase tracking-wider mt-0.5" style={{ color: theme.color }}>{item.rarity}</p>
-      {item.description && <p className="text-[9px] text-gray-500 italic mt-1 leading-snug">{item.description}</p>}
+      {item.description && <p className="text-[10px] text-gray-500 italic mt-1 leading-snug">{item.description}</p>}
       <p className="text-[10px] text-gray-400 mt-1 leading-snug">{getItemPerkDescription(item)}</p>
     </motion.div>
   )
@@ -481,7 +481,7 @@ function BonusCard({ icon, image, value, label, color, delay }: {
         )}
       </div>
       <span className="text-lg font-bold tabular-nums relative" style={{ color }}>{value}</span>
-      <span className="text-[9px] font-mono uppercase tracking-widest relative" style={{ color: `${color}88` }}>{label}</span>
+      <span className="text-[10px] font-mono uppercase tracking-widest relative" style={{ color: `${color}88` }}>{label}</span>
     </motion.div>
   )
 }

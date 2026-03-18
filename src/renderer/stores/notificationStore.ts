@@ -29,6 +29,8 @@ export interface Notification {
   chestReward?: {
     rewardId: string
     chestType: string
+    chestImage?: string
+    chestRarity?: string
   }
   poll?: {
     pollId: string
@@ -49,7 +51,7 @@ interface NotificationStore {
 const MAX = 50
 const ALLOWED_TYPES: NotificationType[] = ['update', 'friend_levelup', 'progression', 'arena_result', 'marketplace_sale', 'poll', 'patch_notes']
 
-export const useNotificationStore = create<NotificationStore>((set, get) => ({
+export const useNotificationStore = create<NotificationStore>((set) => ({
   items: [],
   unreadCount: 0,
   push(payload) {

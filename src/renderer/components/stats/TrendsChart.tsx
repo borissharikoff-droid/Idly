@@ -178,15 +178,15 @@ export const TrendsChart = memo(function TrendsChart({
         {/* Summary stats */}
         <div className="flex gap-3 mb-3">
           <div>
-            <p className="text-[9px] text-gray-600 font-mono">Total</p>
+            <p className="text-[10px] text-gray-600 font-mono">Total</p>
             <p className="text-xs font-mono font-bold text-cyber-neon">{formatDuration(totalPeriodSeconds)}</p>
           </div>
           <div>
-            <p className="text-[9px] text-gray-600 font-mono">Avg/day</p>
+            <p className="text-[10px] text-gray-600 font-mono">Avg/day</p>
             <p className="text-xs font-mono font-bold text-white">{formatDuration(avgDailySeconds)}</p>
           </div>
           <div>
-            <p className="text-[9px] text-gray-600 font-mono">Sessions</p>
+            <p className="text-[10px] text-gray-600 font-mono">Sessions</p>
             <p className="text-xs font-mono font-bold text-white">{totalPeriodSessions}</p>
           </div>
         </div>
@@ -250,7 +250,7 @@ export const TrendsChart = memo(function TrendsChart({
           ))}
         </div>
         <div className="flex items-center justify-end gap-1 mt-2">
-          <span className="text-[8px] text-gray-600 font-mono">Less</span>
+          <span className="text-[10px] text-gray-600 font-mono">Less</span>
           {[0, 0.25, 0.5, 0.75, 1].map((v, i) => (
             <div
               key={i}
@@ -258,7 +258,7 @@ export const TrendsChart = memo(function TrendsChart({
               style={{ backgroundColor: v === 0 ? 'rgba(255,255,255,0.03)' : `rgba(0,255,136,${v * 0.75})` }}
             />
           ))}
-          <span className="text-[8px] text-gray-600 font-mono">More</span>
+          <span className="text-[10px] text-gray-600 font-mono">More</span>
         </div>
       </div>
     </div>

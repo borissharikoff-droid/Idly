@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from 'react'
+import { X, Send, Copy, CornerUpLeft } from '../../lib/icons'
 import { motion, AnimatePresence } from 'framer-motion'
 import { playClickSound } from '../../lib/sounds'
 import { useAuthStore } from '../../stores/authStore'
@@ -132,22 +133,15 @@ function ReplyPreview({ message, senderName, onClear }: ReplyPreviewProps) {
         onClick={onClear}
         className="shrink-0 text-gray-500 hover:text-gray-300 transition-colors p-1"
       >
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-          <path d="M2 2L10 10M10 2L2 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-        </svg>
+        <X className="w-3 h-3" />
       </button>
     </div>
   )
 }
 
-/** Paper plane send icon */
+/** Send icon wrapper */
 function SendIcon({ className }: { className?: string }) {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className={className}>
-      <path d="M22 2L11 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-      <path d="M22 2L15 22L11 13L2 9L22 2Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  )
+  return <Send className={`w-[18px] h-[18px] ${className ?? ''}`} />
 }
 
 /** Hook for typing indicator via Supabase Realtime Broadcast */
@@ -340,7 +334,7 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, 
       {/* Header */}
       <div className="relative flex items-center justify-center shrink-0 py-2.5 mb-1">
         <div className="absolute left-0">
-          <BackButton onClick={() => { onBack(); playClickSound() }} />
+          <BackButton onClick={onBack} />
         </div>
         <button
           type="button"
@@ -472,10 +466,7 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, 
                             className="p-1 rounded-md hover:bg-white/[0.08] text-gray-500 hover:text-gray-300 transition-colors"
                             title="Reply"
                           >
-                            <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                              <path d="M6 3L2 7L6 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                              <path d="M2 7H10C12.2 7 14 8.8 14 11V13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
+                            <CornerUpLeft className="w-3 h-3" />
                           </button>
                           <button
                             type="button"
@@ -483,10 +474,7 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, 
                             className="p-1 rounded-md hover:bg-white/[0.08] text-gray-500 hover:text-gray-300 transition-colors"
                             title="Copy"
                           >
-                            <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                              <rect x="5" y="5" width="9" height="9" rx="2" stroke="currentColor" strokeWidth="1.5"/>
-                              <path d="M11 5V3.5C11 2.67 10.33 2 9.5 2H3.5C2.67 2 2 2.67 2 3.5V9.5C2 10.33 2.67 11 3.5 11H5" stroke="currentColor" strokeWidth="1.5"/>
-                            </svg>
+                            <Copy className="w-3 h-3" />
                           </button>
                         </div>
                       )}
@@ -527,10 +515,7 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, 
                             className="p-1 rounded-md hover:bg-white/[0.08] text-gray-500 hover:text-gray-300 transition-colors"
                             title="Copy"
                           >
-                            <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                              <rect x="5" y="5" width="9" height="9" rx="2" stroke="currentColor" strokeWidth="1.5"/>
-                              <path d="M11 5V3.5C11 2.67 10.33 2 9.5 2H3.5C2.67 2 2 2.67 2 3.5V9.5C2 10.33 2.67 11 3.5 11H5" stroke="currentColor" strokeWidth="1.5"/>
-                            </svg>
+                            <Copy className="w-3 h-3" />
                           </button>
                           <button
                             type="button"
@@ -538,10 +523,7 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, 
                             className="p-1 rounded-md hover:bg-white/[0.08] text-gray-500 hover:text-gray-300 transition-colors"
                             title="Reply"
                           >
-                            <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
-                              <path d="M6 3L2 7L6 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                              <path d="M2 7H10C12.2 7 14 8.8 14 11V13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
+                            <CornerUpLeft className="w-3 h-3" />
                           </button>
                         </div>
                       )}

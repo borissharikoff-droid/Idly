@@ -22,12 +22,16 @@ interface ListForSaleModalProps {
   onDeductItem?: (qty: number) => void
   /** Rollback for onDeductItem when listing fails. Re-adds the deducted quantity. */
   onRollbackDeduct?: (qty: number) => void
+  /** Active listing floor price (cheapest current listing for this item). When provided, shown as hint. */
+  activeFloorPrice?: number
+  /** Pre-fill the price input (e.g. from quick-list). */
+  suggestedPrice?: number
 }
 
-export function ListForSaleModal({ itemId, onClose, onListed, maxQty = 1, onDeductItem, onRollbackDeduct }: ListForSaleModalProps) {
+export function ListForSaleModal({ itemId, onClose, onListed, maxQty = 1, onDeductItem, onRollbackDeduct, suggestedPrice, activeFloorPrice }: ListForSaleModalProps) {
   const user = useAuthStore((s) => s.user)
   const gold = useGoldStore((s) => s.gold)
-  const [price, setPrice] = useState('')
+  const [price, setPrice] = useState(() => suggestedPrice ? String(suggestedPrice) : '')
   const [qty, setQty] = useState(1)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -132,6 +136,20 @@ export function ListForSaleModal({ itemId, onClose, onListed, maxQty = 1, onDedu
           </div>
         )}
 
+        {activeFloorPrice !== undefined && (
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[10px] text-gray-500 font-mono">Market floor</span>
+            <button
+              type="button"
+              onClick={() => setPrice(String(activeFloorPrice))}
+              className="flex items-center gap-1 px-2 py-0.5 rounded-md border border-green-500/25 bg-green-500/10 hover:bg-green-500/18 transition-colors"
+            >
+              <span className="text-green-400 text-[10px]">🪙</span>
+              <span className="text-green-400 text-[10px] font-bold tabular-nums">{activeFloorPrice.toLocaleString()}</span>
+              <span className="text-green-400/55 text-[10px] font-mono ml-0.5">use</span>
+            </button>
+          </div>
+        )}
         <p className="text-[10px] text-amber-400/80 mb-2">
           5% commission: {commission} gold {clampedMaxQty > 1 ? `(${qty} × price × 5%)` : '(charged when listing)'}
         </p>

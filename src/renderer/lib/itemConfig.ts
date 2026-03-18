@@ -8,6 +8,13 @@ import type { BossDef, ZoneDef } from './combat'
 
 const STORAGE_KEY = 'grindly_admin_config'
 
+// Snapshot of original chest item weights taken at module load time.
+// Used to restore defaults before applying admin overrides each call.
+const ORIGINAL_CHEST_WEIGHTS: Partial<Record<ChestType, { itemId: string; weight: number }[]>> = {}
+for (const [id, chest] of Object.entries(CHEST_DEFS)) {
+  ORIGINAL_CHEST_WEIGHTS[id as ChestType] = chest.itemWeights.map((w) => ({ ...w }))
+}
+
 export interface ItemOverride {
   name?: string
   icon?: string
@@ -211,6 +218,11 @@ export function applyAdminConfig(items: LootItemDef[], bosses: BossDef[], zones?
   }
 
   // Apply chest weight overrides (custom item drop tables from dashboard)
+  // First restore originals so removing an override takes effect without restart
+  for (const [id, orig] of Object.entries(ORIGINAL_CHEST_WEIGHTS)) {
+    const chest = CHEST_DEFS[id as ChestType]
+    if (chest && orig) chest.itemWeights = orig.map((w) => ({ ...w }))
+  }
   for (const [id, weights] of Object.entries(cfg.chestWeightOverrides ?? {})) {
     const chest = CHEST_DEFS[id as ChestType]
     if (chest) chest.itemWeights = weights

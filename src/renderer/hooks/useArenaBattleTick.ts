@@ -128,7 +128,7 @@ export function useArenaBattleTick(activeTab: TabId) {
       timeoutRef.current = setTimeout(() => {
         if (isAuto && autoAcc) {
           // Auto-farm boss resolution
-          const { goldLost, chest, lostItem, materialDrop, dungeonGold, warriorXP } = useArenaStore.getState().endBattle()
+          const { chest, lostItem, materialDrop, dungeonGold, warriorXP } = useArenaStore.getState().endBattle()
           if (victory) {
             autoAcc.runsCompleted++
             autoAcc.totalGold += dungeonGold

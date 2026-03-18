@@ -171,19 +171,19 @@ export function LootDrop() {
                     {cosmeticUnlock && (
                       <div className="flex items-center justify-center gap-2 flex-wrap">
                         {cosmeticFrame && (
-                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded border"
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border"
                             style={{ borderColor: `${cosmeticFrame.color}40`, color: cosmeticFrame.color, backgroundColor: `${cosmeticFrame.color}10` }}>
                             {cosmeticFrame.name} frame
                           </span>
                         )}
                         {cosmeticBadge && (
-                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded border"
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border"
                             style={{ borderColor: `${cosmeticBadge.color}40`, color: cosmeticBadge.color, backgroundColor: `${cosmeticBadge.color}10` }}>
                             {cosmeticBadge.icon} {cosmeticBadge.name}
                           </span>
                         )}
                         {cosmeticUnlock.avatarEmoji && (
-                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded border border-white/10 bg-white/5 text-gray-300">
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-white/10 bg-white/5 text-gray-300">
                             {cosmeticUnlock.avatarEmoji} avatar
                           </span>
                         )}

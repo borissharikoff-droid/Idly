@@ -1,5 +1,21 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import React, { useEffect, useState } from 'react'
+
+function LoadingDots({ color }: { color: string }) {
+  return (
+    <span className="inline-flex items-center gap-[3px] ml-1 translate-y-[1px]">
+      {[0, 1, 2].map((i) => (
+        <motion.span
+          key={i}
+          className="w-[3px] h-[3px] rounded-full inline-block"
+          style={{ background: color }}
+          animate={{ opacity: [0.3, 1, 0.3], y: [0, -2, 0] }}
+          transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.18, ease: 'easeInOut' }}
+        />
+      ))}
+    </span>
+  )
+}
 import { createPortal } from 'react-dom'
 import type { ChestType, LootItemDef } from '../../lib/loot'
 import { CHEST_DEFS, getRarityTheme } from '../../lib/loot'
@@ -126,17 +142,17 @@ export function BulkChestOpenModal({ open, chestType, result, onClose }: BulkChe
               }
             >
               <div
-                className="w-[68px] h-[68px] rounded-2xl border flex items-center justify-center"
+                className="w-[80px] h-[80px] rounded-2xl border flex items-center justify-center"
                 style={{
                   borderColor: chestTheme.border,
-                  background: `radial-gradient(circle at 50% 35%, ${chestTheme.glow}55 0%, rgba(8,8,16,0.92) 70%)`,
-                  boxShadow: `0 0 18px ${chestTheme.glow}88`,
+                  background: `radial-gradient(circle at 50% 35%, ${chestTheme.glow}60 0%, rgba(8,8,16,0.92) 70%)`,
+                  boxShadow: `0 0 22px ${chestTheme.glow}99`,
                 }}
               >
                 {chest.image ? (
-                  <img src={chest.image} alt="" className="w-11 h-11 object-contain select-none" style={{ imageRendering: 'pixelated' }} draggable={false} />
+                  <img src={chest.image} alt="" className="w-14 h-14 object-contain select-none" style={{ imageRendering: 'pixelated' }} draggable={false} />
                 ) : (
-                  <span className="text-3xl">{chest.icon}</span>
+                  <span className="text-4xl">{chest.icon}</span>
                 )}
               </div>
             </motion.div>
@@ -144,17 +160,31 @@ export function BulkChestOpenModal({ open, chestType, result, onClose }: BulkChe
             {/* Status */}
             <div className="mt-2 h-[18px] relative overflow-hidden">
               <AnimatePresence mode="wait">
-                <motion.p
-                  key={isRevealed ? 'done' : 'opening'}
-                  className="absolute inset-0 text-[11px] font-mono uppercase tracking-wider text-center"
-                  style={{ color: chestTheme.color }}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -6 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  {isRevealed ? `Opened ${result.totalOpened} bags` : `Opening ${result.totalOpened} bags\u2026`}
-                </motion.p>
+                {isRevealed ? (
+                  <motion.p
+                    key="done"
+                    className="absolute inset-0 text-[11px] font-mono uppercase tracking-wider text-center"
+                    style={{ color: chestTheme.color }}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    Opened {result.totalOpened} bags
+                  </motion.p>
+                ) : (
+                  <motion.span
+                    key="opening"
+                    className="absolute inset-0 text-[11px] font-mono uppercase tracking-wider text-center flex items-center justify-center"
+                    style={{ color: chestTheme.color }}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    Opening {result.totalOpened} bags<LoadingDots color={chestTheme.color} />
+                  </motion.span>
+                )}
               </AnimatePresence>
             </div>
 
@@ -196,7 +226,7 @@ export function BulkChestOpenModal({ open, chestType, result, onClose }: BulkChe
                           </div>
                           <div className="relative text-left min-w-0">
                             <p className="text-[11px] font-medium text-white/90 truncate leading-tight">{entry.def.name}</p>
-                            <p className="text-[9px] font-mono uppercase" style={{ color: theme.color }}>
+                            <p className="text-[10px] font-mono uppercase" style={{ color: theme.color }}>
                               {entry.def.rarity}{entry.qty > 1 ? ` ×${entry.qty}` : ''}
                             </p>
                           </div>
@@ -219,7 +249,7 @@ export function BulkChestOpenModal({ open, chestType, result, onClose }: BulkChe
                   <span className="text-2xl">🪙</span>
                   <div className="text-left">
                     <p className="text-lg font-bold text-amber-400 tabular-nums">+{result.totalGold}</p>
-                    <p className="text-[9px] font-mono text-amber-500/60 uppercase tracking-widest">Gold</p>
+                    <p className="text-[10px] font-mono text-amber-500/60 uppercase tracking-widest">Gold</p>
                   </div>
                 </motion.div>
               )}
@@ -252,7 +282,7 @@ export function BulkChestOpenModal({ open, chestType, result, onClose }: BulkChe
                             )}
                           </div>
                           <span className="relative text-sm font-bold tabular-nums" style={{ color: theme.color }}>×{mat.qty}</span>
-                          <span className="relative text-[9px] text-center leading-tight text-gray-400 truncate w-full">{mat.def.name}</span>
+                          <span className="relative text-[10px] text-center leading-tight text-gray-400 truncate w-full">{mat.def.name}</span>
                         </motion.div>
                       )
                     })}
@@ -280,7 +310,7 @@ export function BulkChestOpenModal({ open, chestType, result, onClose }: BulkChe
                               : <span className="text-xl">{display.icon}</span>}
                           </div>
                           <span className="text-[11px] font-bold tabular-nums" style={{ color: theme.color }}>×{sz.qty}</span>
-                          <span className="text-[8px] text-center leading-tight text-gray-400 truncate w-full">{display.name}</span>
+                          <span className="text-[10px] text-center leading-tight text-gray-400 truncate w-full">{display.name}</span>
                         </div>
                       )
                     })}

@@ -27,6 +27,11 @@ import { recordHarvest } from '../services/dailyActivityService'
 import { useGoldStore } from './goldStore'
 import { useInventoryStore } from './inventoryStore'
 import { useAuthStore } from './authStore'
+import { useBountyStore } from './bountyStore'
+import { useWeeklyStore } from './weeklyStore'
+import { track } from '../lib/analytics'
+import { getGuildFarmYieldBonus } from '../lib/guildBuffs'
+import { useGuildStore } from './guildStore'
 
 export interface PlantedSlot {
   seedId: string
@@ -54,10 +59,17 @@ export interface HarvestResult {
   seedZipDrops?: { tier: SeedZipTier; count: number }[]
   /** Aggregated: total plots merged into this result */
   plotCount?: number
+  /** Seed returned on harvest (30% chance) */
+  seedDrop?: string
+  /** Aggregated: number of seed drops */
+  seedDropCount?: number
 }
 
 /** Chance to drop 1 compost on any harvest. */
 const HARVEST_COMPOST_DROP_CHANCE = 0.08
+
+/** Chance to return 1 of the planted seed on harvest. */
+const HARVEST_SEED_RETURN_CHANCE = 0.30
 
 /** Compost cost per plot. */
 export const COMPOST_PER_PLOT = 3
@@ -263,8 +275,9 @@ export const useFarmStore = create<FarmState>()(
         const isComposted = !!slot.composted
         let qty = randomBetween(seed.yieldMin, seed.yieldMax)
         if (isComposted) qty = Math.ceil(qty * 1.2)
-        // Farmhouse yield bonus
+        // Farmhouse + guild hall yield bonus (additive)
         const yieldBonus = getFarmhouseBonuses(farmhouseLevel).yieldBonusPct
+          + getGuildFarmYieldBonus(useGuildStore.getState().hallLevel)
         if (yieldBonus > 0) qty = Math.ceil(qty * (1 + yieldBonus / 100))
         useInventoryStore.getState().addItem(seed.yieldPlantId, qty)
 
@@ -283,12 +296,20 @@ export const useFarmStore = create<FarmState>()(
         const compostDrop = Math.random() < HARVEST_COMPOST_DROP_CHANCE
         if (compostDrop) useInventoryStore.getState().addItem('compost', 1)
 
+        // Bonus: 30% chance to return 1 of the planted seed
+        const seedDrop = Math.random() < HARVEST_SEED_RETURN_CHANCE ? seed.id : undefined
+        if (seedDrop) useInventoryStore.getState().addItem(seedDrop, 1)
+
         set({ planted: newPlanted, seedZips: newZips })
         const xp = isComposted ? Math.ceil(seed.xpOnHarvest * 1.05) : seed.xpOnHarvest
         grantFarmerXP(xp).catch(() => undefined)
 
         recordHarvest(1)
-        return { yieldPlantId: seed.yieldPlantId, qty, xpGained: xp, seedZipTier, composted: isComposted, compostDrop }
+        useBountyStore.getState().incrementFarm(1)
+        useWeeklyStore.getState().incrementFarm(1)
+        import('./guildStore').then(({ useGuildStore }) => useGuildStore.getState().incrementRaidProgress('farm', 1)).catch(() => {})
+        track('farm_harvest', { seed_id: slot.seedId, yield_count: qty })
+        return { yieldPlantId: seed.yieldPlantId, qty, xpGained: xp, seedZipTier, composted: isComposted, compostDrop, seedDrop }
       },
 
       harvestAll() {
@@ -297,6 +318,7 @@ export const useFarmStore = create<FarmState>()(
         const newZips = { ...seedZips }
         const results: HarvestResult[] = []
         const yieldBonus = getFarmhouseBonuses(farmhouseLevel).yieldBonusPct
+          + getGuildFarmYieldBonus(useGuildStore.getState().hallLevel)
 
         for (const [idxStr, slot] of Object.entries(planted)) {
           if (!slot) continue
@@ -322,11 +344,20 @@ export const useFarmStore = create<FarmState>()(
           const compostDrop = Math.random() < HARVEST_COMPOST_DROP_CHANCE
           if (compostDrop) useInventoryStore.getState().addItem('compost', 1)
 
-          results.push({ yieldPlantId: seed.yieldPlantId, qty, xpGained: xp, seedZipTier, composted: isComposted, compostDrop })
+          const seedDrop = Math.random() < HARVEST_SEED_RETURN_CHANCE ? seed.id : undefined
+          if (seedDrop) useInventoryStore.getState().addItem(seedDrop, 1)
+
+          track('farm_harvest', { seed_id: slot.seedId, yield_count: qty })
+          results.push({ yieldPlantId: seed.yieldPlantId, qty, xpGained: xp, seedZipTier, composted: isComposted, compostDrop, seedDrop })
         }
 
         set({ planted: newPlanted, seedZips: newZips })
-        if (results.length > 0) recordHarvest(results.length)
+        if (results.length > 0) {
+          recordHarvest(results.length)
+          useBountyStore.getState().incrementFarm(results.length)
+          useWeeklyStore.getState().incrementFarm(results.length)
+          import('./guildStore').then(({ useGuildStore }) => useGuildStore.getState().incrementRaidProgress('farm', results.length)).catch(() => {})
+        }
         return results
       },
 

@@ -10,6 +10,7 @@ import { grantAchievementCosmetics } from '../services/rewardGrant'
 import { computeTotalSkillLevelFromLevels, normalizeSkillId, skillLevelFromXP, SKILLS } from '../lib/skills'
 import { syncAchievementsToSupabase } from '../services/supabaseSync'
 import { normalizeEquippedLoot, type LootSlot } from '../lib/loot'
+import { fetchGuildTagsForUsers } from '../services/guildService'
 
 export interface FriendSkill {
   skill_id: string
@@ -52,6 +53,8 @@ export interface FriendProfile {
   skills_last_synced_at?: string | null
   /** Last profile/presence update timestamp (used for last seen). */
   last_seen_at?: string | null
+  /** Guild tag the user belongs to, e.g. "GLD" */
+  guild_tag?: string | null
 }
 
 export interface PendingRequest {
@@ -232,6 +235,18 @@ export function useFriends() {
         } catch {
           // user_skills table may not exist yet
         }
+      }
+
+      // Enrich with guild tags (best-effort, non-blocking)
+      if (friendList.length > 0) {
+        try {
+          const guildTags = await fetchGuildTagsForUsers(friendList.map((f) => f.id))
+          if (Object.keys(guildTags).length > 0) {
+            for (const f of friendList) {
+              f.guild_tag = guildTags[f.id]?.tag ?? null
+            }
+          }
+        } catch { /* non-fatal */ }
       }
 
       // Guard against transient empty payloads: keep cached/previous friends instead of wiping UI.

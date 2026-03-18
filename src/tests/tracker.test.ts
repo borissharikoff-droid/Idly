@@ -66,11 +66,16 @@ describe('categorize', () => {
     expect(categorize('Spotify', '')).toBe('music')
   })
 
-  // Games
+  // Games — launchers
   it('categorizes Steam as games', () => {
     expect(categorize('steam', '')).toBe('games')
   })
 
+  it('categorizes Epic Games as games', () => {
+    expect(categorize('EpicGamesLauncher', '')).toBe('games')
+  })
+
+  // Games — Valve
   it('categorizes Dota 2 as games', () => {
     expect(categorize('dota2', '')).toBe('games')
   })
@@ -79,8 +84,111 @@ describe('categorize', () => {
     expect(categorize('cs2', '')).toBe('games')
   })
 
-  it('categorizes by game in title', () => {
+  // Games — WoW family (the reported bug)
+  it('categorizes World of Warcraft as games (process: Wow.exe)', () => {
+    expect(categorize('Wow', '')).toBe('games')
+  })
+
+  it('categorizes WoW Classic as games', () => {
+    expect(categorize('WowClassic', '')).toBe('games')
+  })
+
+  it('categorizes WoW PTR as games', () => {
+    expect(categorize('WowT', '')).toBe('games')
+  })
+
+  // Games — Path of Exile family (the reported bug)
+  it('categorizes PathOfExile as games', () => {
+    expect(categorize('PathOfExile', '')).toBe('games')
+  })
+
+  it('categorizes PathOfExileSteam as games', () => {
+    expect(categorize('PathOfExileSteam', '')).toBe('games')
+  })
+
+  it('categorizes PathOfExile2 as games', () => {
+    expect(categorize('PathOfExile2', '')).toBe('games')
+  })
+
+  // Games — popular RPG/Action
+  it('categorizes Elden Ring as games', () => {
+    expect(categorize('eldenring', '')).toBe('games')
+  })
+
+  it('categorizes Cyberpunk 2077 as games', () => {
+    expect(categorize('Cyberpunk2077', '')).toBe('games')
+  })
+
+  it('categorizes Baldur\'s Gate 3 as games', () => {
+    expect(categorize('bg3', '')).toBe('games')
+  })
+
+  it('categorizes The Witcher 3 as games', () => {
+    expect(categorize('witcher3', '')).toBe('games')
+  })
+
+  it('categorizes Final Fantasy XIV as games', () => {
+    expect(categorize('ffxiv_dx11', '')).toBe('games')
+  })
+
+  // Games — MMOs
+  it('categorizes Lost Ark as games', () => {
+    expect(categorize('LostArk', '')).toBe('games')
+  })
+
+  it('categorizes New World as games', () => {
+    expect(categorize('NewWorld', '')).toBe('games')
+  })
+
+  it('categorizes ESO as games', () => {
+    expect(categorize('eso64', '')).toBe('games')
+  })
+
+  // Games — Shooters
+  it('categorizes Apex Legends as games', () => {
+    expect(categorize('r5apex', '')).toBe('games')
+  })
+
+  it('categorizes Escape from Tarkov as games', () => {
+    expect(categorize('EscapeFromTarkov', '')).toBe('games')
+  })
+
+  it('categorizes Destiny 2 as games', () => {
+    expect(categorize('destiny2', '')).toBe('games')
+  })
+
+  it('categorizes Warframe as games', () => {
+    expect(categorize('warframe', '')).toBe('games')
+  })
+
+  // Games — UE4/UE5 build suffix stripping
+  it('categorizes Dead by Daylight (UE suffix) as games', () => {
+    expect(categorize('DeadByDaylight-Win64-Shipping', '')).toBe('games')
+  })
+
+  it('categorizes Palworld (UE suffix) as games', () => {
+    expect(categorize('Palworld-Win64-Shipping', '')).toBe('games')
+  })
+
+  // Games — title-based detection
+  it('categorizes by game in title (Minecraft)', () => {
     expect(categorize('javaw', 'Minecraft Game Window')).toBe('games')
+  })
+
+  it('categorizes by game title: World of Warcraft (unknown process)', () => {
+    expect(categorize('Unknown', 'World of Warcraft')).toBe('games')
+  })
+
+  it('categorizes by game title: Path of Exile (unknown process)', () => {
+    expect(categorize('Unknown', 'Path of Exile')).toBe('games')
+  })
+
+  it('categorizes by game title: Elden Ring', () => {
+    expect(categorize('someprocess', 'Elden Ring')).toBe('games')
+  })
+
+  it('categorizes by game title: Rocket League', () => {
+    expect(categorize('rocketleague', '')).toBe('games')
   })
 
   // Social

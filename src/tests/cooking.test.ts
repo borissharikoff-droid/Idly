@@ -1649,14 +1649,18 @@ describe('cooking store', () => {
       expect((result as any).type).toBe('known')
     })
 
-    it('starts cooking after successful discovery', () => {
-      useCookingStore.getState().tryFreeformCook(
+    it('returns canStart and recipeId after successful discovery', () => {
+      const result = useCookingStore.getState().tryFreeformCook(
         ['wheat'],
         richInventory(),
         () => {},
       )
-      expect(useCookingStore.getState().activeJob).toBeTruthy()
-      expect(useCookingStore.getState().activeJob!.recipeId).toBe('cook_bread')
+      expect(result).not.toBe('not_enough')
+      expect((result as any).type).toBe('discovered')
+      expect((result as any).recipeId).toBe('cook_bread')
+      expect((result as any).canStart).toBe(true)
+      // UI handles opening the cook modal; activeJob is not set automatically
+      expect(useCookingStore.getState().activeJob).toBeNull()
     })
 
     it('returns discovery without starting cook when cant afford full recipe qty', () => {
@@ -1800,7 +1804,12 @@ describe('integration & edge cases', () => {
       const cur = useCookingStore.getState().activeJob
       if (!cur) break
       now += (cur.secPerItem + 1) * 1000
-      useCookingStore.getState().tick(now, (_, __, xp) => { totalXp += xp })
+      useCookingStore.getState().tick(
+        now,
+        (_, __, xp) => { totalXp += xp },
+        undefined,
+        (stepXp) => { totalXp += stepXp },
+      )
     }
 
     // With 5-star mastery (1.5x multiplier), XP should be more than base 15

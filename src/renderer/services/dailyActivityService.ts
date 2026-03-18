@@ -81,7 +81,7 @@ export const DAILY_ACTIVITY_DEFS: DailyActivityDef[] = [
 
 // ── Weekly Quests ─────────────────────────────────────────────────────────────
 
-export type WeeklyActivityId = 'weekly_grind' | 'weekly_dungeons' | 'weekly_harvests'
+export type WeeklyActivityId = 'weekly_grind' | 'weekly_dungeons' | 'weekly_harvests' | 'weekly_crafts' | 'weekly_cooks' | 'weekly_skill_xp'
 
 export interface WeeklyActivityDef {
   id: WeeklyActivityId
@@ -125,6 +125,30 @@ export const WEEKLY_ACTIVITY_DEFS: WeeklyActivityDef[] = [
     rewardChest: 'rare_chest',
     icon: '🌿',
   },
+  {
+    id: 'weekly_crafts',
+    title: 'Master Crafter',
+    description: 'Craft 5 items this week.',
+    target: 5,
+    rewardChest: 'rare_chest',
+    icon: '⚒️',
+  },
+  {
+    id: 'weekly_cooks',
+    title: 'Gourmet',
+    description: 'Cook 5 meals this week.',
+    target: 5,
+    rewardChest: 'rare_chest',
+    icon: '🍳',
+  },
+  {
+    id: 'weekly_skill_xp',
+    title: 'XP Hunter',
+    description: 'Earn 10,000 skill XP this week.',
+    target: 10000,
+    rewardChest: 'epic_chest',
+    icon: '⚡',
+  },
 ]
 
 // ── Streak ────────────────────────────────────────────────────────────────────
@@ -132,6 +156,7 @@ export const WEEKLY_ACTIVITY_DEFS: WeeklyActivityDef[] = [
 interface StreakState {
   currentStreak: number
   lastCompletedDate: string
+  bestStreak?: number
 }
 
 const STREAK_KEY = 'grindly_quest_streak_v1'
@@ -265,6 +290,7 @@ function updateStreakOnDayChange(prevDailyState: DailyState): void {
     streak.currentStreak = 1
   }
   streak.lastCompletedDate = prevDailyState.date
+  if (streak.currentStreak > (streak.bestStreak ?? 0)) streak.bestStreak = streak.currentStreak
   saveStreak(streak)
 }
 
@@ -305,9 +331,15 @@ export function claimDailyAllBonus(): ChestType | null {
       streak.currentStreak = 1
     }
     streak.lastCompletedDate = todayKey()
+    if (streak.currentStreak > (streak.bestStreak ?? 0)) streak.bestStreak = streak.currentStreak
     saveStreak(streak)
   }
   return 'legendary_chest'
+}
+
+export function getBestStreak(): number {
+  const state = loadStreak()
+  return state.bestStreak ?? state.currentStreak
 }
 
 export function recordFocusSeconds(seconds: number): void {
@@ -358,6 +390,22 @@ export function recordCraftComplete(): void {
   const state = loadDailyState()
   state.progress.craft_item = (state.progress.craft_item ?? 0) + 1
   saveDailyState(state)
+  const ws = loadWeeklyState()
+  ws.progress.weekly_crafts = (ws.progress.weekly_crafts ?? 0) + 1
+  saveWeeklyState(ws)
+}
+
+export function recordCookComplete(): void {
+  const ws = loadWeeklyState()
+  ws.progress.weekly_cooks = (ws.progress.weekly_cooks ?? 0) + 1
+  saveWeeklyState(ws)
+}
+
+export function recordWeeklySkillXP(xp: number): void {
+  if (xp <= 0) return
+  const ws = loadWeeklyState()
+  ws.progress.weekly_skill_xp = (ws.progress.weekly_skill_xp ?? 0) + Math.floor(xp)
+  saveWeeklyState(ws)
 }
 
 export function claimDailyActivity(activityId: DailyActivityId): ChestType | null {

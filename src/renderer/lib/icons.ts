@@ -1,0 +1,46 @@
+// Single re-export barrel for all Lucide icons used in the app.
+// Import from here instead of directly from lucide-react to keep swaps centralized.
+export {
+  // Navigation
+  Home,
+  Users,
+  BarChart3,
+  Settings,
+  MoreHorizontal,
+  UtensilsCrossed,
+  // Pages
+  Sword,
+  ShoppingCart,
+  Hammer,
+  Sprout,
+  Package,
+  Zap,
+  User,
+  // Actions
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  Plus,
+  Pencil,
+  Trash2,
+  Check,
+  Clock,
+  Star,
+  Shield,
+  Flame,
+  Bell,
+  Lock,
+  Send,
+  Copy,
+  CornerUpLeft,
+  MessageCircle,
+  ShoppingBag,
+  // Misc
+  TrendingUp,
+  Trophy,
+  AlertCircle,
+  Info,
+  RefreshCw,
+  Filter,
+} from 'lucide-react';

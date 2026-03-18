@@ -25,7 +25,7 @@ export function normalizeEquippedLoot(raw: unknown): Partial<Record<LootSlot, st
   return out
 }
 
-export type LootSource = 'skill_grind' | 'achievement_claim' | 'goal_complete' | 'daily_activity' | 'session_complete'
+export type LootSource = 'skill_grind' | 'achievement_claim' | 'goal_complete' | 'daily_activity' | 'session_complete' | 'bounty_reward'
 
 /** Human-readable labels for loot sources (shown in inventory, chest modals) */
 export const LOOT_SOURCE_LABELS: Record<LootSource, string> = {
@@ -34,6 +34,7 @@ export const LOOT_SOURCE_LABELS: Record<LootSource, string> = {
   goal_complete: 'Goal Complete',
   daily_activity: 'Daily Activity',
   session_complete: 'Session Complete',
+  bounty_reward: 'Daily Bounty',
 }
 
 /** Item Power score by rarity (100+). Higher rarity = higher IP. Used for leaderboard and item descriptions. */
@@ -254,8 +255,6 @@ const ITEM_DROP_CHANCE: Record<ChestType, number> = {
   legendary_chest: 0.80,
 }
 
-const INLINE_LOOT_IMAGES = {} as Record<string, string>
-
 import { CRAFT_LOOT_ITEMS, CRAFT_INTERMEDIATE_ITEMS } from './crafting'
 import { FOOD_ITEMS } from './cooking'
 
@@ -332,17 +331,21 @@ export const LOOT_ITEMS: LootItemDef[] = [
   { id: 'wilted_plant', name: 'Wilted Plant', slot: 'plant', rarity: 'common',  icon: '🥀', description: 'A rotted crop. Can be composted or sold for scraps.', perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Rotted crop salvage.' },
 
   // Arena materials (dropped by dungeon mobs & bosses, used in crafting)
-  { id: 'slime_gel',    name: 'Slime Gel',    slot: 'plant', rarity: 'common',    icon: '🫧', description: 'Dropped by slimes. Craft into Slime Shield.',       perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Crafting material — Slime Cavern' },
-  { id: 'goblin_tooth', name: 'Goblin Tooth', slot: 'plant', rarity: 'common',    icon: '🦷', description: 'Dropped by goblins. Craft into Goblin Blade.',     perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Crafting material — Goblin Outpost' },
-  { id: 'wolf_fang',    name: 'Wolf Fang',    slot: 'plant', rarity: 'rare',      icon: '🐺', description: 'Dropped by wolves. Craft into Wolf Fang Pendant.',  perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Crafting material — Wild Forest' },
-  { id: 'orc_shard',    name: 'Orc Shard',    slot: 'plant', rarity: 'rare',      icon: '🪨', description: 'Dropped by orcs. Craft into Orc Plate.',            perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Crafting material — Orc Stronghold' },
-  { id: 'troll_hide',   name: 'Troll Hide',   slot: 'plant', rarity: 'epic',      icon: '🧌', description: 'Dropped by trolls. Craft into Troll Cloak.',        perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Crafting material — Troll Bridge' },
-  { id: 'dragon_scale', name: 'Dragon Scale', slot: 'plant', rarity: 'legendary', icon: '🐉', description: 'Dropped by dragons. Craft into Dragon Crown.',      perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Crafting material — Dragon Lair' },
+  { id: 'slime_gel',    name: 'Slime Gel',    slot: 'material', rarity: 'common',    icon: '🫧', description: 'Dropped by slimes. Craft into Slime Shield.',       perkType: 'cosmetic', perkValue: 0, perkDescription: 'Crafting material — Slime Cavern' },
+  { id: 'goblin_tooth', name: 'Goblin Tooth', slot: 'material', rarity: 'common',    icon: '🦷', description: 'Dropped by goblins. Craft into Goblin Blade.',     perkType: 'cosmetic', perkValue: 0, perkDescription: 'Crafting material — Goblin Outpost' },
+  { id: 'wolf_fang',    name: 'Wolf Fang',    slot: 'material', rarity: 'rare',      icon: '🐺', description: 'Dropped by wolves. Craft into Wolf Fang Pendant.',  perkType: 'cosmetic', perkValue: 0, perkDescription: 'Crafting material — Wild Forest' },
+  { id: 'orc_shard',    name: 'Orc Shard',    slot: 'material', rarity: 'rare',      icon: '🪨', description: 'Dropped by orcs. Craft into Orc Plate.',            perkType: 'cosmetic', perkValue: 0, perkDescription: 'Crafting material — Orc Stronghold' },
+  { id: 'troll_hide',   name: 'Troll Hide',   slot: 'material', rarity: 'epic',      icon: '🧌', description: 'Dropped by trolls. Craft into Troll Cloak.',        perkType: 'cosmetic', perkValue: 0, perkDescription: 'Crafting material — Troll Bridge' },
+  { id: 'dragon_scale', name: 'Dragon Scale', slot: 'material', rarity: 'legendary', icon: '🐉', description: 'Dropped by dragons. Craft into Dragon Crown.',      perkType: 'cosmetic', perkValue: 0, perkDescription: 'Crafting material — Dragon Lair' },
 
   // Boss-exclusive materials (guaranteed drop from specific bosses)
   { id: 'warlord_sigil', name: 'Warlord Sigil', slot: 'material', rarity: 'epic',      icon: '🔱', description: 'Torn from the Orc Warlord. Pulses with brutal energy.',   perkType: 'cosmetic', perkValue: 0, perkDescription: 'Boss material — Orc Warlord' },
   { id: 'troll_heart',   name: 'Troll Heart',   slot: 'material', rarity: 'legendary', icon: '💜', description: 'A still-beating heart ripped from the Troll Overlord.',    perkType: 'cosmetic', perkValue: 0, perkDescription: 'Boss material — Troll Overlord' },
   { id: 'dragon_heart',  name: 'Dragon Heart',  slot: 'material', rarity: 'legendary', icon: '❤️‍🔥', description: 'The blazing core of the Ancient Dragon. Immense power.', perkType: 'cosmetic', perkValue: 0, perkDescription: 'Boss material — Ancient Dragon' },
+  { id: 'shadow_dust',   name: 'Shadow Dust',   slot: 'material', rarity: 'epic',      icon: '💜', description: 'Crystallized essence of shadow creatures.',                 perkType: 'cosmetic', perkValue: 0, perkDescription: 'Crafting material — Shadow Crypt' },
+  { id: 'lich_crystal',  name: 'Lich Crystal',  slot: 'material', rarity: 'legendary', icon: '💎', description: 'A shard of pure necromantic energy, pulsing with dark magic.', perkType: 'cosmetic', perkValue: 0, perkDescription: 'Boss material — Necromancer Lord' },
+  { id: 'storm_shard',   name: 'Storm Shard',   slot: 'material', rarity: 'epic',      icon: '⚡', description: 'Solidified lightning from celestial beings.',               perkType: 'cosmetic', perkValue: 0, perkDescription: 'Crafting material — Celestial Spire' },
+  { id: 'titan_core',    name: 'Titan Core',    slot: 'material', rarity: 'mythic',    icon: '🔮', description: 'The crystallized heart of a Storm Titan.',                  perkType: 'cosmetic', perkValue: 0, perkDescription: 'Boss material — Storm Titan' },
 
   // Crafting materials — drop from chests/bosses, consumed by craft recipes
   { id: 'ore_iron',      name: 'Iron Ore',      slot: 'material', rarity: 'common',    icon: '🪨', description: 'Raw iron ore. Used in basic smithing recipes.',           perkType: 'cosmetic', perkValue: 0, perkDescription: 'Crafting material' },
@@ -401,6 +404,17 @@ export const LOOT_ITEMS: LootItemDef[] = [
     perks: [{ perkType: 'atk_boost', perkValue: 12, perkDescription: '+12 ATK' }, { perkType: 'hp_boost', perkValue: 60, perkDescription: '+60 HP' }] },
   { id: 'void_ring',      name: 'Void Ring',      slot: 'ring',   rarity: 'mythic', icon: '🌀', description: 'A ring forged from pure void energy.',             perkType: 'atk_boost', perkValue: 10, perkDescription: '+10 ATK',
     perks: [{ perkType: 'atk_boost', perkValue: 10, perkDescription: '+10 ATK' }, { perkType: 'hp_regen_boost', perkValue: 5, perkDescription: '+5 HP Regen' }, { perkType: 'xp_global_boost', perkValue: 0.08, perkDescription: '+8% Global XP' }] },
+
+  // Raid-exclusive mythic items (only drop from raid victories, tradeable)
+  { id: 'raid_ancient_ring', name: 'Ancient Relic Ring', slot: 'ring', rarity: 'mythic', icon: '💍', description: 'Forged in the fires of ancient raids. Untold gold flows to its bearer.',
+    perkType: 'atk_boost', perkValue: 22, perkDescription: '+22 ATK',
+    perks: [{ perkType: 'atk_boost', perkValue: 22, perkDescription: '+22 ATK' }, { perkType: 'hp_regen_boost', perkValue: 10, perkDescription: '+10 HP Regen' }] },
+  { id: 'raid_void_blade', name: 'Void Conqueror Blade', slot: 'weapon', rarity: 'mythic', icon: '🗡️', description: 'Wielded only by those who have faced the mythic hydra and lived.',
+    perkType: 'atk_boost', perkValue: 35, perkDescription: '+35 ATK',
+    perks: [{ perkType: 'atk_boost', perkValue: 35, perkDescription: '+35 ATK' }, { perkType: 'hp_regen_boost', perkValue: 15, perkDescription: '+15 HP Regen' }, { perkType: 'xp_global_boost', perkValue: 0.10, perkDescription: '+10% Global XP' }] },
+  { id: 'raid_eternal_crown', name: 'Eternal Crown', slot: 'head', rarity: 'mythic', icon: '👑', description: 'The crown of the eternal titan. Only the worthy shall wear it.',
+    perkType: 'atk_boost', perkValue: 28, perkDescription: '+28 ATK',
+    perks: [{ perkType: 'atk_boost', perkValue: 28, perkDescription: '+28 ATK' }, { perkType: 'hp_boost', perkValue: 180, perkDescription: '+180 HP' }, { perkType: 'xp_global_boost', perkValue: 0.15, perkDescription: '+15% Global XP' }, { perkType: 'def_boost', perkValue: 12, perkDescription: '+12 DEF' }] },
 
   // Intermediate crafting materials (smelted/refined from raw drops, used in gear recipes)
   ...CRAFT_INTERMEDIATE_ITEMS,
@@ -490,6 +504,11 @@ export const CHEST_DEFS: Record<ChestType, ChestDef> = {
       { itemId: 'void_sword',    weight: 1 },
       { itemId: 'void_legs',     weight: 1 },
       { itemId: 'void_ring',     weight: 1 },
+      { itemId: 'craft_lich_helm',  weight: 1 },
+      { itemId: 'craft_lich_plate', weight: 1 },
+      { itemId: 'craft_lich_sword', weight: 1 },
+      { itemId: 'craft_lich_legs',  weight: 1 },
+      { itemId: 'craft_lich_ring',  weight: 1 },
       { itemId: 'atk_potion',    weight: 2 },
       { itemId: 'hp_potion',     weight: 2 },
       { itemId: 'regen_potion',  weight: 2 },

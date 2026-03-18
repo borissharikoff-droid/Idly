@@ -63,6 +63,8 @@ export interface DiscoveryResult {
   foodName: string
   foodIcon: string
   xpGained: number
+  /** True when the recipe matched and the player can afford it — UI should open the cook modal. */
+  canStart?: boolean
 }
 
 interface CookingState {
@@ -75,6 +77,8 @@ interface CookingState {
   unlockedInstruments: CookInstrumentId[]
   /** Last cook roll result (for UI feedback). */
   lastRoll: CookRollResult | null
+  /** Total XP earned from the last completed job (all steps + mastery multiplier). */
+  lastJobXp: number
   /** Discovered recipes: recipeId → total times cooked (for mastery). */
   discoveredRecipes: Record<string, number>
 
@@ -117,6 +121,8 @@ interface CookingState {
   getStars: (recipeId: string) => number
   /** Increment mastery count for a recipe (called after successful cook completion). */
   incrementMastery: (recipeId: string) => void
+  /** Record total XP earned for the last completed job (called from useCookingTick). */
+  setLastJobXp: (xp: number) => void
 }
 
 interface Snapshot {
@@ -181,6 +187,7 @@ export const useCookingStore = create<CookingState>((set, get) => ({
   instrumentTiers: { ...DEFAULT_TIERS },
   unlockedInstruments: [...DEFAULT_UNLOCKED_INSTRUMENTS],
   lastRoll: null,
+  lastJobXp: 0,
   discoveredRecipes: {},
 
   hydrate() {
@@ -570,26 +577,15 @@ export const useCookingStore = create<CookingState>((set, get) => ({
       }
     }
 
-    // Start the actual cook job (consumes recipe ingredient amounts, starts timer/steps)
-    const result = get().startCook(recipe.id, 1, itemsOwned, onConsume)
-    if (result !== 'ok') {
-      flushDiscovery()
-      return {
-        type,
-        recipeId: recipe.id,
-        foodName: food?.name ?? recipe.outputItemId,
-        foodIcon: food?.icon ?? '🍳',
-        xpGained: 0,
-      }
-    }
-
+    // Recipe matched and player can afford — let the UI open the cook modal instead of auto-starting
     flushDiscovery()
     return {
       type,
       recipeId: recipe.id,
       foodName: food?.name ?? recipe.outputItemId,
       foodIcon: food?.icon ?? '🍳',
-      xpGained: recipe.xpPerItem,
+      xpGained: 0,
+      canStart: true,
     }
   },
 
@@ -608,6 +604,9 @@ export const useCookingStore = create<CookingState>((set, get) => ({
     const updated = { ...discoveredRecipes, [recipeId]: current + 1 }
     saveDiscovery(updated)
     set({ discoveredRecipes: updated })
+  },
 
+  setLastJobXp(xp) {
+    set({ lastJobXp: xp })
   },
 }))

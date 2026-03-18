@@ -276,15 +276,15 @@ export function SessionDetail({ sessionId, onBack }: SessionDetailProps) {
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded-lg bg-discord-card/80 border border-white/5 p-2 text-center">
           <p className="text-sm font-mono font-bold text-white">{formatNum(totalKeystrokes)}</p>
-          <p className="text-[9px] text-gray-500 font-mono">keys ({keysPerMin}/min)</p>
+          <p className="text-[10px] text-gray-500 font-mono">keys ({keysPerMin}/min)</p>
         </div>
         <div className="rounded-lg bg-discord-card/80 border border-white/5 p-2 text-center">
           <p className="text-sm font-mono font-bold text-white">{contextSwitches}</p>
-          <p className="text-[9px] text-gray-500 font-mono">switches ({switchRate}/min)</p>
+          <p className="text-[10px] text-gray-500 font-mono">switches ({switchRate}/min)</p>
         </div>
         <div className="rounded-lg bg-discord-card/80 border border-white/5 p-2 text-center">
           <p className="text-sm font-mono font-bold text-white">{categoryGroups.length}</p>
-          <p className="text-[9px] text-gray-500 font-mono">categories</p>
+          <p className="text-[10px] text-gray-500 font-mono">categories</p>
         </div>
       </div>
 
@@ -386,7 +386,7 @@ export function SessionDetail({ sessionId, onBack }: SessionDetailProps) {
                               <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: group.color, opacity: 0.5 }} />
                               <span className="text-[11px] text-gray-300 truncate flex-1 min-w-0">{app.name}</span>
                               {app.keystrokes > 0 && (
-                                <span className="text-[9px] text-gray-600 font-mono shrink-0">{formatNum(app.keystrokes)} keys</span>
+                                <span className="text-[10px] text-gray-600 font-mono shrink-0">{formatNum(app.keystrokes)} keys</span>
                               )}
                               <span className="text-[10px] text-gray-500 font-mono shrink-0">{formatMs(app.seconds * 1000)}</span>
                             </div>
@@ -394,9 +394,9 @@ export function SessionDetail({ sessionId, onBack }: SessionDetailProps) {
                               <div className="pl-4 mt-0.5 space-y-0.5">
                                 {app.titles.map((t, ti) => (
                                   <div key={ti} className="flex items-center gap-1.5">
-                                    <span className="text-[9px] text-gray-700 shrink-0">—</span>
+                                    <span className="text-[10px] text-gray-700 shrink-0">—</span>
                                     <span className="text-[10px] text-gray-500 truncate flex-1 min-w-0">{t.title}</span>
-                                    <span className="text-[9px] text-gray-600 font-mono shrink-0">{formatMs(t.seconds * 1000)}</span>
+                                    <span className="text-[10px] text-gray-600 font-mono shrink-0">{formatMs(t.seconds * 1000)}</span>
                                   </div>
                                 ))}
                               </div>

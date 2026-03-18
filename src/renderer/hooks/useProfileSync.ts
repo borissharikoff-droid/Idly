@@ -20,7 +20,7 @@ async function applyAdminOverrides(
 ) {
   // Force-set in SQLite first, then notify UI
   try {
-    if (api.db.forceSetSkillXP) {
+    if (api?.db?.forceSetSkillXP) {
       await api.db.forceSetSkillXP(overrides)
     }
   } catch { /* ignore */ }
@@ -180,7 +180,7 @@ export function useProfileSync() {
       }).catch(() => {})
 
       // Periodic skill re-sync (initial mount sync is handled separately below)
-      if (api?.db?.getAllSkillXP) {
+      if (api?.db) {
         const now = Date.now()
         const RETRY_EVERY_MS = 5 * 60 * 1000
         if (now - lastSkillSyncAttemptRef.current >= RETRY_EVERY_MS) {
@@ -316,4 +316,13 @@ export function usePresenceSync(
       updated_at: new Date().toISOString(),
     }).eq('id', user.id).then(() => {})
   }, [user, presenceLabel, isSessionActive, appName, sessionStartTime])
+
+  // Heartbeat: keep updated_at fresh so others see us as online
+  useEffect(() => {
+    if (!supabase || !user) return
+    const id = setInterval(() => {
+      supabase!.from('profiles').update({ is_online: true, updated_at: new Date().toISOString() }).eq('id', user.id).then(() => {})
+    }, 2 * 60 * 1000)
+    return () => clearInterval(id)
+  }, [user])
 }

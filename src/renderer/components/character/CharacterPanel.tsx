@@ -119,7 +119,7 @@ function VSlot({
           ? <LootVisual icon={item.icon} image={item.image} className="w-10 h-10 object-contain" scale={item.renderScale ?? 1} />
           : <span className="text-2xl leading-none" style={{ opacity: 0.12 }}>{meta.icon}</span>}
       </div>
-      <p className="text-[8px] font-mono leading-none text-center w-full truncate px-1"
+      <p className="text-[10px] font-mono leading-none text-center w-full truncate px-1"
         style={{ color: item ? 'rgba(255,255,255,0.65)' : 'rgba(156,163,175,0.25)' }}>
         {item ? item.name : '—'}
       </p>

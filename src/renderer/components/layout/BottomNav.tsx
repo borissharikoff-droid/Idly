@@ -1,44 +1,55 @@
 import type { TabId } from '../../App'
-import { useState, useEffect } from 'react'
+import type { ReactNode } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { playTabSound, playClickSound } from '../../lib/sounds'
 import { track } from '../../lib/analytics'
-import { useAlertStore } from '../../stores/alertStore'
-import { useNavBadgeStore } from '../../stores/navBadgeStore'
-import { useArenaStore } from '../../stores/arenaStore'
-import { useCraftingStore } from '../../stores/craftingStore'
-import { useCookingStore } from '../../stores/cookingStore'
-import { useFarmStore } from '../../stores/farmStore'
+import { useBadges, BADGE_URGENT, BADGE_READY } from '../../hooks/useBadges'
+import { useNavCustomizationStore } from '../../stores/navCustomizationStore'
 import { MOTION } from '../../lib/motion'
 import { getUIIcons } from '../../lib/itemConfig'
 import { useAdminConfigStore } from '../../stores/adminConfigStore'
+import {
+  Home, Zap, Users, BarChart3, MoreHorizontal,
+  Package, ShoppingCart, Sword, Sprout, Hammer, UtensilsCrossed,
+  User, Settings,
+} from '../../lib/icons'
 
-const PRIMARY_TABS_DEFAULT: { id: TabId; icon: string }[] = [
-  { id: 'home',    icon: '⏱' },
-  { id: 'skills',  icon: '⚡' },
-  { id: 'friends', icon: '👥' },
-  { id: 'stats',   icon: '📊' },
+const ALL_TABS: { id: TabId; label: string }[] = [
+  { id: 'home',        label: 'Home'      },
+  { id: 'skills',      label: 'Skills'    },
+  { id: 'friends',     label: 'Social'    },
+  { id: 'stats',       label: 'Stats'     },
+  { id: 'inventory',   label: 'Inventory' },
+  { id: 'marketplace', label: 'Market'    },
+  { id: 'arena',       label: 'Arena'     },
+  { id: 'farm',        label: 'Farm'      },
+  { id: 'craft',       label: 'Craft'     },
+  { id: 'cooking',     label: 'Cook'      },
+  { id: 'profile',     label: 'Profile'   },
+  { id: 'settings',    label: 'Settings'  },
 ]
 
-const SECONDARY_TABS_DEFAULT: { id: TabId; icon: string; label: string }[] = [
-  { id: 'inventory',   icon: '🎒', label: 'Inventory' },
-  { id: 'marketplace', icon: '🛒', label: 'Market'    },
-  { id: 'arena',       icon: '⚔️', label: 'Arena'     },
-  { id: 'farm',        icon: '🌱', label: 'Farm'      },
-  { id: 'craft',       icon: '⚒️', label: 'Craft'     },
-  { id: 'cooking',     icon: '🍳', label: 'Cook'      },
-  { id: 'profile',     icon: '👤', label: 'Profile'   },
-  { id: 'settings',    icon: '⚙',  label: 'Settings'  },
-]
+const TAB_LUCIDE_ICONS: Partial<Record<TabId, ReactNode>> = {
+  home:        <Home className="w-[18px] h-[18px]" />,
+  skills:      <Zap className="w-[18px] h-[18px]" />,
+  friends:     <Users className="w-[18px] h-[18px]" />,
+  stats:       <BarChart3 className="w-[18px] h-[18px]" />,
+  inventory:   <Package className="w-[18px] h-[18px]" />,
+  marketplace: <ShoppingCart className="w-[18px] h-[18px]" />,
+  arena:       <Sword className="w-[18px] h-[18px]" />,
+  farm:        <Sprout className="w-[18px] h-[18px]" />,
+  craft:       <Hammer className="w-[18px] h-[18px]" />,
+  cooking:     <UtensilsCrossed className="w-[18px] h-[18px]" />,
+  profile:     <User className="w-[18px] h-[18px]" />,
+  settings:    <Settings className="w-[18px] h-[18px]" />,
+}
 
-const SECONDARY_IDS = new Set<TabId>(SECONDARY_TABS_DEFAULT.map((t) => t.id))
-
-/** Render icon — if it's a data URI or URL, show <img>; otherwise show emoji text */
-function NavIcon({ icon, className }: { icon: string; className?: string }) {
-  if (icon.startsWith('data:') || icon.startsWith('http')) {
-    return <img src={icon} alt="" className={className ?? 'w-[18px] h-[18px] object-contain'} draggable={false} />
+function NavIcon({ tabId, adminIcon }: { tabId: TabId; adminIcon: string }) {
+  if (adminIcon.startsWith('data:') || adminIcon.startsWith('http')) {
+    return <img src={adminIcon} alt="" className="w-[18px] h-[18px] object-contain" draggable={false} />
   }
-  return <>{icon}</>
+  return <>{TAB_LUCIDE_ICONS[tabId]}</>
 }
 
 interface BottomNavProps {
@@ -47,109 +58,176 @@ interface BottomNavProps {
 }
 
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
-  useAdminConfigStore((s) => s.rev) // re-render on config change
+  useAdminConfigStore((s) => s.rev)
   const uiIcons = getUIIcons()
-  const PRIMARY_TABS = PRIMARY_TABS_DEFAULT.map((t) => ({ ...t, icon: uiIcons.navTabs?.[t.id] || t.icon }))
-  const SECONDARY_TABS = SECONDARY_TABS_DEFAULT.map((t) => ({ ...t, icon: uiIcons.navSecondaryTabs?.[t.id] || t.icon }))
+  const pinnedTabs = useNavCustomizationStore((s) => s.pinnedTabs)
+  const setPinnedTabs = useNavCustomizationStore((s) => s.setPinnedTabs)
   const [moreOpen, setMoreOpen] = useState(false)
-  const { queue, currentAlert } = useAlertStore()
-  const { incomingRequestsCount, unreadMessagesCount, marketplaceSaleCount } = useNavBadgeStore()
-  const isArenaBattleActive = useArenaStore((s) => !!s.activeBattle)
-  const isCraftingActive = useCraftingStore((s) => !!s.activeJob)
-  const isCookingActive = useCookingStore((s) => !!s.activeJob)
-  const planted = useFarmStore((s) => s.planted)
-  const badgeHome = (currentAlert && !currentAlert.claimed ? 1 : 0) + queue.length
-  const badgeFriends = incomingRequestsCount + unreadMessagesCount
-  const hasUnclaimedLoot = currentAlert && !currentAlert.claimed
+  const [dropTarget, setDropTarget] = useState<number | null>(null)
+  const popupRef = useRef<HTMLDivElement>(null)
+  const moreButtonRef = useRef<HTMLButtonElement>(null)
+  const tabEnteredAtRef = useRef<number>(Date.now())
+  const prevTabRef = useRef<TabId>(activeTab)
 
-  const [tick, setTick] = useState(0)
   useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 15_000)
-    return () => clearInterval(id)
-  }, [])
-  const now = Date.now() + tick * 0
-  const badgeFarm = Object.values(planted).filter(
-    (s) => !!s && (now - s.plantedAt) / 1000 >= s.growTimeSeconds,
-  ).length
+    if (!moreOpen) return
+    const mouseHandler = (e: MouseEvent) => {
+      if (popupRef.current?.contains(e.target as Node)) return
+      if (moreButtonRef.current?.contains(e.target as Node)) return
+      setMoreOpen(false)
+    }
+    const keyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMoreOpen(false)
+    }
+    document.addEventListener('mousedown', mouseHandler)
+    document.addEventListener('keydown', keyHandler)
+    return () => {
+      document.removeEventListener('mousedown', mouseHandler)
+      document.removeEventListener('keydown', keyHandler)
+    }
+  }, [moreOpen])
 
-  // Unclaimed achievement rewards (read from localStorage, recheck on tick)
-  const profileUnclaimed = (() => {
-    try {
-      const unlocked = JSON.parse(localStorage.getItem('grindly_unlocked_achievements') || '[]') as string[]
-      const claimed = JSON.parse(localStorage.getItem('grindly_claimed_achievements') || '[]') as string[]
-      const claimedSet = new Set(claimed)
-      return unlocked.filter((id) => !claimedSet.has(id)).length
-    } catch { return 0 }
-  })()
-  void tick // re-read on tick
+  const badges = useBadges()
 
-  const secondaryIsActive = SECONDARY_IDS.has(activeTab)
-  const secondaryHasBadge = badgeFarm > 0 || isArenaBattleActive || isCraftingActive || isCookingActive || marketplaceSaleCount > 0 || profileUnclaimed > 0
+  const getTabBadge = (tabId: TabId) => {
+    switch (tabId) {
+      case 'home':        return badges.badgeHome > 0 ? { count: badges.badgeHome, color: badges.isHomeLootBadge ? BADGE_READY : BADGE_URGENT } : null
+      case 'friends':     return badges.badgeFriends > 0 ? { count: badges.badgeFriends, color: BADGE_URGENT } : null
+      case 'farm':        return badges.badgeFarm > 0 ? { count: badges.badgeFarm, color: BADGE_READY } : null
+      case 'marketplace': return badges.badgeMarketplace > 0 ? { count: badges.badgeMarketplace, color: BADGE_READY } : null
+      case 'profile':     return (badges.badgeProfile + badges.badgeProfileOrange) > 0 ? { count: badges.badgeProfile + badges.badgeProfileOrange, color: BADGE_READY } : null
+      default:            return null
+    }
+  }
+
+  const getTabPulse = (tabId: TabId) =>
+    (tabId === 'arena' && badges.isArenaBattleActive) ||
+    (tabId === 'craft' && badges.isCraftingActive) ||
+    (tabId === 'cooking' && badges.isCookingActive)
+
+  const moreTabs = ALL_TABS.filter((t) => !pinnedTabs.includes(t.id))
+  const moreBadge = moreTabs.some((t) => getTabBadge(t.id) !== null || getTabPulse(t.id))
+  const moreIsActiveTab = !pinnedTabs.includes(activeTab)
 
   const navigate = (id: TabId) => {
+    if (id !== prevTabRef.current) {
+      const seconds = Math.round((Date.now() - tabEnteredAtRef.current) / 1000)
+      if (seconds > 2) {
+        track('tab_time_spent', { tab_id: prevTabRef.current, seconds })
+      }
+      prevTabRef.current = id
+      tabEnteredAtRef.current = Date.now()
+    }
     playTabSound()
     track('tab_click', { tab: id })
     onTabChange(id)
     setMoreOpen(false)
   }
 
+  // ── Drag: tab from More popup → nav bar ──────────────────────────
+  const onDragStartMore = (e: React.DragEvent, tabId: TabId) => {
+    e.dataTransfer.setData('grindly-tab', tabId)
+    e.dataTransfer.setData('grindly-source', 'more')
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  // ── Drag: tab within nav bar → reorder ───────────────────────────
+  const onDragStartNav = (e: React.DragEvent, tabId: TabId, slotIndex: number) => {
+    e.dataTransfer.setData('grindly-tab', tabId)
+    e.dataTransfer.setData('grindly-source', 'nav')
+    e.dataTransfer.setData('grindly-slot', String(slotIndex))
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const onDragEnd = () => {
+    setDropTarget(null)
+  }
+
+  // Drop on a specific nav slot ─────────────────────────────────────
+  const onDropNavSlot = (e: React.DragEvent, slotIndex: number) => {
+    e.preventDefault()
+    setDropTarget(null)
+    const tabId = e.dataTransfer.getData('grindly-tab') as TabId
+    const source = e.dataTransfer.getData('grindly-source')
+    if (!tabId) return
+
+    const newPinned = [...pinnedTabs]
+    if (source === 'more') {
+      newPinned[slotIndex] = tabId
+    } else if (source === 'nav') {
+      const srcSlot = parseInt(e.dataTransfer.getData('grindly-slot'))
+      if (!isNaN(srcSlot) && srcSlot !== slotIndex) {
+        ;[newPinned[slotIndex], newPinned[srcSlot]] = [newPinned[srcSlot], newPinned[slotIndex]]
+      }
+    }
+    setPinnedTabs(newPinned)
+  }
+
+  // Drop on nav bar area (between slots) → append if < 4 pinned ────
+  const onDropNavArea = (e: React.DragEvent) => {
+    e.preventDefault()
+    if (e.dataTransfer.getData('grindly-source') !== 'more') return
+    const tabId = e.dataTransfer.getData('grindly-tab') as TabId
+    if (!tabId || pinnedTabs.length >= 4) return
+    setPinnedTabs([...pinnedTabs, tabId])
+  }
+
   return (
     <>
-      {/* ── More popup ─────────────────────────────────────────────────────── */}
+      {/* ── More popup ───────────────────────────────────────────────── */}
       <AnimatePresence>
         {moreOpen && (
           <>
-            {/* Invisible backdrop to close on outside click */}
             <motion.div
-              className="fixed inset-0 z-40"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.12 }}
-              onClick={() => setMoreOpen(false)}
-            />
-
-            <motion.div
-              className="fixed bottom-[68px] left-1/2 z-50 w-[228px] -translate-x-1/2 rounded-2xl border border-white/[0.10] bg-[#1a1a2a] shadow-2xl"
+              ref={popupRef}
+              className="fixed bottom-[58px] left-1/2 z-50 w-[280px] -translate-x-1/2 rounded-2xl border border-white/[0.10] bg-[#1a1a2a] shadow-2xl overflow-hidden"
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 8, scale: 0.96 }}
               transition={{ duration: MOTION.duration.fast, ease: MOTION.easingSoft }}
             >
+              <p className="text-[10px] font-mono text-gray-600 text-center pt-2 pb-0.5 px-2 select-none">
+                drag any icon to the bar below to pin it
+              </p>
+
               <div className="p-1.5 grid grid-cols-3 gap-0.5">
-                {SECONDARY_TABS.map((tab) => {
+                {moreTabs.map((tab) => {
                   const isActive = activeTab === tab.id
-                  const tabBadge = tab.id === 'farm' ? badgeFarm : tab.id === 'marketplace' ? marketplaceSaleCount : 0
-                  const tabPulse = (tab.id === 'arena' && isArenaBattleActive) || (tab.id === 'craft' && isCraftingActive) || (tab.id === 'cooking' && isCookingActive)
-                  const tabOrangeDot = tab.id === 'profile' && profileUnclaimed > 0
+                  const adminIcon = uiIcons.navSecondaryTabs?.[tab.id] || ''
+                  const badge = getTabBadge(tab.id)
+                  const pulse = getTabPulse(tab.id)
                   return (
-                    <motion.button
+                    <div
                       key={tab.id}
+                      draggable
+                      onDragStart={(e) => onDragStartMore(e, tab.id)}
+                      onDragEnd={onDragEnd}
+                      className="cursor-grab active:cursor-grabbing"
+                    >
+                    <motion.button
                       type="button"
                       whileTap={{ scale: 0.94 }}
                       onClick={() => navigate(tab.id)}
-                      className={`relative flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl transition-colors ${
+                      className={`relative flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl transition-colors select-none w-full ${
                         isActive
-                          ? 'bg-cyber-neon/12 text-cyber-neon'
+                          ? 'bg-cyber-neon/15 text-cyber-neon ring-1 ring-inset ring-cyber-neon/20'
                           : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.06]'
                       }`}
                     >
-                      <span className="text-lg leading-none"><NavIcon icon={tab.icon} /></span>
-                      <span className="text-[9px] font-mono leading-none tracking-wide">{tab.label}</span>
-                      {tabBadge > 0 && (
-                        <span className="absolute top-1 right-1.5 min-w-[13px] h-[13px] px-0.5 flex items-center justify-center rounded-full text-[8px] font-bold text-white bg-lime-500">
-                          {tabBadge}
+                      <span className="text-lg leading-none">
+                        <NavIcon tabId={tab.id} adminIcon={adminIcon} />
+                      </span>
+                      <span className="text-[10px] font-mono leading-none tracking-wide">{tab.label}</span>
+                      {badge && (
+                        <span className={`absolute top-1 right-1.5 min-w-[13px] h-[13px] px-0.5 flex items-center justify-center rounded-full text-[10px] font-bold text-white ${badge.color}`}>
+                          {badge.count > 99 ? '99+' : badge.count}
                         </span>
                       )}
-                      {tabPulse && (
+                      {pulse && !badge && (
                         <span className="absolute top-1.5 right-2 w-2 h-2 rounded-full bg-cyber-neon animate-pulse" />
                       )}
-                      {tabOrangeDot && (
-                        <span className="absolute top-1 right-1.5 min-w-[13px] h-[13px] px-0.5 flex items-center justify-center rounded-full text-[8px] font-bold text-white bg-orange-500">
-                          {profileUnclaimed}
-                        </span>
-                      )}
                     </motion.button>
+                    </div>
                   )
                 })}
               </div>
@@ -158,64 +236,83 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
         )}
       </AnimatePresence>
 
-      {/* ── Bottom nav ─────────────────────────────────────────────────────── */}
-      <div className="shrink-0 flex justify-center pb-3 pt-1">
-        <nav className="flex items-center gap-3 rounded-full bg-discord-nav border border-white/[0.07] px-3 py-1.5 shadow-nav">
-          {/* Primary tabs */}
-          {PRIMARY_TABS.map((tab) => {
-            const active = activeTab === tab.id
-            const badgeCount =
-              tab.id === 'home'    ? badgeHome
-              : tab.id === 'friends' ? badgeFriends
-              : 0
-            const isLootBadge = tab.id === 'home' && badgeCount > 0 && hasUnclaimedLoot
+      {/* ── Bottom nav bar ───────────────────────────────────────────── */}
+      <div
+        className="shrink-0 flex justify-center pb-1.5 pt-1 px-2"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={onDropNavArea}
+      >
+        <nav className="flex items-stretch gap-1.5 rounded-2xl bg-discord-nav border border-white/[0.07] px-1.5 py-1.5 shadow-nav w-full max-w-xs">
+
+          {/* Pinned tabs (1–4, variable) */}
+          {pinnedTabs.map((tabId, slotIndex) => {
+            const tab = ALL_TABS.find((t) => t.id === tabId)
+            if (!tab) return null
+            const active = activeTab === tabId
+            const adminIcon = uiIcons.navTabs?.[tabId] || ''
+            const badge = getTabBadge(tabId)
+            const pulse = getTabPulse(tabId)
+            const isDropTarget = dropTarget === slotIndex
             return (
-              <motion.button
-                key={tab.id}
-                whileTap={MOTION.interactive.tap}
-                onClick={() => navigate(tab.id)}
-                className={`relative w-9 h-9 flex items-center justify-center rounded-full text-sm transition-all duration-200 ${
-                  active
+              <div
+                key={tabId}
+                draggable
+                onDragStart={(e) => onDragStartNav(e, tabId, slotIndex)}
+                onDragEnd={onDragEnd}
+                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDropTarget(slotIndex) }}
+                onDragLeave={() => setDropTarget(null)}
+                onDrop={(e) => onDropNavSlot(e, slotIndex)}
+                className="flex-1 cursor-grab active:cursor-grabbing"
+              >
+              <button
+                type="button"
+                onClick={() => navigate(tabId)}
+                className={`relative w-full flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition-all duration-150 select-none ${
+                  isDropTarget
+                    ? 'ring-1 ring-cyber-neon/60 bg-cyber-neon/10 text-cyber-neon'
+                    : active
                     ? 'bg-cyber-neon/15 text-cyber-neon shadow-glow-sm'
-                    : 'text-gray-500 hover:text-gray-300 hover:bg-white/5 hover:-translate-y-[1px]'
+                    : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
                 }`}
               >
-                <span className="grindly-tab-icon" aria-hidden><NavIcon icon={tab.icon} /></span>
-                {badgeCount > 0 && (
+                <span className="grindly-tab-icon leading-none" aria-hidden>
+                  <NavIcon tabId={tabId} adminIcon={adminIcon} />
+                </span>
+                <span className="text-[10px] font-mono leading-none tracking-wide">{tab.label}</span>
+                {badge && (
                   <span
-                    className={`absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-1 flex items-center justify-center rounded-full text-[10px] font-bold text-white border-2 border-discord-nav ${
-                      isLootBadge ? 'bg-orange-500' : 'bg-discord-red'
-                    }`}
-                    aria-label={`${badgeCount} new`}
+                    className={`absolute -top-0.5 right-1 min-w-[14px] h-[14px] px-1 flex items-center justify-center rounded-full text-[10px] font-bold text-white border-2 border-discord-nav ${badge.color}`}
+                    aria-label={`${badge.count} new`}
                   >
-                    {badgeCount > 99 ? '99+' : badgeCount}
+                    {badge.count > 99 ? '99+' : badge.count}
                   </span>
                 )}
-              </motion.button>
+                {pulse && !badge && (
+                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full border border-discord-nav bg-cyber-neon animate-pulse" />
+                )}
+              </button>
+              </div>
             )
           })}
 
-          {/* ··· More button */}
+          {/* More — always rightmost, never draggable */}
           <motion.button
+            ref={moreButtonRef}
+            type="button"
             whileTap={MOTION.interactive.tap}
             onClick={() => { playClickSound(); setMoreOpen((o) => !o) }}
-            className={`relative w-9 h-9 flex items-center justify-center rounded-full transition-all duration-200 ${
-              moreOpen || secondaryIsActive
+            className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition-all duration-200 ${
+              moreOpen || moreIsActiveTab
                 ? 'bg-cyber-neon/15 text-cyber-neon shadow-glow-sm'
-                : 'text-gray-500 hover:text-gray-300 hover:bg-white/5 hover:-translate-y-[1px]'
+                : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
             }`}
             aria-label="More"
             aria-expanded={moreOpen}
           >
-            {/* Three-dot icon */}
-            <svg width="16" height="4" viewBox="0 0 16 4" fill="currentColor" aria-hidden>
-              <circle cx="2"  cy="2" r="1.8" />
-              <circle cx="8"  cy="2" r="1.8" />
-              <circle cx="14" cy="2" r="1.8" />
-            </svg>
-            {/* Badge dot when secondary tabs have activity */}
-            {secondaryHasBadge && !moreOpen && (
-              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-discord-nav bg-lime-500" />
+            <MoreHorizontal className="w-[18px] h-[18px]" aria-hidden />
+            <span className="text-[10px] font-mono leading-none tracking-wide">More</span>
+            {moreBadge && !moreOpen && (
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full border border-discord-nav bg-lime-500" />
             )}
           </motion.button>
         </nav>

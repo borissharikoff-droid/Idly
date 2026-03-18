@@ -44,6 +44,7 @@ import { useNavigationStore } from './stores/navigationStore'
 import { useEscapeHandler } from './hooks/useEscapeHandler'
 import { useWhatsNew, WhatsNewModal } from './components/WhatsNewModal'
 import { useRemotePatchNotes } from './hooks/useRemotePatchNotes'
+import { PartyHUD } from './components/party/PartyHUD'
 
 // Apply cached admin overrides before first render (populated after first Supabase sync)
 applyAdminConfig(LOOT_ITEMS, BOSSES, ZONES, CRAFT_RECIPES)
@@ -102,35 +103,6 @@ function PageFallback() {
   )
 }
 
-function MarketplaceFallback() {
-  return (
-    <div className="p-4 pb-20 space-y-4">
-      <div className="h-10" />
-      <div className="h-4 w-3/4 rounded bg-white/5" />
-      <div className="rounded-2xl bg-[#1e1e2e]/90 border border-white/[0.06] p-4 space-y-3">
-        <div className="h-4 w-16 rounded bg-white/10" />
-        <div className="h-10 w-full rounded-xl bg-white/10" />
-        <div className="flex gap-2 flex-wrap">
-          <div className="h-9 w-24 rounded-xl bg-white/10" />
-          <div className="h-9 w-24 rounded-xl bg-white/10" />
-          <div className="h-9 w-20 rounded-xl bg-white/10" />
-        </div>
-      </div>
-      <div className="space-y-3">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="rounded-2xl border border-white/[0.06] bg-[#1e1e2e]/50 p-4 flex items-center gap-4">
-            <div className="w-14 h-14 rounded-xl bg-white/10 shrink-0" />
-            <div className="flex-1 space-y-2">
-              <div className="h-4 w-32 rounded bg-white/10" />
-              <div className="h-3 w-48 rounded bg-white/10" />
-            </div>
-            <div className="h-10 w-20 rounded-xl bg-white/10 shrink-0" />
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 export type TabId = 'home' | 'inventory' | 'skills' | 'stats' | 'profile' | 'friends' | 'marketplace' | 'arena' | 'farm' | 'craft' | 'cooking' | 'settings'
 
@@ -166,6 +138,7 @@ export default function App() {
     setActiveTab(tab)
   }, [])
   useEffect(() => { useNavigationStore.getState().setNavigateTo(navigateTo) }, [navigateTo])
+  useEffect(() => { useNavigationStore.getState().setCurrentTab(activeTab) }, [activeTab])
   useEffect(() => { useAchievementStatsStore.getState().hydrate() }, [])
   const [showStreak, setShowStreak] = useState(false)
   const [streakCount, setStreakCount] = useState(0)
@@ -184,7 +157,7 @@ export default function App() {
   const { status, currentActivity, sessionStartTime } = useSessionStore()
   const presenceLabel = currentActivity && status === 'running'
     ? (() => {
-      const cats = (currentActivity.categories || [currentActivity.category]).filter((c: string) => c !== 'idle')
+      const cats = (currentActivity.categories || [currentActivity.category]).filter((c: string) => c !== 'idle' && c !== 'other')
       const names = cats.map((c: string) => getSkillById(categoryToSkillId(c))?.name).filter(Boolean)
       return names.length > 0 ? `Leveling ${names.join(' + ')}` : null
     })()
@@ -386,6 +359,26 @@ export default function App() {
     return unsub
   }, [])
 
+  // Dev helper: call window.__devMaxStats() from DevTools console to max all local state
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    ;(window as unknown as Record<string, unknown>).__devMaxStats = () => {
+      const MAX_XP = 3_600_000
+      const skills = ['warrior','developer','designer','gamer','communicator','researcher','creator','learner','listener']
+      const xpMap: Record<string, number> = {}
+      for (const s of skills) xpMap[s] = MAX_XP
+      localStorage.setItem('grindly_skill_xp', JSON.stringify(xpMap))
+      const arenaRaw = localStorage.getItem('grindly_arena_state')
+      const arena = arenaRaw ? JSON.parse(arenaRaw) : {}
+      const state = arena.state ?? arena
+      state.clearedZones = ['zone1','zone2','zone3','zone4','zone5','zone6','zone7','zone8']
+      state.killCounts = state.killCounts ?? {}
+      if (arena.state) arena.state = state; else Object.assign(arena, state)
+      localStorage.setItem('grindly_arena_state', JSON.stringify(arena))
+      console.log('%c[devMaxStats] ✅ All stats maxed — reload the app now', 'color: #22c55e; font-weight: bold')
+    }
+  }, [])
+
   return (
     <AuthGate>
       <MotionConfig reducedMotion="user" transition={{ duration: MOTION.duration.base, ease: MOTION.easing }}>
@@ -410,6 +403,7 @@ export default function App() {
               </div>
             </div>
           )}
+          <PartyHUD />
           <main className="flex-1 overflow-y-auto overflow-x-hidden">
             <>
               {activeTab === 'home' && (
@@ -459,7 +453,7 @@ export default function App() {
               {activeTab === 'marketplace' && (
                 <motion.div key="marketplace" variants={PAGE_SLIDE} initial="initial" animate="animate">
                   <PageErrorBoundary onReset={() => navigateTo('home')}>
-                    <Suspense fallback={<MarketplaceFallback />}>
+                    <Suspense fallback={<PageFallback />}>
                       <MarketplacePage />
                     </Suspense>
                   </PageErrorBoundary>

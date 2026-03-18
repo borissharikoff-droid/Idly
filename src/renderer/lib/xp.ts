@@ -92,6 +92,8 @@ export function getStreakMultiplier(streak: number): number {
   if (streak >= 30) return STREAK_MULTIPLIERS.day30
   if (streak >= 14) return STREAK_MULTIPLIERS.day14
   if (streak >= 7) return STREAK_MULTIPLIERS.day7
+  if (streak >= 5) return STREAK_MULTIPLIERS.day5
+  if (streak >= 3) return STREAK_MULTIPLIERS.day3
   if (streak >= 2) return STREAK_MULTIPLIERS.day2
   return 1.0
 }

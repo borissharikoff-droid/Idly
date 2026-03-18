@@ -176,7 +176,7 @@ export const ZONES: ZoneDef[] = [
     ],
     boss: {
       id: 'orc', name: 'Orc Warlord', icon: '👹', hp: 1800, atk: 8.5, def: 6,
-      rewards: { chestTier: 'epic_chest' },
+      rewards: { chestTier: 'legendary_chest' },
       requirements: { minAtk: 25, minHp: 180, minHpRegen: 4 },
       materialDropId: 'warlord_sigil', materialDropQty: 1,
     },
@@ -198,7 +198,7 @@ export const ZONES: ZoneDef[] = [
     ],
     boss: {
       id: 'troll', name: 'Troll Overlord', icon: '🧌', hp: 2900, atk: 10.5, def: 7, atkSpread: 0.25,
-      rewards: { chestTier: 'epic_chest' },
+      rewards: { chestTier: 'legendary_chest' },
       requirements: { minAtk: 40, minHp: 230, minHpRegen: 7 },
       materialDropId: 'troll_heart', materialDropQty: 1,
     },
@@ -212,7 +212,7 @@ export const ZONES: ZoneDef[] = [
     prevZoneId: 'zone5',
     warriorLevelRequired: 40,
     gateItems: ['craft_troll_cloak'],
-    entryCost: [{ itemId: 'troll_hide', quantity: 2 }, { itemId: 'orchids', quantity: 3 }],
+    entryCost: [{ itemId: 'troll_hide', quantity: 2 }, { itemId: 'orchids', quantity: 2 }],
     mobs: [
       { id: 'dragon_whelp',  name: 'Dragon Whelp',  icon: '🐉', hp: 2000,  atk: 12,   def: 6,  atkSpread: 0.3, xpReward: 10000, goldMin: 200,  goldMax: 350,  materialDropId: 'dragon_scale', materialDropChance: 0.3, materialDropQty: 2 },
       { id: 'dragon_guard',  name: 'Dragon Guard',  icon: '🐉', hp: 2800,  atk: 13,   def: 7,  atkSpread: 0.3, xpReward: 18000, goldMin: 280,  goldMax: 450,  materialDropId: 'dragon_scale', materialDropChance: 0.4, materialDropQty: 3 },
@@ -225,6 +225,48 @@ export const ZONES: ZoneDef[] = [
       materialDropId: 'dragon_heart', materialDropQty: 1,
     },
   },
+  // ── Zone 7 — Shadow Crypt (target: post-Void, needs dragon materials to enter)
+  {
+    id: 'zone7',
+    name: 'Shadow Crypt',
+    icon: '💀',
+    themeColor: '#a855f7',
+    prevZoneId: 'zone6',
+    warriorLevelRequired: 55,
+    entryCost: [{ itemId: 'dragon_scale', quantity: 2 }, { itemId: 'dragon_heart', quantity: 1 }],
+    mobs: [
+      { id: 'skeleton_archer', name: 'Skeleton Archer', icon: '💀', hp: 2800, atk: 16,   def: 8,  atkSpread: 0.3,  xpReward: 35000,  goldMin: 280, goldMax: 420,  materialDropId: 'shadow_dust', materialDropChance: 0.3, materialDropQty: 2 },
+      { id: 'zombie_knight',   name: 'Zombie Knight',   icon: '💀', hp: 4000, atk: 17,   def: 10, atkSpread: 0.3,  xpReward: 55000,  goldMin: 380, goldMax: 580,  materialDropId: 'shadow_dust', materialDropChance: 0.4, materialDropQty: 3 },
+      { id: 'lich_apprentice', name: 'Lich Apprentice', icon: '💀', hp: 5200, atk: 18.5, def: 11, atkSpread: 0.35, xpReward: 80000,  goldMin: 480, goldMax: 700,  materialDropId: 'shadow_dust', materialDropChance: 0.5, materialDropQty: 4 },
+    ],
+    boss: {
+      id: 'lich', name: 'Necromancer Lord', icon: '💀', hp: 6500, atk: 20, def: 13, atkSpread: 0.4,
+      rewards: { chestTier: 'legendary_chest' },
+      requirements: { minAtk: 75, minHp: 380, minHpRegen: 13, minDef: 8 },
+      materialDropId: 'lich_crystal', materialDropQty: 1,
+    },
+  },
+  // ── Zone 8 — Celestial Spire (target: endgame, requires lich_crystal to enter)
+  {
+    id: 'zone8',
+    name: 'Celestial Spire',
+    icon: '⚡',
+    themeColor: '#38bdf8',
+    prevZoneId: 'zone7',
+    warriorLevelRequired: 75,
+    entryCost: [{ itemId: 'lich_crystal', quantity: 2 }, { itemId: 'troll_heart', quantity: 1 }],
+    mobs: [
+      { id: 'sky_serpent',     name: 'Sky Serpent',     icon: '🐍', hp: 4500, atk: 21, def: 11, atkSpread: 0.3,  xpReward: 100000, goldMin: 450, goldMax: 650,  materialDropId: 'storm_shard', materialDropChance: 0.3, materialDropQty: 2 },
+      { id: 'thunder_drake',   name: 'Thunder Drake',   icon: '🦅', hp: 6200, atk: 23, def: 13, atkSpread: 0.35, xpReward: 160000, goldMin: 600, goldMax: 900,  materialDropId: 'storm_shard', materialDropChance: 0.4, materialDropQty: 3 },
+      { id: 'storm_elemental', name: 'Storm Elemental', icon: '🌪️', hp: 8000, atk: 25, def: 15, atkSpread: 0.4,  xpReward: 230000, goldMin: 750, goldMax: 1100, materialDropId: 'storm_shard', materialDropChance: 0.5, materialDropQty: 4 },
+    ],
+    boss: {
+      id: 'titan', name: 'Storm Titan', icon: '⚡', hp: 10000, atk: 28, def: 18, atkSpread: 0.45,
+      rewards: { chestTier: 'legendary_chest' },
+      requirements: { minAtk: 100, minHp: 500, minHpRegen: 18, minDef: 15 },
+      materialDropId: 'titan_core', materialDropQty: 1,
+    },
+  },
 ]
 
 /** Warrior XP granted on boss kill by boss id */
@@ -235,6 +277,8 @@ export const BOSS_WARRIOR_XP: Record<string, number> = {
   orc: 2000,
   troll: 5000,
   dragon: 12000,
+  lich: 30000,
+  titan: 80000,
 }
 
 /** Backward compat: flat list of boss defs */
@@ -429,6 +473,10 @@ export interface FoodEffect {
   buffDef?: number
   buffRegen?: number
   buffDurationSec?: number
+  /** % bonus to gold earned this run (e.g. 15 = +15% gold). */
+  goldBonusPct?: number
+  /** % bonus to material drop chance this run (e.g. 10 = +10% drop chance). */
+  dropBonusPct?: number
 }
 
 export interface FoodLoadoutSlot {
@@ -467,7 +515,7 @@ export function simulateBattleWithFood(
   player: CombatStats,
   boss: BossDef | MobDef,
   foodLoadout: FoodLoadout,
-  healThreshold = 0.5,
+  _healThreshold = 0.5,
   seed?: number,
 ): BattleOutcomeWithFood {
   const rng = mulberry32(seed ?? (Date.now() ^ 0x9E3779B9))
@@ -485,6 +533,18 @@ export function simulateBattleWithFood(
   const MAX_FOOD_BUFF_ATK_SIM = 25
   const MAX_FOOD_BUFF_DEF_SIM = 15
   const MAX_FOOD_BUFF_REGEN_SIM = 8
+
+  // Consume all food at battle start — buffs apply from t=0
+  for (const slot of slots) {
+    if (!slot || slot.qty <= 0) continue
+    const eff = slot.effect
+    slot.qty--
+    consumed[slot.foodId] = (consumed[slot.foodId] ?? 0) + 1
+    if (eff.heal) playerHp = Math.min(maxHp, playerHp + eff.heal)
+    if (eff.buffAtk || eff.buffDef || eff.buffRegen) {
+      buffs.push({ atk: eff.buffAtk ?? 0, def: eff.buffDef ?? 0, regen: eff.buffRegen ?? 0, expiresAt: t + (eff.buffDurationSec ?? 60) })
+    }
+  }
 
   while (t < maxTime) {
     // Sum active buffs
@@ -514,26 +574,6 @@ export function simulateBattleWithFood(
     if (playerHp <= 0) {
       return { willWin: false, tWinSeconds: Infinity, tLoseSeconds: t, foodConsumed: Object.entries(consumed).map(([foodId, qty]) => ({ foodId, qty })) }
     }
-
-    // Try to consume food when HP < threshold
-    if (playerHp < maxHp * healThreshold) {
-      for (const slot of slots) {
-        if (!slot || slot.qty <= 0) continue
-        const eff = slot.effect
-        slot.qty--
-        consumed[slot.foodId] = (consumed[slot.foodId] ?? 0) + 1
-        if (eff.heal) playerHp = Math.min(maxHp, playerHp + eff.heal)
-        if (eff.buffAtk || eff.buffDef || eff.buffRegen) {
-          buffs.push({
-            atk: eff.buffAtk ?? 0,
-            def: eff.buffDef ?? 0,
-            regen: eff.buffRegen ?? 0,
-            expiresAt: t + (eff.buffDurationSec ?? 60),
-          })
-        }
-        break // one food per tick
-      }
-    }
   }
 
   // Timeout = loss
@@ -546,7 +586,7 @@ export function computeBattleStateAtTimeWithFood(
   boss: BossDef | MobDef,
   foodLoadout: FoodLoadout,
   elapsedSeconds: number,
-  healThreshold = 0.5,
+  _healThreshold = 0.5,
   seed?: number,
 ): BattleStateWithFood {
   const rng = mulberry32(seed ?? (Date.now() ^ 0x9E3779B9))
@@ -565,6 +605,18 @@ export function computeBattleStateAtTimeWithFood(
   const MAX_FOOD_BUFF_ATK = 25
   const MAX_FOOD_BUFF_DEF = 15
   const MAX_FOOD_BUFF_REGEN = 8
+
+  // Consume all food at battle start — buffs apply from t=0
+  for (const slot of slots) {
+    if (!slot || slot.qty <= 0) continue
+    const eff = slot.effect
+    slot.qty--
+    foodEvents.push({ atSeconds: 0, foodId: slot.foodId, healAmount: eff.heal ?? 0 })
+    if (eff.heal) playerHp = Math.min(maxHp, playerHp + eff.heal)
+    if (eff.buffAtk || eff.buffDef || eff.buffRegen) {
+      buffs.push({ atk: eff.buffAtk ?? 0, def: eff.buffDef ?? 0, regen: eff.buffRegen ?? 0, expiresAt: t + (eff.buffDurationSec ?? 60) })
+    }
+  }
 
   while (t < elapsedSeconds && !isComplete) {
     let buffAtk = 0, buffDef = 0, buffRegen = 0
@@ -588,25 +640,6 @@ export function computeBattleStateAtTimeWithFood(
 
     if (bossHp <= 0) { isComplete = true; victory = true; break }
     if (playerHp <= 0) { isComplete = true; victory = false; break }
-
-    if (playerHp < maxHp * healThreshold) {
-      for (const slot of slots) {
-        if (!slot || slot.qty <= 0) continue
-        const eff = slot.effect
-        slot.qty--
-        foodEvents.push({ atSeconds: t, foodId: slot.foodId, healAmount: eff.heal ?? 0 })
-        if (eff.heal) {
-          playerHp = Math.min(maxHp, playerHp + eff.heal)
-        }
-        if (eff.buffAtk || eff.buffDef || eff.buffRegen) {
-          buffs.push({
-            atk: eff.buffAtk ?? 0, def: eff.buffDef ?? 0, regen: eff.buffRegen ?? 0,
-            expiresAt: t + (eff.buffDurationSec ?? 60),
-          })
-        }
-        break
-      }
-    }
   }
 
   // Active buffs at requested time (with caps)

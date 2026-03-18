@@ -117,9 +117,9 @@ function getRewardInfo(streak: number): { items: { text: string }[] } {
   const items: { text: string }[] = []
 
   if (pct > 0) items.push({ text: `+${pct}% XP boost` })
-  if (streak >= 7) items.push({ text: 'Streak shield active' })
-  if (streak >= 14) items.push({ text: 'Better chest drops' })
-  if (streak >= 30) items.push({ text: 'Legendary drop rate up' })
+  if (streak >= 7) items.push({ text: '🛡 Shield: miss 1 day without reset' })
+  if (streak >= 14) items.push({ text: '📦 Improved chest tier rates' })
+  if (streak >= 30) items.push({ text: '⭐ Legendary tier unlocked' })
 
   return { items }
 }

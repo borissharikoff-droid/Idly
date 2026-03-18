@@ -63,7 +63,7 @@ export function useMessageNotifier() {
               window.electronAPI?.window?.flashFrame?.()
             } catch {}
             const preview = row.body.length > 80 ? row.body.slice(0, 80) + '…' : row.body
-            supabase.from('profiles').select('username, avatar_url').eq('id', row.sender_id).single().then(({ data: profile }) => {
+            void Promise.resolve(supabase.from('profiles').select('username, avatar_url').eq('id', row.sender_id).single()).then(({ data: profile }) => {
               const name = profile?.username?.trim() || 'Friend'
               const avatar = profile?.avatar_url || '💬'
               useMessageToastStore.getState().push({

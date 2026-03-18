@@ -42,7 +42,7 @@ export function DailyMissionsWidget() {
     const rewardId = addChest(chestType, 'daily_activity', 100)
     claimPendingReward(rewardId)
     const result = openChestAndGrantItem(chestType, { source: 'daily_activity' })
-    if (result) setOpened({ chestType, itemId: result.itemId, goldDropped: result.goldDropped, bonusMaterials: result.bonusMaterials })
+    if (result?.itemId) setOpened({ chestType, itemId: result.itemId, goldDropped: result.goldDropped, bonusMaterials: result.bonusMaterials })
     setTick((v) => v + 1)
   }
 
@@ -57,11 +57,11 @@ export function DailyMissionsWidget() {
       <div className="flex items-center justify-between">
         <p className="text-[10px] uppercase tracking-wider text-gray-500 font-mono">Daily quests</p>
         <div className="flex items-center gap-2">
-          <p className="text-[9px] text-gray-600 font-mono">{completedCount}/{missions.length}</p>
+          <p className="text-[10px] text-gray-600 font-mono">{completedCount}/{missions.length}</p>
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="text-[9px] px-1.5 py-0.5 rounded border border-white/15 text-gray-400 hover:text-white hover:border-white/25"
+            className="text-[10px] px-1.5 py-0.5 rounded border border-white/15 text-gray-400 hover:text-white hover:border-white/25"
           >
             {expanded ? 'Hide' : 'Show'}
           </button>
@@ -92,15 +92,15 @@ export function DailyMissionsWidget() {
                   <div className="min-w-0">
                     <p className="text-[11px] text-white font-medium truncate">{mission.title}</p>
                     <p className="text-[10px] text-gray-500 truncate">{mission.description}</p>
-                    <p className="text-[9px] text-gray-400 mt-0.5">Reward: <ChestVisual name={chest.name} icon={chest.icon} image={chest.image} /></p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">Reward: <ChestVisual name={chest.name} icon={chest.icon} image={chest.image} /></p>
                   </div>
                   {mission.claimed ? (
-                    <span className="text-[9px] px-2 py-1 rounded border border-cyber-neon/30 bg-cyber-neon/10 text-cyber-neon font-mono">Claimed</span>
+                    <span className="text-[10px] px-2 py-1 rounded border border-cyber-neon/30 bg-cyber-neon/10 text-cyber-neon font-mono">Claimed</span>
                   ) : mission.completed ? (
                     <button
                       type="button"
                       onClick={() => handleClaim(mission.id)}
-                      className="text-[9px] px-2 py-1 rounded border border-cyber-neon/40 bg-cyber-neon/15 text-cyber-neon font-semibold hover:bg-cyber-neon/25 transition-colors"
+                      className="text-[10px] px-2 py-1 rounded border border-cyber-neon/40 bg-cyber-neon/15 text-cyber-neon font-semibold hover:bg-cyber-neon/25 transition-colors"
                     >
                       <span className="inline-flex items-center gap-1">
                         <span>Claim</span>
@@ -118,7 +118,7 @@ export function DailyMissionsWidget() {
                       </span>
                     </button>
                   ) : (
-                    <span className="text-[9px] text-gray-500 font-mono">{Math.floor(mission.progress)}/{mission.target}</span>
+                    <span className="text-[10px] text-gray-500 font-mono">{Math.floor(mission.progress)}/{mission.target}</span>
                   )}
                 </div>
                 <div className="mt-2 h-1 rounded-full bg-white/5 overflow-hidden">

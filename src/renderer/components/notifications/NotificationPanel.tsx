@@ -7,7 +7,7 @@ import { useInventoryStore } from '../../stores/inventoryStore'
 import { useFarmStore } from '../../stores/farmStore'
 import { useNavigationStore } from '../../stores/navigationStore'
 import { useAuthStore } from '../../stores/authStore'
-import { LOOT_ITEMS, type BonusMaterial, type ChestType } from '../../lib/loot'
+import { LOOT_ITEMS, RARITY_COLORS, type BonusMaterial, type ChestType, type LootRarity } from '../../lib/loot'
 import { ChestOpenModal } from '../animations/ChestOpenModal'
 import { supabase } from '../../lib/supabase'
 import { playClickSound } from '../../lib/sounds'
@@ -15,12 +15,15 @@ import { getLatestPatch } from '../../lib/changelog'
 import { WhatsNewModal } from '../WhatsNewModal'
 import type { TabId } from '../../App'
 
-function tabForNotifType(type: NotificationType): TabId | null {
+function tabForNotifType(type: NotificationType, title?: string): TabId | null {
   switch (type) {
     case 'arena_result': return 'arena'
     case 'marketplace_sale': return 'marketplace'
     case 'friend_levelup': return 'friends'
-    case 'progression': return 'skills'
+    case 'progression':
+      // Chest/loot notifications → inventory; skill/xp notifications → skills
+      if (title && (title.toLowerCase().includes('chest') || title.toLowerCase().includes('inbox') || title.toLowerCase().includes('loot') || title.toLowerCase().includes('drop'))) return 'inventory'
+      return 'skills'
     default: return null
   }
 }
@@ -72,7 +75,7 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
     const result = openChestAndGrantItem(chestType as ChestType, { source: 'session_complete' })
     useFarmStore.getState().rollSeedDrop(chestType as ChestType)
     dismiss(notifId)
-    if (result) setOpenedChest({ chestType: chestType as ChestType, itemId: result.itemId, goldDropped: result.goldDropped, bonusMaterials: result.bonusMaterials })
+    if (result && result.itemId) setOpenedChest({ chestType: chestType as ChestType, itemId: result.itemId, goldDropped: result.goldDropped, bonusMaterials: result.bonusMaterials })
   }
 
   useEffect(() => {
@@ -109,7 +112,7 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
           ref={panelRef}
           initial={{ opacity: 0, y: -6, scale: 0.94, transformOrigin: 'top right' }}
           animate={{ opacity: 1, y: 0, scale: 1, transformOrigin: 'top right' }}
-          exit={{ opacity: 0, y: -12, scale: 0.5, transformOrigin: 'top right' }}
+          exit={{ opacity: 0, y: -8, scale: 0.95, transformOrigin: 'top right' }}
           transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
           className="absolute top-full right-0 mt-1.5 w-[260px] max-h-[360px] rounded-xl bg-discord-card border border-white/10 shadow-xl z-50 overflow-hidden flex flex-col"
         >
@@ -149,71 +152,76 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
               </div>
             ) : (
               filteredItems.map((item) => (
-                item.arenaResult ? (
-                  <div key={item.id} className="px-3 py-2 border-b border-white/[0.03] last:border-0">
-                    <div className={`rounded-2xl border px-3 py-2.5 cursor-pointer ${item.arenaResult.victory ? 'border-cyber-neon/25 bg-gradient-to-r from-cyber-neon/10 via-cyber-neon/5 to-discord-card/80' : 'border-red-500/25 bg-gradient-to-r from-red-500/10 via-red-500/5 to-discord-card/80'}`}
-                      onClick={() => { if (globalNavigate) { playClickSound(); globalNavigate('arena'); onClose() } }}
-                    >
-                      <div className="flex items-start gap-2">
-                        <span className="text-base shrink-0 mt-0.5">{item.icon}</span>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="text-[12px] font-semibold text-white leading-snug">{item.title}</p>
-                            <span className="text-[9px] text-gray-500 font-mono shrink-0 mt-0.5">{timeAgo(item.timestamp)}</span>
+                item.arenaResult ? (() => {
+                  const ar = item.arenaResult!
+                  const accent = ar.victory ? '#39ff14' : '#ef4444'
+                  const accentBg = ar.victory ? 'rgba(57,255,20,0.07)' : 'rgba(239,68,68,0.07)'
+                  const accentBorder = ar.victory ? 'rgba(57,255,20,0.22)' : 'rgba(239,68,68,0.22)'
+                  const iconBg = ar.victory ? 'rgba(57,255,20,0.12)' : 'rgba(239,68,68,0.12)'
+                  return (
+                    <div key={item.id} className="px-2.5 py-1.5 border-b border-white/[0.03] last:border-0">
+                      <div
+                        className="rounded-xl px-3 py-2 cursor-pointer"
+                        style={{ border: `1px solid ${accentBorder}`, background: accentBg }}
+                        onClick={() => { if (globalNavigate) { playClickSound(); globalNavigate('arena'); onClose() } }}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: iconBg, border: `1px solid ${accentBorder}` }}>
+                            {ar.chest?.image ? (
+                              <img src={ar.chest.image} alt="" className="w-6 h-6 object-contain" style={{ imageRendering: 'pixelated' }} draggable={false} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                            ) : (
+                              <span className="text-sm leading-none">{ar.chest?.icon ?? item.icon}</span>
+                            )}
                           </div>
-                          <p className="text-[10px] text-gray-200 leading-snug mt-0.5">{item.body}</p>
-                        </div>
-                        {item.arenaResult.victory && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              playClickSound()
-                              const ar = item.arenaResult!
-                              const matBonuses: BonusMaterial[] = ar.materialDrop ? [{ itemId: ar.materialDrop.id, qty: ar.materialDrop.qty }] : []
-                              if (ar.chest) {
-                                const result = openChestAndGrantItem(ar.chest.type as ChestType, { source: 'session_complete', focusCategory: null })
-                                if (result) {
-                                  setResultModal({
-                                    chestType: ar.chest.type as ChestType,
-                                    itemId: result.itemId,
-                                    goldDropped: result.goldDropped + ar.gold,
-                                    bonusMaterials: [...matBonuses, ...result.bonusMaterials],
-                                    warriorXP: ar.warriorXP ?? 0,
-                                    pendingGold: 0,
-                                  })
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-baseline justify-between gap-1">
+                              <p className="text-[11px] font-semibold text-white truncate">{item.title}</p>
+                              <span className="text-[10px] text-gray-500 font-mono shrink-0">{timeAgo(item.timestamp)}</span>
+                            </div>
+                            <p className="text-[10px] leading-snug mt-0.5 truncate" style={{ color: accent }}>{item.body}</p>
+                          </div>
+                          {ar.victory && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                playClickSound()
+                                const matBonuses: BonusMaterial[] = ar.materialDrop ? [{ itemId: ar.materialDrop.id, qty: ar.materialDrop.qty }] : []
+                                if (ar.chest) {
+                                  const result = openChestAndGrantItem(ar.chest.type as ChestType, { source: 'session_complete', focusCategory: null })
+                                  if (result) {
+                                    setResultModal({ chestType: ar.chest.type as ChestType, itemId: result.itemId, goldDropped: result.goldDropped + ar.gold, bonusMaterials: [...matBonuses, ...result.bonusMaterials], warriorXP: ar.warriorXP ?? 0, pendingGold: 0 })
+                                  }
+                                } else {
+                                  setResultModal({ chestType: null, itemId: null, goldDropped: ar.gold, bonusMaterials: matBonuses, warriorXP: ar.warriorXP ?? 0, pendingGold: 0 })
                                 }
-                              } else {
-                                setResultModal({
-                                  chestType: null,
-                                  itemId: null,
-                                  goldDropped: ar.gold,
-                                  bonusMaterials: matBonuses,
-                                  warriorXP: ar.warriorXP ?? 0,
-                                  pendingGold: 0,
-                                })
-                              }
-                              dismiss(item.id)
-                              onClose()
-                            }}
-                            className="shrink-0 px-2.5 py-1 rounded-lg bg-cyber-neon/20 border border-cyber-neon/40 text-cyber-neon text-xs font-semibold hover:bg-cyber-neon/30 transition-colors"
-                          >
-                            Claim
-                          </button>
-                        )}
+                                dismiss(item.id)
+                                onClose()
+                              }}
+                              className="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors"
+                              style={{ color: accent, background: `${accent}20`, border: `1px solid ${accentBorder}` }}
+                            >
+                              Claim
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ) : item.recovery ? (
-                  <div key={item.id} className="px-3 py-2 border-b border-white/[0.03] last:border-0">
-                    <div className="rounded-xl border border-cyber-neon/20 bg-gradient-to-r from-cyber-neon/[0.07] to-transparent px-3 py-2">
-                      <div className="flex items-start gap-2">
-                        <span className="text-base shrink-0 mt-0.5">{item.icon}</span>
+                  )
+                })()
+                : item.recovery ? (
+                  <div key={item.id} className="px-2.5 py-1.5 border-b border-white/[0.03] last:border-0">
+                    <div className="rounded-xl border border-cyber-neon/20 bg-cyber-neon/[0.06] px-3 py-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-cyber-neon/12 border border-cyber-neon/25">
+                          <span className="text-sm leading-none">{item.icon}</span>
+                        </div>
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="text-[11px] font-semibold text-white leading-snug">{item.title}</p>
-                            <span className="text-[9px] text-gray-600 font-mono shrink-0 mt-0.5">{timeAgo(item.timestamp)}</span>
+                          <div className="flex items-baseline justify-between gap-1">
+                            <p className="text-[11px] font-semibold text-white truncate">{item.title}</p>
+                            <span className="text-[10px] text-gray-500 font-mono shrink-0">{timeAgo(item.timestamp)}</span>
                           </div>
-                          <p className="text-[10px] text-gray-400 leading-snug mt-0.5 line-clamp-2">{item.body}</p>
+                          <p className="text-[10px] text-gray-400 truncate mt-0.5">{item.body}</p>
                         </div>
                         <button
                           type="button"
@@ -228,42 +236,74 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                             window.electronAPI?.db?.clearCheckpoint?.().catch(() => {})
                             dismiss(item.id)
                           }}
-                          className="shrink-0 mt-0.5 px-2.5 py-1 rounded-lg bg-cyber-neon/15 border border-cyber-neon/35 text-cyber-neon text-xs font-semibold hover:bg-cyber-neon/25 transition-colors"
+                          className="shrink-0 px-2.5 py-1 rounded-lg bg-cyber-neon/15 border border-cyber-neon/35 text-cyber-neon text-[11px] font-semibold hover:bg-cyber-neon/25 transition-colors"
                         >
                           Claim
                         </button>
                       </div>
                     </div>
                   </div>
-                ) : item.chestReward ? (
-                  <div key={item.id} className="px-3 py-2 border-b border-white/[0.03] last:border-0">
-                    <div className="rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-3 py-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-base shrink-0">{item.icon}</span>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[11px] text-white leading-snug">{item.title}</p>
-                          <span className="text-[9px] text-gray-500 font-mono">{timeAgo(item.timestamp)}</span>
+                ) : item.chestReward ? (() => {
+                  const cr = item.chestReward
+                  const rTheme = RARITY_COLORS[(cr.chestRarity as LootRarity) ?? 'common'] ?? RARITY_COLORS.common
+                  return (
+                    <div key={item.id} className="px-2.5 py-1.5 border-b border-white/[0.03] last:border-0">
+                      <div
+                        className="rounded-xl px-3 py-2"
+                        style={{ border: `1px solid ${rTheme.border}`, background: `${rTheme.color}0a` }}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div
+                            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                            style={{ background: `${rTheme.color}15`, border: `1px solid ${rTheme.border}` }}
+                          >
+                            {cr.chestImage ? (
+                              <img
+                                src={cr.chestImage}
+                                alt=""
+                                className="w-6 h-6 object-contain"
+                                style={{ imageRendering: 'pixelated' }}
+                                draggable={false}
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                              />
+                            ) : (
+                              <span className="text-sm leading-none">{item.icon}</span>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-baseline justify-between gap-1">
+                              <p className="text-[11px] font-semibold text-white truncate">{item.title}</p>
+                              <span className="text-[10px] text-gray-500 font-mono shrink-0">{timeAgo(item.timestamp)}</span>
+                            </div>
+                            <p className="text-[10px] mt-0.5 truncate" style={{ color: rTheme.color }}>{cr.chestRarity ? `${cr.chestRarity.charAt(0).toUpperCase() + cr.chestRarity.slice(1)} bag` : item.body}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenChest(item.id, cr.rewardId, cr.chestType)}
+                            className="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors"
+                            style={{ color: rTheme.color, background: `${rTheme.color}20`, border: `1px solid ${rTheme.border}` }}
+                          >
+                            Open
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenChest(item.id, item.chestReward!.rewardId, item.chestReward!.chestType)}
-                          className="shrink-0 px-2.5 py-1 rounded-lg bg-amber-400/20 border border-amber-400/40 text-amber-300 text-xs font-semibold hover:bg-amber-400/30 transition-colors"
-                        >
-                          Open
-                        </button>
                       </div>
                     </div>
-                  </div>
-                ) : item.poll ? (
-                  <div key={item.id} className="px-3 py-2 border-b border-white/[0.03] last:border-0">
+                  )
+                })()
+                : item.poll ? (
+                  <div key={item.id} className="px-2.5 py-1.5 border-b border-white/[0.03] last:border-0">
                     <div className="rounded-xl border border-purple-400/20 bg-purple-400/[0.06] px-3 py-2">
-                      <div className="flex items-start gap-2 mb-2">
-                        <span className="text-base shrink-0 mt-0.5">{item.icon}</span>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[11px] text-white leading-snug font-semibold">{item.title}</p>
-                          {item.body && <p className="text-[10px] text-gray-400 leading-snug mt-0.5">{item.body}</p>}
+                      <div className="flex items-center gap-2.5 mb-2">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-purple-400/12 border border-purple-400/25">
+                          <span className="text-sm leading-none">{item.icon}</span>
                         </div>
-                        <span className="text-[9px] text-gray-600 font-mono shrink-0 mt-0.5">{timeAgo(item.timestamp)}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-baseline justify-between gap-1">
+                            <p className="text-[11px] font-semibold text-white truncate">{item.title}</p>
+                            <span className="text-[10px] text-gray-500 font-mono shrink-0">{timeAgo(item.timestamp)}</span>
+                          </div>
+                          {item.body && <p className="text-[10px] text-gray-400 truncate mt-0.5">{item.body}</p>}
+                        </div>
                       </div>
                       {votedPolls.has(item.poll.pollId) ? (
                         <p className="text-[10px] text-green-400 font-semibold text-center py-1">Voted!</p>
@@ -297,45 +337,48 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                     </div>
                   </div>
                 ) : item.patchVersion ? (
-                  <div key={item.id} className="px-3 py-2 border-b border-white/[0.03] last:border-0">
+                  <div key={item.id} className="px-2.5 py-1.5 border-b border-white/[0.03] last:border-0">
                     <div className="rounded-xl border border-green-400/20 bg-green-400/[0.06] px-3 py-2">
-                      <div className="flex items-start gap-2">
-                        <span className="text-base shrink-0 mt-0.5">{item.icon}</span>
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-green-400/12 border border-green-400/25">
+                          <span className="text-sm leading-none">{item.icon}</span>
+                        </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-[11px] text-white leading-snug font-semibold">{item.title}</p>
-                          <p className="text-[10px] text-gray-400 leading-snug mt-0.5">{item.body}</p>
+                          <div className="flex items-baseline justify-between gap-1">
+                            <p className="text-[11px] font-semibold text-white truncate">{item.title}</p>
+                            <span className="text-[10px] text-gray-500 font-mono shrink-0">{timeAgo(item.timestamp)}</span>
+                          </div>
+                          <p className="text-[10px] text-gray-400 truncate mt-0.5">{item.body}</p>
                         </div>
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <span className="text-[9px] text-gray-600 font-mono">{timeAgo(item.timestamp)}</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              playClickSound()
-                              setPatchModalOpen(true)
-                            }}
-                            className="px-2.5 py-1 rounded-lg bg-green-400/15 border border-green-400/35 text-green-400 text-xs font-semibold hover:bg-green-400/25 transition-colors"
-                          >
-                            View
-                          </button>
-                        </div>
+                        <button
+                          type="button"
+                          onClick={() => { playClickSound(); setPatchModalOpen(true) }}
+                          className="shrink-0 px-2.5 py-1 rounded-lg bg-green-400/15 border border-green-400/35 text-green-400 text-[11px] font-semibold hover:bg-green-400/25 transition-colors"
+                        >
+                          View
+                        </button>
                       </div>
                     </div>
                   </div>
                 ) : (
                   <div
                     key={item.id}
-                    className="px-3 py-2 flex items-start gap-2 hover:bg-white/[0.02] border-b border-white/[0.03] last:border-0 cursor-pointer"
+                    className="px-2.5 py-1.5 flex items-center gap-2.5 hover:bg-white/[0.02] border-b border-white/[0.03] last:border-0 cursor-pointer"
                     onClick={() => {
-                      const tab = tabForNotifType(item.type)
+                      const tab = tabForNotifType(item.type, item.title)
                       if (tab && globalNavigate) { playClickSound(); globalNavigate(tab); onClose() }
                     }}
                   >
-                    <span className="text-sm shrink-0 mt-0.5">{item.icon}</span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[11px] text-white leading-snug">{item.title}</p>
-                      <p className="text-[10px] text-gray-500 leading-snug mt-0.5">{item.body}</p>
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-white/[0.05] border border-white/[0.08]">
+                      <span className="text-sm leading-none">{item.icon}</span>
                     </div>
-                    <span className="text-[9px] text-gray-600 font-mono shrink-0 mt-0.5">{timeAgo(item.timestamp)}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline justify-between gap-1">
+                        <p className="text-[11px] font-semibold text-white truncate">{item.title}</p>
+                        <span className="text-[10px] text-gray-600 font-mono shrink-0">{timeAgo(item.timestamp)}</span>
+                      </div>
+                      {item.body && <p className="text-[10px] text-gray-500 truncate mt-0.5">{item.body}</p>}
+                    </div>
                   </div>
                 )
               ))

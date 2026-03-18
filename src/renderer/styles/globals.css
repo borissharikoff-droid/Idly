@@ -286,3 +286,83 @@ input, textarea {
     scroll-behavior: auto !important;
   }
 }
+
+/* ─── Cooking Page animations (moved from CookingPage.tsx CSS island) ─────── */
+.kv-scroll { -ms-overflow-style:none; scrollbar-width:none; }
+.kv-scroll::-webkit-scrollbar { display:none; }
+
+.kv-ember-rise { animation: kv-ember-rise var(--dur,2s) ease-out infinite; }
+@keyframes kv-ember-rise {
+  0%   { transform: translateY(0) scale(1); opacity: 0; }
+  15%  { opacity: .6; }
+  100% { transform: translateY(-40px) scale(.2); opacity: 0; }
+}
+
+.kv-flow { animation: kv-flow 1.5s linear infinite; }
+@keyframes kv-flow {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+.ember-pulse { animation: ember-pulse 2s ease-in-out infinite; }
+@keyframes ember-pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(194,120,64,0); }
+  50% { box-shadow: 0 0 18px 5px rgba(194,120,64,.45), 0 0 36px 10px rgba(194,120,64,.15), 0 0 6px 2px rgba(226,176,82,.7); }
+}
+
+.kv-action-bounce { animation: kv-action-bounce .6s ease-in-out infinite; }
+@keyframes kv-action-bounce {
+  0%,100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-4px) rotate(-8deg); }
+  75% { transform: translateY(-4px) rotate(8deg); }
+}
+
+.kv-ring-bg { stroke: rgba(255,255,255,.06); }
+.kv-ring-fg { stroke: url(#kv-pipe-grad); stroke-linecap: round; filter: drop-shadow(0 0 4px rgba(194,120,64,.4)); transition: none; }
+
+.kv-ripple {
+  position: absolute; border-radius: 50%;
+  background: radial-gradient(circle, rgba(194,120,64,.2) 0%, transparent 70%);
+  transform: scale(0); animation: kv-ripple-go .5s ease-out forwards;
+  pointer-events: none;
+}
+@keyframes kv-ripple-go { to { transform: scale(2.5); opacity: 0; } }
+
+.kv-confetti { animation: kv-confetti-fall var(--dur,1s) ease-out forwards; pointer-events: none; }
+@keyframes kv-confetti-fall {
+  0% { transform: translateY(0) rotate(0) scale(1); opacity: 1; }
+  100% { transform: translateY(40px) rotate(var(--rot,180deg)) scale(.3); opacity: 0; }
+}
+
+.kv-shake { animation: kv-shake .4s ease-in-out; }
+@keyframes kv-shake {
+  0%,100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+
+.kv-golden-flash { animation: kv-golden-flash .6s ease-out forwards; pointer-events: none; }
+@keyframes kv-golden-flash {
+  0% { opacity: .4; }
+  100% { opacity: 0; }
+}
+
+.kv-ring-burn { animation: kv-ring-burn .5s ease-out; }
+@keyframes kv-ring-burn {
+  0% { filter: drop-shadow(0 0 8px rgba(232,102,90,.8)); }
+  100% { filter: drop-shadow(0 0 4px rgba(194,120,64,.4)); }
+}
+
+.kv-ring-bonus { animation: kv-ring-bonus .5s ease-out; }
+@keyframes kv-ring-bonus {
+  0% { filter: drop-shadow(0 0 8px rgba(155,143,239,.8)); }
+  100% { filter: drop-shadow(0 0 4px rgba(194,120,64,.4)); }
+}
+
+.kv-pulse { animation: kv-pulse 2s ease-in-out infinite; }
+@keyframes kv-pulse {
+  0%,100% { opacity: .7; }
+  50% { opacity: 1; }
+}

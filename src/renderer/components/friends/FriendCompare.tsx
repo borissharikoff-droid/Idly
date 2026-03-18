@@ -5,6 +5,7 @@ import { useAuthStore } from '../../stores/authStore'
 import { skillLevelFromXP } from '../../lib/skills'
 import type { FriendProfile } from '../../hooks/useFriends'
 import { AvatarWithFrame } from '../shared/AvatarWithFrame'
+import { BackButton } from '../shared/BackButton'
 
 interface CompareProps {
   friend: FriendProfile
@@ -37,13 +38,13 @@ function StatRow({ label, myVal, theirVal, suffix, higherIsBetter = true }: {
     <div className="flex items-center gap-2 py-2">
       <div className={`flex-1 text-right font-mono text-sm font-bold ${iWin ? 'text-cyber-neon' : tie ? 'text-white' : 'text-gray-500'}`}>
         {myVal.toLocaleString()}{suffix || ''}
-        {iWin && <span className="ml-1 text-[9px]">✓</span>}
+        {iWin && <span className="ml-1 text-[10px]">✓</span>}
       </div>
       <div className="w-24 text-center">
         <span className="text-[10px] text-gray-400 font-mono uppercase tracking-wider">{label}</span>
       </div>
       <div className={`flex-1 text-left font-mono text-sm font-bold ${theyWin ? 'text-cyber-neon' : tie ? 'text-white' : 'text-gray-500'}`}>
-        {theyWin && <span className="mr-1 text-[9px]">✓</span>}
+        {theyWin && <span className="mr-1 text-[10px]">✓</span>}
         {theirVal.toLocaleString()}{suffix || ''}
       </div>
     </div>
@@ -129,10 +130,7 @@ export function FriendCompare({ friend, onBack }: CompareProps) {
   if (!me || !them) {
     return (
       <div className="space-y-3">
-        <button onClick={onBack} className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors text-sm">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-          <span className="font-mono text-xs">Back</span>
-        </button>
+        <BackButton onClick={onBack} />
         <p className="text-gray-500 text-sm text-center py-8">Loading comparison...</p>
       </div>
     )
@@ -155,10 +153,7 @@ export function FriendCompare({ friend, onBack }: CompareProps) {
       animate={{ opacity: 1, x: 0 }}
       className="space-y-3"
     >
-      <button onClick={onBack} className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors text-sm">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
-        <span className="font-mono text-xs">Back</span>
-      </button>
+      <BackButton onClick={onBack} />
 
       {/* Header: You vs Friend */}
       <div className="rounded-2xl bg-discord-card/80 border border-white/10 p-4">
@@ -183,7 +178,7 @@ export function FriendCompare({ friend, onBack }: CompareProps) {
               <span className="text-gray-600 text-xs">vs</span>
               <span className={`text-2xl font-mono font-bold ${theirScore > myScore ? 'text-cyber-neon' : 'text-gray-500'}`}>{theirScore}</span>
             </div>
-            <p className="text-[9px] text-gray-600 font-mono mt-0.5">CATEGORIES WON</p>
+            <p className="text-[10px] text-gray-600 font-mono mt-0.5">CATEGORIES WON</p>
           </div>
 
           {/* Friend avatar */}
@@ -208,13 +203,13 @@ export function FriendCompare({ friend, onBack }: CompareProps) {
         <div className="flex items-center gap-2 py-2">
           <div className={`flex-1 text-right font-mono text-sm font-bold ${me.totalGrindSeconds > them.totalGrindSeconds ? 'text-cyber-neon' : me.totalGrindSeconds === them.totalGrindSeconds ? 'text-white' : 'text-gray-500'}`}>
             {formatDuration(me.totalGrindSeconds)}
-            {me.totalGrindSeconds > them.totalGrindSeconds && <span className="ml-1 text-[9px]">✓</span>}
+            {me.totalGrindSeconds > them.totalGrindSeconds && <span className="ml-1 text-[10px]">✓</span>}
           </div>
           <div className="w-24 text-center">
             <span className="text-[10px] text-gray-400 font-mono uppercase tracking-wider">Grind Time</span>
           </div>
           <div className={`flex-1 text-left font-mono text-sm font-bold ${them.totalGrindSeconds > me.totalGrindSeconds ? 'text-cyber-neon' : me.totalGrindSeconds === them.totalGrindSeconds ? 'text-white' : 'text-gray-500'}`}>
-            {them.totalGrindSeconds > me.totalGrindSeconds && <span className="mr-1 text-[9px]">✓</span>}
+            {them.totalGrindSeconds > me.totalGrindSeconds && <span className="mr-1 text-[10px]">✓</span>}
             {formatDuration(them.totalGrindSeconds)}
           </div>
         </div>

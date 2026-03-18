@@ -8,6 +8,7 @@ import { computeTotalSkillLevelFromLevels, normalizeSkillId, skillLevelFromXP } 
 import { LeaderboardSkeleton } from './LeaderboardSkeleton'
 import { AvatarWithFrame } from '../shared/AvatarWithFrame'
 import { LOOT_ITEMS, getItemPower, normalizeEquippedLoot, type LootSlot } from '../../lib/loot'
+import { fetchGuildTagsForUsers } from '../../services/guildService'
 
 interface LeaderboardRow {
   id: string
@@ -21,6 +22,7 @@ interface LeaderboardRow {
   equipped_loot?: Partial<Record<LootSlot, string>>
   persona_id?: string | null
   skills_sync_status?: 'synced' | 'pending'
+  guild_tag?: string | null
 }
 
 const MEDALS = ['🥇', '🥈', '🥉']
@@ -140,6 +142,16 @@ export function Leaderboard({ onSelectUser }: LeaderboardProps) {
             skills_sync_status: allSkills.length > 0 ? 'synced' : 'pending',
           }
         })
+        // Enrich with guild tags (best-effort)
+        try {
+          const guildTags = await fetchGuildTagsForUsers(ids)
+          if (Object.keys(guildTags).length > 0) {
+            for (const row of list) {
+              row.guild_tag = guildTags[row.id]?.tag ?? null
+            }
+          }
+        } catch { /* non-fatal */ }
+
         setRows(list)
       } catch (err) {
         console.warn('Leaderboard fetch error:', err)
@@ -233,12 +245,17 @@ export function Leaderboard({ onSelectUser }: LeaderboardProps) {
                     {r.username || 'Anonymous'}
                     {isMe && <span className="text-gray-500 ml-1">(you)</span>}
                   </span>
-                  <span className="text-[9px] text-gray-500 font-mono shrink-0" title="Total skill level">
+                  {r.guild_tag && (
+                    <span className="text-[10px] px-1 py-[1px] rounded font-bold border border-amber-500/40 bg-amber-500/10 text-amber-400 shrink-0" title={`Guild: ${r.guild_tag}`}>
+                      [{r.guild_tag}]
+                    </span>
+                  )}
+                  <span className="text-[10px] text-gray-500 font-mono shrink-0" title="Total skill level">
                     {r.total_skill_level}
                   </span>
                 </div>
                 {r.streak_count > 0 && (
-                  <span className="text-[9px] text-orange-400/70 font-mono">🔥 {r.streak_count}d streak</span>
+                  <span className="text-[10px] text-orange-400/70 font-mono">🔥 {r.streak_count}d streak</span>
                 )}
               </div>
 
@@ -251,12 +268,12 @@ export function Leaderboard({ onSelectUser }: LeaderboardProps) {
                   {sortBy === 'item_power' && computeFlexScore(r, getEffectiveEquippedLoot(r))}
                 </p>
                 {sortBy !== 'item_power' && (
-                  <p className="text-[9px] text-gray-600 font-mono" title="Gear Score (gear IP + frame + badges)">
+                  <p className="text-[10px] text-gray-600 font-mono" title="Gear Score (gear IP + frame + badges)">
                     ✨{computeFlexScore(r, getEffectiveEquippedLoot(r))}
                   </p>
                 )}
                 {sortBy === 'item_power' && (
-                  <p className="text-[9px] text-gray-600 font-mono">{formatDuration(r.total_seconds)}</p>
+                  <p className="text-[10px] text-gray-600 font-mono">{formatDuration(r.total_seconds)}</p>
                 )}
               </div>
             </motion.div>

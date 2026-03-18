@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useSessionStore, type SkillXPGain } from '../../stores/sessionStore'
+import { getDailyActivities } from '../../services/dailyActivityService'
 import { useAlertStore } from '../../stores/alertStore'
 import { useAuthStore } from '../../stores/authStore'
 import { useFriends } from '../../hooks/useFriends'
@@ -103,7 +104,7 @@ function SkillXPCard({ gain, index }: { gain: SkillXPGain; index: number }) {
                   initial={{ scale: 0, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ delay: (delayMs + 380) / 1000, ...MOTION.spring.pop }}
-                  className="shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full border border-cyber-neon/50 text-cyber-neon bg-cyber-neon/15 leading-tight"
+                  className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-cyber-neon/50 text-cyber-neon bg-cyber-neon/15 leading-tight"
                 >
                   LVL UP
                 </motion.span>
@@ -127,10 +128,10 @@ function SkillXPCard({ gain, index }: { gain: SkillXPGain; index: number }) {
 
           {/* Level / percent */}
           <div className="flex justify-between items-center mt-1">
-            <span className="text-[9px] font-mono text-gray-600">
+            <span className="text-[10px] font-mono text-gray-600">
               {leveledUp ? `Lvl.${gain.levelBefore} → Lvl.${gain.levelAfter}` : `Lvl.${gain.levelAfter}`}
             </span>
-            <span className="text-[9px] font-mono text-gray-600">{Math.round(widthAfter)}%</span>
+            <span className="text-[10px] font-mono text-gray-600">{Math.round(widthAfter)}%</span>
           </div>
         </div>
       </div>
@@ -139,7 +140,7 @@ function SkillXPCard({ gain, index }: { gain: SkillXPGain; index: number }) {
 }
 
 export function SessionComplete({ onNavigateFriends }: SessionCompleteProps = {}) {
-  const { lastSessionSummary, skillXPGains, streakMultiplier, sessionSkillXPEarned, sessionRewards, dismissComplete } =
+  const { lastSessionSummary, skillXPGains, streakMultiplier, sessionSkillXPEarned, sessionRewards, newAchievements, dismissComplete } =
     useSessionStore()
   const hasLootOpen = useAlertStore((s) => s.currentAlert !== null)
   const user = useAuthStore((s) => s.user)
@@ -153,6 +154,26 @@ export function SessionComplete({ onNavigateFriends }: SessionCompleteProps = {}
 
   const totalXP = useMemo(() => skillXPGains.reduce((s, g) => s + g.xp, 0), [skillXPGains])
   const animatedTotal = useCountUp(totalXP, 1000, 220)
+
+  // Daily quest snapshot taken at session-complete time (synchronous localStorage read)
+  const { dailyDone, dailyTotal } = useMemo(() => {
+    const daily = getDailyActivities()
+    return { dailyDone: daily.filter((q) => q.completed).length, dailyTotal: daily.length }
+  }, [])
+
+  // Find the skill closest to leveling up that didn't level up this session
+  const coachingTip = useMemo(() => {
+    const candidates = skillXPGains
+      .filter((g) => g.levelAfter < 99)
+      .map((g) => {
+        const prog = skillXPProgress(g.totalXpAfter)
+        const pct = prog.needed > 0 ? prog.current / prog.needed : 0
+        return { skillId: g.skillId, level: g.levelAfter, xpNeeded: prog.needed - prog.current, pct }
+      })
+      .filter((g) => g.pct >= 0.5 && g.pct < 1)
+      .sort((a, b) => b.pct - a.pct)
+    return candidates[0] ?? null
+  }, [skillXPGains])
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -256,6 +277,38 @@ export function SessionComplete({ onNavigateFriends }: SessionCompleteProps = {}
               </div>
             )}
 
+            {/* New achievements unlocked this session */}
+            {newAchievements.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7 }}
+                className="space-y-1.5"
+              >
+                <p className="text-[10px] font-mono text-amber-400/60 uppercase tracking-widest text-center">
+                  Achievement{newAchievements.length > 1 ? 's' : ''} unlocked
+                </p>
+                {newAchievements.map((ach, i) => (
+                  <motion.div
+                    key={ach.id}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.75 + i * 0.1, duration: 0.28 }}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-amber-400/20 bg-amber-400/[0.05]"
+                  >
+                    <span className="text-base shrink-0">🏆</span>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[11px] font-semibold text-amber-300 truncate">{ach.name}</div>
+                      <div className="text-[10px] text-gray-500 truncate">{ach.description}</div>
+                    </div>
+                    {ach.xpReward > 0 && (
+                      <span className="text-[10px] font-mono text-cyber-neon shrink-0">+{ach.xpReward}</span>
+                    )}
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+
             {/* Rewards */}
             {sessionRewards.length > 0 && (
               <motion.div
@@ -267,11 +320,46 @@ export function SessionComplete({ onNavigateFriends }: SessionCompleteProps = {}
                 {sessionRewards.map((reward, i) => (
                   <span
                     key={i}
-                    className="text-[9px] px-1.5 py-0.5 rounded-md bg-cyber-neon/10 border border-cyber-neon/20 text-cyber-neon"
+                    className="text-[10px] px-1.5 py-0.5 rounded-md bg-cyber-neon/10 border border-cyber-neon/20 text-cyber-neon"
                   >
                     {reward.avatar && reward.avatar} {reward.title && `"${reward.title}"`}
                   </span>
                 ))}
+              </motion.div>
+            )}
+
+            {/* Coaching tip — closest skill to next level */}
+            {coachingTip && (() => {
+              const skill = getSkillById(coachingTip.skillId)
+              if (!skill) return null
+              const mins = Math.ceil(coachingTip.xpNeeded / 60)
+              return (
+                <motion.div
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 1.2 }}
+                  className="text-center"
+                >
+                  <span className="text-[10px] font-mono text-gray-600">
+                    {skill.icon} {skill.name} Lv.{coachingTip.level} — {coachingTip.xpNeeded.toLocaleString()} XP away (≈{mins}m)
+                  </span>
+                </motion.div>
+              )
+            })()}
+
+            {/* Daily quest progress */}
+            {dailyTotal > 0 && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1.4 }}
+                className="text-center"
+              >
+                <span className="text-[10px] font-mono text-gray-600">
+                  {dailyDone === dailyTotal
+                    ? `✓ All ${dailyTotal} daily quests done`
+                    : `${dailyDone}/${dailyTotal} daily quests · ${dailyTotal - dailyDone} left`}
+                </span>
               </motion.div>
             )}
 

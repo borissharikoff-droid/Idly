@@ -27,17 +27,16 @@ export function useAnnouncements() {
     const lastSeen = localStorage.getItem(LS_KEY) ?? new Date(0).toISOString()
 
     // Fetch any announcements posted after the last-seen timestamp
-    supabase
+    void Promise.resolve(supabase
       .from('announcements')
       .select('id, title, body, icon, created_at')
       .gt('created_at', lastSeen)
       .order('created_at', { ascending: true })
-      .then(({ data }) => {
-        if (!data || data.length === 0) return
-        data.forEach(pushAnnouncement)
-        localStorage.setItem(LS_KEY, new Date().toISOString())
-      })
-      .catch(() => {})
+    ).then(({ data }) => {
+      if (!data || data.length === 0) return
+      data.forEach(pushAnnouncement)
+      localStorage.setItem(LS_KEY, new Date().toISOString())
+    }).catch(() => {})
 
     // Real-time subscription for announcements posted while the app is open
     const channel = supabase

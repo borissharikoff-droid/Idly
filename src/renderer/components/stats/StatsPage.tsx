@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
+import { getBestStreak } from '../../services/dailyActivityService'
 import { useEscapeHandler } from '../../hooks/useEscapeHandler'
 import { motion, AnimatePresence } from 'framer-motion'
 import { SessionDetail } from './SessionDetail'
@@ -10,6 +11,8 @@ import { CATEGORY_COLORS, CATEGORY_EMOJI, CATEGORY_LABELS } from '../../lib/uiCo
 import { PageLoading } from '../shared/PageLoading'
 import { EmptyState } from '../shared/EmptyState'
 import { SkeletonBlock } from '../shared/PageLoading'
+import { PageHeader } from '../shared/PageHeader'
+import { BarChart3, RefreshCw } from '../../lib/icons'
 
 export interface SessionRecord {
   id: string
@@ -203,18 +206,20 @@ function buildHabitItems(params: {
   const items: HabitItem[] = []
   const switchesPerSession = params.totalSessions > 0 ? params.contextSwitches / params.totalSessions : 0
 
-  if (params.focusScore >= 70) {
-    items.push({
-      type: 'good',
-      title: 'Strong focus quality',
-      detail: `${params.focusScore}% of tracked time is focused work.`,
-    })
-  } else {
-    items.push({
-      type: 'risk',
-      title: 'Focus quality is low',
-      detail: `${params.focusScore}% focus suggests frequent interruptions.`,
-    })
+  if (params.totalSessions > 0) {
+    if (params.focusScore >= 70) {
+      items.push({
+        type: 'good',
+        title: 'Strong focus quality',
+        detail: `${params.focusScore}% of tracked time is focused work.`,
+      })
+    } else {
+      items.push({
+        type: 'risk',
+        title: 'Focus quality is low',
+        detail: `${params.focusScore}% focus suggests frequent interruptions.`,
+      })
+    }
   }
 
   if (switchesPerSession > 12) {
@@ -496,28 +501,28 @@ export function StatsPage() {
           <div key="overview" className="space-y-4">
 
             {/* Header */}
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <h2 className="text-[28px] leading-none font-semibold text-white">Activity Insights</h2>
+            <PageHeader
+              title="Activity Insights"
+              icon={<BarChart3 className="w-4 h-4 text-blue-400" />}
+              titleSlot={
                 <span className={`text-[11px] w-[62px] transition-opacity ${refreshing ? 'text-cyber-neon/80 opacity-100' : 'opacity-0'}`}>Updating...</span>
-                {totalSessions > 0 && (
-                  <div>
+              }
+              rightSlot={
+                <div className="flex items-center gap-2">
+                  {totalSessions > 0 && (
                     <button
                       type="button"
                       className="text-xs px-3 py-1.5 rounded-full bg-discord-card border border-white/10 text-gray-300 inline-flex items-center justify-center min-w-[148px]"
                     >
                       <span>Activity style: {persona.emoji} {persona.label}</span>
                     </button>
-                  </div>
-                )}
-              </div>
-              <button onClick={() => loadData(true)} className="w-7 h-7 rounded-lg bg-discord-card border border-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors" title="Refresh">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 2v6h-6" /><path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
-                  <path d="M3 22v-6h6" /><path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
-                </svg>
-              </button>
-            </div>
+                  )}
+                  <button onClick={() => loadData(true)} className="w-7 h-7 rounded-lg bg-discord-card border border-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors" title="Refresh">
+                    <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+              }
+            />
 
             {/* Time filter */}
             <div className="space-y-2">
@@ -554,7 +559,7 @@ export function StatsPage() {
             {/* 1/5 Health Snapshot */}
             <div className="rounded-2xl bg-discord-card/85 border border-white/10 p-4 space-y-3">
               <p className="text-xs font-semibold tracking-wide text-gray-300">Health Snapshot</p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <div className="grid grid-cols-4 gap-2">
                 <div className="rounded-xl border border-white/10 bg-discord-darker/60 p-3">
                   <p className="text-[11px] text-gray-400">Tracked time</p>
                   <p className="text-white text-base font-semibold">⏱ {formatDuration(totalSeconds)}</p>
@@ -562,17 +567,35 @@ export function StatsPage() {
                 </div>
                 <div className="rounded-xl border border-white/10 bg-discord-darker/60 p-3">
                   <p className="text-[11px] text-gray-400">Focus quality</p>
-                  <p className={`text-base font-semibold ${
-                    focusVisualTone === 'good' ? 'text-cyber-neon' : focusVisualTone === 'warn' ? 'text-amber-300' : 'text-rose-300'
-                  }`}>{focusScore}%</p>
-                  <p className="text-[10px] text-gray-500 mt-1">{focusStatus.text}</p>
+                  {trackableSeconds > 0 ? (
+                    <>
+                      <p className={`text-base font-semibold ${
+                        focusVisualTone === 'good' ? 'text-cyber-neon' : focusVisualTone === 'warn' ? 'text-amber-300' : 'text-rose-300'
+                      }`}>{focusScore}%</p>
+                      <p className="text-[10px] text-gray-500 mt-1">{focusStatus.text}</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-base font-semibold text-gray-500">—</p>
+                      <p className="text-[10px] text-gray-600 mt-1">No data yet</p>
+                    </>
+                  )}
                 </div>
                 <div className="rounded-xl border border-white/10 bg-discord-darker/60 p-3">
                   <p className="text-[11px] text-gray-400">Distraction share</p>
-                  <p className={`text-base font-semibold ${
-                    distractionVisualTone === 'good' ? 'text-cyber-neon' : distractionVisualTone === 'warn' ? 'text-amber-300' : 'text-rose-300'
-                  }`}>{distractionScore}%</p>
-                  <p className="text-[10px] text-gray-500 mt-1">{distractionStatus.text}</p>
+                  {trackableSeconds > 0 ? (
+                    <>
+                      <p className={`text-base font-semibold ${
+                        distractionVisualTone === 'good' ? 'text-cyber-neon' : distractionVisualTone === 'warn' ? 'text-amber-300' : 'text-rose-300'
+                      }`}>{distractionScore}%</p>
+                      <p className="text-[10px] text-gray-500 mt-1">{distractionStatus.text}</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-base font-semibold text-gray-500">—</p>
+                      <p className="text-[10px] text-gray-600 mt-1">No data yet</p>
+                    </>
+                  )}
                 </div>
                 <div className="rounded-xl border border-white/10 bg-discord-darker/60 p-3">
                   <p className="text-[11px] text-gray-400">Context switches</p>
@@ -591,6 +614,32 @@ export function StatsPage() {
                 )}
               </div>
             </div>
+
+            {/* Personal Records */}
+            {(getBestStreak() > 0 || (distractionMetrics?.longest_focus_minutes ?? 0) > 0 || sessions.length > 0) && (() => {
+              const bestStreak = getBestStreak()
+              const longestFocus = distractionMetrics?.longest_focus_minutes ?? 0
+              const longestSession = sessions.length > 0 ? Math.max(...sessions.map((s) => s.duration_seconds)) : 0
+              return (
+                <div className="rounded-xl bg-discord-card/80 border border-white/10 p-3">
+                  <p className="text-xs font-semibold tracking-wide text-gray-300 mb-2">Personal Records</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="rounded-lg border border-white/8 bg-discord-darker/50 p-2.5 text-center">
+                      <p className="text-[10px] text-gray-500 font-mono mb-0.5">Best streak</p>
+                      <p className="text-cyber-neon font-mono font-bold text-base leading-none">{bestStreak}d</p>
+                    </div>
+                    <div className="rounded-lg border border-white/8 bg-discord-darker/50 p-2.5 text-center">
+                      <p className="text-[10px] text-gray-500 font-mono mb-0.5">Longest focus</p>
+                      <p className="text-discord-purple font-mono font-bold text-base leading-none">{longestFocus}m</p>
+                    </div>
+                    <div className="rounded-lg border border-white/8 bg-discord-darker/50 p-2.5 text-center">
+                      <p className="text-[10px] text-gray-500 font-mono mb-0.5">Longest session</p>
+                      <p className="text-amber-300 font-mono font-bold text-base leading-none">{longestSession > 0 ? formatDuration(longestSession) : '—'}</p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* 2/5 Habits & Risks */}
             {habitItems.length > 0 && (
@@ -636,7 +685,7 @@ export function StatsPage() {
                   ))}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
+                <div className="grid grid-cols-2 gap-2 mb-3">
                   <div className="rounded-xl border border-cyber-neon/20 bg-cyber-neon/5 p-2.5">
                     <p className="text-[10px] uppercase tracking-wider text-cyber-neon/80 mb-1">Top productive categories</p>
                     {topProductive.length > 0 ? (
@@ -704,9 +753,9 @@ export function StatsPage() {
                                       <div className="pl-4 space-y-0.5">
                                         {app.titles.map((t, ti) => (
                                           <div key={ti} className="flex items-center gap-1.5 py-0.5">
-                                            <span className="text-[9px] text-gray-700 shrink-0">—</span>
+                                            <span className="text-[10px] text-gray-700 shrink-0">—</span>
                                             <span className="text-[10px] text-gray-500 truncate flex-1 min-w-0">{t.window_title}</span>
-                                            <span className="text-[9px] text-gray-600 font-mono shrink-0">{formatMs(t.total_ms)}</span>
+                                            <span className="text-[10px] text-gray-600 font-mono shrink-0">{formatMs(t.total_ms)}</span>
                                           </div>
                                         ))}
                                       </div>
@@ -775,7 +824,7 @@ export function StatsPage() {
             {/* 4/5 Distraction Patterns */}
             <div className="rounded-xl bg-discord-card/80 border border-white/10 p-3">
               <p className="text-xs font-semibold tracking-wide text-gray-300 mb-2">Distraction Patterns</p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <div className="grid grid-cols-4 gap-2">
                 <div className="rounded-xl border border-white/10 bg-discord-darker/60 p-3">
                   <p className="text-[10px] text-gray-500 font-mono">Distraction time</p>
                   <p className="text-amber-300 font-mono text-sm">{formatDuration(distractionSeconds)}</p>

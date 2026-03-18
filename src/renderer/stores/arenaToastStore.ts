@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import { useNotificationStore } from './notificationStore'
-import { useArenaStore } from './arenaStore'
 
 export interface ArenaToast {
   id: string
@@ -48,13 +47,5 @@ export const useArenaToastStore = create<ArenaToastStore>((set, get) => ({
     if (!toast) return
     useNotificationStore.getState().dismiss(toast.notificationId)
     get().dismiss(id)
-    if (toast.victory) {
-      useArenaStore.getState().setResultModal({
-        victory: true,
-        gold: toast.gold,
-        goldAlreadyAdded: false,
-        bossName: toast.bossName,
-      })
-    }
   },
 }))

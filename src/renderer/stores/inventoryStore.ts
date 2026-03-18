@@ -18,6 +18,9 @@ import {
 } from '../lib/loot'
 import { useGoldStore } from './goldStore'
 import { useAuthStore } from './authStore'
+import { track } from '../lib/analytics'
+import { getGuildChestDropBonus } from '../lib/guildBuffs'
+import { useGuildStore } from './guildStore'
 
 export interface PendingReward {
   id: string
@@ -50,6 +53,8 @@ interface InventoryState {
   rollSkillGrindDrop: (context: LootDropContext, elapsedSeconds: number) => PendingReward | null
   rollSessionChestDrop: (context: LootDropContext) => { rewardId: string; chestType: ChestType; estimatedDropRate: number }
   openChestAndGrantItem: (chestType: ChestType, context: LootDropContext) => { itemId: string | null; estimatedDropRate: number; goldDropped: number; bonusMaterials: BonusMaterial[] } | null
+  /** Grant a chest reward directly (no chest-count guard). Used by quests/bounties. */
+  grantAndOpenChest: (chestType: ChestType, context: LootDropContext) => { itemId: string | null; estimatedDropRate: number; goldDropped: number; bonusMaterials: BonusMaterial[] }
   deleteChest: (chestType: ChestType, amount?: number) => void
   equipItem: (itemId: string) => void
   deleteItem: (itemId: string, amount?: number) => void
@@ -70,7 +75,7 @@ const SKILL_DROP_COOLDOWN_MS = 3_600_000
 const BASE_DROP_PER_MINUTE = 0.0005
 
 
-const initialState: Omit<InventoryState, 'hydrate' | 'addItem' | 'addChest' | 'claimPendingReward' | 'claimAllPendingRewards' | 'rollSkillGrindDrop' | 'rollSessionChestDrop' | 'openChestAndGrantItem' | 'equipItem' | 'unequipSlot' | 'mergeFromCloud' | 'consumePotion' | 'deletePendingReward' | 'deleteChest' | 'deleteItem'> = {
+const initialState: Omit<InventoryState, 'hydrate' | 'addItem' | 'addChest' | 'claimPendingReward' | 'claimAllPendingRewards' | 'rollSkillGrindDrop' | 'rollSessionChestDrop' | 'openChestAndGrantItem' | 'grantAndOpenChest' | 'equipItem' | 'unequipSlot' | 'mergeFromCloud' | 'consumePotion' | 'deletePendingReward' | 'deleteChest' | 'deleteItem'> = {
   items: {},
   chests: {
     common_chest: 0,
@@ -229,7 +234,8 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     if (elapsedSeconds <= 0) return null
     const perk = getEquippedPerkRuntime(state.equippedBySlot)
     const categoryBonus = context.focusCategory ? (perk.chestDropChanceBonusByCategory[context.focusCategory] ?? 0) : 0
-    const effectivePerMinute = BASE_DROP_PER_MINUTE * (1 + categoryBonus)
+    const guildChestBonus = getGuildChestDropBonus(useGuildStore.getState().hallLevel) / 100
+    const effectivePerMinute = BASE_DROP_PER_MINUTE * (1 + categoryBonus + guildChestBonus)
     const perSecond = effectivePerMinute / 60
     // Clamp to cooldown window to avoid near-100% chance on first ever roll (lastSkillDropAt=0).
     const sinceLastDrop = lastDropAt > 0 ? Math.floor((now - lastDropAt) / 1000) : SKILL_DROP_COOLDOWN_MS / 1000
@@ -309,6 +315,27 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     return { itemId: result.item?.id ?? null, estimatedDropRate: result.estimatedDropRate, goldDropped: goldAmount, bonusMaterials: result.bonusMaterials }
   },
 
+  grantAndOpenChest(chestType, context) {
+    const result = openChest(chestType, context)
+    const goldAmount = getChestGoldDrop(chestType)
+    set((state) => {
+      const nextItems = { ...state.items }
+      if (result.item) {
+        nextItems[result.item.id] = (nextItems[result.item.id] ?? 0) + 1
+      }
+      for (const mat of result.bonusMaterials) {
+        nextItems[mat.itemId] = (nextItems[mat.itemId] ?? 0) + mat.qty
+      }
+      const next: InventoryState = { ...state, items: nextItems }
+      saveSnapshot(next)
+      return next
+    })
+    useGoldStore.getState().addGold(goldAmount)
+    const user = useAuthStore.getState().user
+    if (user) useGoldStore.getState().syncToSupabase(user.id).catch(() => {})
+    return { itemId: result.item?.id ?? null, estimatedDropRate: result.estimatedDropRate, goldDropped: goldAmount, bonusMaterials: result.bonusMaterials }
+  },
+
   deleteChest(chestType, amount = 1) {
     const qty = Math.max(1, Math.floor(amount))
     set((state) => {
@@ -366,6 +393,7 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     if (qty <= 0) return
     const item = LOOT_ITEMS.find((x) => x.id === itemId)
     if (!item || !LOOT_SLOTS.includes(item.slot)) return
+    track('item_equip', { item_id: item.id, slot: item.slot, rarity: item.rarity })
     set((prev) => {
       const next: InventoryState = {
         ...prev,

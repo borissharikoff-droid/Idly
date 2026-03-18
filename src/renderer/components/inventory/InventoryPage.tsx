@@ -5,13 +5,17 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { CHEST_DEFS, ITEM_POWER_BY_RARITY, LOOT_ITEMS, MARKETPLACE_BLOCKED_ITEMS, POTION_IDS, POTION_MAX, estimateLootDropRate, getItemPower, getItemPerks, type ChestType, getItemPerkDescription } from '../../lib/loot'
 import { ensureInventoryHydrated, useInventoryStore } from '../../stores/inventoryStore'
 import { useArenaStore } from '../../stores/arenaStore'
+import { useRaidStore } from '../../stores/raidStore'
 import { useAdminConfigStore } from '../../stores/adminConfigStore'
 import { ChestOpenModal } from '../animations/ChestOpenModal'
 import { BulkChestOpenModal, type BulkOpenResult } from '../animations/BulkChestOpenModal'
 import { ListForSaleModal } from './ListForSaleModal'
 import { PageHeader } from '../shared/PageHeader'
+import { Package, X } from '../../lib/icons'
 import { playClickSound, playPotionSound } from '../../lib/sounds'
 import { syncInventoryToSupabase } from '../../services/supabaseSync'
+import { useAuthStore } from '../../stores/authStore'
+import { supabase } from '../../lib/supabase'
 import { useNotificationStore } from '../../stores/notificationStore'
 import { useFarmStore } from '../../stores/farmStore'
 import { SEED_DEFS, formatGrowTime } from '../../lib/farming'
@@ -91,6 +95,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
   const deleteItem = useInventoryStore((s) => s.deleteItem)
   const consumePotion = useInventoryStore((s) => s.consumePotion)
   const inBattle = Boolean(useArenaStore((s) => s.activeBattle))
+  const inRaid = Boolean(useRaidStore((s) => s.activeRaid?.status === 'active'))
   const farmSeeds = useFarmStore((s) => s.seeds)
   const seedCabinetUnlocked = useFarmStore((s) => s.seedCabinetUnlocked)
   const [sortBy, setSortByRaw] = useState<'rarity' | 'name' | 'slot'>(() => {
@@ -343,6 +348,10 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
         useNotificationStore.getState().push({ type: 'progression', icon: '⚔️', title: 'Combat active', body: 'Cannot change gear during a boss fight.' })
         return
       }
+      if (inRaid) {
+        useNotificationStore.getState().push({ type: 'progression', icon: '⚔️', title: 'Raid in progress', body: 'Gear is locked during an active raid.' })
+        return
+      }
       if (slot.equipped) return unequipSlot(item.slot)
       return equipItem(slot.itemId)
     }
@@ -373,6 +382,9 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
 
   const hasNextChestToOpen = (chestType: ChestType) =>
     pendingRewards.some((r) => !r.claimed && r.chestType === chestType) || (chests[chestType] ?? 0) > 0
+
+  const getRemainingChestCount = (chestType: ChestType) =>
+    pendingRewards.filter((r) => !r.claimed && r.chestType === chestType).length + (chests[chestType] ?? 0)
 
   const openNextChest = (chestType: ChestType) => {
     setChestChainMessage(null)
@@ -438,6 +450,15 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
       chestType,
       result: { items, totalGold, materials, seedZips, totalOpened: total },
     })
+
+    // Immediately push opened state to Supabase with merge:false so the
+    // periodic background sync (merge:true / Math.max) doesn't restore old counts
+    const user = useAuthStore.getState().user
+    if (supabase && user) {
+      const { items: invItems, chests: invChests } = useInventoryStore.getState()
+      const { seeds, seedZips: sz } = useFarmStore.getState()
+      syncInventoryToSupabase(invItems, invChests, { merge: false, seeds, seedZips: sz }).catch(() => {})
+    }
   }
 
   return (
@@ -448,7 +469,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
       transition={{ duration: MOTION.duration.base, ease: MOTION.easingSoft }}
       className="p-4 pb-20 space-y-3"
     >
-      <PageHeader title="Inventory" onBack={onBack} />
+      <PageHeader title="Inventory" icon={<Package className="w-4 h-4 text-gray-400" />} onBack={onBack} />
 
       <CharacterCard
         locked={inBattle}
@@ -475,7 +496,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                     key={mode}
                     type="button"
                     onClick={() => setViewMode(mode)}
-                    className={`text-[8px] font-mono px-1.5 py-0.5 transition-colors ${i > 0 ? 'border-l border-white/[0.07]' : ''} ${
+                    className={`text-[10px] font-mono px-1.5 py-0.5 transition-colors ${i > 0 ? 'border-l border-white/[0.07]' : ''} ${
                       active ? 'text-cyber-neon bg-cyber-neon/10' : 'text-gray-500 hover:text-gray-300'
                     }`}
                   >
@@ -488,7 +509,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
             <button
               type="button"
               onClick={() => setSortBy(sortBy === 'rarity' ? 'name' : sortBy === 'name' ? 'slot' : 'rarity')}
-              className="text-[9px] font-mono px-2 py-0.5 rounded border border-white/[0.07] text-gray-500 hover:text-gray-300 hover:border-white/15 transition-colors"
+              className="text-[10px] font-mono px-2 py-0.5 rounded border border-white/[0.07] text-gray-500 hover:text-gray-300 hover:border-white/15 transition-colors"
             >
               {sortBy === 'rarity' ? '▼ Rarity' : sortBy === 'name' ? '▼ A–Z' : '▼ Slot'}
             </button>
@@ -510,7 +531,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
               type="button"
               onClick={() => setSearchQuery('')}
               className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 hover:text-gray-300 px-1"
-            >✕</button>
+            ><X className="w-3 h-3" /></button>
           )}
         </div>
 
@@ -524,7 +545,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                 key={f.id}
                 type="button"
                 onClick={() => { playClickSound(); setFilterBy(f.id) }}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded-md border text-[9px] font-medium transition-all ${
+                className={`flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-medium transition-all ${
                   active
                     ? 'border-cyber-neon/40 bg-cyber-neon/10 text-cyber-neon'
                     : 'border-white/[0.08] bg-discord-darker/30 text-gray-400 hover:text-gray-200 hover:border-white/20'
@@ -533,7 +554,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                 <span className="text-[10px] leading-none">{f.icon}</span>
                 <span>{f.label}</span>
                 {!active && count > 0 && (
-                  <span className="ml-0.5 text-[8px] font-mono opacity-50">{count}</span>
+                  <span className="ml-0.5 text-[10px] font-mono opacity-50">{count}</span>
                 )}
               </button>
             )
@@ -544,6 +565,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
         <div className="border-t border-white/[0.05]" />
 
         {/* Items */}
+        <div>
         {slots.length === 0 ? (
           <p className="text-[11px] text-gray-500 py-2">No loot yet.</p>
         ) : sortedSlots.length === 0 ? (
@@ -594,13 +616,13 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                   <div className="flex-1 min-w-0">
                     <p className="text-[11px] font-semibold text-gray-100 truncate">{slot.title}</p>
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-[8px] font-mono uppercase" style={{ color: slotTheme.color }}>{rarityNorm}</span>
-                      {perkChip && <span className="text-[8px] text-gray-500 truncate">· {perkChip}</span>}
+                      <span className="text-[10px] font-mono uppercase" style={{ color: slotTheme.color }}>{rarityNorm}</span>
+                      {perkChip && <span className="text-[10px] text-gray-500 truncate">· {perkChip}</span>}
                     </div>
                   </div>
                   {/* Right */}
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    {slot.quantity > 1 && <span className="text-[9px] font-mono font-semibold" style={{ color: slotTheme.color }}>×{slot.quantity}</span>}
+                    {slot.quantity > 1 && <span className="text-[10px] font-mono font-semibold" style={{ color: slotTheme.color }}>×{slot.quantity}</span>}
                   </div>
                 </button>
               )
@@ -617,7 +639,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                 >
                   {isPending && <span className="absolute inset-0 rounded-lg pointer-events-none animate-pulse border border-amber-400/30" />}
                   {slot.quantity > 1 && (
-                    <span className="absolute top-0.5 right-1 text-[8px] font-bold font-mono leading-none z-10" style={{ color: slotTheme.color }}>
+                    <span className="absolute top-0.5 right-1 text-[10px] font-bold font-mono leading-none z-10" style={{ color: slotTheme.color }}>
                       {slot.quantity}
                     </span>
                   )}
@@ -625,7 +647,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                     <LootVisual icon={slot.icon} image={slotImage} className="w-6 h-6 object-contain" scale={lootItem?.renderScale ?? 1} />
                     {isEquipped && <span className="absolute bottom-0 right-0 text-[5px] font-bold font-mono px-0.5 rounded-tl leading-tight" style={{ background: slotTheme.color, color: '#000' }}>EQ</span>}
                   </div>
-                  <p className="text-[8px] font-medium text-gray-200 leading-tight w-full truncate text-center mt-1 mb-0.5">{slot.title}</p>
+                  <p className="text-[10px] font-medium text-gray-200 leading-tight w-full truncate text-center mt-1 mb-0.5">{slot.title}</p>
                   {/* Bottom rarity bar */}
                   <div className="absolute bottom-0 left-0 right-0 h-[2px]" style={{ background: slotTheme.color, opacity: rarityNorm === 'common' ? 0.4 : 0.8 }} />
                 </button>
@@ -658,17 +680,17 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                 <div className="flex-1 min-w-0">
                   <p className="text-[10px] font-semibold text-gray-100 leading-tight truncate">{slot.title}</p>
                   <div className="flex items-center gap-1 mt-0.5">
-                    <span className="text-[8px] font-mono uppercase" style={{ color: slotTheme.color }}>{rarityNorm}</span>
+                    <span className="text-[10px] font-mono uppercase" style={{ color: slotTheme.color }}>{rarityNorm}</span>
                     {typeLabel && <span className="text-[7px] text-gray-600">·</span>}
                     {typeLabel && <span className="text-[7px] font-mono text-gray-500 uppercase">{typeLabel}</span>}
                   </div>
                   {perkChip && (
-                    <p className="text-[8px] text-gray-500 truncate mt-0.5">{perkChip}</p>
+                    <p className="text-[10px] text-gray-500 truncate mt-0.5">{perkChip}</p>
                   )}
                 </div>
                 {/* Qty */}
                 {slot.quantity > 1 && (
-                  <span className="text-[9px] font-mono font-bold flex-shrink-0" style={{ color: slotTheme.color }}>×{slot.quantity}</span>
+                  <span className="text-[10px] font-mono font-bold flex-shrink-0" style={{ color: slotTheme.color }}>×{slot.quantity}</span>
                 )}
                 {/* Left rarity accent */}
                 <div className="absolute left-0 top-1 bottom-1 w-[2px] rounded-full" style={{ background: slotTheme.color, opacity: rarityNorm === 'common' ? 0.3 : 0.7 }} />
@@ -676,8 +698,8 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
             )
           }
 
-          const gridClass = viewMode === 'list' ? 'flex flex-col gap-0.5' : viewMode === 'compact' ? 'grid grid-cols-4 gap-1' : 'grid grid-cols-2 gap-1'
-          const sectionHdrClass = `${viewMode !== 'list' ? 'col-span-full' : ''} text-[9px] font-mono uppercase tracking-widest text-gray-500 pt-1 pb-0.5 flex items-center gap-2`
+          const gridClass = viewMode === 'list' ? 'flex flex-col gap-0.5' : viewMode === 'compact' ? 'grid grid-cols-5 gap-1' : 'grid grid-cols-3 gap-1'
+          const sectionHdrClass = `${viewMode !== 'list' ? 'col-span-full' : ''} text-[10px] font-mono uppercase tracking-widest text-gray-500 pt-1 pb-0.5 flex items-center gap-2`
 
           if (groupedSlots) {
             return (
@@ -701,6 +723,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
 
           return <div className={gridClass}>{sortedSlots.map(renderCard)}</div>
         })()}
+        </div>
       </div>
 
       {inspectSlot &&
@@ -719,7 +742,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.96, opacity: 0, y: 6 }}
               transition={{ type: 'spring', stiffness: 360, damping: 28 }}
-              className="w-full max-w-[370px] rounded-2xl border overflow-hidden relative flex"
+              className="w-full max-w-[480px] rounded-2xl border overflow-hidden relative flex"
               style={{
                 borderColor: inspectTheme.border,
                 background: 'rgba(8,8,16,0.98)',
@@ -755,13 +778,13 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                   />
                 </div>
                 {/* Rarity label */}
-                <div className="relative z-10 mt-3 px-2.5 py-0.5 rounded-full border text-[8px] font-mono font-bold uppercase tracking-widest"
+                <div className="relative z-10 mt-3 px-2.5 py-0.5 rounded-full border text-[10px] font-mono font-bold uppercase tracking-widest"
                   style={{ color: inspectTheme.color, borderColor: `${inspectTheme.border}99`, background: `${inspectTheme.color}18` }}>
                   {inspectRarity}
                 </div>
                 {/* Qty badge */}
                 {inspectSlot.quantity > 1 && (
-                  <div className="relative z-10 mt-1.5 text-[9px] font-mono" style={{ color: `${inspectTheme.color}99` }}>
+                  <div className="relative z-10 mt-1.5 text-[10px] font-mono" style={{ color: `${inspectTheme.color}99` }}>
                     ×{inspectSlot.quantity}
                   </div>
                 )}
@@ -781,17 +804,17 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                   <p className="text-[14px] font-bold text-white leading-tight">{inspectSlot.title}</p>
                   <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                     {inspectItem && (
-                      <span className="text-[8px] px-1.5 py-0.5 rounded border border-white/15 text-gray-400 font-mono uppercase tracking-wide">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded border border-white/15 text-gray-400 font-mono uppercase tracking-wide">
                         {SLOT_LABEL[inspectItem.slot]}
                       </span>
                     )}
                     {(inspectSlot.kind === 'chest' || inspectSlot.kind === 'pending') && (
-                      <span className="text-[8px] px-1.5 py-0.5 rounded border border-white/15 text-gray-400 font-mono uppercase tracking-wide">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded border border-white/15 text-gray-400 font-mono uppercase tracking-wide">
                         {inspectSlot.kind === 'pending' ? 'Inbox' : 'Bag'}
                       </span>
                     )}
                     {inspectSlot.kind === 'item' && inspectSlot.equipped && (
-                      <span className="text-[8px] px-1.5 py-0.5 rounded border border-cyber-neon/50 text-cyber-neon font-mono tracking-wide"
+                      <span className="text-[10px] px-1.5 py-0.5 rounded border border-cyber-neon/50 text-cyber-neon font-mono tracking-wide"
                         style={{ background: 'rgba(0,255,200,0.07)' }}>
                         equipped
                       </span>
@@ -851,7 +874,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                                 </span>
                                 <span className="text-[10px] font-mono font-semibold" style={{ color: `${pd.color}cc` }}>{pd.unit}</span>
                               </div>
-                              <span className="text-[9px] text-gray-400 capitalize leading-none">{pd.desc}</span>
+                              <span className="text-[10px] text-gray-400 capitalize leading-none">{pd.desc}</span>
                             </div>
                           ))}
                         </div>
@@ -877,7 +900,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                                   <span className="font-bold font-mono tabular-nums leading-none" style={{ fontSize: stats.length <= 2 ? 18 : 14, color: s.color, textShadow: `0 0 14px ${s.color}55` }}>{s.value}</span>
                                   {s.unit && <span className="text-[10px] font-mono font-semibold" style={{ color: `${s.color}cc` }}>{s.unit}</span>}
                                 </div>
-                                <span className="text-[9px] text-gray-400 capitalize leading-none">{s.desc}</span>
+                                <span className="text-[10px] text-gray-400 capitalize leading-none">{s.desc}</span>
                               </div>
                             ))}
                           </div>
@@ -887,7 +910,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
 
                       {isPotion && (
                         <div>
-                          <div className="flex items-center justify-between text-[8px] font-mono mb-1">
+                          <div className="flex items-center justify-between text-[10px] font-mono mb-1">
                             <span className="text-gray-500">Consumed</span>
                             <span className={consumed >= POTION_MAX ? 'text-amber-400' : 'text-gray-400'}>
                               {consumed}/{POTION_MAX}{consumed >= POTION_MAX ? ' · MAXED' : ''}
@@ -900,7 +923,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                       )}
 
                       {(['head', 'body', 'legs', 'ring', 'weapon'] as const).includes(inspectItem.slot as never) && (
-                        <div className="flex items-center gap-2 text-[9px] font-mono pt-0.5 border-t border-white/[0.05]">
+                        <div className="flex items-center gap-2 text-[10px] font-mono pt-0.5 border-t border-white/[0.05]">
                           <span className="text-gray-500">IP</span>
                           <span style={{ color: inspectTheme.color }}>{ip}</span>
                           <span className="text-white/20">·</span>
@@ -922,11 +945,11 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                     <div className="grid grid-cols-2 gap-1.5">
                       <div className="rounded-lg px-2.5 py-2 border flex flex-col gap-0.5" style={{ borderColor: `${inspectTheme.color}35`, background: `${inspectTheme.color}0e` }}>
                         <span className="text-[11px] font-mono font-bold" style={{ color: inspectTheme.color }}>{formatGrowTime(inspectSeed.growTimeSeconds)}</span>
-                        <span className="text-[9px] text-gray-400">Grow time</span>
+                        <span className="text-[10px] text-gray-400">Grow time</span>
                       </div>
                       <div className="rounded-lg px-2.5 py-2 border flex flex-col gap-0.5" style={{ borderColor: `${inspectTheme.color}35`, background: `${inspectTheme.color}0e` }}>
                         <span className="text-[11px] font-mono font-bold" style={{ color: inspectTheme.color }}>{inspectSeed.yieldMin}–{inspectSeed.yieldMax}</span>
-                        <span className="text-[9px] text-gray-400">Yield</span>
+                        <span className="text-[10px] text-gray-400">Yield</span>
                       </div>
                     </div>
                   </div>
@@ -963,7 +986,8 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                         const isConsumable = itemSlot === 'consumable'
                         const isMaxed = isConsumable && isPotionMaxed(inspectSlot.kind === 'item' ? inspectSlot.itemId : '')
                         const isGearLocked = inBattle && inspectSlot.kind === 'item' && !isConsumable
-                        const disabled = isPlant || isFood || isMaterial || isMaxed
+                        const disabled = isMaxed
+                        if (isPlant || isFood || isMaterial) return null
                         return (
                           <button
                             type="button"
@@ -1022,11 +1046,15 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
               ) : (
                 <>
                   {(() => {
-                    const isPlant = slot.kind === 'item' && LOOT_ITEMS.find((x) => x.id === slot.itemId)?.slot === 'plant'
-                    const isConsumable = slot.kind === 'item' && LOOT_ITEMS.find((x) => x.id === slot.itemId)?.slot === 'consumable'
+                    const _itemSlot2 = slot.kind === 'item' ? LOOT_ITEMS.find((x) => x.id === slot.itemId)?.slot : undefined
+                    const isPlant2 = _itemSlot2 === 'plant'
+                    const isFood2 = _itemSlot2 === 'food'
+                    const isMaterial2 = _itemSlot2 === 'material'
+                    const isConsumable = _itemSlot2 === 'consumable'
                     const isMaxed = isConsumable && isPotionMaxed(slot.kind === 'item' ? slot.itemId : '')
                     const isGearLocked = inBattle && slot.kind === 'item' && !isConsumable
-                    const disabled = isPlant || isMaxed
+                    if (isPlant2 || isFood2 || isMaterial2) return null
+                    const disabled = isMaxed
                     return (
                       <button
                         type="button"
@@ -1130,6 +1158,13 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
         nextAvailable={openChestModal ? hasNextChestToOpen(openChestModal.chestType) : false}
         chainMessage={chestChainMessage}
         animationSeed={chestModalAnimSeed}
+        openAllCount={openChestModal ? getRemainingChestCount(openChestModal.chestType) : 0}
+        onOpenAll={() => {
+          if (!openChestModal) return
+          setOpenChestModal(null)
+          setChestChainMessage(null)
+          openAllChests(openChestModal.chestType)
+        }}
         onOpenNext={() => {
           if (!openChestModal) return
           const opened = openNextChest(openChestModal.chestType)

@@ -14,10 +14,14 @@ import { routeNotification } from '../services/notificationRouter'
 import { generateSessionCoach, type SessionCoachSummary } from '../lib/sessionCoach'
 import { publishSocialFeedEvent } from '../services/socialFeed'
 import { ensureInventoryHydrated, useInventoryStore } from './inventoryStore'
-import { recordDeveloperXp, recordFocusSeconds, recordSessionWithoutAfk } from '../services/dailyActivityService'
+import { recordDeveloperXp, recordFocusSeconds, recordSessionWithoutAfk, recordWeeklySkillXP } from '../services/dailyActivityService'
 import { useChestDropStore } from './chestDropStore'
 import { getEquippedPerkRuntime } from '../lib/loot'
 import { track } from '../lib/analytics'
+import { getGuildXpMultiplier } from '../lib/guildBuffs'
+import { useGuildStore } from './guildStore'
+import { getPartyXpMultiplier } from '../lib/partyBuffs'
+import { usePartyStore } from './partyStore'
 
 type SessionStatus = 'idle' | 'running' | 'paused'
 
@@ -235,10 +239,25 @@ function startXpTicking() {
     const cats = (currentActivity?.categories || [currentActivity?.category || 'other']).filter((c: string) => c !== 'idle')
     if (cats.length === 0) return
     const event = buildFocusTickEvent(cats, tickDurationMs / 1000)
+    // Apply guild XP buff (+5% if in guild)
+    const guildXpMult = getGuildXpMultiplier(useGuildStore.getState().hallLevel)
+    if (guildXpMult !== 1) {
+      for (const key of Object.keys(event.skillXpDelta) as (keyof typeof event.skillXpDelta)[]) {
+        event.skillXpDelta[key] = Math.round((event.skillXpDelta[key] ?? 0) * guildXpMult)
+      }
+    }
+    // Apply party XP buff (+5% if in active party with 2+ members)
+    const partyXpMult = getPartyXpMultiplier(usePartyStore.getState().members.length >= 2)
+    if (partyXpMult !== 1) {
+      for (const key of Object.keys(event.skillXpDelta) as (keyof typeof event.skillXpDelta)[]) {
+        event.skillXpDelta[key] = Math.round((event.skillXpDelta[key] ?? 0) * partyXpMult)
+      }
+    }
     const totalSkillDelta = Object.values(event.skillXpDelta).reduce((sum, value) => sum + value, 0)
     if (totalSkillDelta <= 0) return
     recordFocusSeconds(Math.floor(tickDurationMs / 1000))
     recordDeveloperXp(event.skillXpDelta.developer ?? 0)
+    recordWeeklySkillXP(totalSkillDelta)
     const reasonEvent = makeProgressionEvent({
       ...event,
       title: 'Focus Skill XP',
@@ -363,6 +382,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
           const notifiedLevel = newNotified[skillId] ?? skillLevelFromXP(baseXP)
           if (currentLevel > notifiedLevel) {
             newNotified = { ...newNotified, [skillId]: currentLevel }
+            track('level_up', { skill_id: skillId, new_level: currentLevel })
             // Only set pending if no modal is currently open
             if (!currentPending) {
               updates.pendingSkillLevelUpSkill = { skillId, level: currentLevel }
@@ -424,12 +444,13 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const initialPerkRuntime = getEquippedPerkRuntime(useInventoryStore.getState().equippedBySlot)
     const streakShieldEvent = initialPerkRuntime.streakShield
       ? makeProgressionEvent({
+          reasonCode: 'focus_tick',
           title: 'Streak shield equipped',
           description: 'Your equipped loadout includes streak protection.',
           icon: '🛡️',
-          source: 'focus_tick',
           skillXpDelta: {},
-          focusSecondsDelta: 0,
+          globalXpDelta: 0,
+          rewards: [],
         })
       : null
     set({
@@ -846,6 +867,7 @@ declare global {
       ai: {
         analyzeSession: (sessionId: string) => Promise<string>
         analyzeOverview: (data: unknown) => Promise<string>
+        refineActivityLabels: (items: { app_name: string; window_title: string; current_category: string }[]) => Promise<{ app_name: string; window_title: string; refined_category: string; confidence: number; reason: string }[]>
       }
       settings: {
         getAutoLaunch: () => Promise<boolean>

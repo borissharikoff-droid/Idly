@@ -5,7 +5,6 @@ import type { BonusMaterial, ChestType, LootItemDef } from '../../lib/loot'
 import { CHEST_DEFS, LOOT_ITEMS, getRarityTheme, getItemPerkDescription } from '../../lib/loot'
 import { getSeedZipDisplay, type SeedZipTier } from '../../lib/farming'
 import { useAdminConfigStore } from '../../stores/adminConfigStore'
-import { MOTION } from '../../lib/motion'
 import { PixelConfetti } from '../home/PixelConfetti'
 import { playClickSound, playLootRaritySound, playChestOpeningSound } from '../../lib/sounds'
 import { track } from '../../lib/analytics'
@@ -111,6 +110,23 @@ function makeScaleFrames(count: number): number[] {
   return frames // length: count + 2 — matches makeShakeFrames
 }
 
+// ─── Animated loading dots ───────────────────────────────────────────────────
+function LoadingDots({ color }: { color: string }) {
+  return (
+    <span className="inline-flex items-center gap-[3px] ml-1 translate-y-[1px]">
+      {[0, 1, 2].map((i) => (
+        <motion.span
+          key={i}
+          className="w-[3px] h-[3px] rounded-full inline-block"
+          style={{ background: color }}
+          animate={{ opacity: [0.3, 1, 0.3], y: [0, -2, 0] }}
+          transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.18, ease: 'easeInOut' }}
+        />
+      ))}
+    </span>
+  )
+}
+
 // ─── Component ───────────────────────────────────────────────────────────────
 interface ChestOpenModalProps {
   open: boolean
@@ -126,6 +142,9 @@ interface ChestOpenModalProps {
   onOpenNext?: () => void
   chainMessage?: string | null
   animationSeed?: number
+  /** Total remaining chests of this type (used to show Open All button) */
+  openAllCount?: number
+  onOpenAll?: () => void
 }
 
 export function ChestOpenModal({
@@ -141,6 +160,8 @@ export function ChestOpenModal({
   onOpenNext,
   chainMessage,
   animationSeed,
+  openAllCount = 0,
+  onOpenAll,
 }: ChestOpenModalProps) {
   const chest = chestType ? CHEST_DEFS[chestType] : null
   const chestRarity = chest?.rarity ?? 'common'
@@ -376,16 +397,16 @@ export function ChestOpenModal({
                         }
                       : { type: 'spring', stiffness: 220, damping: 16 }
                     }
-                    className="w-[76px] h-[76px] rounded-2xl border flex items-center justify-center relative overflow-hidden"
+                    className="w-[92px] h-[92px] rounded-2xl border flex items-center justify-center relative overflow-hidden"
                     style={{
                       borderColor: chestTheme.border,
-                      background: `radial-gradient(circle at 50% 35%, ${chestTheme.glow}55 0%, rgba(8,8,16,0.92) 70%)`,
+                      background: `radial-gradient(circle at 50% 35%, ${chestTheme.glow}60 0%, rgba(8,8,16,0.92) 70%)`,
                     }}
                   >
                     {chest.image ? (
-                      <img src={chest.image} alt="" className="w-12 h-12 object-contain select-none" style={{ imageRendering: 'pixelated' }} draggable={false} />
+                      <img src={chest.image} alt="" className="w-16 h-16 object-contain select-none" style={{ imageRendering: 'pixelated' }} draggable={false} />
                     ) : (
-                      <span className="text-4xl">{chest.icon}</span>
+                      <span className="text-5xl">{chest.icon}</span>
                     )}
                   </motion.div>
                 </motion.div>
@@ -393,21 +414,33 @@ export function ChestOpenModal({
                 {/* Status label */}
                 <div className="mt-3 h-[18px] relative overflow-hidden">
                   <AnimatePresence mode="wait">
-                    <motion.p
-                      key={isRevealed ? 'revealed' : 'opening'}
-                      className="absolute inset-0 text-[11px] font-mono uppercase tracking-wider text-center"
-                      style={{ color: chestTheme.color }}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -6 }}
-                      transition={{ duration: 0.2, ease: 'easeOut' }}
-                    >
-                      {isRevealed
-                        ? item
+                    {isRevealed ? (
+                      <motion.p
+                        key="revealed"
+                        className="absolute inset-0 text-[11px] font-mono uppercase tracking-wider text-center"
+                        style={{ color: item ? rarityTheme.color : chestTheme.color }}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.2, ease: 'easeOut' }}
+                      >
+                        {item
                           ? (({ common: 'Bag opened', rare: 'Rare drop!', epic: 'Epic drop!', legendary: 'Legendary!!', mythic: 'Mythic!!' } as Record<string, string>)[item.rarity] ?? 'Bag opened')
-                          : 'Bag opened'
-                        : 'Opening\u2026'}
-                    </motion.p>
+                          : 'Bag opened'}
+                      </motion.p>
+                    ) : (
+                      <motion.span
+                        key="opening"
+                        className="absolute inset-0 text-[11px] font-mono uppercase tracking-wider text-center flex items-center justify-center"
+                        style={{ color: chestTheme.color }}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -6 }}
+                        transition={{ duration: 0.2, ease: 'easeOut' }}
+                      >
+                        Opening<LoadingDots color={chestTheme.color} />
+                      </motion.span>
+                    )}
                   </AnimatePresence>
                 </div>
 
@@ -533,16 +566,26 @@ export function ChestOpenModal({
                         >
                           {item.name}
                         </motion.p>
-                        <motion.p
-                          key={`rarity:${revealKey}`}
-                          className="text-[10px] font-mono uppercase tracking-wider mt-0.5"
-                          style={{ color: rarityTheme.color }}
-                          animate={isRevealed && item.rarity !== 'common' ? { scale: [1, 1.22, 1] } : {}}
-                          transition={{ duration: 0.38, delay: 0.1 }}
-                        >
-                          {item.rarity}
-                        </motion.p>
-                        {item.description && <p className="text-[9px] text-gray-500 italic mt-1 leading-snug">{item.description}</p>}
+                        <div className="flex items-center justify-center gap-1.5 mt-0.5">
+                          <motion.p
+                            key={`rarity:${revealKey}`}
+                            className="text-[10px] font-mono uppercase tracking-wider"
+                            style={{ color: rarityTheme.color }}
+                            animate={isRevealed && item.rarity !== 'common' ? { scale: [1, 1.22, 1] } : {}}
+                            transition={{ duration: 0.38, delay: 0.1 }}
+                          >
+                            {item.rarity}
+                          </motion.p>
+                          {(['head', 'body', 'legs', 'ring', 'weapon'] as string[]).includes(item.slot) && (
+                            <span
+                              className="text-[10px] font-mono uppercase tracking-widest px-1 py-px rounded"
+                              style={{ color: `${rarityTheme.color}99`, background: `${rarityTheme.color}14`, border: `1px solid ${rarityTheme.color}28` }}
+                            >
+                              {item.slot}
+                            </span>
+                          )}
+                        </div>
+                        {item.description && <p className="text-[10px] text-gray-500 italic mt-1 leading-snug">{item.description}</p>}
                         <p className="text-[10px] text-gray-400 mt-1 leading-snug">{getItemPerkDescription(item)}</p>
                       </motion.div>
                       ) : null}
@@ -559,7 +602,7 @@ export function ChestOpenModal({
                           <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 50% 35%, rgba(245,158,11,0.18) 0%, transparent 65%)' }} />
                           <span className="text-3xl relative">🪙</span>
                           <span className="text-xl font-bold text-amber-400 tabular-nums relative">+{goldDropped}</span>
-                          <span className="text-[9px] font-mono text-amber-500/60 uppercase tracking-widest relative">Gold</span>
+                          <span className="text-[10px] font-mono text-amber-500/60 uppercase tracking-widest relative">Gold</span>
                         </motion.div>
                       )}
 
@@ -586,7 +629,7 @@ export function ChestOpenModal({
                               )}
                             </div>
                             <span className="text-lg font-bold tabular-nums relative" style={{ color: matTheme.color }}>×{mat.qty}</span>
-                            <span className="text-[9px] font-medium text-center leading-tight px-2 relative" style={{ color: `${matTheme.color}cc` }}>{matDef.name}</span>
+                            <span className="text-[10px] font-medium text-center leading-tight px-2 relative" style={{ color: `${matTheme.color}cc` }}>{matDef.name}</span>
                           </motion.div>
                         )
                       })}
@@ -603,7 +646,7 @@ export function ChestOpenModal({
                           <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 50% 35%, rgba(239,68,68,0.18) 0%, transparent 65%)' }} />
                           <span className="text-3xl relative">🗡️</span>
                           <span className="text-xl font-bold text-red-400 tabular-nums relative">+{warriorXP}</span>
-                          <span className="text-[9px] font-mono text-red-500/60 uppercase tracking-widest relative">Warrior XP</span>
+                          <span className="text-[10px] font-mono text-red-500/60 uppercase tracking-widest relative">Warrior XP</span>
                         </motion.div>
                       )}
 
@@ -624,7 +667,7 @@ export function ChestOpenModal({
                               ? <img src={zipDisplay.image} className="w-10 h-10 object-contain relative" />
                               : <span className="text-3xl relative">{zipDisplay.icon}</span>}
                             <span className="text-sm font-semibold text-center leading-tight px-2 relative" style={{ color: zipTheme.color }}>{zipDisplay.name}</span>
-                            <span className="text-[9px] font-mono uppercase tracking-widest relative" style={{ color: `${zipTheme.color}88` }}>Seed Zip</span>
+                            <span className="text-[10px] font-mono uppercase tracking-widest relative" style={{ color: `${zipTheme.color}88` }}>Seed Zip</span>
                           </motion.div>
                         )
                       })()}
@@ -641,7 +684,34 @@ export function ChestOpenModal({
                   transition={{ duration: 0.28, delay: isRevealed ? 0.18 : 0, ease: 'easeOut' }}
                   style={{ pointerEvents: isRevealed ? 'auto' : 'none' }}
                 >
-                  {nextAvailable ? (
+                  {openAllCount > 1 && onOpenAll ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => { playClickSound(); onOpenAll() }}
+                        className="flex-1 h-10 rounded-xl text-[13px] font-semibold transition-all active:scale-[0.97]"
+                        style={{ color: chestTheme.color, border: `1px solid ${chestTheme.border}`, background: `${chestTheme.color}22` }}
+                      >
+                        Open All ({openAllCount})
+                      </button>
+                      {nextAvailable && (
+                        <button
+                          type="button"
+                          onClick={() => { playClickSound(); onOpenNext?.() }}
+                          className="h-10 px-3 rounded-xl text-[13px] font-semibold text-white/40 border border-white/10 bg-white/[0.04] hover:text-white/60 hover:bg-white/[0.07] transition-all active:scale-[0.97]"
+                        >
+                          +1
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => { playClickSound(); onClose() }}
+                        className="h-10 px-3 rounded-xl text-[13px] font-semibold text-white/40 border border-white/10 bg-white/[0.04] hover:text-white/60 hover:bg-white/[0.07] transition-all active:scale-[0.97]"
+                      >
+                        Done
+                      </button>
+                    </>
+                  ) : nextAvailable ? (
                     <>
                       <button
                         type="button"

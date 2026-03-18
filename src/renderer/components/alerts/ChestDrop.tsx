@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { CHEST_DEFS, LOOT_ITEMS, type BonusMaterial, type ChestType } from '../../lib/loot'
+import { CHEST_DEFS, LOOT_ITEMS, getRarityTheme, type BonusMaterial, type ChestType } from '../../lib/loot'
 import { useChestDropStore } from '../../stores/chestDropStore'
 import { ensureInventoryHydrated, useInventoryStore } from '../../stores/inventoryStore'
 import { useNotificationStore } from '../../stores/notificationStore'
@@ -44,7 +44,7 @@ export function ChestDrop() {
               icon: liveChest.icon,
               title: `Missed bag: ${liveChest.name}`,
               body: 'Tap Open to claim it now.',
-              chestReward: { rewardId: liveTop.rewardId, chestType: liveTop.chestType },
+              chestReward: { rewardId: liveTop.rewardId, chestType: liveTop.chestType, chestImage: liveChest.image, chestRarity: liveChest.rarity },
             })
           }
           useChestDropStore.getState().shift()
@@ -76,62 +76,78 @@ export function ChestDrop() {
   return (
     <>
       <AnimatePresence>
-        {current && chest && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[115] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-          >
+        {current && chest && (() => {
+          const theme = getRarityTheme(chest.rarity)
+          return (
             <motion.div
-              initial={{ scale: 0.86, y: 16, opacity: 0 }}
-              animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.92, y: 10, opacity: 0 }}
-              transition={MOTION.spring.pop}
-              className="w-[320px] rounded-2xl border border-cyber-neon/30 bg-discord-card overflow-hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[115] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
             >
-              <div className="p-5 text-center">
-                <div className="w-20 h-20 mx-auto rounded-xl border border-cyber-neon/30 bg-discord-darker/60 flex items-center justify-center">
-                  {chest.image ? (
-                    <img
-                      src={chest.image}
-                      alt=""
-                      className="w-14 h-14 object-contain"
-                      style={{ imageRendering: 'pixelated' }}
-                      draggable={false}
-                    />
-                  ) : (
-                    <span className="text-4xl">{chest.icon}</span>
-                  )}
-                </div>
-                <p className="text-[10px] text-cyber-neon font-mono uppercase tracking-wider mt-3">Loot drop</p>
-                <p className="text-white font-semibold text-lg mt-1">{chest.name}</p>
-                <p className="text-[11px] text-gray-400 mt-1">
-                  A bag dropped during your grind session.
-                </p>
-                <div className="mt-4 flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleOpen}
-                    className="flex-1 py-2 rounded-lg border border-cyber-neon/35 bg-cyber-neon/15 text-cyber-neon text-sm font-semibold hover:bg-cyber-neon/25 transition-colors"
+              <motion.div
+                initial={{ scale: 0.86, y: 16, opacity: 0 }}
+                animate={{ scale: 1, y: 0, opacity: 1 }}
+                exit={{ scale: 0.92, y: 10, opacity: 0 }}
+                transition={MOTION.spring.pop}
+                className="w-[300px] rounded-2xl bg-discord-card overflow-hidden"
+                style={{ border: `1px solid ${theme.border}`, boxShadow: `0 0 28px ${theme.glow}40` }}
+              >
+                <div className="p-5 text-center">
+                  <motion.div
+                    animate={{ y: [0, -5, 0] }}
+                    transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+                    className="w-20 h-20 mx-auto rounded-xl flex items-center justify-center relative"
+                    style={{ border: `1px solid ${theme.border}`, background: `radial-gradient(circle at 50% 40%, ${theme.glow}30 0%, rgba(8,8,16,0.9) 70%)`, boxShadow: `0 0 18px ${theme.glow}44` }}
                   >
-                    Open
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleLater}
-                    className="flex-1 py-2 rounded-lg border border-white/20 text-gray-300 text-sm font-semibold hover:bg-white/5 transition-colors"
+                    {chest.image ? (
+                      <img
+                        src={chest.image}
+                        alt=""
+                        className="w-14 h-14 object-contain"
+                        style={{ imageRendering: 'pixelated' }}
+                        draggable={false}
+                      />
+                    ) : (
+                      <span className="text-4xl">{chest.icon}</span>
+                    )}
+                  </motion.div>
+                  <p
+                    className="text-[10px] font-mono uppercase tracking-wider mt-3"
+                    style={{ color: theme.color }}
                   >
-                    Ok, later
-                  </button>
+                    {chest.rarity === 'common' ? 'Bag dropped' : chest.rarity === 'rare' ? 'Rare drop!' : chest.rarity === 'epic' ? 'Epic drop!' : 'Legendary drop!'}
+                  </p>
+                  <p className="text-white font-semibold text-base mt-0.5">{chest.name}</p>
+                  <p className="text-[11px] text-gray-500 mt-1">Dropped during your grind.</p>
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleOpen}
+                      className="flex-1 py-2 rounded-lg text-sm font-semibold transition-colors"
+                      style={{ border: `1px solid ${theme.border}`, background: `${theme.color}22`, color: theme.color }}
+                    >
+                      Open
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleLater}
+                      className="flex-1 py-2 rounded-lg border border-white/15 text-gray-400 text-sm font-semibold hover:bg-white/5 transition-colors"
+                    >
+                      Later
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div className="h-1 bg-discord-darker/60">
-                <div className="h-full bg-cyber-neon/70 transition-[width] duration-100" style={{ width: `${progress}%` }} />
-              </div>
+                <div className="h-0.5 bg-discord-darker/60">
+                  <div
+                    className="h-full transition-[width] duration-100"
+                    style={{ width: `${progress}%`, backgroundColor: `${theme.color}99` }}
+                  />
+                </div>
+              </motion.div>
             </motion.div>
-          </motion.div>
-        )}
+          )
+        })()}
       </AnimatePresence>
 
       <ChestOpenModal

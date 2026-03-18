@@ -1,9 +1,14 @@
 import { create } from 'zustand'
 import { CRAFT_RECIPE_MAP, canAffordRecipe, getCrafterSpeedMultiplier, getCrafterDoubleChance } from '../lib/crafting'
 import { skillLevelFromXP, getGrindlyLevel, computeGrindlyBonuses } from '../lib/skills'
+import { getGuildCraftSpeedMultiplier } from '../lib/guildBuffs'
+import { useGuildStore } from './guildStore'
 import { recordCraftComplete } from '../services/dailyActivityService'
 import { useAchievementStatsStore } from './achievementStatsStore'
 import { useGoldStore } from './goldStore'
+import { useBountyStore } from './bountyStore'
+import { useWeeklyStore } from './weeklyStore'
+import { track } from '../lib/analytics'
 
 const STORAGE_KEY = 'grindly_crafting_v2'
 
@@ -126,7 +131,8 @@ export const useCraftingStore = create<CraftingState>((set, get) => ({
     const crafterLevel = skillLevelFromXP(get().craftXp)
     const crafterSpeedMult = getCrafterSpeedMultiplier(crafterLevel)
     const grindlySpeedMult = computeGrindlyBonuses(getGrindlyLevel()).craftSpeedMultiplier
-    const speedMult = crafterSpeedMult * grindlySpeedMult
+    const guildCraftMult = getGuildCraftSpeedMultiplier(useGuildStore.getState().hallLevel)
+    const speedMult = crafterSpeedMult * grindlySpeedMult * guildCraftMult
     const effectiveSecPerItem = Math.max(1, Math.round(recipe.secPerItem * speedMult))
 
     const job: CraftJob = {
@@ -184,6 +190,10 @@ export const useCraftingStore = create<CraftingState>((set, get) => ({
     if (newDone >= activeJob.totalQty) {
       recordCraftComplete()
       useAchievementStatsStore.getState().incrementCrafts()
+      useBountyStore.getState().incrementCraft(completable)
+      useWeeklyStore.getState().incrementCraft(completable)
+      import('./guildStore').then(({ useGuildStore }) => useGuildStore.getState().incrementRaidProgress('craft', completable)).catch(() => {})
+      track('craft_complete', { item_id: activeJob.outputItemId, recipe_id: activeJob.recipeId })
       const next = newQueue.shift() ?? null
       newActiveJob = next ? { ...next, startedAt: now, doneQty: 0 } : null
     } else {

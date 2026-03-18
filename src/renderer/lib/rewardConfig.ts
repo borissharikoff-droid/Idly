@@ -1,5 +1,7 @@
 export const STREAK_MULTIPLIERS = {
   day2: 1.08,
+  day3: 1.10,
+  day5: 1.15,
   day7: 1.2,
   day14: 1.4,
   day30: 1.75,
@@ -14,7 +16,7 @@ export const CATEGORY_XP_MULTIPLIER_CONFIG: Record<string, number> = {
   games: 0.85,
   social: 0.75,
   browsing: 0.8,
-  other: 0.6,
+  other: 0.75,
   idle: 0,
 }
 

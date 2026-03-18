@@ -44,7 +44,6 @@ export function BuffTooltip({ item, children, placement = 'bottom', stretch = fa
     if (tooltip) {
       const tr = tooltip.getBoundingClientRect()
       const halfW = tr.width / 2
-      const halfH = tr.height / 2
 
       let left = centerX
       if (centerX - halfW < VIEWPORT_PADDING) {
@@ -130,11 +129,11 @@ export function BuffTooltip({ item, children, placement = 'bottom', stretch = fa
             <p className="text-[10px] font-semibold text-cyber-neon">{item.name}</p>
             {item.rarity && (
               <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-[9px] font-mono font-bold uppercase" style={{ color: RARITY_THEME[normalizeRarity(item.rarity)].color }}>
+                <span className="text-[10px] font-mono font-bold uppercase" style={{ color: RARITY_THEME[normalizeRarity(item.rarity)].color }}>
                   {item.rarity}
                 </span>
-                {item.slot && <span className="text-[9px] font-mono text-gray-500 uppercase">{SLOT_LABEL[item.slot] ?? item.slot}</span>}
-                <span className="text-[9px] font-mono text-amber-400/70">IP {getItemPower(item as LootItemDef)}</span>
+                {item.slot && <span className="text-[10px] font-mono text-gray-500 uppercase">{SLOT_LABEL[item.slot] ?? item.slot}</span>}
+                <span className="text-[10px] font-mono text-amber-400/70">IP {getItemPower(item as LootItemDef)}</span>
               </div>
             )}
             {item.rarity && (item.perks?.length || item.perkType) ? (

@@ -226,6 +226,168 @@ export const CRAFT_LOOT_ITEMS: LootItemDef[] = [
     ],
   },
 
+  // ── Zone 7 — Lich Set (Legendary, Shadow Crypt) ─────────────────────────────
+  // Full set: +83 ATK, +380 HP, +13 HP Regen, +8 DEF — meets zone 7 requirements
+  {
+    id: 'craft_lich_helm',
+    name: 'Lich Helm',
+    slot: 'head',
+    rarity: 'legendary',
+    icon: '💀',
+    description: 'A helm carved from lich bone, imbued with necrotic energy.',
+    perkType: 'atk_boost',
+    perkValue: 18,
+    perkDescription: '+18 ATK · +60 HP · +8% XP',
+    perks: [
+      { perkType: 'atk_boost', perkValue: 18, perkDescription: '+18 ATK' },
+      { perkType: 'hp_boost', perkValue: 60, perkDescription: '+60 HP' },
+      { perkType: 'xp_global_boost', perkValue: 0.08, perkDescription: '+8% Global XP' },
+    ],
+  },
+  {
+    id: 'craft_lich_plate',
+    name: 'Lich Plate',
+    slot: 'body',
+    rarity: 'legendary',
+    icon: '🛡️',
+    description: 'Shadow-forged plate that drinks incoming damage.',
+    perkType: 'hp_boost',
+    perkValue: 150,
+    perkDescription: '+150 HP · +10 ATK · +8 DEF',
+    perks: [
+      { perkType: 'hp_boost', perkValue: 150, perkDescription: '+150 HP' },
+      { perkType: 'atk_boost', perkValue: 10, perkDescription: '+10 ATK' },
+      { perkType: 'def_boost', perkValue: 8, perkDescription: '+8 DEF' },
+    ],
+  },
+  {
+    id: 'craft_lich_sword',
+    name: 'Lich Blade',
+    slot: 'weapon',
+    rarity: 'legendary',
+    icon: '⚔️',
+    description: 'A sword of crystallized necromantic energy — drains life on hit.',
+    perkType: 'atk_boost',
+    perkValue: 22,
+    perkDescription: '+22 ATK · +6 HP Regen/s',
+    perks: [
+      { perkType: 'atk_boost', perkValue: 22, perkDescription: '+22 ATK' },
+      { perkType: 'hp_regen_boost', perkValue: 6, perkDescription: '+6 HP Regen/s' },
+    ],
+  },
+  {
+    id: 'craft_lich_legs',
+    name: 'Lich Greaves',
+    slot: 'legs',
+    rarity: 'legendary',
+    icon: '🦿',
+    description: 'Greaves inscribed with death runes — light as shadow.',
+    perkType: 'atk_boost',
+    perkValue: 16,
+    perkDescription: '+16 ATK · +70 HP',
+    perks: [
+      { perkType: 'atk_boost', perkValue: 16, perkDescription: '+16 ATK' },
+      { perkType: 'hp_boost', perkValue: 70, perkDescription: '+70 HP' },
+    ],
+  },
+  {
+    id: 'craft_lich_ring',
+    name: 'Lich Sigil Ring',
+    slot: 'ring',
+    rarity: 'legendary',
+    icon: '💎',
+    description: 'A ring bearing the Necromancer Lord\'s sigil — pulses with dark vitality.',
+    perkType: 'atk_boost',
+    perkValue: 12,
+    perkDescription: '+12 ATK · +7 HP Regen/s',
+    perks: [
+      { perkType: 'atk_boost', perkValue: 12, perkDescription: '+12 ATK' },
+      { perkType: 'hp_regen_boost', perkValue: 7, perkDescription: '+7 HP Regen/s' },
+    ],
+  },
+
+  // ── Zone 8 — Titan Set (Mythic, Celestial Spire) ─────────────────────────────
+  // Full set: +107 ATK, +500 HP, +18 HP Regen, +15 DEF — meets zone 8 requirements
+  {
+    id: 'craft_titan_helm',
+    name: 'Titan Helm',
+    slot: 'head',
+    rarity: 'mythic',
+    icon: '⚡',
+    description: 'Forged from a Titan Core — channels the power of storms.',
+    perkType: 'atk_boost',
+    perkValue: 24,
+    perkDescription: '+24 ATK · +100 HP · +8% XP',
+    perks: [
+      { perkType: 'atk_boost', perkValue: 24, perkDescription: '+24 ATK' },
+      { perkType: 'hp_boost', perkValue: 100, perkDescription: '+100 HP' },
+      { perkType: 'xp_global_boost', perkValue: 0.08, perkDescription: '+8% Global XP' },
+    ],
+  },
+  {
+    id: 'craft_titan_plate',
+    name: 'Titan Plate',
+    slot: 'body',
+    rarity: 'mythic',
+    icon: '🌩️',
+    description: 'Storm-hardened plate that nullifies the strongest blows.',
+    perkType: 'hp_boost',
+    perkValue: 200,
+    perkDescription: '+200 HP · +14 ATK · +15 DEF · Streak Shield',
+    perks: [
+      { perkType: 'hp_boost', perkValue: 200, perkDescription: '+200 HP' },
+      { perkType: 'atk_boost', perkValue: 14, perkDescription: '+14 ATK' },
+      { perkType: 'def_boost', perkValue: 15, perkDescription: '+15 DEF' },
+      { perkType: 'streak_shield', perkValue: 1, perkDescription: 'Streak Shield' },
+    ],
+  },
+  {
+    id: 'craft_titan_sword',
+    name: 'Storm Titan Blade',
+    slot: 'weapon',
+    rarity: 'mythic',
+    icon: '⚡',
+    description: 'Lightning crystallized into a blade — the sky screams when it swings.',
+    perkType: 'atk_boost',
+    perkValue: 28,
+    perkDescription: '+28 ATK · +8 HP Regen/s',
+    perks: [
+      { perkType: 'atk_boost', perkValue: 28, perkDescription: '+28 ATK' },
+      { perkType: 'hp_regen_boost', perkValue: 8, perkDescription: '+8 HP Regen/s' },
+    ],
+  },
+  {
+    id: 'craft_titan_legs',
+    name: 'Titan Greaves',
+    slot: 'legs',
+    rarity: 'mythic',
+    icon: '🦿',
+    description: 'Greaves charged with celestial static — each step crackles.',
+    perkType: 'atk_boost',
+    perkValue: 20,
+    perkDescription: '+20 ATK · +100 HP',
+    perks: [
+      { perkType: 'atk_boost', perkValue: 20, perkDescription: '+20 ATK' },
+      { perkType: 'hp_boost', perkValue: 100, perkDescription: '+100 HP' },
+    ],
+  },
+  {
+    id: 'craft_titan_ring',
+    name: 'Titan Core Ring',
+    slot: 'ring',
+    rarity: 'mythic',
+    icon: '🔮',
+    description: 'A ring housing a shard of the Storm Titan\'s core — radiates limitless energy.',
+    perkType: 'atk_boost',
+    perkValue: 16,
+    perkDescription: '+16 ATK · +10 HP Regen/s · +8% XP',
+    perks: [
+      { perkType: 'atk_boost', perkValue: 16, perkDescription: '+16 ATK' },
+      { perkType: 'hp_regen_boost', perkValue: 10, perkDescription: '+10 HP Regen/s' },
+      { perkType: 'xp_global_boost', perkValue: 0.08, perkDescription: '+8% Global XP' },
+    ],
+  },
+
   // ── Mythic boss-material gear ───────────────────────────────────────────────
   {
     id: 'craft_warlord_gauntlets',
@@ -362,7 +524,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     outputItemId: 'iron_bar',
     outputQty: 1,
     isIntermediate: true,
-    ingredients: [{ id: 'ore_iron', qty: 3 }],
+    ingredients: [{ id: 'ore_iron', qty: 5 }],
     levelRequired: 0,
     xpPerItem: 90,
     secPerItem: 8,
@@ -385,7 +547,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     ingredients: [{ id: 'magic_essence', qty: 3 }],
     levelRequired: 15,
     xpPerItem: 40,
-    secPerItem: 120,
+    secPerItem: 15,
   },
   {
     id: 'recipe_ancient_dust',
@@ -395,7 +557,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     ingredients: [{ id: 'ancient_scale', qty: 2 }],
     levelRequired: 30,
     xpPerItem: 70,
-    secPerItem: 150,
+    secPerItem: 15,
   },
   {
     id: 'recipe_void_fragment',
@@ -405,7 +567,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     ingredients: [{ id: 'void_crystal', qty: 2 }],
     levelRequired: 55,
     xpPerItem: 120,
-    secPerItem: 240,
+    secPerItem: 20,
   },
 
   // ── Tier 2 — Craft gear from intermediates + farm plants ───────────────────
@@ -433,7 +595,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     ],
     levelRequired: 15,
     xpPerItem: 70,
-    secPerItem: 300,
+    secPerItem: 60,
   },
   {
     // Essence Vial × 2 + Blossoms × 2 → Essence Ring
@@ -517,7 +679,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     ],
     levelRequired: 15,
     xpPerItem: 100,
-    secPerItem: 480,
+    secPerItem: 300,
     goldCost: 300,
   },
   {
@@ -532,7 +694,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     ],
     levelRequired: 25,
     xpPerItem: 200,
-    secPerItem: 900,
+    secPerItem: 600,
     goldCost: 800,
   },
   {
@@ -564,6 +726,159 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     xpPerItem: 850,
     secPerItem: 3600,
     goldCost: 5000,
+  },
+
+  // ── Tier 5 — Zone 7 Lich Set (shadow_dust + lich_crystal) ───────────────────
+  {
+    // Shadow Dust × 3 + Lich Crystal × 1 + Void Crystal × 2 → Lich Helm
+    id: 'recipe_lich_helm',
+    outputItemId: 'craft_lich_helm',
+    outputQty: 1,
+    ingredients: [
+      { id: 'shadow_dust',  qty: 3 },
+      { id: 'lich_crystal', qty: 1 },
+      { id: 'void_crystal', qty: 2 },
+    ],
+    levelRequired: 70,
+    xpPerItem: 1000,
+    secPerItem: 2700,
+    goldCost: 5000,
+  },
+  {
+    // Shadow Dust × 5 + Lich Crystal × 2 + Orchids × 3 → Lich Plate
+    id: 'recipe_lich_plate',
+    outputItemId: 'craft_lich_plate',
+    outputQty: 1,
+    ingredients: [
+      { id: 'shadow_dust',  qty: 5 },
+      { id: 'lich_crystal', qty: 2 },
+      { id: 'orchids',      qty: 3 },
+    ],
+    levelRequired: 80,
+    xpPerItem: 1200,
+    secPerItem: 4500,
+    goldCost: 8000,
+  },
+  {
+    // Shadow Dust × 4 + Lich Crystal × 1 + Void Fragment × 2 → Lich Blade
+    id: 'recipe_lich_sword',
+    outputItemId: 'craft_lich_sword',
+    outputQty: 1,
+    ingredients: [
+      { id: 'shadow_dust',   qty: 4 },
+      { id: 'lich_crystal',  qty: 1 },
+      { id: 'void_fragment', qty: 2 },
+    ],
+    levelRequired: 75,
+    xpPerItem: 1100,
+    secPerItem: 3600,
+    goldCost: 6000,
+  },
+  {
+    // Shadow Dust × 3 + Lich Crystal × 1 + Star Bloom × 2 → Lich Greaves
+    id: 'recipe_lich_legs',
+    outputItemId: 'craft_lich_legs',
+    outputQty: 1,
+    ingredients: [
+      { id: 'shadow_dust',  qty: 3 },
+      { id: 'lich_crystal', qty: 1 },
+      { id: 'star_bloom',   qty: 2 },
+    ],
+    levelRequired: 72,
+    xpPerItem: 900,
+    secPerItem: 2400,
+    goldCost: 4000,
+  },
+  {
+    // Shadow Dust × 2 + Lich Crystal × 1 → Lich Sigil Ring
+    id: 'recipe_lich_ring',
+    outputItemId: 'craft_lich_ring',
+    outputQty: 1,
+    ingredients: [
+      { id: 'shadow_dust',  qty: 2 },
+      { id: 'lich_crystal', qty: 1 },
+    ],
+    levelRequired: 68,
+    xpPerItem: 800,
+    secPerItem: 1800,
+    goldCost: 3000,
+  },
+
+  // ── Tier 6 — Zone 8 Titan Set (storm_shard + titan_core) ─────────────────────
+  {
+    // Storm Shard × 3 + Titan Core × 1 + Lich Crystal × 2 → Titan Helm
+    id: 'recipe_titan_helm',
+    outputItemId: 'craft_titan_helm',
+    outputQty: 1,
+    ingredients: [
+      { id: 'storm_shard',  qty: 3 },
+      { id: 'titan_core',   qty: 1 },
+      { id: 'lich_crystal', qty: 2 },
+    ],
+    levelRequired: 85,
+    xpPerItem: 2000,
+    secPerItem: 5400,
+    goldCost: 12000,
+  },
+  {
+    // Storm Shard × 5 + Titan Core × 2 + Orchids × 3 → Titan Plate
+    id: 'recipe_titan_plate',
+    outputItemId: 'craft_titan_plate',
+    outputQty: 1,
+    ingredients: [
+      { id: 'storm_shard', qty: 5 },
+      { id: 'titan_core',  qty: 2 },
+      { id: 'orchids',     qty: 3 },
+    ],
+    levelRequired: 90,
+    xpPerItem: 2500,
+    secPerItem: 7200,
+    goldCost: 18000,
+  },
+  {
+    // Storm Shard × 4 + Titan Core × 1 + Shadow Dust × 4 → Storm Titan Blade
+    id: 'recipe_titan_sword',
+    outputItemId: 'craft_titan_sword',
+    outputQty: 1,
+    ingredients: [
+      { id: 'storm_shard',  qty: 4 },
+      { id: 'titan_core',   qty: 1 },
+      { id: 'shadow_dust',  qty: 4 },
+    ],
+    levelRequired: 88,
+    xpPerItem: 2200,
+    secPerItem: 6000,
+    goldCost: 15000,
+  },
+  {
+    // Storm Shard × 3 + Titan Core × 1 + Star Bloom × 2 → Titan Greaves
+    id: 'recipe_titan_legs',
+    outputItemId: 'craft_titan_legs',
+    outputQty: 1,
+    ingredients: [
+      { id: 'storm_shard', qty: 3 },
+      { id: 'titan_core',  qty: 1 },
+      { id: 'star_bloom',  qty: 2 },
+    ],
+    levelRequired: 85,
+    xpPerItem: 1800,
+    secPerItem: 4800,
+    goldCost: 10000,
+  },
+  {
+    // Storm Shard × 2 + Titan Core × 1 + Lich Crystal × 1 → Titan Core Ring
+    id: 'recipe_titan_ring',
+    outputItemId: 'craft_titan_ring',
+    outputQty: 1,
+    ingredients: [
+      { id: 'storm_shard',  qty: 2 },
+      { id: 'titan_core',   qty: 1 },
+      { id: 'lich_crystal', qty: 1 },
+    ],
+    levelRequired: 82,
+    xpPerItem: 1600,
+    secPerItem: 4200,
+    goldCost: 8000,
   },
 
   // ── Tier 4 — Boss-material gear (require boss-exclusive drops) ──────────────
@@ -705,9 +1020,9 @@ export function rollSessionMaterialDrops(
   const drops: SessionMaterialDrop[] = []
 
   if (durationHours >= 1.0) {
-    drops.push({ id: primaryId, name: MATERIAL_NAMES[primaryId], qty: 4 })
-  } else {
     drops.push({ id: primaryId, name: MATERIAL_NAMES[primaryId], qty: 2 })
+  } else if (Math.random() < 0.8) {
+    drops.push({ id: primaryId, name: MATERIAL_NAMES[primaryId], qty: 1 })
   }
 
   if (durationHours >= 2.0 && clearedZones.includes('zone3')) {

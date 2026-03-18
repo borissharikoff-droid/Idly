@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { MessageCircle } from '../../lib/icons'
 import { motion } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
 import type { FriendProfile as FriendProfileType } from '../../hooks/useFriends'
 import { normalizeEquippedLoot, type LootSlot } from '../../lib/loot'
 import { CharacterPanel } from '../character/CharacterPanel'
-import { SKILLS, computeTotalSkillLevelFromLevels, MAX_TOTAL_SKILL_LEVEL, normalizeSkillId, skillLevelFromXP, skillXPProgress, computeGrindlyBonuses } from '../../lib/skills'
+import { SKILLS, computeTotalSkillLevelFromLevels, MAX_TOTAL_SKILL_LEVEL, normalizeSkillId, skillLevelFromXP, skillXPProgress, computeGrindlyBonuses, getSkillByName, getSkillActivityLine } from '../../lib/skills'
 import { computeWarriorBonuses } from '../../lib/combat'
 import { ACHIEVEMENTS, checkSkillAchievements } from '../../lib/xp'
 import { MOTION } from '../../lib/motion'
@@ -12,6 +13,9 @@ import { formatSessionDurationCompact, parseFriendPresence } from '../../lib/fri
 import { PageHeader } from '../shared/PageHeader'
 import { fetchUserPublicProgressHistory, type SocialFeedEvent } from '../../services/socialFeed'
 import { AvatarWithFrame } from '../shared/AvatarWithFrame'
+import { useGuildStore } from '../../stores/guildStore'
+import { useAuthStore } from '../../stores/authStore'
+import { useToastStore } from '../../stores/toastStore'
 
 interface FriendProfileProps {
   profile: FriendProfileType
@@ -19,7 +23,6 @@ interface FriendProfileProps {
   onCompare?: () => void
   onMessage?: () => void
   onRemove?: () => void
-  onRetrySync?: () => void
 }
 
 interface SessionSummary {
@@ -60,7 +63,25 @@ function formatDuration(s: number): string {
   return `${sec}s`
 }
 
-export function FriendProfile({ profile, onBack, onMessage, onRetrySync }: FriendProfileProps) {
+export function FriendProfile({ profile, onBack, onMessage }: FriendProfileProps) {
+  const guildMembership = useGuildStore((s) => s.membership)
+  const myGuild = useGuildStore((s) => s.myGuild)
+  const sendInvite = useGuildStore((s) => s.sendInvite)
+  const currentUser = useAuthStore((s) => s.user)
+  const pushToast = useToastStore((s) => s.push)
+  const [inviteSent, setInviteSent] = useState(false)
+
+  const canInvite = !!myGuild && !!guildMembership && ['owner', 'officer'].includes(guildMembership.role) && profile.id !== currentUser?.id
+
+  const handleInvite = useCallback(async () => {
+    const result = await sendInvite(profile.id)
+    if (result.ok) {
+      setInviteSent(true)
+      pushToast({ kind: 'generic', message: `Invited ${profile.username} to [${myGuild!.tag}]`, type: 'success' })
+    } else {
+      pushToast({ kind: 'generic', message: result.error ?? 'Failed to invite', type: 'error' })
+    }
+  }, [profile.id, profile.username, sendInvite, pushToast, myGuild])
   const [sessions, setSessions] = useState<SessionSummary[]>([])
   const [totalGrindSeconds, setTotalGrindSeconds] = useState(0)
   const [loadingProfile, setLoadingProfile] = useState(true)
@@ -299,6 +320,16 @@ export function FriendProfile({ profile, onBack, onMessage, onRetrySync }: Frien
       <PageHeader
         title={profile.username || 'Friend'}
         onBack={onBack}
+        rightSlot={canInvite ? (
+          <button
+            type="button"
+            onClick={handleInvite}
+            disabled={inviteSent}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-mono border border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 disabled:opacity-50 disabled:cursor-default transition-colors"
+          >
+            {inviteSent ? '✓ Invited' : `⚔ Invite to [${myGuild!.tag}]`}
+          </button>
+        ) : undefined}
       />
       {/* Profile Hero */}
       <div
@@ -324,8 +355,13 @@ export function FriendProfile({ profile, onBack, onMessage, onRetrySync }: Frien
               <span className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-discord-card ${profile.is_online ? 'bg-cyber-neon' : 'bg-gray-600'}`} />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-white font-bold text-[15px] truncate">{profile.username || 'Anonymous'}</h3>
+                {profile.guild_tag && (
+                  <span className="text-[10px] px-1 py-[1px] rounded font-bold border border-amber-500/40 bg-amber-500/10 text-amber-400 shrink-0" title={`Guild: ${profile.guild_tag}`}>
+                    [{profile.guild_tag}]
+                  </span>
+                )}
                 <span className="grindly-badge text-cyber-neon border-cyber-neon/30 bg-cyber-neon/10 text-[10px]" title="Total skill level">
                   {totalSkillLevel}/{MAX_TOTAL_SKILL_LEVEL}
                 </span>
@@ -333,10 +369,9 @@ export function FriendProfile({ profile, onBack, onMessage, onRetrySync }: Frien
               <p className="text-[11px] mt-1 text-gray-400">
                 {profile.is_online
                   ? (isLeveling
-                    ? `Leveling ${levelingSkill}${liveDuration ? ` · ${liveDuration}` : ''}`
+                    ? `Leveling ${levelingSkill}${liveDuration ? ` · ${liveDuration}` : ''}${appName ? ` · ${getSkillActivityLine(getSkillByName(levelingSkill ?? '')?.id ?? null, appName)}` : ''}`
                     : activityLabel || 'Online')
                   : 'Offline'}
-                {profile.is_online && appName && ` · ${appName}`}
               </p>
             </div>
             {onMessage && (
@@ -348,9 +383,7 @@ export function FriendProfile({ profile, onBack, onMessage, onRetrySync }: Frien
                 title="Message"
                 aria-label="Message"
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                </svg>
+                <MessageCircle className="w-[15px] h-[15px]" />
               </motion.button>
             )}
           </div>
@@ -365,7 +398,7 @@ export function FriendProfile({ profile, onBack, onMessage, onRetrySync }: Frien
           ].map(({ value, label, color }, i) => (
             <div key={label} className={`text-center py-2.5 ${i > 0 ? 'border-l border-white/[0.06]' : ''}`}>
               <p className="text-[13px] font-mono font-bold leading-none" style={{ color }}>{value}</p>
-              <p className="text-[8px] font-mono text-gray-500 uppercase tracking-wider mt-0.5">{label}</p>
+              <p className="text-[10px] font-mono text-gray-500 uppercase tracking-wider mt-0.5">{label}</p>
             </div>
           ))}
         </div>
@@ -398,16 +431,8 @@ export function FriendProfile({ profile, onBack, onMessage, onRetrySync }: Frien
 
       {/* Skills — compact bars */}
       <div className="rounded-xl bg-discord-card/80 border border-white/10 p-3">
-        <div className="flex items-center justify-between mb-2">
+        <div className="mb-2">
           <p className="text-[10px] uppercase tracking-widest text-gray-500 font-mono font-semibold">Skills</p>
-          <div className="flex items-center gap-2">
-            {!hasConfirmedSkillRows && !hasProfileSkillRows && (
-              <span className="text-[10px] text-amber-400/90 font-mono">Sync pending</span>
-            )}
-            {!hasConfirmedSkillRows && onRetrySync && (
-              <button type="button" onClick={onRetrySync} className="text-[10px] px-2 py-0.5 rounded-md border border-white/15 text-gray-300 hover:text-white hover:bg-white/5 transition-colors">Retry</button>
-            )}
-          </div>
         </div>
         <div className="space-y-[3px]">
           {(() => {
@@ -424,9 +449,7 @@ export function FriendProfile({ profile, onBack, onMessage, onRetrySync }: Frien
                 : (hasConfirmedSkillRows ? Math.min(100, (level / 99) * 100) : 0)
               const xpTitle = hasRealXp
                 ? `${skillDef.name}: ${formatXp(totalXp)} XP`
-                : unknownSkill
-                  ? `${skillDef.name}: pending sync`
-                  : `${skillDef.name}: LVL ${level}`
+                : `${skillDef.name}: LVL ${level}`
               const isActive = levelingSkill === skillDef.name
               return (
                 <div key={skillDef.id} title={xpTitle} className={`flex items-center gap-2 px-2 py-[5px] rounded-lg transition-colors ${isActive ? 'bg-cyber-neon/[0.04]' : ''}`}>
@@ -558,7 +581,7 @@ export function FriendProfile({ profile, onBack, onMessage, onRetrySync }: Frien
                     <div key={event.id} className="flex items-center gap-2 py-1 px-1">
                       <span className="text-[11px] shrink-0 w-4 text-center">{icon}</span>
                       <span className="text-[11px] text-gray-300 flex-1 min-w-0 truncate">{label}</span>
-                      <span className="text-[9px] text-gray-600 font-mono shrink-0">{ago}</span>
+                      <span className="text-[10px] text-gray-600 font-mono shrink-0">{ago}</span>
                     </div>
                   )
                 })}

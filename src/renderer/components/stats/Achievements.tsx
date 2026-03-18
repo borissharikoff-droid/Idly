@@ -73,10 +73,10 @@ export function Achievements() {
         return (
           <div key={cat} className="space-y-1.5">
             <div className="flex items-center gap-2 px-0.5">
-              <span className="text-[9px] text-gray-500 font-mono uppercase tracking-wider">
+              <span className="text-[10px] text-gray-500 font-mono uppercase tracking-wider">
                 {meta.icon} {meta.label}
               </span>
-              <span className="text-[8px] text-gray-600 font-mono">{catUnlocked}/{items.length}</span>
+              <span className="text-[10px] text-gray-600 font-mono">{catUnlocked}/{items.length}</span>
             </div>
             <div className="grid grid-cols-1 gap-1.5">
               {items.map((a) => {
@@ -105,12 +105,12 @@ export function Achievements() {
                           <span className={`text-[11px] font-medium truncate ${unlocked ? 'text-white' : 'text-gray-400'}`}>
                             {a.name}
                           </span>
-                          <span className={`text-[8px] font-mono shrink-0 ${unlocked ? 'text-cyber-neon/60' : 'text-gray-600'}`}>
+                          <span className={`text-[10px] font-mono shrink-0 ${unlocked ? 'text-cyber-neon/60' : 'text-gray-600'}`}>
                             +{a.xpReward}xp
                           </span>
                         </div>
                         <div className="flex items-center gap-2 mt-0.5">
-                          <span className={`text-[9px] truncate ${unlocked ? 'text-gray-400' : 'text-gray-600'}`}>
+                          <span className={`text-[10px] truncate ${unlocked ? 'text-gray-400' : 'text-gray-600'}`}>
                             {a.description}
                           </span>
                           {cosmetic && <CosmeticMini cosmetic={cosmetic} unlocked={unlocked} />}
@@ -142,7 +142,7 @@ function CosmeticMini({ cosmetic, unlocked }: { cosmetic: { badgeId?: string; fr
     if (frame) {
       const rarityColor = frame.rarity === 'Legendary' ? '#FFD700' : frame.rarity === 'Epic' ? '#C084FC' : '#4FC3F7'
       parts.push(
-        <span key="frame" className={`text-[8px] font-mono ${opacity}`} style={{ color: rarityColor }}>
+        <span key="frame" className={`text-[10px] font-mono ${opacity}`} style={{ color: rarityColor }}>
           {frame.name}
         </span>
       )
@@ -152,7 +152,7 @@ function CosmeticMini({ cosmetic, unlocked }: { cosmetic: { badgeId?: string; fr
     const badge = BADGES.find((b) => b.id === cosmetic.badgeId)
     if (badge) {
       parts.push(
-        <span key="badge" className={`text-[8px] px-1 rounded font-medium border ${opacity}`}
+        <span key="badge" className={`text-[10px] px-1 rounded font-medium border ${opacity}`}
           style={{ borderColor: `${badge.color}30`, backgroundColor: `${badge.color}10`, color: badge.color }}>
           {badge.icon}
         </span>

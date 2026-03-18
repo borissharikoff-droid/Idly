@@ -116,7 +116,7 @@ export function WhatsNewModal({ patch, open, onClose }: { patch: PatchNote | nul
                         className="flex items-start gap-2"
                       >
                         <span
-                          className="text-[8px] font-bold uppercase px-1.5 py-0.5 rounded mt-0.5 shrink-0"
+                          className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded mt-0.5 shrink-0"
                           style={{ color: meta.color, background: `${meta.color}15`, border: `1px solid ${meta.color}25` }}
                         >
                           {meta.label}

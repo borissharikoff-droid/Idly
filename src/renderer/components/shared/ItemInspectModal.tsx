@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ITEM_POWER_BY_RARITY, POTION_IDS, POTION_MAX, estimateLootDropRate, getItemPower, getItemPerks, getItemPerkDescription, type LootItemDef } from '../../lib/loot'
+import { ITEM_POWER_BY_RARITY, POTION_IDS, POTION_MAX, estimateLootDropRate, getItemPower, getItemPerks, getItemPerkDescription, LOOT_ITEMS, type LootItemDef } from '../../lib/loot'
 import { SLOT_LABEL, LootVisual, RARITY_THEME, normalizeRarity } from '../loot/LootUI'
 import { playClickSound } from '../../lib/sounds'
 import { useInventoryStore } from '../../stores/inventoryStore'
@@ -57,6 +57,33 @@ export function ItemInspectModal({ item, locked = false, onClose }: ItemInspectM
     }
   })
 
+  // Combat stat comparison (gear slots only, when not already equipped)
+  const isGear = (['head', 'body', 'legs', 'ring', 'weapon'] as const).includes(item.slot as never)
+  const currentEquippedId = equippedBySlot[item.slot]
+  const showComparison = isGear && !isEquipped && perkDisplays.some((p) => ['ATK/s', 'HP', 'HP/s', 'DEF'].includes(p.unit))
+  const comparisonDiffs = showComparison ? (() => {
+    const getCombatFromItem = (def: LootItemDef) => {
+      let atk = 0, hp = 0, hpRegen = 0, def_ = 0
+      for (const p of getItemPerks(def)) {
+        const v = typeof p.perkValue === 'number' ? p.perkValue : 0
+        if (p.perkType === 'atk_boost') atk += v
+        if (p.perkType === 'hp_boost') hp += v
+        if (p.perkType === 'hp_regen_boost') hpRegen += v
+        if (p.perkType === 'def_boost') def_ += v
+      }
+      return { atk, hp, hpRegen, def: def_ }
+    }
+    const newStats = getCombatFromItem(item)
+    const currentDef = currentEquippedId ? LOOT_ITEMS.find((x) => x.id === currentEquippedId) : null
+    const oldStats = currentDef ? getCombatFromItem(currentDef) : { atk: 0, hp: 0, hpRegen: 0, def: 0 }
+    return [
+      { label: 'ATK', delta: newStats.atk - oldStats.atk, color: '#f87171' },
+      { label: 'HP', delta: newStats.hp - oldStats.hp, color: '#4ade80' },
+      { label: 'DEF', delta: newStats.def - oldStats.def, color: '#a3a3a3' },
+      { label: 'Regen', delta: newStats.hpRegen - oldStats.hpRegen, color: '#22d3ee' },
+    ].filter((d) => d.delta !== 0)
+  })() : []
+
   return createPortal(
     <AnimatePresence>
       <motion.div
@@ -104,12 +131,12 @@ export function ItemInspectModal({ item, locked = false, onClose }: ItemInspectM
                 scale={(item.renderScale ?? 1) * 1.3}
               />
             </div>
-            <div className="relative z-10 mt-3 px-2.5 py-0.5 rounded-full border text-[8px] font-mono font-bold uppercase tracking-widest"
+            <div className="relative z-10 mt-3 px-2.5 py-0.5 rounded-full border text-[10px] font-mono font-bold uppercase tracking-widest"
               style={{ color: theme.color, borderColor: `${theme.border}99`, background: `${theme.color}18` }}>
               {rarity}
             </div>
             {qty > 1 && (
-              <div className="relative z-10 mt-1.5 text-[9px] font-mono" style={{ color: `${theme.color}99` }}>
+              <div className="relative z-10 mt-1.5 text-[10px] font-mono" style={{ color: `${theme.color}99` }}>
                 x{qty}
               </div>
             )}
@@ -126,11 +153,11 @@ export function ItemInspectModal({ item, locked = false, onClose }: ItemInspectM
             <div className="pr-6">
               <p className="text-[14px] font-bold text-white leading-tight">{item.name}</p>
               <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                <span className="text-[8px] px-1.5 py-0.5 rounded border border-white/15 text-gray-400 font-mono uppercase tracking-wide">
+                <span className="text-[10px] px-1.5 py-0.5 rounded border border-white/15 text-gray-400 font-mono uppercase tracking-wide">
                   {SLOT_LABEL[item.slot]}
                 </span>
                 {isEquipped && (
-                  <span className="text-[8px] px-1.5 py-0.5 rounded border border-cyber-neon/50 text-cyber-neon font-mono tracking-wide"
+                  <span className="text-[10px] px-1.5 py-0.5 rounded border border-cyber-neon/50 text-cyber-neon font-mono tracking-wide"
                     style={{ background: 'rgba(0,255,200,0.07)' }}>
                     equipped
                   </span>
@@ -152,7 +179,7 @@ export function ItemInspectModal({ item, locked = false, onClose }: ItemInspectM
                         </span>
                         <span className="text-[10px] font-mono font-semibold" style={{ color: `${pd.color}cc` }}>{pd.unit}</span>
                       </div>
-                      <span className="text-[9px] text-gray-400 capitalize leading-none">{pd.desc}</span>
+                      <span className="text-[10px] text-gray-400 capitalize leading-none">{pd.desc}</span>
                     </div>
                   ))}
                 </div>
@@ -164,7 +191,7 @@ export function ItemInspectModal({ item, locked = false, onClose }: ItemInspectM
 
               {isPotion && (
                 <div>
-                  <div className="flex items-center justify-between text-[8px] font-mono mb-1">
+                  <div className="flex items-center justify-between text-[10px] font-mono mb-1">
                     <span className="text-gray-500">Consumed</span>
                     <span className={consumed >= POTION_MAX ? 'text-amber-400' : 'text-gray-400'}>
                       {consumed}/{POTION_MAX}{consumed >= POTION_MAX ? ' - MAXED' : ''}
@@ -176,8 +203,20 @@ export function ItemInspectModal({ item, locked = false, onClose }: ItemInspectM
                 </div>
               )}
 
+              {comparisonDiffs.length > 0 && (
+                <div className="flex items-center gap-1.5 flex-wrap border-t border-white/[0.05] pt-1.5">
+                  <span className="text-[10px] text-gray-500 font-mono">vs equipped:</span>
+                  {comparisonDiffs.map((d) => (
+                    <span key={d.label} className="text-[10px] font-mono font-semibold"
+                      style={{ color: d.delta > 0 ? '#4ade80' : '#f87171' }}>
+                      {d.delta > 0 ? '+' : ''}{d.delta} {d.label}
+                    </span>
+                  ))}
+                </div>
+              )}
+
               {(['head', 'body', 'legs', 'ring', 'weapon'] as const).includes(item.slot as never) && (
-                <div className="flex items-center gap-2 text-[9px] font-mono pt-0.5 border-t border-white/[0.05]">
+                <div className="flex items-center gap-2 text-[10px] font-mono pt-0.5 border-t border-white/[0.05]">
                   <span className="text-gray-500">IP</span>
                   <span style={{ color: theme.color }}>{ip}</span>
                   <span className="text-white/20">-</span>

@@ -166,6 +166,19 @@ export async function cancelListing(listingId: string): Promise<CancelListingRes
   }
 }
 
+export interface PriceHistoryEntry {
+  price_gold: number
+  sold_at: string
+}
+
+/** Fetch recent sale prices for a given item (for sparkline / suggested price). */
+export async function fetchPriceHistory(itemId: string, limit = 20): Promise<PriceHistoryEntry[]> {
+  if (!supabase) return []
+  const { data, error } = await supabase.rpc('get_price_history', { p_item_id: itemId, p_limit: limit })
+  if (error || !data) return []
+  return (data as PriceHistoryEntry[])
+}
+
 /** Expire listings older than 7 days (returns items to sellers). Call before fetch. */
 export async function expireOldListings(): Promise<number> {
   if (!supabase) return 0
