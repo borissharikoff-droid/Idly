@@ -365,10 +365,7 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
         onDraftCancel={() => { setDraftUsername(username); setIsUsernameEditing(false) }}
         onItemInspect={(itemId) => { playClickSound(); setInspectItemId(itemId) }}
         syncButton={null}
-<<<<<<< HEAD
-=======
         guildTag={myGuildTag}
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
       />
 
       <ItemInspectModal item={inspectItem} onClose={() => setInspectItemId(null)} />

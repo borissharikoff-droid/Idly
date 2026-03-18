@@ -733,11 +733,7 @@ function ToolsPanel({ chefLevel, onClose, focusId }: { chefLevel: number; onClos
                         )}
                       </div>
                       {isLocked ? (
-<<<<<<< HEAD
-                        <p className="text-[9px] mt-0.5" style={{ color: K.muted }}>Requires Cooking Level {inst.unlockLevel}</p>
-=======
                         <p className="text-[10px] mt-0.5" style={{ color: K.muted }}>Requires Cooking Level {inst.unlockLevel}</p>
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
                       ) : (
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap text-[10px]">
                           {td.speedBonus > 0 && <span style={{ color: K.ready }}>Speed +{Math.round(td.speedBonus * 100)}%</span>}
@@ -1745,16 +1741,6 @@ export function CookingPage() {
               </span>
               <span className="text-[10px] font-mono" style={{ color: K.xp }}>{xpCur.toLocaleString()} XP</span>
             </div>
-<<<<<<< HEAD
-            <div>
-              <h1 className="text-[15px] font-bold" style={{ color: K.cream }}>Cooking</h1>
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-[10px]" style={{ color: K.muted }}>
-                  Cooking Level <span className="font-bold" style={{ color: K.copper }}>{chefLvl}</span>
-                </span>
-                <span className="text-[9px] font-mono" style={{ color: K.xp }}>{xpCur.toLocaleString()} XP</span>
-              </div>
-=======
           }
           rightSlot={
             <div className="flex items-center gap-2">
@@ -1762,7 +1748,6 @@ export function CookingPage() {
                 className="w-8 h-8 rounded-lg flex items-center justify-center text-[12px] font-bold"
                 style={{ color: K.muted, background: 'rgba(255,255,255,.03)', border: `1px solid ${K.faint}` }}>?</button>
               <BackpackButton onClick={() => setShowBP(true)} />
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
             </div>
           }
         />

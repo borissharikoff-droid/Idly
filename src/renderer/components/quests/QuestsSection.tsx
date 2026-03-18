@@ -411,26 +411,15 @@ function BonusRow({ claimed, canClaim, progress, total, onClaim }: {
                   ? <img src={legendaryChest.image} alt="" className="w-3 h-3 object-contain" style={{ imageRendering: 'pixelated' }} draggable={false} />
                   : <span className="text-[10px]">{legendaryChest.icon}</span>
               )}
-<<<<<<< HEAD
-              <p className="text-[9px] text-gray-500">Legendary Chest bonus</p>
-=======
               <p className="text-[10px] text-gray-500">Legendary Chest bonus</p>
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
             </div>
           </div>
         </div>
         {claimed ? (
-<<<<<<< HEAD
-          <span className="text-[9px] px-2 py-1 rounded border border-yellow-500/30 bg-yellow-500/10 text-yellow-400 font-mono shrink-0">Claimed</span>
-        ) : canClaim ? (
-          <button type="button" onClick={onClaim}
-            className="text-[9px] px-3 py-1.5 rounded-lg border border-yellow-500/40 bg-yellow-500/15 text-yellow-400 font-semibold hover:bg-yellow-500/25 transition-colors animate-pulse shrink-0 flex items-center gap-1">
-=======
           <span className="text-[10px] px-2 py-1 rounded border border-yellow-500/30 bg-yellow-500/10 text-yellow-400 font-mono shrink-0">Claimed</span>
         ) : canClaim ? (
           <button type="button" onClick={onClaim}
             className="text-[10px] px-3 py-1.5 rounded-lg border border-yellow-500/40 bg-yellow-500/15 text-yellow-400 font-semibold hover:bg-yellow-500/25 transition-colors animate-pulse shrink-0 flex items-center gap-1">
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
             Claim
             {legendaryChest && (
               legendaryChest.image
@@ -439,11 +428,7 @@ function BonusRow({ claimed, canClaim, progress, total, onClaim }: {
             )}
           </button>
         ) : (
-<<<<<<< HEAD
-          <span className="text-[9px] text-gray-600 font-mono shrink-0">{progress}/{total}</span>
-=======
           <span className="text-[10px] text-gray-600 font-mono shrink-0">{progress}/{total}</span>
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
         )}
       </div>
       {!claimed && (

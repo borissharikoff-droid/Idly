@@ -28,11 +28,7 @@ export function Timer() {
     >
       <motion.div
         layout
-<<<<<<< HEAD
-        className={`font-mono text-5xl font-bold tabular-nums tracking-wider transition-colors duration-300 select-none ${
-=======
         className={`font-mono text-6xl font-bold tabular-nums tracking-wider transition-colors duration-300 select-none ${
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
           status === 'running'
             ? 'text-cyber-neon animate-timer-glow'
             : status === 'paused'
@@ -66,11 +62,7 @@ export function Timer() {
             transition={{ duration: MOTION.duration.base, ease: MOTION.easingSoft }}
             className="mt-2 flex justify-center"
           >
-<<<<<<< HEAD
-            <span className="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/30">
-=======
             <span className="text-xs font-bold tracking-wider px-3 py-1 rounded-full bg-orange-500/15 text-orange-400 border border-orange-500/30">
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
               🔥 ×{streakMultiplier.toFixed(1)} XP
             </span>
           </motion.div>

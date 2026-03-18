@@ -7,8 +7,6 @@ interface NavigationStore {
   setNavigateTo: (fn: (tab: TabId) => void) => void
   currentTab: TabId
   setCurrentTab: (tab: TabId) => void
-<<<<<<< HEAD
-=======
   profileInitialTab: string | null
   setProfileInitialTab: (tab: string | null) => void
   /** Navigate to Friends tab and auto-open this user's profile */
@@ -17,7 +15,6 @@ interface NavigationStore {
   /** Tab to return to when Back is pressed after a cross-tab navigation */
   returnTab: TabId | null
   setReturnTab: (tab: TabId | null) => void
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
 }
 
 export const useNavigationStore = create<NavigationStore>((set) => ({
@@ -25,13 +22,10 @@ export const useNavigationStore = create<NavigationStore>((set) => ({
   setNavigateTo: (fn) => set({ navigateTo: fn }),
   currentTab: 'home',
   setCurrentTab: (tab) => set({ currentTab: tab }),
-<<<<<<< HEAD
-=======
   profileInitialTab: null,
   setProfileInitialTab: (tab) => set({ profileInitialTab: tab }),
   pendingFriendUserId: null,
   setPendingFriendUserId: (id) => set({ pendingFriendUserId: id }),
   returnTab: null,
   setReturnTab: (tab) => set({ returnTab: tab }),
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
 }))

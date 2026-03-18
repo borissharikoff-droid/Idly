@@ -1,22 +1,13 @@
-<<<<<<< HEAD
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-=======
 import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react'
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   ZONES,
   isZoneUnlocked, canAffordEntry, getDailyBossId, effectiveBossDps, type ZoneDef,
 } from '../../lib/combat'
-<<<<<<< HEAD
-import { getHotZoneId, hotZoneResetsInDays } from '../../lib/hotZone'
-import { useBountyStore } from '../../stores/bountyStore'
-=======
 
 const RaidsTab = lazy(() => import('./RaidsTab').then((m) => ({ default: m.RaidsTab })))
 const HallOfRaidsTab = lazy(() => import('./HallOfRaidsTab').then((m) => ({ default: m.HallOfRaidsTab })))
 import { getHotZoneId, hotZoneResetsInDays } from '../../lib/hotZone'
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
 import { LOOT_ITEMS, type ChestType, type BonusMaterial } from '../../lib/loot'
 import { computePlayerStats, type FoodLoadout, type FoodLoadoutSlot } from '../../lib/combat'
 import { FoodSelector } from '../shared/FoodSelector'
@@ -49,114 +40,6 @@ function formatShort(n: number): string {
 
 // ─── Food selector ───────────────────────────────────────────────────────────
 
-<<<<<<< HEAD
-function FoodSelector({
-  slots,
-  onChange,
-  ownedItems,
-}: {
-  slots: (FoodLoadoutSlot | null)[]
-  onChange: (slots: (FoodLoadoutSlot | null)[]) => void
-  ownedItems: Record<string, number>
-}) {
-  const [pickerIdx, setPickerIdx] = useState<number | null>(null)
-
-  const hasAnyFood = FOOD_ITEMS.some((f) => (ownedItems[f.id] ?? 0) > 0)
-  const availableFood = FOOD_ITEMS.filter((f) => {
-    const owned = ownedItems[f.id] ?? 0
-    // Subtract food already in other slots
-    const usedInSlots = slots.reduce((sum, s) => sum + (s && s.foodId === f.id ? s.qty : 0), 0)
-    return owned - usedInSlots > 0
-  })
-
-  // Don't render if player has no food at all and no slots are filled
-  if (!hasAnyFood && !slots.some(Boolean)) return null
-
-  const handlePick = (idx: number, food: FoodItemDef) => {
-    const owned = ownedItems[food.id] ?? 0
-    const usedInOtherSlots = slots.reduce((sum, s, i) => sum + (i !== idx && s && s.foodId === food.id ? s.qty : 0), 0)
-    const available = owned - usedInOtherSlots
-    if (available <= 0) return
-    const next = [...slots]
-    next[idx] = { foodId: food.id, qty: Math.min(available, 10), effect: food.effect }
-    onChange(next)
-    setPickerIdx(null)
-  }
-
-  const handleClear = (idx: number) => {
-    const next = [...slots]
-    next[idx] = null
-    onChange(next)
-  }
-
-  return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-[9px] text-gray-500 font-mono">Food:</span>
-      {slots.map((slot, idx) => {
-        const food = slot ? FOOD_ITEMS.find((f) => f.id === slot.foodId) : null
-        return (
-          <div key={idx} className="relative">
-            <button
-              type="button"
-              onClick={() => setPickerIdx(pickerIdx === idx ? null : idx)}
-              className="w-7 h-7 rounded-lg border border-white/10 bg-white/[0.04] flex items-center justify-center text-xs hover:bg-white/[0.08] transition-colors"
-              title={food ? `${food.name} ×${slot!.qty}${food.effect.goldBonusPct ? ` · +${food.effect.goldBonusPct}% gold` : ''}${food.effect.dropBonusPct ? ` · +${food.effect.dropBonusPct}% drops` : ''}` : 'Empty slot'}
-            >
-              {food ? (
-                <>
-                  <span>{food.icon}</span>
-                  <span className="absolute -bottom-0.5 -right-0.5 text-[8px] font-bold text-white bg-black/60 rounded px-0.5">{slot!.qty}</span>
-                </>
-              ) : (
-                <span className="text-gray-600">+</span>
-              )}
-            </button>
-            {slot && (
-              <button
-                type="button"
-                onClick={() => handleClear(idx)}
-                className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-500/80 text-[8px] text-white flex items-center justify-center hover:bg-red-500"
-              >×</button>
-            )}
-            {/* Picker dropdown */}
-            {pickerIdx === idx && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setPickerIdx(null)} />
-                <div className="absolute bottom-full left-0 mb-1 z-50 w-44 max-h-48 overflow-y-auto rounded-xl border border-white/10 bg-[#1a1a2a] shadow-xl p-1">
-                  {availableFood.length === 0 ? (
-                    <p className="text-[10px] text-gray-500 text-center py-2">No food available</p>
-                  ) : (
-                    availableFood.map((f) => {
-                      const owned = ownedItems[f.id] ?? 0
-                      const usedOther = slots.reduce((sum, s, i) => sum + (i !== idx && s && s.foodId === f.id ? s.qty : 0), 0)
-                      return (
-                        <button
-                          key={f.id}
-                          type="button"
-                          onClick={() => handlePick(idx, f)}
-                          className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left hover:bg-white/[0.06] transition-colors"
-                        >
-                          <span className="text-base">{f.icon}</span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[10px] font-semibold text-gray-200 truncate">{f.name}</p>
-                            <p className="text-[8px] text-gray-500">{f.description.split('·')[0].trim()}{(f.effect.goldBonusPct || f.effect.dropBonusPct) ? ` · ${[f.effect.goldBonusPct ? `+${f.effect.goldBonusPct}%g` : '', f.effect.dropBonusPct ? `+${f.effect.dropBonusPct}%d` : ''].filter(Boolean).join(' ')}` : ''}</p>
-                          </div>
-                          <span className="text-[9px] text-gray-400">×{owned - usedOther}</span>
-                        </button>
-                      )
-                    })
-                  )}
-                </div>
-              </>
-            )}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-=======
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
 
 // ─── Zone card ───────────────────────────────────────────────────────────────
 
@@ -182,11 +65,8 @@ function ZoneCard({
   onFoodChange,
   lastInsuranceUsed,
   isHotZone,
-<<<<<<< HEAD
-=======
   playerAtk,
   inActiveRaid,
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
 }: {
   zone: ZoneDef
   skillLevels: Record<string, number>
@@ -209,11 +89,8 @@ function ZoneCard({
   onFoodChange?: (slots: (FoodLoadoutSlot | null)[]) => void
   lastInsuranceUsed?: boolean
   isHotZone?: boolean
-<<<<<<< HEAD
-=======
   playerAtk?: number
   inActiveRaid?: boolean
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
 }) {
   const unlocked = isZoneUnlocked(zone, skillLevels, clearedZones, ownedItems)
   const cleared = clearedZones.includes(zone.id)
@@ -334,32 +211,12 @@ function ZoneCard({
             </div>
           </div>
 
-<<<<<<< HEAD
-          {/* Zone info */}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <p className="text-[13px] font-semibold text-white leading-tight">{zone.name}</p>
-              {cleared && !isActive && killCount > 0 && (
-                <span className="text-[8px] border border-amber-500/60 text-amber-400 font-mono px-1.5 py-0.5 rounded-md">×{killCount}</span>
-              )}
-              {isActive && (
-                <span className="text-[8px] font-semibold font-mono px-1.5 py-0.5 rounded-md animate-pulse" style={{ color: tc, borderColor: `${tc}40`, border: `1px solid ${tc}40`, background: `${tc}15` }}>
-                  ● {isAutoMode ? 'AUTO' : 'ACTIVE'}
-                </span>
-              )}
-              {isHotZone && (
-                <span className="text-[8px] font-bold font-mono px-1.5 py-0.5 rounded-md border border-orange-500/60 text-orange-400 bg-orange-500/10 animate-pulse">
-                  🔥 HOT
-                </span>
-              )}
-=======
           {/* Stats row */}
           {!isActive && (
             <div className="flex gap-3 mt-3 text-[10px] font-mono text-gray-500">
               <span>Boss HP <span className="text-white">{formatShort(zone.boss.hp)}</span></span>
               <span>Reward <span className="text-amber-400">{zone.boss.rewards.chestTier.replace('_chest', '')}</span></span>
               <span>Mobs <span className="text-white">{zone.mobs.length} + boss</span></span>
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
             </div>
           )}
 
@@ -862,15 +719,6 @@ export function ArenaPage() {
   const hotZoneId = useMemo(() => getHotZoneId(), [])
   const hotZoneDaysLeft = useMemo(() => hotZoneResetsInDays(), [])
   const hotZone = ZONES.find((z) => z.id === hotZoneId)
-<<<<<<< HEAD
-
-  // Daily bounties
-  const bounties = useBountyStore((s) => s.bounties)
-  const ensureToday = useBountyStore((s) => s.ensureToday)
-  const claimBounty = useBountyStore((s) => s.claimBounty)
-  useEffect(() => { ensureToday() }, [ensureToday])
-=======
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
 
   // Restore auto-mode state on mount (survives tab switches)
   useEffect(() => {
@@ -1385,17 +1233,6 @@ export function ArenaPage() {
       {/* ── Character Panel ── */}
       <CharacterCard locked={inBattle} />
 
-<<<<<<< HEAD
-      {/* ── Hot Zone Banner ── */}
-      {hotZone && (
-        <div className="rounded-xl border border-orange-500/40 bg-orange-500/8 px-3 py-2 flex items-center gap-2.5">
-          <span className="text-lg">{hotZone.icon}</span>
-          <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-semibold text-orange-400">🔥 Hot Zone this week: {hotZone.name}</p>
-            <p className="text-[9px] text-gray-400 font-mono">2× gold · 2× drops · +1 chest tier · resets in {hotZoneDaysLeft}d</p>
-          </div>
-        </div>
-=======
       {/* ── Tab switcher ── */}
       <div className="flex gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.07]">
         {([
@@ -1451,7 +1288,6 @@ export function ArenaPage() {
             <p className="text-[10px] text-gray-400 font-mono">2× gold · 2× drops · +1 chest tier · resets in {hotZoneDaysLeft}d</p>
           </div>
         </motion.div>
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
       )}
 
       {/* ── Zone Map ── */}
@@ -1487,10 +1323,7 @@ export function ArenaPage() {
             inActiveRaid={inActiveRaid}
             lastInsuranceUsed={lastInsuranceUsed}
             isHotZone={zone.id === hotZoneId}
-<<<<<<< HEAD
-=======
             playerAtk={playerAtk}
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
           />
         ))}
       </div>

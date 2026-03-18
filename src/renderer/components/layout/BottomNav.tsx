@@ -4,18 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { playTabSound, playClickSound } from '../../lib/sounds'
 import { track } from '../../lib/analytics'
-<<<<<<< HEAD
-import { useAlertStore } from '../../stores/alertStore'
-import { useNavBadgeStore } from '../../stores/navBadgeStore'
-import { useArenaStore } from '../../stores/arenaStore'
-import { useCraftingStore } from '../../stores/craftingStore'
-import { useCookingStore } from '../../stores/cookingStore'
-import { useFarmStore } from '../../stores/farmStore'
-import { useBountyStore } from '../../stores/bountyStore'
-=======
 import { useBadges, BADGE_URGENT, BADGE_READY } from '../../hooks/useBadges'
 import { useNavCustomizationStore } from '../../stores/navCustomizationStore'
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
 import { MOTION } from '../../lib/motion'
 import { getUIIcons } from '../../lib/itemConfig'
 import { useAdminConfigStore } from '../../stores/adminConfigStore'
@@ -73,24 +63,11 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   const pinnedTabs = useNavCustomizationStore((s) => s.pinnedTabs)
   const setPinnedTabs = useNavCustomizationStore((s) => s.setPinnedTabs)
   const [moreOpen, setMoreOpen] = useState(false)
-<<<<<<< HEAD
-  const { queue, currentAlert } = useAlertStore()
-  const { incomingRequestsCount, unreadMessagesCount, marketplaceSaleCount } = useNavBadgeStore()
-  const isArenaBattleActive = useArenaStore((s) => !!s.activeBattle)
-  const claimableBounties = useBountyStore((s) => s.bounties.filter((b) => !b.claimed && b.progress >= b.targetCount).length)
-  const isCraftingActive = useCraftingStore((s) => !!s.activeJob)
-  const isCookingActive = useCookingStore((s) => !!s.activeJob)
-  const planted = useFarmStore((s) => s.planted)
-  const badgeHome = (currentAlert && !currentAlert.claimed ? 1 : 0) + queue.length
-  const badgeFriends = incomingRequestsCount + unreadMessagesCount
-  const hasUnclaimedLoot = currentAlert && !currentAlert.claimed
-=======
   const [dropTarget, setDropTarget] = useState<number | null>(null)
   const popupRef = useRef<HTMLDivElement>(null)
   const moreButtonRef = useRef<HTMLButtonElement>(null)
   const tabEnteredAtRef = useRef<number>(Date.now())
   const prevTabRef = useRef<TabId>(activeTab)
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
 
   useEffect(() => {
     if (!moreOpen) return
@@ -112,10 +89,6 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
 
   const badges = useBadges()
 
-<<<<<<< HEAD
-  const secondaryIsActive = SECONDARY_IDS.has(activeTab)
-  const secondaryHasBadge = badgeFarm > 0 || isArenaBattleActive || isCraftingActive || isCookingActive || marketplaceSaleCount > 0 || profileUnclaimed > 0 || claimableBounties > 0
-=======
   const getTabBadge = (tabId: TabId) => {
     switch (tabId) {
       case 'home':        return badges.badgeHome > 0 ? { count: badges.badgeHome, color: badges.isHomeLootBadge ? BADGE_READY : BADGE_URGENT } : null
@@ -135,7 +108,6 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   const moreTabs = ALL_TABS.filter((t) => !pinnedTabs.includes(t.id))
   const moreBadge = moreTabs.some((t) => getTabBadge(t.id) !== null || getTabPulse(t.id))
   const moreIsActiveTab = !pinnedTabs.includes(activeTab)
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
 
   const navigate = (id: TabId) => {
     if (id !== prevTabRef.current) {
@@ -221,15 +193,9 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
               <div className="p-1.5 grid grid-cols-3 gap-0.5">
                 {moreTabs.map((tab) => {
                   const isActive = activeTab === tab.id
-<<<<<<< HEAD
-                  const tabBadge = tab.id === 'farm' ? badgeFarm : tab.id === 'marketplace' ? marketplaceSaleCount : tab.id === 'arena' ? claimableBounties : 0
-                  const tabPulse = (tab.id === 'arena' && isArenaBattleActive && claimableBounties === 0) || (tab.id === 'craft' && isCraftingActive) || (tab.id === 'cooking' && isCookingActive)
-                  const tabOrangeDot = tab.id === 'profile' && profileUnclaimed > 0
-=======
                   const adminIcon = uiIcons.navSecondaryTabs?.[tab.id] || ''
                   const badge = getTabBadge(tab.id)
                   const pulse = getTabPulse(tab.id)
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
                   return (
                     <div
                       key={tab.id}

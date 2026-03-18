@@ -446,21 +446,12 @@ export const useArenaStore = create<ArenaState>()(
           const mob = activeBattle.mobDef
           if (state.victory) {
             get().recordKill(mob.id)
-<<<<<<< HEAD
-            const hotZoneId = getHotZoneId()
-            const isHotZone = activeBattle.dungeonZoneId === hotZoneId
-            const goldMult = (isHotZone ? 2 : 1) * getFoodGoldMultiplier(activeBattle.foodLoadout)
-            const dropMult = (isHotZone ? 2 : 1) * getFoodDropMultiplier(activeBattle.foodLoadout)
-            const gold = randomGold(mob.goldMin, mob.goldMax, goldMult)
-            useGoldStore.getState().addGold(gold)
-=======
             useWeeklyStore.getState().incrementKill()
             const hotZoneId = getHotZoneId()
             const isHotZone = activeBattle.dungeonZoneId === hotZoneId
             const goldMult = (isHotZone ? 2 : 1) * getFoodGoldMultiplier(activeBattle.foodLoadout) * getGuildGoldMultiplier(useGuildStore.getState().hallLevel)
             const dropMult = (isHotZone ? 2 : 1) * getFoodDropMultiplier(activeBattle.foodLoadout)
             const gold = randomGold(mob.goldMin, mob.goldMax, goldMult)
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
             const user = useAuthStore.getState().user
             // Guild tax (fire-and-forget)
             import('./guildStore').then(({ useGuildStore }) => {

@@ -588,15 +588,9 @@ function GoalReachedModal({
               <span className="text-xl shrink-0">{chest.icon}</span>
               <div className="flex-1 min-w-0">
                 <p className="text-[11px] font-semibold text-cyber-neon">{chest.name}</p>
-<<<<<<< HEAD
-                <p className="text-[9px] text-gray-600">Sent to your inbox</p>
-              </div>
-              <span className="text-[9px] font-mono text-gray-600 uppercase tracking-wide shrink-0">Reward</span>
-=======
                 <p className="text-[10px] text-gray-600">Sent to your inbox</p>
               </div>
               <span className="text-[10px] font-mono text-gray-600 uppercase tracking-wide shrink-0">Reward</span>
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
             </motion.div>
           )}
           <div className="flex gap-2 pt-0.5">
@@ -659,11 +653,7 @@ function GoalCard({ goal, onEdit }: { goal: GoalWithProgress; onEdit: () => void
       </div>
       {!isComplete && rewardChest && (
         <div className="mt-1.5 flex items-center gap-1">
-<<<<<<< HEAD
-          <span className="text-[9px] text-gray-600 font-mono">
-=======
           <span className="text-[10px] text-gray-600 font-mono">
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
             {rewardChest.icon} {rewardChest.name} on completion
           </span>
         </div>

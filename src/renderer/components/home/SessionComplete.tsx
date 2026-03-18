@@ -285,11 +285,7 @@ export function SessionComplete({ onNavigateFriends }: SessionCompleteProps = {}
                 transition={{ delay: 0.7 }}
                 className="space-y-1.5"
               >
-<<<<<<< HEAD
-                <p className="text-[9px] font-mono text-amber-400/60 uppercase tracking-widest text-center">
-=======
                 <p className="text-[10px] font-mono text-amber-400/60 uppercase tracking-widest text-center">
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
                   Achievement{newAchievements.length > 1 ? 's' : ''} unlocked
                 </p>
                 {newAchievements.map((ach, i) => (
@@ -303,11 +299,7 @@ export function SessionComplete({ onNavigateFriends }: SessionCompleteProps = {}
                     <span className="text-base shrink-0">🏆</span>
                     <div className="flex-1 min-w-0">
                       <div className="text-[11px] font-semibold text-amber-300 truncate">{ach.name}</div>
-<<<<<<< HEAD
-                      <div className="text-[9px] text-gray-500 truncate">{ach.description}</div>
-=======
                       <div className="text-[10px] text-gray-500 truncate">{ach.description}</div>
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
                     </div>
                     {ach.xpReward > 0 && (
                       <span className="text-[10px] font-mono text-cyber-neon shrink-0">+{ach.xpReward}</span>

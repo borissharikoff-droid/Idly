@@ -12,9 +12,6 @@ import { OrbBlast } from './OrbBlast'
 import { useSessionStore } from '../../stores/sessionStore'
 import { MOTION } from '../../lib/motion'
 import { useNotificationStore } from '../../stores/notificationStore'
-<<<<<<< HEAD
-import { getDailyActivities, getWeeklyActivities, getQuestStreak } from '../../services/dailyActivityService'
-=======
 import { getQuestStreak } from '../../services/dailyActivityService'
 import { useBountyStore } from '../../stores/bountyStore'
 import { useWeeklyStore } from '../../stores/weeklyStore'
@@ -24,7 +21,6 @@ import { useFarmStore } from '../../stores/farmStore'
 import { useNavigationStore } from '../../stores/navigationStore'
 import { useRaidStore } from '../../stores/raidStore'
 import { RAID_TIER_CONFIGS, getRaidPhase } from '../../services/raidService'
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
 
 interface HomePageProps {
   onNavigateProfile: () => void
@@ -64,29 +60,6 @@ export function HomePage({ onNavigateProfile, onNavigateInventory, onNavigateFri
   const [showWelcome, setShowWelcome] = useState(() => !localStorage.getItem('grindly_welcomed'))
   const prevStatusRef = useRef(status)
   const notifiedCheckpointUpdatedAtRef = useRef<number | null>(null)
-<<<<<<< HEAD
-  const [questTick, setQuestTick] = useState(0)
-
-  useEffect(() => {
-    const interval = setInterval(() => setQuestTick((v) => v + 1), 30_000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const { dailyDone, dailyTotal, weeklyDone, weeklyTotal, questStreak } = useMemo(() => {
-    const daily = getDailyActivities()
-    const weekly = getWeeklyActivities()
-    return {
-      dailyDone: daily.filter((q) => q.completed).length,
-      dailyTotal: daily.length,
-      weeklyDone: weekly.filter((q) => q.completed).length,
-      weeklyTotal: weekly.length,
-      questStreak: getQuestStreak(),
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [questTick])
-
-  const showStreakWarning = questStreak > 0 && new Date().getHours() >= 18 && dailyDone < dailyTotal
-=======
   // Ambient activity bar — refresh every 15s
   const [ambientTick, setAmbientTick] = useState(0)
   useEffect(() => {
@@ -126,7 +99,6 @@ export function HomePage({ onNavigateProfile, onNavigateInventory, onNavigateFri
     setProfileInitialTab('quests')
     onNavigateProfile()
   }
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
 
   useEffect(() => {
     if (status !== 'idle') return
@@ -248,15 +220,6 @@ export function HomePage({ onNavigateProfile, onNavigateInventory, onNavigateFri
           </div>
         </div>
 
-<<<<<<< HEAD
-      {/* Bottom zone — Goal + Focus anchored at bottom */}
-      <div className="flex flex-col items-center px-4 pb-4 w-full">
-        <div className="w-full max-w-xs space-y-2">
-          {showStreakWarning && (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/[0.07] border border-amber-500/20">
-              <span className="shrink-0">🔥</span>
-              <span className="text-[10px] font-mono text-amber-500/80 leading-snug">
-=======
         {/* Ambient activity bar — farm/craft/cook status */}
         {showAmbientBar && (
           <div className="flex justify-center gap-1.5 pb-2">
@@ -284,52 +247,10 @@ export function HomePage({ onNavigateProfile, onNavigateInventory, onNavigateFri
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/[0.07] border border-amber-500/20">
               <span className="shrink-0">🔥</span>
               <span className="text-xs font-mono text-amber-500/80 leading-snug">
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
                 Maintain your streak — {dailyTotal - dailyDone} quest{dailyTotal - dailyDone !== 1 ? 's' : ''} left, resets at midnight
               </span>
             </div>
           )}
-<<<<<<< HEAD
-          {dailyTotal > 0 && (
-            <div className="flex items-center gap-2 px-0.5">
-              <span className="text-[10px] font-mono text-gray-600 shrink-0 w-10">Daily</span>
-              <div className="flex gap-0.5 flex-1">
-                {Array.from({ length: dailyTotal }).map((_, i) => (
-                  <div
-                    key={i}
-                    className={`h-1 flex-1 rounded-full transition-colors duration-300 ${
-                      i < dailyDone ? 'bg-cyber-neon' : 'bg-white/[0.08]'
-                    }`}
-                  />
-                ))}
-              </div>
-              <span className={`text-[10px] font-mono shrink-0 tabular-nums ${
-                dailyDone === dailyTotal ? 'text-cyber-neon' : 'text-gray-600'
-              }`}>
-                {dailyDone}/{dailyTotal}
-              </span>
-            </div>
-          )}
-          {weeklyTotal > 0 && (
-            <div className="flex items-center gap-2 px-0.5">
-              <span className="text-[10px] font-mono text-gray-600 shrink-0 w-10">Weekly</span>
-              <div className="flex gap-0.5 flex-1">
-                {Array.from({ length: weeklyTotal }).map((_, i) => (
-                  <div
-                    key={i}
-                    className={`h-1 flex-1 rounded-full transition-colors duration-300 ${
-                      i < weeklyDone ? 'bg-discord-purple' : 'bg-white/[0.08]'
-                    }`}
-                  />
-                ))}
-              </div>
-              <span className={`text-[10px] font-mono shrink-0 tabular-nums ${
-                weeklyDone === weeklyTotal ? 'text-discord-purple' : 'text-gray-600'
-              }`}>
-                {weeklyDone}/{weeklyTotal}
-              </span>
-            </div>
-=======
           {(dailyTotal > 0 || weeklyTotal > 0) && (
             <button type="button" onClick={handleOpenQuests} className="w-full space-y-1 group">
               {dailyTotal > 0 && (
@@ -355,7 +276,6 @@ export function HomePage({ onNavigateProfile, onNavigateInventory, onNavigateFri
                 </div>
               )}
             </button>
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
           )}
           <GoalWidget trailingAction={<FocusModeDock />} />
         </div>

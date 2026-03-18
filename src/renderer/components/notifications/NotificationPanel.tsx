@@ -207,20 +207,6 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                         </div>
                       </div>
                     </div>
-<<<<<<< HEAD
-                  </div>
-                ) : item.recovery ? (
-                  <div key={item.id} className="px-3 py-2 border-b border-white/[0.03] last:border-0">
-                    <div className="rounded-xl border border-cyber-neon/20 bg-cyber-neon/[0.05] px-3 py-2">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-cyber-neon/15 border border-cyber-neon/25">
-                          <span className="text-sm leading-none">{item.icon}</span>
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-[11px] font-semibold text-white leading-snug truncate">{item.title}</p>
-                          <p className="text-[9px] text-gray-400 leading-snug mt-0.5 line-clamp-1">{item.body}</p>
-                          <span className="text-[9px] text-gray-500 font-mono">{timeAgo(item.timestamp)}</span>
-=======
                   )
                 })()
                 : item.recovery ? (
@@ -236,7 +222,6 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                             <span className="text-[10px] text-gray-500 font-mono shrink-0">{timeAgo(item.timestamp)}</span>
                           </div>
                           <p className="text-[10px] text-gray-400 truncate mt-0.5">{item.body}</p>
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
                         </div>
                         <button
                           type="button"
@@ -251,11 +236,7 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                             window.electronAPI?.db?.clearCheckpoint?.().catch(() => {})
                             dismiss(item.id)
                           }}
-<<<<<<< HEAD
-                          className="shrink-0 px-2.5 py-1 rounded-lg bg-cyber-neon/15 border border-cyber-neon/35 text-cyber-neon text-xs font-semibold hover:bg-cyber-neon/25 transition-colors"
-=======
                           className="shrink-0 px-2.5 py-1 rounded-lg bg-cyber-neon/15 border border-cyber-neon/35 text-cyber-neon text-[11px] font-semibold hover:bg-cyber-neon/25 transition-colors"
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
                         >
                           Claim
                         </button>
@@ -266,66 +247,40 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                   const cr = item.chestReward
                   const rTheme = RARITY_COLORS[(cr.chestRarity as LootRarity) ?? 'common'] ?? RARITY_COLORS.common
                   return (
-<<<<<<< HEAD
-                    <div key={item.id} className="px-3 py-2 border-b border-white/[0.03] last:border-0">
-                      <div
-                        className="rounded-xl px-3 py-2"
-                        style={{ border: `1px solid ${rTheme.border}`, background: `${rTheme.color}0d` }}
-=======
                     <div key={item.id} className="px-2.5 py-1.5 border-b border-white/[0.03] last:border-0">
                       <div
                         className="rounded-xl px-3 py-2"
                         style={{ border: `1px solid ${rTheme.border}`, background: `${rTheme.color}0a` }}
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
                       >
                         <div className="flex items-center gap-2.5">
                           <div
                             className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-<<<<<<< HEAD
-                            style={{ background: `${rTheme.color}18`, border: `1px solid ${rTheme.border}` }}
-=======
                             style={{ background: `${rTheme.color}15`, border: `1px solid ${rTheme.border}` }}
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
                           >
                             {cr.chestImage ? (
                               <img
                                 src={cr.chestImage}
                                 alt=""
-<<<<<<< HEAD
-                                className="w-5 h-5 object-contain"
-                                style={{ imageRendering: 'pixelated' }}
-                                draggable={false}
-=======
                                 className="w-6 h-6 object-contain"
                                 style={{ imageRendering: 'pixelated' }}
                                 draggable={false}
                                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
                               />
                             ) : (
                               <span className="text-sm leading-none">{item.icon}</span>
                             )}
                           </div>
                           <div className="min-w-0 flex-1">
-<<<<<<< HEAD
-                            <p className="text-[11px] font-semibold text-white leading-snug truncate">{item.title}</p>
-                            <span className="text-[9px] text-gray-500 font-mono">{timeAgo(item.timestamp)}</span>
-=======
                             <div className="flex items-baseline justify-between gap-1">
                               <p className="text-[11px] font-semibold text-white truncate">{item.title}</p>
                               <span className="text-[10px] text-gray-500 font-mono shrink-0">{timeAgo(item.timestamp)}</span>
                             </div>
                             <p className="text-[10px] mt-0.5 truncate" style={{ color: rTheme.color }}>{cr.chestRarity ? `${cr.chestRarity.charAt(0).toUpperCase() + cr.chestRarity.slice(1)} bag` : item.body}</p>
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
                           </div>
                           <button
                             type="button"
                             onClick={() => handleOpenChest(item.id, cr.rewardId, cr.chestType)}
-<<<<<<< HEAD
-                            className="shrink-0 px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors"
-=======
                             className="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors"
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
                             style={{ color: rTheme.color, background: `${rTheme.color}20`, border: `1px solid ${rTheme.border}` }}
                           >
                             Open
@@ -336,11 +291,7 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                   )
                 })()
                 : item.poll ? (
-<<<<<<< HEAD
-                  <div key={item.id} className="px-3 py-2 border-b border-white/[0.03] last:border-0">
-=======
                   <div key={item.id} className="px-2.5 py-1.5 border-b border-white/[0.03] last:border-0">
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
                     <div className="rounded-xl border border-purple-400/20 bg-purple-400/[0.06] px-3 py-2">
                       <div className="flex items-center gap-2.5 mb-2">
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-purple-400/12 border border-purple-400/25">

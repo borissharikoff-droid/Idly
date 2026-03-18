@@ -143,11 +143,7 @@ export function ProfileBar({ onNavigateProfile, onNavigateInventory }: ProfileBa
   const otherMembers = party?.status === 'active' ? partyMembers.filter((m) => m.user_id !== user?.id) : []
 
   return (
-<<<<<<< HEAD
-    <div className="flex flex-col items-center px-4 pt-3 pb-2">
-=======
     <div className="flex flex-col items-center px-4 pt-3 pb-3">
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
       {/* Top row: avatar + info + sign out — overflow hidden so tooltips don't expand window */}
       <div className="flex items-center gap-2.5 w-full min-w-0">
         {/* Avatar */}
@@ -192,11 +188,7 @@ export function ProfileBar({ onNavigateProfile, onNavigateInventory }: ProfileBa
               </span>
             )}
           </div>
-<<<<<<< HEAD
-          <div className="flex items-center gap-2 mt-0.5 text-[10px]">
-=======
           <div className="flex items-center gap-2 mt-0.5 text-xs">
->>>>>>> 991eca094a4870ce5723ed76f1e7a5386c9342f1
             <span className="text-amber-400/90 flex items-center gap-1">
               <span aria-hidden>🪙</span>
               <span className="font-mono tabular-nums">{gold}</span>
