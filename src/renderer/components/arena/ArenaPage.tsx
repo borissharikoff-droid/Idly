@@ -30,6 +30,7 @@ import { logFriendActivity } from '../../services/friendActivityService'
 import { useAuthStore } from '../../stores/authStore'
 import { useBountyStore } from '../../stores/bountyStore'
 import { useToastStore } from '../../stores/toastStore'
+import { useNavigationStore } from '../../stores/navigationStore'
 
 
 function formatShort(n: number): string {
@@ -96,6 +97,7 @@ function ZoneCard({
   const unlocked = isZoneUnlocked(zone, skillLevels, clearedZones, ownedItems)
   const cleared = clearedZones.includes(zone.id)
   const isActive = activeDungeon?.zoneId === zone.id
+  const navigateTo = useNavigationStore((s) => s.navigateTo)
 
   const mobIndex = isActive ? (activeDungeon?.mobIndex ?? 0) : 0
   const isBossFight = isActive && mobIndex === 3
@@ -303,7 +305,16 @@ function ZoneCard({
                 return (
                   <div key={gateItemId} className="flex items-center gap-2">
                     <span className={`text-[10px] ${has ? 'text-green-400' : 'text-red-400'}`}>{has ? '✓' : '✗'}</span>
-                    <span className="text-[10px] text-gray-400">{item?.icon ?? '📦'} {item?.name ?? gateItemId}</span>
+                    <span className="text-[10px] text-gray-400 flex-1">{item?.icon ?? '📦'} {item?.name ?? gateItemId}</span>
+                    {!has && navigateTo && (
+                      <button
+                        type="button"
+                        onClick={() => { playClickSound(); navigateTo('craft') }}
+                        className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-orange-500/40 text-orange-400 hover:bg-orange-500/10 transition-colors shrink-0"
+                      >
+                        Craft →
+                      </button>
+                    )}
                   </div>
                 )
               })}

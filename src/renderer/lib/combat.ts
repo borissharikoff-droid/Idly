@@ -113,7 +113,7 @@ export const ZONES: ZoneDef[] = [
     boss: {
       id: 'slime', name: 'Slime King', icon: '💧', hp: 350, atk: 3,
       rewards: { chestTier: 'common_chest' },
-      materialDropId: 'slime_gel', materialDropQty: 3,
+      materialDropId: 'ore_iron', materialDropQty: 2,
     },
   },
   // ── Zone 2 — Goblin Outpost (target: Copper set → 18 ATK, 155 HP, 2 Regen) ─
@@ -124,6 +124,7 @@ export const ZONES: ZoneDef[] = [
     themeColor: '#84cc16',
     prevZoneId: 'zone1',
     warriorLevelRequired: 3,
+    gateItems: ['craft_iron_helm'],
     entryCost: [{ itemId: 'herbs', quantity: 3 }],
     mobs: [
       { id: 'goblin_scout',   name: 'Goblin Scout',   icon: '👺', hp: 220,   atk: 2.5, xpReward: 60,   goldMin: 10,  goldMax: 20,   materialDropId: 'goblin_tooth', materialDropChance: 0.3 },
@@ -233,6 +234,7 @@ export const ZONES: ZoneDef[] = [
     themeColor: '#a855f7',
     prevZoneId: 'zone6',
     warriorLevelRequired: 55,
+    gateItems: ['craft_lich_ring'],
     entryCost: [{ itemId: 'dragon_scale', quantity: 2 }, { itemId: 'dragon_heart', quantity: 1 }],
     mobs: [
       { id: 'skeleton_archer', name: 'Skeleton Archer', icon: '💀', hp: 2800, atk: 16,   def: 8,  atkSpread: 0.3,  xpReward: 35000,  goldMin: 280, goldMax: 420,  materialDropId: 'shadow_dust', materialDropChance: 0.3, materialDropQty: 2 },
@@ -254,6 +256,7 @@ export const ZONES: ZoneDef[] = [
     themeColor: '#38bdf8',
     prevZoneId: 'zone7',
     warriorLevelRequired: 75,
+    gateItems: ['craft_lich_sword', 'craft_lich_helm'],
     entryCost: [{ itemId: 'lich_crystal', quantity: 2 }, { itemId: 'troll_heart', quantity: 1 }],
     mobs: [
       { id: 'sky_serpent',     name: 'Sky Serpent',     icon: '🐍', hp: 4500, atk: 21, def: 11, atkSpread: 0.3,  xpReward: 100000, goldMin: 450, goldMax: 650,  materialDropId: 'storm_shard', materialDropChance: 0.3, materialDropQty: 2 },

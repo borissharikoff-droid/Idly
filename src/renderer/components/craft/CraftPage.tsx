@@ -9,6 +9,7 @@ import {
   formatCraftTime,
   type CraftRecipe,
 } from '../../lib/crafting'
+import { ZONES } from '../../lib/combat'
 import { getRarityTheme, LOOT_ITEMS, type LootSlot } from '../../lib/loot'
 import { skillLevelFromXP, getGrindlyLevel, computeGrindlyBonuses } from '../../lib/skills'
 import { useCraftingStore } from '../../stores/craftingStore'
@@ -28,6 +29,11 @@ import { supabase } from '../../lib/supabase'
 
 const CRAFT_COLOR = '#f97316'
 const QTY_PRESETS = [1, 10, 50, 100, 500]
+
+/** item id → zone name for items that unlock a zone */
+const GATE_ITEM_TO_ZONE: Record<string, string> = Object.fromEntries(
+  ZONES.flatMap((z) => (z.gateItems ?? []).map((id) => [id, z.name]))
+)
 
 function getItemDef(id: string) {
   return LOOT_ITEMS.find((x) => x.id === id) ?? null
@@ -137,6 +143,7 @@ function RecipeCard({
   const output = CRAFT_ITEM_MAP[recipe.outputItemId]
   const theme = getRarityTheme(output?.rarity ?? 'common')
   const locked = crafterLevel < recipe.levelRequired
+  const gateZone = GATE_ITEM_TO_ZONE[recipe.outputItemId] ?? null
   const [qty, setQty] = useState(1)
 
   const hasIngredients = canAffordRecipe(recipe, qty, items)
@@ -175,6 +182,12 @@ function RecipeCard({
             <span>Lvl {recipe.levelRequired}</span>
             <span>·</span>
             <span style={{ color: CRAFT_COLOR }}>{recipe.xpPerItem} xp</span>
+            {gateZone && (
+              <span className="text-[10px] font-mono px-1 py-0.5 rounded"
+                style={{ color: '#facc15', background: 'rgba(250,204,21,0.12)' }}>
+                🏰 {gateZone}
+              </span>
+            )}
           </div>
         </div>
 
