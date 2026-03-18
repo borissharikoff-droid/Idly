@@ -57,6 +57,8 @@ interface SessionStore {
   isAfkPaused: boolean
   /** Becomes true if AFK pause happened at least once in this session */
   wasAfkPausedThisSession: boolean
+  /** True when system is idle (no input), regardless of whether a session is running */
+  isSystemIdle: boolean
   /** Focus Mode currently active for this session */
   focusModeActive: boolean
   /** Focus Mode end timestamp in ms (null = inactive) */
@@ -151,11 +153,12 @@ function stopCheckpointSaving() {
   }
 }
 
-function setupAfkListener() {
+export function setupAfkListener() {
   if (afkUnsubscribe) return
   const api = typeof window !== 'undefined' ? window.electronAPI : null
   if (!api?.tracker?.onIdleChange) return
   afkUnsubscribe = api.tracker.onIdleChange((idle: boolean) => {
+    useSessionStore.setState({ isSystemIdle: idle })
     const { status } = useSessionStore.getState()
     if (idle && status === 'running') {
       useSessionStore.getState().pause()
@@ -299,6 +302,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   skillXPGains: [],
   isAfkPaused: false,
   wasAfkPausedThisSession: false,
+  isSystemIdle: false,
   focusModeActive: false,
   focusModeEndsAt: null,
   focusModeDurationMs: null,

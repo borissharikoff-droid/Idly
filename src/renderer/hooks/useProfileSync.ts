@@ -285,6 +285,7 @@ export function usePresenceSync(
   isSessionActive: boolean,
   appName: string | null,
   sessionStartTime: number | null,
+  isIdle?: boolean,
 ) {
   const { user } = useAuthStore()
 
@@ -309,13 +310,13 @@ export function usePresenceSync(
   // Update current activity with optional session start metadata.
   useEffect(() => {
     if (!supabase || !user) return
-    const activity = buildPresenceActivity(presenceLabel, isSessionActive, appName, sessionStartTime)
+    const activity = isIdle ? 'AFK' : buildPresenceActivity(presenceLabel, isSessionActive, appName, sessionStartTime)
     supabase.from('profiles').update({
       current_activity: activity,
       is_online: true,
       updated_at: new Date().toISOString(),
     }).eq('id', user.id).then(() => {})
-  }, [user, presenceLabel, isSessionActive, appName, sessionStartTime])
+  }, [user, presenceLabel, isSessionActive, appName, sessionStartTime, isIdle])
 
   // Heartbeat: keep updated_at fresh so others see us as online
   useEffect(() => {

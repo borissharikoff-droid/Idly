@@ -570,17 +570,17 @@ const GAME_APPS = new RegExp('^(' + [
  * fullscreen titles that only expose their name in the window title, etc.
  */
 const GAME_TITLE = /world\s+of\s+warcraft|path\s+of\s+exile|elden\s+ring|cyberpunk\s*2077|baldur.s\s+gate|counter.strike|the\s+witcher|destiny\s+2|final\s+fantasy\s+xiv|grand\s+theft\s+auto|red\s+dead\s+redemption|apex\s+legends|escape\s+from\s+tarkov|rainbow\s+six|rocket\s+league|warframe|lost\s+ark|new\s+world|elder\s+scrolls\s+online|guild\s+wars|black\s+desert|old\s+school\s+runescape|runescape|deep\s+rock\s+galactic|hunt:\s*showdown|dead\s+by\s+daylight|stardew\s+valley|hollow\s+knight|terraria|risk\s+of\s+rain|monster\s+hunter|fallout\s+\d|the\s+elder\s+scrolls|war\s+thunder|palworld|league\s+of\s+legends|hearthstone|valheim|satisfactory|factorio|subnautica|no\s+man.s\s+sky|star\s+wars\s+jedi|starcraft|diablo|genshin\s+impact|honkai|wuthering\s+waves|black\s+myth|hogwarts\s+legacy/i
-const LEARNING_TITLE = /подкаст|podcast|лекци|lecture|курс|course|урок|lesson|lessons|tutorial|tutorials|guide|training|udemy|stepik|edx|coursera|khan academy|обучение|learning|теория/i
-const CODING_TITLE = /claude(\s+code)?|claude\.ai|code\.claude\.ai|github|gitlab|bitbucket|stack\s*overflow|leetcode|codeforces|hackerrank|codesandbox|replit|vscode\.dev|codepen|pull request|merge request|api reference|developer docs|typescript docs|mdn web docs/i
-const DESIGN_TITLE = /figma|canva|dribbble|behance|mockup|prototype|wireframe|ui kit|design system/i
-const SOCIAL_TITLE = /twitter|x\.com|reddit|facebook|instagram|linkedin|discord web|messenger/i
+const LEARNING_TITLE = /подкаст|podcast|лекци|lecture|курс|course|урок|lesson|lessons|tutorial|tutorials|guide|training|udemy|stepik|edx|coursera|khan\s*academy|обучение|learning|теория|книга|читаю|reading\s+\w|chapter\s+\d/i
+const CODING_TITLE = /claude(\s+code)?|claude\.ai|code\.claude\.ai|github|gitlab|bitbucket|stack\s*overflow|leetcode|codeforces|hackerrank|codesandbox|replit|vscode\.dev|codepen|pull request|merge request|api reference|developer docs|typescript docs|mdn web docs|postman|insomnia|swagger|openapi|rest\s*client/i
+const DESIGN_TITLE = /figma|canva|dribbble|behance|mockup|prototype|wireframe|ui kit|design system|lightroom|photoshop|illustrator/i
+const SOCIAL_TITLE = /twitter|x\.com|reddit|facebook|instagram|linkedin|discord web|messenger|telegram\s*web|zoom meeting|google meet|teams meeting|skype call/i
 const ENTERTAINMENT_TITLE = /netflix|twitch|prime video|hbo max|disney\+|youtube(?!\s*music)/i
-const BROWSER_HOST_CODING = /github\.dev|vscode\.dev|codesandbox|stackblitz|replit|codespace|codepen|claude\.ai|code\.claude\.ai/i
-const BROWSER_HOST_DESIGN = /figma\.com|canva\.com|dribbble\.com|behance\.net/i
-const BROWSER_HOST_SOCIAL = /x\.com|twitter\.com|reddit\.com|facebook\.com|instagram\.com|linkedin\.com/i
-const BROWSER_HOST_LEARNING = /udemy|coursera|khan academy|edx|stepik|tutorial|documentation|docs|wikipedia|notion|readthedocs|developer\.mozilla|mdn/i
-const DOC_READING_TITLE = /readme|documentation|docs|wiki|manual|guide|api reference|knowledge base|paper|article|research|syllabus|chapter|lesson|lecture|курс|лекц|документац|справка|blog|post|medium\.com|habr|vc\.ru|dev\.to|stackoverflow|stack overflow|mdn|developer\.mozilla|notion|evernote|obsidian|book|книг|статья|статьи|reading|читаю|читать/i
-const TERMINAL_APP = /^(windowsterminal|terminal|powershell|pwsh|cmd|bash|zsh|wsl|wezterm|alacritty|hyper|conhost|mintty|putty|mobaxterm)$/i
+const BROWSER_HOST_CODING = /github\.dev|vscode\.dev|codesandbox|stackblitz|replit|codespace|codepen|claude\.ai|code\.claude\.ai|app\.postman\.co|insomnia\.rest|swagger\.io|hoppscotch\.io/i
+const BROWSER_HOST_DESIGN = /figma\.com|canva\.com|dribbble\.com|behance\.net|framer\.com|penpot\.app/i
+const BROWSER_HOST_SOCIAL = /x\.com|twitter\.com|reddit\.com|facebook\.com|instagram\.com|linkedin\.com|vk\.com|ok\.ru/i
+const BROWSER_HOST_LEARNING = /udemy\.com|coursera\.org|khanacademy\.org|edx\.org|stepik\.org|tutorial|documentation|docs\.|wikipedia\.org|notion\.so|readthedocs\.io|developer\.mozilla|mdn|skillshare\.com|pluralsight\.com|freecodecamp\.org|codecademy\.com|learn\.microsoft\.com|developer\.apple\.com|developer\.android|egghead\.io|frontendmasters\.com|javascript\.info|arxiv\.org|medium\.com|substack\.com|dev\.to|habr\.com|researchgate\.net|scholar\.google|pubmed\.ncbi|gitbook\.io/i
+const DOC_READING_TITLE = /readme|documentation|docs|wiki|manual|guide|api reference|knowledge base|paper|article|research|syllabus|chapter|lesson|lecture|курс|лекц|документац|справка|blog|post|medium\.com|habr|vc\.ru|dev\.to|stackoverflow|stack overflow|mdn|developer\.mozilla|notion|evernote|obsidian|book|книг|статья|статьи|reading|читаю|читать|arxiv|substack|gitbook|pubmed|researchgate/i
+const TERMINAL_APP = /^(windowsterminal|terminal|powershell|pwsh|cmd|bash|zsh|wsl|wezterm|alacritty|hyper|conhost|mintty|putty|mobaxterm|kitty|tabby)$/i
 const TERMINAL_WORK_TITLE = /npm|pnpm|yarn|bun|node|python|pip|poetry|cargo|rust|go\s(test|run|build)|javac|gradle|maven|dotnet|tsc|vite|webpack|docker|kubectl|git|ssh|make|cmake|build|test|serve|dev/i
 
 
@@ -777,7 +777,7 @@ export function categorizeDetailed(appName: string, windowTitle: string): Classi
     if (MUSIC_TITLE.test(lowerTitle)) return { categories: ['music'], contextTag: 'unknown_title_music', confidence: 0.75 }
     if (LEARNING_TITLE.test(lowerTitle)) return { categories: ['learning'], contextTag: 'unknown_title_learning', confidence: 0.75 }
     if (/figma|design|mockup/i.test(lowerTitle)) return { categories: ['design'], contextTag: 'unknown_title_design', confidence: 0.8 }
-    if (/telegram|discord|slack|whatsapp|teams/i.test(lowerTitle)) return { categories: ['social'], contextTag: 'unknown_title_social', confidence: 0.8 }
+    if (/telegram|discord|slack|whatsapp|teams|zoom|skype|signal|viber/i.test(lowerTitle)) return { categories: ['social'], contextTag: 'unknown_title_social', confidence: 0.8 }
     if (/steam|game|play/i.test(lowerTitle)) return { categories: ['games'], contextTag: 'unknown_title_games', confidence: 0.8 }
   }
   if (TERMINAL_APP.test(lowerApp) || /terminal|powershell|command prompt/i.test(lowerTitle)) {
@@ -789,19 +789,19 @@ export function categorizeDetailed(appName: string, windowTitle: string): Classi
     }
     return { categories: ['coding'], contextTag: 'terminal_generic', confidence: 0.9 }
   }
-  if (/^(code|cursor|intellij|webstorm|pycharm|idea|devenv|rider)$/i.test(lowerApp) || /visual studio/i.test(lowerApp)) return { categories: ['coding'], contextTag: 'native_ide', confidence: 0.98 }
+  if (/^(code|cursor|intellij|webstorm|pycharm|idea|devenv|rider|clion|goland|rubymine|phpstorm|datagrip|dbeaver|tableplus|pgadmin4|heidisql|sequel\s*pro|beekeeper|postman|insomnia|bruno|httpie|gitkraken|sourcetree|fork|tower|sublimemerge)$/i.test(lowerApp) || /visual studio/i.test(lowerApp)) return { categories: ['coding'], contextTag: 'native_ide', confidence: 0.98 }
   if (/\.(tsx?|jsx?|py|rs|go|cpp|cs|java)\b/i.test(lowerTitle)) return { categories: ['coding'], contextTag: 'source_file', confidence: 0.92 }
   if (/^(chrome|firefox|msedge|brave|opera|vivaldi|arc|yandex)$/i.test(lowerApp)) {
     return classifyBrowserContext(lowerTitle)
   }
-  if (/^(figma|photoshop|sketch|canva|illustrator|xd|invision|zeplin|affinity|gimp|krita)$/i.test(lowerApp) || /figma|design|mockup/i.test(lowerTitle)) return { categories: ['design'], contextTag: 'native_design', confidence: 0.95 }
-  if (/^(ableton|fl studio|reaper|logic|audacity|premiere|davinci|resolve|obs|blender|afterfx|vegas|cinema4d)$/i.test(lowerApp) || /premiere|davinci|blender|after effects/i.test(lowerTitle)) return { categories: ['creative'], contextTag: 'creative_suite', confidence: 0.95 }
-  if (/^(notion|obsidian|anki|sumatrapdf|acrobat|acrord32|foxit|foxitreader|kindle|evernote|onenote)$/i.test(lowerApp) || /\.pdf\b|notion|obsidian|anki/i.test(lowerTitle)) return { categories: ['learning'], contextTag: 'learning_tools', confidence: 0.92 }
+  if (/^(figma|photoshop|sketch|canva|illustrator|xd|invision|zeplin|affinity|affinitydesigner|affinityphoto|gimp|krita|inkscape)$/i.test(lowerApp) || /figma|design|mockup/i.test(lowerTitle)) return { categories: ['design'], contextTag: 'native_design', confidence: 0.95 }
+  if (/^(ableton|flstudio|fl_studio|reaper|logic|audacity|premiere|davinci|resolve|obs|obs64|blender|afterfx|vegas|cinema4d|capcut|filmora|kdenlive|handbrake|lightroom|darktable|captureone|rawtherapee)$/i.test(lowerApp) || /premiere|davinci|blender|after effects|capcut|filmora|lightroom/i.test(lowerTitle)) return { categories: ['creative'], contextTag: 'creative_suite', confidence: 0.95 }
+  if (/^(notion|obsidian|anki|sumatrapdf|acrobat|acrord32|foxit|foxitreader|kindle|evernote|onenote|logseq|zotero|calibre|remnote|joplin|bear|roamresearch)$/i.test(lowerApp) || /\.pdf\b|notion|obsidian|anki|logseq|zotero/i.test(lowerTitle)) return { categories: ['learning'], contextTag: 'learning_tools', confidence: 0.92 }
   if (/^(spotify|music|soundcloud|itunes|tidal|yandexmusic|deezer|wmplayer|vkmusic)$/i.test(lowerApp) || MUSIC_TITLE.test(lowerTitle)) return { categories: ['music'], contextTag: 'music_tools', confidence: 0.96 }
   // Game detection: strip UE4/UE5 build suffixes before process name check, then fall back to window title
   const cleanForGame = lowerApp.replace(/\s+/g, '').replace(/(-win64-shipping|-win32-shipping|-win64|-win32|-dx12|-dx11)$/, '')
   if (GAME_APPS.test(cleanForGame) || GAME_TITLE.test(lowerTitle)) return { categories: ['games'], contextTag: 'games_tools', confidence: 0.96 }
-  if (/^(telegram|discord|slack|whatsapp|teams)$/i.test(lowerApp)) return { categories: ['social'], contextTag: 'messenger', confidence: 0.95 }
+  if (/^(telegram|discord|slack|whatsapp|teams|zoom|skype|signal|viber|element|wire|mattermost|rocketchat|flock)$/i.test(lowerApp)) return { categories: ['social'], contextTag: 'messenger', confidence: 0.95 }
   // Windows: Edge/Chrome sometimes as "Application Frame Host" or "Microsoft Edge"
   if (/applicationframehost|microsoft edge|msedge|browser/i.test(lowerApp.replace(/\s+/g, ''))) return { categories: ['browsing'], contextTag: 'browser_host_fallback', confidence: 0.55 }
   if (/^(chrome|firefox|edge)$/i.test(lowerApp.replace(/\s+/g, ''))) return { categories: ['browsing'], contextTag: 'browser_name_fallback', confidence: 0.55 }

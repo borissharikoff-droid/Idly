@@ -26,7 +26,7 @@ import { useMarketplaceSaleNotifier } from './hooks/useMarketplaceSaleNotifier'
 import { useCraftTick } from './hooks/useCraftTick'
 import { useCookingTick } from './hooks/useCookingTick'
 import { UpdateBanner } from './components/UpdateBanner'
-import { useSessionStore } from './stores/sessionStore'
+import { useSessionStore, setupAfkListener } from './stores/sessionStore'
 import { useChatTargetStore } from './stores/chatTargetStore'
 import { categoryToSkillId, getSkillById } from './lib/skills'
 import { warmUpAudio } from './lib/sounds'
@@ -154,7 +154,7 @@ export default function App() {
   }, [activeTab, navigateTo])
 
   // Global presence: always is_online while app is open
-  const { status, currentActivity, sessionStartTime } = useSessionStore()
+  const { status, currentActivity, sessionStartTime, isSystemIdle } = useSessionStore()
   const presenceLabel = currentActivity && status === 'running'
     ? (() => {
       const cats = (currentActivity.categories || [currentActivity.category]).filter((c: string) => c !== 'idle' && c !== 'other')
@@ -162,7 +162,8 @@ export default function App() {
       return names.length > 0 ? `Leveling ${names.join(' + ')}` : null
     })()
     : null
-  usePresenceSync(presenceLabel, status === 'running', currentActivity?.appName ?? null, sessionStartTime)
+  useEffect(() => { setupAfkListener() }, [])
+  usePresenceSync(presenceLabel, status === 'running', currentActivity?.appName ?? null, sessionStartTime, isSystemIdle)
 
   useProfileSync()
   useKeyboardShortcuts({ onEscapeToHome: handleEscapeToHome })
