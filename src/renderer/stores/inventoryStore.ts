@@ -371,7 +371,6 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     // At cap: convert excess potion to 100 gold instead of wasting it
     if (!nextStats) {
       const nextItems = { ...state.items, [itemId]: qty - 1 }
-      if (nextItems[itemId] === 0) delete nextItems[itemId]
       const nextState: InventoryState = { ...state, items: nextItems }
       set(nextState)
       saveSnapshot(nextState)
@@ -380,7 +379,6 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     }
 
     const nextItems = { ...state.items, [itemId]: qty - 1 }
-    if (nextItems[itemId] === 0) delete nextItems[itemId]
     const nextState: InventoryState = { ...state, items: nextItems, permanentStats: nextStats }
     set(nextState)
     saveSnapshot(nextState)
