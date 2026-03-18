@@ -28,6 +28,7 @@ import { InventoryPage } from '../inventory/InventoryPage'
 import { playClickSound } from '../../lib/sounds'
 import { logFriendActivity } from '../../services/friendActivityService'
 import { useAuthStore } from '../../stores/authStore'
+import { useBountyStore } from '../../stores/bountyStore'
 import { useToastStore } from '../../stores/toastStore'
 
 
@@ -719,6 +720,7 @@ export function ArenaPage() {
   const hotZoneId = useMemo(() => getHotZoneId(), [])
   const hotZoneDaysLeft = useMemo(() => hotZoneResetsInDays(), [])
   const hotZone = ZONES.find((z) => z.id === hotZoneId)
+  const bounties = useBountyStore((s) => s.bounties)
 
   // Restore auto-mode state on mount (survives tab switches)
   useEffect(() => {
