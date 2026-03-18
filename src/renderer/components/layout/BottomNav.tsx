@@ -71,13 +71,20 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
 
   useEffect(() => {
     if (!moreOpen) return
-    const handler = (e: MouseEvent) => {
+    const mouseHandler = (e: MouseEvent) => {
       if (popupRef.current?.contains(e.target as Node)) return
       if (moreButtonRef.current?.contains(e.target as Node)) return
       setMoreOpen(false)
     }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    const keyHandler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMoreOpen(false)
+    }
+    document.addEventListener('mousedown', mouseHandler)
+    document.addEventListener('keydown', keyHandler)
+    return () => {
+      document.removeEventListener('mousedown', mouseHandler)
+      document.removeEventListener('keydown', keyHandler)
+    }
   }, [moreOpen])
 
   const badges = useBadges()

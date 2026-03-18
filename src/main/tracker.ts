@@ -497,6 +497,79 @@ function emitIdle(idle: boolean) {
 }
 
 const MUSIC_TITLE = /youtube\s*music|music\.youtube|яндекс\s*музык|music\.yandex|music\.yandex\.ru|yandex\s*music|spotify|soundcloud|deezer|apple\s*music|amazon\s*music|vk\s*music|vkmusic| — spotify| - spotify/i
+
+/**
+ * Known game process names (lowercase, .exe stripped, spaces stripped).
+ * UE4/UE5 games also have -Win64-Shipping stripped before testing — see categorizeDetailed.
+ */
+const GAME_APPS = new RegExp('^(' + [
+  // Launchers & storefronts
+  'steam', 'epicgameslauncher', 'gog', 'battlenet', 'battle\\.net', 'uplay', 'ubisoftconnect', 'rockstargameslauncher',
+  // World of Warcraft (process: Wow.exe, WowClassic.exe, WowT.exe)
+  'wow', 'wowclassic', 'wowt', 'wowbeta', 'wowb',
+  // Path of Exile (process: PathOfExile.exe, PathOfExileSteam.exe, PathOfExile2.exe)
+  'pathofexile', 'pathofexilesteam', 'pathofexile2', 'pathofexile2steam',
+  // Blizzard
+  'overwatch', 'overwatch2', 'hearthstone', 'heroesofthestorm', 'starcraft2', 'sc2', 'diablo4', 'd4', 'diabloiv',
+  // Riot
+  'valorant', 'leagueclient', 'leagueclientux', 'wildrift',
+  // Valve
+  'dota2', 'cs2', 'csgo', 'hl2', 'portal2',
+  // EA / Respawn
+  'bf1', 'bf4', 'bf2042', 'battlefieldv', 'bfv', 'r5apex',
+  // Activision / CoD (modern launchers use cod_hq.exe)
+  'cod_hq', 'modernwarfare', 'mw2', 'mw3', 'warzone', 'codmw',
+  // Ubisoft
+  'rainbowsix', 'r6siege', 'farcry6', 'assassinscreed', 'acvalhalla', 'acorigins', 'acodyssey', 'acmirage',
+  // FromSoftware
+  'eldenring', 'sekiro', 'darksouls3', 'darksoulsiii', 'armoredcorevi',
+  // CD Projekt Red
+  'cyberpunk2077', 'witcher3', 'thewitcher3', 'witcher3dx11',
+  // Square Enix / FFXIV (ffxiv_dx11.exe is the main client)
+  'ffxiv', 'ffxiv_dx11', 'ff14',
+  // Bethesda
+  'fallout4', 'fallout76', 'tesv', 'skyrimse', 'skyrim', 'starfield',
+  // Larian (BG3 executable is bg3.exe)
+  'bg3', 'baldursgate3',
+  // Rockstar
+  'gta5', 'gtav', 'gta', 'rdr2',
+  // Bungie / Destiny
+  'destiny2',
+  // Digital Extremes / Warframe
+  'warframe', 'warframex64',
+  // Capcom
+  'monsterhunterworld', 'mhrise', 'monsterhunterrise',
+  // MMOs
+  'gw2', 'gw264', 'eso', 'eso64', 'blackdesert64', 'blackdesert', 'newworld', 'lostark', 'runescape', 'rs2client', 'maplestory',
+  // Battle Royale / popular shooters
+  'fortniteclient', 'fortnite', 'tslgame', 'fallguys', 'multiversus',
+  // Survival / Sandbox
+  'minecraft', 'javaw', 'rustclient', 'theforest', 'subnautica', '7daystodie', 'terraria', 'valheim', 'enshrouded', 'sons_of_the_forest',
+  // Simulation / Strategy
+  'factorio', 'factorygame', 'citiesskylines', 'cities2', 'stardewvalley',
+  'eurotruck2', 'americantruck', 'farmingsimulator22', 'farmingsimulator25',
+  'civ6', 'ageofempires4', 'ageofempires3', 'stellaris', 'hoi4', 'eu4', 'ck3', 'ck2',
+  'totalwar', 'warhammer3', 'warhammer2',
+  // Tactical / Mil-sim shooters
+  'escapefromtarkov', 'halo', 'haloinfinite', 'deadbydaylight',
+  'hunt_showdown', 'paladins', 'smite', 'thefinals', 'insurgency', 'arma3', 'dayz',
+  'phasmophobia', 'lethalcompany', 'battlebit', 'xdefiant', 'rainbowsixextraction',
+  // Sports / Racing
+  'rocketleague', 'forzahorizon5', 'forzahorizon4', 'forzamotorsport',
+  // Indie / popular
+  'hollowknight', 'hollow_knight', 'hades', 'hades2', 'celeste', 'cuphead', 'riskofrain2',
+  // Gaijin / Wargaming
+  'aces', 'worldoftanks', 'worldofwarships', 'worldofwarplanes',
+  // Other
+  'palworld', 'sims4', 'ts4', 'nms', 'nomanssky', 'amongus', 'among_us',
+  'deeprockgalactic', 'fsd', 'splitgate', 'diabloiii',
+].join('|') + ')$', 'i')
+
+/**
+ * Game names in window titles — catches games launched through custom wrappers,
+ * fullscreen titles that only expose their name in the window title, etc.
+ */
+const GAME_TITLE = /world\s+of\s+warcraft|path\s+of\s+exile|elden\s+ring|cyberpunk\s*2077|baldur.s\s+gate|counter.strike|the\s+witcher|destiny\s+2|final\s+fantasy\s+xiv|grand\s+theft\s+auto|red\s+dead\s+redemption|apex\s+legends|escape\s+from\s+tarkov|rainbow\s+six|rocket\s+league|warframe|lost\s+ark|new\s+world|elder\s+scrolls\s+online|guild\s+wars|black\s+desert|old\s+school\s+runescape|runescape|deep\s+rock\s+galactic|hunt:\s*showdown|dead\s+by\s+daylight|stardew\s+valley|hollow\s+knight|terraria|risk\s+of\s+rain|monster\s+hunter|fallout\s+\d|the\s+elder\s+scrolls|war\s+thunder|palworld|league\s+of\s+legends|hearthstone|valheim|satisfactory|factorio|subnautica|no\s+man.s\s+sky|star\s+wars\s+jedi|starcraft|diablo|genshin\s+impact|honkai|wuthering\s+waves|black\s+myth|hogwarts\s+legacy/i
 const LEARNING_TITLE = /подкаст|podcast|лекци|lecture|курс|course|урок|lesson|lessons|tutorial|tutorials|guide|training|udemy|stepik|edx|coursera|khan academy|обучение|learning|теория/i
 const CODING_TITLE = /claude(\s+code)?|claude\.ai|code\.claude\.ai|github|gitlab|bitbucket|stack\s*overflow|leetcode|codeforces|hackerrank|codesandbox|replit|vscode\.dev|codepen|pull request|merge request|api reference|developer docs|typescript docs|mdn web docs/i
 const DESIGN_TITLE = /figma|canva|dribbble|behance|mockup|prototype|wireframe|ui kit|design system/i
@@ -725,7 +798,9 @@ export function categorizeDetailed(appName: string, windowTitle: string): Classi
   if (/^(ableton|fl studio|reaper|logic|audacity|premiere|davinci|resolve|obs|blender|afterfx|vegas|cinema4d)$/i.test(lowerApp) || /premiere|davinci|blender|after effects/i.test(lowerTitle)) return { categories: ['creative'], contextTag: 'creative_suite', confidence: 0.95 }
   if (/^(notion|obsidian|anki|sumatrapdf|acrobat|acrord32|foxit|foxitreader|kindle|evernote|onenote)$/i.test(lowerApp) || /\.pdf\b|notion|obsidian|anki/i.test(lowerTitle)) return { categories: ['learning'], contextTag: 'learning_tools', confidence: 0.92 }
   if (/^(spotify|music|soundcloud|itunes|tidal|yandexmusic|deezer|wmplayer|vkmusic)$/i.test(lowerApp) || MUSIC_TITLE.test(lowerTitle)) return { categories: ['music'], contextTag: 'music_tools', confidence: 0.96 }
-  if (/^(steam|epicgameslauncher|valorant|leagueclient|dota2|dota\s*2|minecraft|fortniteclient|gta|csgo|cs2|overwatch|battle\.net|javaw)$/i.test(lowerApp.replace(/\s+/g, '')) || /dota\s*2|game|play|steam/i.test(lowerTitle)) return { categories: ['games'], contextTag: 'games_tools', confidence: 0.96 }
+  // Game detection: strip UE4/UE5 build suffixes before process name check, then fall back to window title
+  const cleanForGame = lowerApp.replace(/\s+/g, '').replace(/(-win64-shipping|-win32-shipping|-win64|-win32|-dx12|-dx11)$/, '')
+  if (GAME_APPS.test(cleanForGame) || GAME_TITLE.test(lowerTitle)) return { categories: ['games'], contextTag: 'games_tools', confidence: 0.96 }
   if (/^(telegram|discord|slack|whatsapp|teams)$/i.test(lowerApp)) return { categories: ['social'], contextTag: 'messenger', confidence: 0.95 }
   // Windows: Edge/Chrome sometimes as "Application Frame Host" or "Microsoft Edge"
   if (/applicationframehost|microsoft edge|msedge|browser/i.test(lowerApp.replace(/\s+/g, ''))) return { categories: ['browsing'], contextTag: 'browser_host_fallback', confidence: 0.55 }
@@ -768,8 +843,108 @@ function getAppDisplayName(appName: string): string {
     csgo: 'CS:GO',
     valorant: 'Valorant',
     leagueclient: 'League of Legends',
+    leagueclientux: 'League of Legends',
     steam: 'Steam',
     epicgameslauncher: 'Epic Games',
+    // WoW
+    wow: 'World of Warcraft',
+    wowclassic: 'WoW Classic',
+    wowt: 'WoW (PTR)',
+    wowbeta: 'WoW (Beta)',
+    // Path of Exile
+    pathofexile: 'Path of Exile',
+    pathofexilesteam: 'Path of Exile',
+    pathofexile2: 'Path of Exile 2',
+    pathofexile2steam: 'Path of Exile 2',
+    // Blizzard
+    overwatch: 'Overwatch',
+    overwatch2: 'Overwatch 2',
+    hearthstone: 'Hearthstone',
+    heroesofthestorm: 'Heroes of the Storm',
+    starcraft2: 'StarCraft II',
+    sc2: 'StarCraft II',
+    diablo4: 'Diablo IV',
+    d4: 'Diablo IV',
+    // FromSoftware
+    eldenring: 'Elden Ring',
+    sekiro: 'Sekiro',
+    darksouls3: 'Dark Souls III',
+    // CD Projekt
+    cyberpunk2077: 'Cyberpunk 2077',
+    witcher3: 'The Witcher 3',
+    thewitcher3: 'The Witcher 3',
+    // Square Enix
+    ffxiv: 'Final Fantasy XIV',
+    ffxiv_dx11: 'Final Fantasy XIV',
+    // Bethesda
+    fallout4: 'Fallout 4',
+    fallout76: 'Fallout 76',
+    tesv: 'Skyrim',
+    skyrimse: 'Skyrim SE',
+    starfield: 'Starfield',
+    // Larian
+    bg3: 'Baldur\'s Gate 3',
+    // Rockstar
+    gta5: 'GTA V',
+    gtav: 'GTA V',
+    rdr2: 'Red Dead Redemption 2',
+    // MMOs
+    gw2: 'Guild Wars 2',
+    eso: 'Elder Scrolls Online',
+    eso64: 'Elder Scrolls Online',
+    blackdesert64: 'Black Desert Online',
+    newworld: 'New World',
+    lostark: 'Lost Ark',
+    runescape: 'RuneScape',
+    rs2client: 'RuneScape',
+    // Destiny / Warframe
+    destiny2: 'Destiny 2',
+    warframe: 'Warframe',
+    // Monster Hunter
+    monsterhunterworld: 'Monster Hunter World',
+    mhrise: 'Monster Hunter Rise',
+    // Battle Royale
+    fortniteclient: 'Fortnite',
+    fortnite: 'Fortnite',
+    tslgame: 'PUBG',
+    r5apex: 'Apex Legends',
+    // Survival
+    rustclient: 'Rust',
+    valheim: 'Valheim',
+    terraria: 'Terraria',
+    theforest: 'The Forest',
+    subnautica: 'Subnautica',
+    enshrouded: 'Enshrouded',
+    stardewvalley: 'Stardew Valley',
+    factorygame: 'Satisfactory',
+    // Tactical / Mil-sim
+    escapefromtarkov: 'Escape from Tarkov',
+    hunt_showdown: 'Hunt: Showdown',
+    deadbydaylight: 'Dead by Daylight',
+    arma3: 'Arma 3',
+    dayz: 'DayZ',
+    phasmophobia: 'Phasmophobia',
+    lethalcompany: 'Lethal Company',
+    thefinals: 'The Finals',
+    // Sports / Racing
+    rocketleague: 'Rocket League',
+    forzahorizon5: 'Forza Horizon 5',
+    forzahorizon4: 'Forza Horizon 4',
+    // Strategy
+    civ6: 'Civilization VI',
+    // War Sims
+    aces: 'War Thunder',
+    worldoftanks: 'World of Tanks',
+    worldofwarships: 'World of Warships',
+    // Misc
+    palworld: 'Palworld',
+    fsd: 'Deep Rock Galactic',
+    deeprockgalactic: 'Deep Rock Galactic',
+    hollowknight: 'Hollow Knight',
+    hollow_knight: 'Hollow Knight',
+    hades: 'Hades',
+    hades2: 'Hades II',
+    celeste: 'Celeste',
     sumatrapdf: 'SumatraPDF',
     acrord32: 'Adobe Acrobat',
     acrobat: 'Adobe Acrobat',

@@ -568,6 +568,223 @@ function SeedZipRevealModal({ tier, seedId, remainingCount, onClose, onOpenAnoth
   )
 }
 
+// ─── Bulk seed zip open modal ─────────────────────────────────────────────────
+
+interface BulkZipResult { tier: SeedZipTier; seeds: { seedId: string; qty: number }[]; totalOpened: number }
+
+function LoadingDotsGreen({ color }: { color: string }) {
+  return (
+    <span className="inline-flex items-center gap-[3px] ml-1 translate-y-[1px]">
+      {[0, 1, 2].map((i) => (
+        <motion.span
+          key={i}
+          className="w-[3px] h-[3px] rounded-full inline-block"
+          style={{ background: color }}
+          animate={{ opacity: [0.3, 1, 0.3], y: [0, -2, 0] }}
+          transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.18, ease: 'easeInOut' }}
+        />
+      ))}
+    </span>
+  )
+}
+
+function BulkSeedZipOpenModal({ result, onClose }: { result: BulkZipResult | null; onClose: () => void }) {
+  const zipTheme = getRarityTheme(result?.tier ?? 'common')
+  const zipDisplay = result ? getSeedZipDisplay(result.tier) : null
+  const [phase, setPhase] = useState<'opening' | 'revealed'>('opening')
+  const openMs = result ? Math.min(600 + result.totalOpened * 40, 2500) : 800
+
+  useEffect(() => {
+    if (!result) { setPhase('opening'); return }
+    setPhase('opening')
+    const t = setTimeout(() => setPhase('revealed'), openMs)
+    return () => clearTimeout(t)
+  }, [result])
+
+  const isRevealed = phase === 'revealed'
+
+  if (typeof document === 'undefined' || !result || !zipDisplay) return null
+  return createPortal(
+    <AnimatePresence>
+      {result && (
+        <motion.div
+          key="bulk-zip-modal"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-[120] flex items-center justify-center p-4"
+          onClick={isRevealed ? onClose : undefined}
+        >
+          <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" />
+
+          {isRevealed && (
+            <PixelConfetti
+              key="bulk-zip-confetti"
+              originX={0.5}
+              originY={0.35}
+              accentColor={zipTheme.color}
+              count={Math.min(20 + result.totalOpened * 2, 60)}
+              duration={1.5}
+            />
+          )}
+
+          <motion.div
+            key="bulk-zip-card"
+            initial={{ scale: 0.82, opacity: 0, y: 24 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.88, opacity: 0, y: 16 }}
+            transition={{ type: 'spring', stiffness: 340, damping: 28, mass: 0.9 }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-[340px] max-h-[80vh] rounded-2xl border p-5 text-center relative overflow-hidden flex flex-col"
+            style={{
+              borderColor: zipTheme.border,
+              background: `linear-gradient(160deg, ${zipTheme.glow}1A 0%, rgba(8,8,16,0.97) 55%)`,
+              boxShadow: isRevealed
+                ? `0 0 32px ${zipTheme.glow}, 0 4px 32px rgba(0,0,0,0.7)`
+                : `0 0 20px ${zipTheme.glow}66, 0 4px 24px rgba(0,0,0,0.6)`,
+              transition: 'box-shadow 0.5s ease',
+            }}
+          >
+            <motion.div
+              aria-hidden
+              className="absolute inset-0 pointer-events-none rounded-2xl"
+              style={{ background: `radial-gradient(circle at 50% 12%, ${zipTheme.glow} 0%, transparent 55%)` }}
+              animate={{ opacity: isRevealed ? [0.45, 0.65, 0.5] : [0.25, 0.45, 0.25] }}
+              transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+            />
+
+            {/* Zip icon */}
+            <motion.div
+              className="mx-auto w-fit"
+              animate={!isRevealed ? { y: [0, -6, 0], rotate: [-3, 3, -3] } : { y: 0, rotate: 0 }}
+              transition={!isRevealed
+                ? { duration: 0.4, repeat: Infinity, ease: 'easeInOut' }
+                : { type: 'spring', stiffness: 200, damping: 18 }
+              }
+            >
+              <div
+                className="w-[80px] h-[80px] rounded-2xl border flex items-center justify-center"
+                style={{
+                  borderColor: zipTheme.border,
+                  background: `radial-gradient(circle at 50% 35%, ${zipTheme.glow}60 0%, rgba(8,8,16,0.92) 70%)`,
+                  boxShadow: `0 0 22px ${zipTheme.glow}99`,
+                }}
+              >
+                {zipDisplay.image
+                  ? <img src={zipDisplay.image} alt="" className="w-14 h-14 object-contain select-none" style={{ imageRendering: 'pixelated' }} draggable={false} />
+                  : <span className="text-4xl">{zipDisplay.icon}</span>
+                }
+              </div>
+            </motion.div>
+
+            {/* Status */}
+            <div className="mt-2 h-[18px] relative overflow-hidden">
+              <AnimatePresence mode="wait">
+                {isRevealed ? (
+                  <motion.p
+                    key="done"
+                    className="absolute inset-0 text-[11px] font-mono uppercase tracking-wider text-center"
+                    style={{ color: zipTheme.color }}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    Opened {result.totalOpened} zip{result.totalOpened !== 1 ? 's' : ''}
+                  </motion.p>
+                ) : (
+                  <motion.span
+                    key="opening"
+                    className="absolute inset-0 text-[11px] font-mono uppercase tracking-wider text-center flex items-center justify-center"
+                    style={{ color: zipTheme.color }}
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -6 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    Opening {result.totalOpened} zip{result.totalOpened !== 1 ? 's' : ''}<LoadingDotsGreen color={zipTheme.color} />
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <p className="text-sm text-white/80 font-medium mt-0.5">{zipDisplay.name}</p>
+
+            {/* Seeds received — scrollable */}
+            <motion.div
+              className="mt-3 flex-1 overflow-y-auto min-h-0"
+              style={{ scrollbarWidth: 'thin', scrollbarColor: `${zipTheme.color}44 transparent` } as React.CSSProperties}
+              animate={{ opacity: isRevealed ? 1 : 0, y: isRevealed ? 0 : 16 }}
+              transition={{ type: 'spring', stiffness: 280, damping: 24, delay: isRevealed ? 0.04 : 0 }}
+            >
+              {result.seeds.length > 0 ? (
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-mono text-gray-500 uppercase tracking-wider text-left">Seeds</p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {result.seeds.map((entry, i) => {
+                      const seed = getSeedById(entry.seedId)
+                      if (!seed) return null
+                      const theme = getRarityTheme(seed.rarity)
+                      return (
+                        <motion.div
+                          key={`${entry.seedId}-${i}`}
+                          initial={{ opacity: 0, scale: 0.85 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.05 + i * 0.03, type: 'spring', stiffness: 300, damping: 22 }}
+                          className="rounded-lg border p-2 flex items-center gap-2 relative overflow-hidden"
+                          style={{
+                            borderColor: `${theme.color}35`,
+                            background: `linear-gradient(135deg, ${theme.glow}15 0%, rgba(8,8,16,0.95) 60%)`,
+                          }}
+                        >
+                          <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(circle at 30% 40%, ${theme.glow}20 0%, transparent 60%)` }} />
+                          <div className="relative flex-none w-10 h-10 rounded-md flex items-center justify-center" style={{ background: `${theme.color}12`, border: `1px solid ${theme.color}20` }}>
+                            {seed.image
+                              ? <img src={seed.image} alt="" className="w-8 h-8 object-contain" style={{ imageRendering: 'pixelated' }} />
+                              : <span className="text-xl">{seed.icon}</span>
+                            }
+                          </div>
+                          <div className="relative text-left min-w-0">
+                            <p className="text-[11px] font-medium text-white/90 truncate leading-tight">{seed.name}</p>
+                            <p className="text-[10px] font-mono uppercase" style={{ color: theme.color }}>
+                              {seed.rarity}{entry.qty > 1 ? ` ×${entry.qty}` : ''}
+                            </p>
+                          </div>
+                        </motion.div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 mt-4">No seeds this time</p>
+              )}
+            </motion.div>
+
+            {/* Done button */}
+            <motion.div
+              className="mt-4"
+              animate={{ opacity: isRevealed ? 1 : 0, y: isRevealed ? 0 : 8 }}
+              transition={{ duration: 0.28, delay: isRevealed ? 0.18 : 0, ease: 'easeOut' }}
+              style={{ pointerEvents: isRevealed ? 'auto' : 'none' }}
+            >
+              <button
+                type="button"
+                onClick={() => { playClickSound(); onClose() }}
+                className="w-full h-10 rounded-xl text-[13px] font-semibold transition-all active:scale-[0.97]"
+                style={{ color: zipTheme.color, border: `1px solid ${zipTheme.border}`, background: `${zipTheme.color}22` }}
+              >
+                Done
+              </button>
+            </motion.div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    document.body,
+  )
+}
+
 // ─── Seed Zip section ────────────────────────────────────────────────────────
 
 const ZIP_TIER_ORDER: SeedZipTier[] = ['common', 'rare', 'epic', 'legendary']
@@ -727,6 +944,7 @@ function SeedZipSection() {
   const openSeedZip = useFarmStore((s) => s.openSeedZip)
   const removeSeedZip = useFarmStore((s) => s.removeSeedZip)
   const [lastOpened, setLastOpened] = useState<{ tier: SeedZipTier; seedId: string } | null>(null)
+  const [bulkZipResult, setBulkZipResult] = useState<BulkZipResult | null>(null)
   const [sellTarget, setSellTarget] = useState<SeedZipTier | null>(null)
   useAdminConfigStore((s) => s.rev) // re-render when admin config changes
 
@@ -765,16 +983,23 @@ function SeedZipSection() {
     const tier = lastOpened.tier
     // Open all remaining of this tier (current already opened, open the rest)
     const count = useFarmStore.getState().seedZips[tier] ?? 0
+    const seedCounts = new Map<string, number>()
+    // Include the first zip already opened
+    seedCounts.set(lastOpened.seedId, 1)
     for (let i = 0; i < count; i++) {
-      openSeedZip(tier)
+      const seedId = openSeedZip(tier)
+      if (seedId) seedCounts.set(seedId, (seedCounts.get(seedId) ?? 0) + 1)
     }
     setLastOpened(null)
+    const total = count + 1 // +1 for the first one already opened
+    const seeds = Array.from(seedCounts.entries()).map(([seedId, qty]) => ({ seedId, qty }))
+    setBulkZipResult({ tier, seeds, totalOpened: total })
     // Sync to Supabase
     const user = useAuthStore.getState().user
     if (supabase && user) {
       const { items, chests } = useInventoryStore.getState()
-      const { seeds, seedZips: sz } = useFarmStore.getState()
-      syncInventoryToSupabase(items, chests, { merge: false, seeds, seedZips: sz }).catch(() => {})
+      const { seeds: farmSeeds, seedZips: sz } = useFarmStore.getState()
+      syncInventoryToSupabase(items, chests, { merge: false, seeds: farmSeeds, seedZips: sz }).catch(() => {})
     }
   }, [lastOpened, openSeedZip])
 
@@ -837,6 +1062,11 @@ function SeedZipSection() {
           />
         )}
       </AnimatePresence>
+
+      <BulkSeedZipOpenModal
+        result={bulkZipResult}
+        onClose={() => setBulkZipResult(null)}
+      />
 
       {sellTarget && (
         <ListForSaleModal

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { MessageCircle } from '../../lib/icons'
 import type { FriendProfile } from '../../hooks/useFriends'
-import { getSkillByName, MAX_TOTAL_SKILL_LEVEL } from '../../lib/skills'
+import { getSkillByName, getSkillActivityLine, MAX_TOTAL_SKILL_LEVEL } from '../../lib/skills'
 import { playClickSound } from '../../lib/sounds'
 import { parseFriendPresence, formatSessionDurationCompact } from '../../lib/friendPresence'
 import { AvatarWithFrame } from '../shared/AvatarWithFrame'
@@ -163,11 +163,15 @@ export function FriendList({ friends, onSelectFriend, onMessageFriend, unreadByF
                     <span className="text-[11px] text-gray-600">{formatLastSeen(f.last_seen_at)}</span>
                   )}
                 </div>
-                {f.is_online && appName && (
-                  <span className="text-[10px] text-gray-500 truncate">
-                    Playing: {appName}{liveDuration ? ` • session ${liveDuration}` : ''}
-                  </span>
-                )}
+                {f.is_online && appName && (() => {
+                  const skill = levelingSkill ? getSkillByName(levelingSkill) : null
+                  const activityLine = getSkillActivityLine(skill?.id ?? null, appName)
+                  return (
+                    <span className="text-[10px] text-gray-500 truncate">
+                      {activityLine}{liveDuration ? ` • ${liveDuration}` : ''}
+                    </span>
+                  )
+                })()}
               </div>
 
             </div>

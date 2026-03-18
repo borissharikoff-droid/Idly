@@ -10,7 +10,7 @@ import { GUILD_BUFFS, getHallDef } from '../../lib/guildBuffs'
 import { GuildHall } from './GuildHall'
 import { AvatarWithFrame } from '../shared/AvatarWithFrame'
 import { parseFriendPresence, formatSessionDurationCompact } from '../../lib/friendPresence'
-import { MAX_TOTAL_SKILL_LEVEL } from '../../lib/skills'
+import { MAX_TOTAL_SKILL_LEVEL, getSkillByName, getSkillActivityLine } from '../../lib/skills'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -570,6 +570,7 @@ export function GuildTab({ onSelectMember }: GuildTabProps) {
               const confirmingKick = confirmKick === m.user_id
               const { activityLabel, appName, sessionStartMs } = parseFriendPresence(m.current_activity ?? null)
               const isLeveling = m.is_online && activityLabel.startsWith('Leveling ')
+              const levelingSkillName = isLeveling ? activityLabel.replace('Leveling ', '') : null
               const liveDuration = m.is_online && sessionStartMs ? formatSessionDurationCompact(sessionStartMs, Date.now()) : null
               const hasSyncedSkills = m.skills_sync_status === 'synced'
               const totalSkillDisplay = hasSyncedSkills && m.total_skill_level != null
@@ -647,11 +648,15 @@ export function GuildTab({ onSelectMember }: GuildTabProps) {
                             </span>
                           )}
                         </div>
-                        {m.is_online && appName && (
-                          <span className="text-[10px] text-gray-500 truncate">
-                            Playing: {appName}{liveDuration ? ` • session ${liveDuration}` : ''}
-                          </span>
-                        )}
+                        {m.is_online && appName && (() => {
+                          const skill = levelingSkillName ? getSkillByName(levelingSkillName) : null
+                          const activityLine = getSkillActivityLine(skill?.id ?? null, appName)
+                          return (
+                            <span className="text-[10px] text-gray-500 truncate">
+                              {activityLine}{liveDuration ? ` • ${liveDuration}` : ''}
+                            </span>
+                          )
+                        })()}
                       </div>
                     </div>
                   </button>

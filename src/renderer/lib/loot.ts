@@ -331,12 +331,12 @@ export const LOOT_ITEMS: LootItemDef[] = [
   { id: 'wilted_plant', name: 'Wilted Plant', slot: 'plant', rarity: 'common',  icon: '🥀', description: 'A rotted crop. Can be composted or sold for scraps.', perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Rotted crop salvage.' },
 
   // Arena materials (dropped by dungeon mobs & bosses, used in crafting)
-  { id: 'slime_gel',    name: 'Slime Gel',    slot: 'plant', rarity: 'common',    icon: '🫧', description: 'Dropped by slimes. Craft into Slime Shield.',       perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Crafting material — Slime Cavern' },
-  { id: 'goblin_tooth', name: 'Goblin Tooth', slot: 'plant', rarity: 'common',    icon: '🦷', description: 'Dropped by goblins. Craft into Goblin Blade.',     perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Crafting material — Goblin Outpost' },
-  { id: 'wolf_fang',    name: 'Wolf Fang',    slot: 'plant', rarity: 'rare',      icon: '🐺', description: 'Dropped by wolves. Craft into Wolf Fang Pendant.',  perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Crafting material — Wild Forest' },
-  { id: 'orc_shard',    name: 'Orc Shard',    slot: 'plant', rarity: 'rare',      icon: '🪨', description: 'Dropped by orcs. Craft into Orc Plate.',            perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Crafting material — Orc Stronghold' },
-  { id: 'troll_hide',   name: 'Troll Hide',   slot: 'plant', rarity: 'epic',      icon: '🧌', description: 'Dropped by trolls. Craft into Troll Cloak.',        perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Crafting material — Troll Bridge' },
-  { id: 'dragon_scale', name: 'Dragon Scale', slot: 'plant', rarity: 'legendary', icon: '🐉', description: 'Dropped by dragons. Craft into Dragon Crown.',      perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Crafting material — Dragon Lair' },
+  { id: 'slime_gel',    name: 'Slime Gel',    slot: 'material', rarity: 'common',    icon: '🫧', description: 'Dropped by slimes. Craft into Slime Shield.',       perkType: 'cosmetic', perkValue: 0, perkDescription: 'Crafting material — Slime Cavern' },
+  { id: 'goblin_tooth', name: 'Goblin Tooth', slot: 'material', rarity: 'common',    icon: '🦷', description: 'Dropped by goblins. Craft into Goblin Blade.',     perkType: 'cosmetic', perkValue: 0, perkDescription: 'Crafting material — Goblin Outpost' },
+  { id: 'wolf_fang',    name: 'Wolf Fang',    slot: 'material', rarity: 'rare',      icon: '🐺', description: 'Dropped by wolves. Craft into Wolf Fang Pendant.',  perkType: 'cosmetic', perkValue: 0, perkDescription: 'Crafting material — Wild Forest' },
+  { id: 'orc_shard',    name: 'Orc Shard',    slot: 'material', rarity: 'rare',      icon: '🪨', description: 'Dropped by orcs. Craft into Orc Plate.',            perkType: 'cosmetic', perkValue: 0, perkDescription: 'Crafting material — Orc Stronghold' },
+  { id: 'troll_hide',   name: 'Troll Hide',   slot: 'material', rarity: 'epic',      icon: '🧌', description: 'Dropped by trolls. Craft into Troll Cloak.',        perkType: 'cosmetic', perkValue: 0, perkDescription: 'Crafting material — Troll Bridge' },
+  { id: 'dragon_scale', name: 'Dragon Scale', slot: 'material', rarity: 'legendary', icon: '🐉', description: 'Dropped by dragons. Craft into Dragon Crown.',      perkType: 'cosmetic', perkValue: 0, perkDescription: 'Crafting material — Dragon Lair' },
 
   // Boss-exclusive materials (guaranteed drop from specific bosses)
   { id: 'warlord_sigil', name: 'Warlord Sigil', slot: 'material', rarity: 'epic',      icon: '🔱', description: 'Torn from the Orc Warlord. Pulses with brutal energy.',   perkType: 'cosmetic', perkValue: 0, perkDescription: 'Boss material — Orc Warlord' },

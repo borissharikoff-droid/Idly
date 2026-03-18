@@ -14,6 +14,8 @@ import { PageHeader } from '../shared/PageHeader'
 import { Package, X } from '../../lib/icons'
 import { playClickSound, playPotionSound } from '../../lib/sounds'
 import { syncInventoryToSupabase } from '../../services/supabaseSync'
+import { useAuthStore } from '../../stores/authStore'
+import { supabase } from '../../lib/supabase'
 import { useNotificationStore } from '../../stores/notificationStore'
 import { useFarmStore } from '../../stores/farmStore'
 import { SEED_DEFS, formatGrowTime } from '../../lib/farming'
@@ -448,6 +450,15 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
       chestType,
       result: { items, totalGold, materials, seedZips, totalOpened: total },
     })
+
+    // Immediately push opened state to Supabase with merge:false so the
+    // periodic background sync (merge:true / Math.max) doesn't restore old counts
+    const user = useAuthStore.getState().user
+    if (supabase && user) {
+      const { items: invItems, chests: invChests } = useInventoryStore.getState()
+      const { seeds, seedZips: sz } = useFarmStore.getState()
+      syncInventoryToSupabase(invItems, invChests, { merge: false, seeds, seedZips: sz }).catch(() => {})
+    }
   }
 
   return (
@@ -975,7 +986,8 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                         const isConsumable = itemSlot === 'consumable'
                         const isMaxed = isConsumable && isPotionMaxed(inspectSlot.kind === 'item' ? inspectSlot.itemId : '')
                         const isGearLocked = inBattle && inspectSlot.kind === 'item' && !isConsumable
-                        const disabled = isPlant || isFood || isMaterial || isMaxed
+                        const disabled = isMaxed
+                        if (isPlant || isFood || isMaterial) return null
                         return (
                           <button
                             type="button"
@@ -1034,11 +1046,15 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
               ) : (
                 <>
                   {(() => {
-                    const isPlant = slot.kind === 'item' && LOOT_ITEMS.find((x) => x.id === slot.itemId)?.slot === 'plant'
-                    const isConsumable = slot.kind === 'item' && LOOT_ITEMS.find((x) => x.id === slot.itemId)?.slot === 'consumable'
+                    const _itemSlot2 = slot.kind === 'item' ? LOOT_ITEMS.find((x) => x.id === slot.itemId)?.slot : undefined
+                    const isPlant2 = _itemSlot2 === 'plant'
+                    const isFood2 = _itemSlot2 === 'food'
+                    const isMaterial2 = _itemSlot2 === 'material'
+                    const isConsumable = _itemSlot2 === 'consumable'
                     const isMaxed = isConsumable && isPotionMaxed(slot.kind === 'item' ? slot.itemId : '')
                     const isGearLocked = inBattle && slot.kind === 'item' && !isConsumable
-                    const disabled = isPlant || isMaxed
+                    if (isPlant2 || isFood2 || isMaterial2) return null
+                    const disabled = isMaxed
                     return (
                       <button
                         type="button"

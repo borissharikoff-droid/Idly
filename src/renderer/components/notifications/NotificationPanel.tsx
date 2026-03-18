@@ -15,12 +15,15 @@ import { getLatestPatch } from '../../lib/changelog'
 import { WhatsNewModal } from '../WhatsNewModal'
 import type { TabId } from '../../App'
 
-function tabForNotifType(type: NotificationType): TabId | null {
+function tabForNotifType(type: NotificationType, title?: string): TabId | null {
   switch (type) {
     case 'arena_result': return 'arena'
     case 'marketplace_sale': return 'marketplace'
     case 'friend_levelup': return 'friends'
-    case 'progression': return 'skills'
+    case 'progression':
+      // Chest/loot notifications → inventory; skill/xp notifications → skills
+      if (title && (title.toLowerCase().includes('chest') || title.toLowerCase().includes('inbox') || title.toLowerCase().includes('loot') || title.toLowerCase().includes('drop'))) return 'inventory'
+      return 'skills'
     default: return null
   }
 }
@@ -362,7 +365,7 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                     key={item.id}
                     className="px-2.5 py-1.5 flex items-center gap-2.5 hover:bg-white/[0.02] border-b border-white/[0.03] last:border-0 cursor-pointer"
                     onClick={() => {
-                      const tab = tabForNotifType(item.type)
+                      const tab = tabForNotifType(item.type, item.title)
                       if (tab && globalNavigate) { playClickSound(); globalNavigate(tab); onClose() }
                     }}
                   >

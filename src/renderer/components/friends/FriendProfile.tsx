@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase'
 import type { FriendProfile as FriendProfileType } from '../../hooks/useFriends'
 import { normalizeEquippedLoot, type LootSlot } from '../../lib/loot'
 import { CharacterPanel } from '../character/CharacterPanel'
-import { SKILLS, computeTotalSkillLevelFromLevels, MAX_TOTAL_SKILL_LEVEL, normalizeSkillId, skillLevelFromXP, skillXPProgress, computeGrindlyBonuses } from '../../lib/skills'
+import { SKILLS, computeTotalSkillLevelFromLevels, MAX_TOTAL_SKILL_LEVEL, normalizeSkillId, skillLevelFromXP, skillXPProgress, computeGrindlyBonuses, getSkillByName, getSkillActivityLine } from '../../lib/skills'
 import { computeWarriorBonuses } from '../../lib/combat'
 import { ACHIEVEMENTS, checkSkillAchievements } from '../../lib/xp'
 import { MOTION } from '../../lib/motion'
@@ -369,10 +369,9 @@ export function FriendProfile({ profile, onBack, onMessage }: FriendProfileProps
               <p className="text-[11px] mt-1 text-gray-400">
                 {profile.is_online
                   ? (isLeveling
-                    ? `Leveling ${levelingSkill}${liveDuration ? ` · ${liveDuration}` : ''}`
+                    ? `Leveling ${levelingSkill}${liveDuration ? ` · ${liveDuration}` : ''}${appName ? ` · ${getSkillActivityLine(getSkillByName(levelingSkill ?? '')?.id ?? null, appName)}` : ''}`
                     : activityLabel || 'Online')
                   : 'Offline'}
-                {profile.is_online && appName && ` · ${appName}`}
               </p>
             </div>
             {onMessage && (

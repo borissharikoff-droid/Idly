@@ -157,7 +157,7 @@ export default function App() {
   const { status, currentActivity, sessionStartTime } = useSessionStore()
   const presenceLabel = currentActivity && status === 'running'
     ? (() => {
-      const cats = (currentActivity.categories || [currentActivity.category]).filter((c: string) => c !== 'idle')
+      const cats = (currentActivity.categories || [currentActivity.category]).filter((c: string) => c !== 'idle' && c !== 'other')
       const names = cats.map((c: string) => getSkillById(categoryToSkillId(c))?.name).filter(Boolean)
       return names.length > 0 ? `Leveling ${names.join(' + ')}` : null
     })()
