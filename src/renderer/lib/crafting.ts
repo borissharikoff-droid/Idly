@@ -503,7 +503,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     outputItemId: 'dungeon_pass',
     outputQty: 1,
     isIntermediate: true,
-    ingredients: [{ id: 'wheat', qty: 5 }, { id: 'herbs', qty: 3 }],
+    ingredients: [{ id: 'slime_gel', qty: 3 }, { id: 'apples', qty: 2 }],
     levelRequired: 5,
     xpPerItem: 100,
     secPerItem: 15,
@@ -835,14 +835,14 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     goldCost: 18000,
   },
   {
-    // Storm Shard × 4 + Titan Core × 1 + Shadow Dust × 4 → Storm Titan Blade
+    // Storm Shard × 4 + Titan Core × 1 + Void Blossom × 1 → Storm Titan Blade
     id: 'recipe_titan_sword',
     outputItemId: 'craft_titan_sword',
     outputQty: 1,
     ingredients: [
-      { id: 'storm_shard',  qty: 4 },
-      { id: 'titan_core',   qty: 1 },
-      { id: 'shadow_dust',  qty: 4 },
+      { id: 'storm_shard',   qty: 4 },
+      { id: 'titan_core',    qty: 1 },
+      { id: 'void_blossom',  qty: 1 },
     ],
     levelRequired: 88,
     xpPerItem: 20000,
