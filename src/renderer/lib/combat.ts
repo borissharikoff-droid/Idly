@@ -177,7 +177,7 @@ export const ZONES: ZoneDef[] = [
     ],
     boss: {
       id: 'orc', name: 'Orc Warlord', icon: '👹', hp: 1800, atk: 8.5, def: 6,
-      rewards: { chestTier: 'legendary_chest' },
+      rewards: { chestTier: 'epic_chest' },
       requirements: { minAtk: 25, minHp: 180, minHpRegen: 4 },
       materialDropId: 'warlord_sigil', materialDropQty: 1,
     },

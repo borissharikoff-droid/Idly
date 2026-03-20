@@ -572,13 +572,13 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
 
   // ── Tier 2 — Craft gear from intermediates + farm plants ───────────────────
   {
-    // Iron Bar × 2 + Wheat × 3 → Iron Helm
+    // Iron Bar × 2 + Slime Gel × 2 → Iron Helm
     id: 'recipe_iron_helm',
     outputItemId: 'craft_iron_helm',
     outputQty: 1,
     ingredients: [
-      { id: 'iron_bar', qty: 2 },
-      { id: 'wheat',    qty: 3 },
+      { id: 'iron_bar',  qty: 2 },
+      { id: 'slime_gel', qty: 2 },
     ],
     levelRequired: 3,
     xpPerItem: 40,
@@ -642,13 +642,12 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
 
   // ── Tier 3 — Zone-drop gear (arena mob materials + farm plants + intermediates)
   {
-    // Slime Gel × 5 + Wheat × 3 → Slime Shield
+    // Slime Gel × 6 → Slime Shield
     id: 'recipe_slime_shield',
     outputItemId: 'craft_slime_shield',
     outputQty: 1,
     ingredients: [
-      { id: 'slime_gel', qty: 5 },
-      { id: 'wheat',     qty: 3 },
+      { id: 'slime_gel', qty: 6 },
     ],
     levelRequired: 0,
     xpPerItem: 25,
