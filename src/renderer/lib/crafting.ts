@@ -495,7 +495,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     isIntermediate: true,
     ingredients: [{ id: 'wheat', qty: 5 }, { id: 'herbs', qty: 3 }],
     levelRequired: 0,
-    xpPerItem: 60,
+    xpPerItem: 80,
     secPerItem: 6,
   },
   {
@@ -505,7 +505,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     isIntermediate: true,
     ingredients: [{ id: 'wheat', qty: 5 }, { id: 'herbs', qty: 3 }],
     levelRequired: 5,
-    xpPerItem: 80,
+    xpPerItem: 100,
     secPerItem: 15,
   },
   {
@@ -515,8 +515,8 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     isIntermediate: true,
     ingredients: [{ id: 'iron_bar', qty: 1 }, { id: 'magic_essence', qty: 2 }],
     levelRequired: 20,
-    xpPerItem: 120,
-    secPerItem: 60,
+    xpPerItem: 300,
+    secPerItem: 30,
   },
   // ── Tier 1 — Refine raw materials into intermediate components ─────────────
   {
@@ -526,7 +526,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     isIntermediate: true,
     ingredients: [{ id: 'ore_iron', qty: 5 }],
     levelRequired: 0,
-    xpPerItem: 90,
+    xpPerItem: 120,
     secPerItem: 8,
   },
   {
@@ -536,7 +536,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     isIntermediate: true,
     ingredients: [{ id: 'monster_fang', qty: 3 }],
     levelRequired: 0,
-    xpPerItem: 110,
+    xpPerItem: 140,
     secPerItem: 10,
   },
   {
@@ -546,7 +546,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     isIntermediate: true,
     ingredients: [{ id: 'magic_essence', qty: 3 }],
     levelRequired: 15,
-    xpPerItem: 40,
+    xpPerItem: 300,
     secPerItem: 15,
   },
   {
@@ -556,7 +556,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     isIntermediate: true,
     ingredients: [{ id: 'ancient_scale', qty: 2 }],
     levelRequired: 30,
-    xpPerItem: 70,
+    xpPerItem: 500,
     secPerItem: 15,
   },
   {
@@ -566,7 +566,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     isIntermediate: true,
     ingredients: [{ id: 'void_crystal', qty: 2 }],
     levelRequired: 55,
-    xpPerItem: 120,
+    xpPerItem: 700,
     secPerItem: 20,
   },
 
@@ -581,8 +581,8 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'slime_gel', qty: 2 },
     ],
     levelRequired: 3,
-    xpPerItem: 40,
-    secPerItem: 20,
+    xpPerItem: 250,
+    secPerItem: 15,
   },
   {
     // Fang Shard × 2 + Herbs × 3 → Fang Dagger
@@ -594,8 +594,8 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'herbs',      qty: 3 },
     ],
     levelRequired: 15,
-    xpPerItem: 70,
-    secPerItem: 60,
+    xpPerItem: 350,
+    secPerItem: 20,
   },
   {
     // Essence Vial × 2 + Blossoms × 2 → Essence Ring
@@ -607,8 +607,8 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'blossoms',     qty: 2 },
     ],
     levelRequired: 30,
-    xpPerItem: 130,
-    secPerItem: 600,
+    xpPerItem: 1200,
+    secPerItem: 60,
     goldCost: 500,
   },
   {
@@ -621,8 +621,8 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'orchids',      qty: 2 },
     ],
     levelRequired: 45,
-    xpPerItem: 260,
-    secPerItem: 1200,
+    xpPerItem: 2000,
+    secPerItem: 120,
     goldCost: 1500,
   },
   {
@@ -635,8 +635,8 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'star_bloom',    qty: 2 },
     ],
     levelRequired: 65,
-    xpPerItem: 650,
-    secPerItem: 2700,
+    xpPerItem: 5000,
+    secPerItem: 240,
     goldCost: 3000,
   },
 
@@ -650,7 +650,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'slime_gel', qty: 6 },
     ],
     levelRequired: 0,
-    xpPerItem: 25,
+    xpPerItem: 200,
     secPerItem: 15,
   },
   {
@@ -663,8 +663,8 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'herbs',        qty: 3 },
     ],
     levelRequired: 5,
-    xpPerItem: 50,
-    secPerItem: 25,
+    xpPerItem: 350,
+    secPerItem: 20,
   },
   {
     // Wolf Fang × 3 + Iron Bar × 1 + Blossoms × 2 → Wolf Fang Pendant
@@ -677,8 +677,8 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'blossoms',  qty: 2 },
     ],
     levelRequired: 15,
-    xpPerItem: 100,
-    secPerItem: 300,
+    xpPerItem: 700,
+    secPerItem: 40,
     goldCost: 300,
   },
   {
@@ -692,8 +692,8 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'orchids',     qty: 2 },
     ],
     levelRequired: 25,
-    xpPerItem: 200,
-    secPerItem: 600,
+    xpPerItem: 1000,
+    secPerItem: 60,
     goldCost: 800,
   },
   {
@@ -707,8 +707,8 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'orchids',      qty: 2 },
     ],
     levelRequired: 50,
-    xpPerItem: 400,
-    secPerItem: 1800,
+    xpPerItem: 2500,
+    secPerItem: 120,
     goldCost: 2000,
   },
   {
@@ -722,8 +722,8 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'star_bloom',    qty: 2 },
     ],
     levelRequired: 70,
-    xpPerItem: 850,
-    secPerItem: 3600,
+    xpPerItem: 6000,
+    secPerItem: 300,
     goldCost: 5000,
   },
 
@@ -739,8 +739,8 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'void_crystal', qty: 2 },
     ],
     levelRequired: 70,
-    xpPerItem: 1000,
-    secPerItem: 2700,
+    xpPerItem: 8000,
+    secPerItem: 360,
     goldCost: 5000,
   },
   {
@@ -754,8 +754,8 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'orchids',      qty: 3 },
     ],
     levelRequired: 80,
-    xpPerItem: 1200,
-    secPerItem: 4500,
+    xpPerItem: 13000,
+    secPerItem: 540,
     goldCost: 8000,
   },
   {
@@ -769,8 +769,8 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'void_fragment', qty: 2 },
     ],
     levelRequired: 75,
-    xpPerItem: 1100,
-    secPerItem: 3600,
+    xpPerItem: 10000,
+    secPerItem: 420,
     goldCost: 6000,
   },
   {
@@ -784,8 +784,8 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'star_bloom',   qty: 2 },
     ],
     levelRequired: 72,
-    xpPerItem: 900,
-    secPerItem: 2400,
+    xpPerItem: 7000,
+    secPerItem: 300,
     goldCost: 4000,
   },
   {
@@ -798,8 +798,8 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'lich_crystal', qty: 1 },
     ],
     levelRequired: 68,
-    xpPerItem: 800,
-    secPerItem: 1800,
+    xpPerItem: 6000,
+    secPerItem: 240,
     goldCost: 3000,
   },
 
@@ -815,8 +815,8 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'lich_crystal', qty: 2 },
     ],
     levelRequired: 85,
-    xpPerItem: 2000,
-    secPerItem: 5400,
+    xpPerItem: 16000,
+    secPerItem: 600,
     goldCost: 12000,
   },
   {
@@ -830,8 +830,8 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'orchids',     qty: 3 },
     ],
     levelRequired: 90,
-    xpPerItem: 2500,
-    secPerItem: 7200,
+    xpPerItem: 25000,
+    secPerItem: 900,
     goldCost: 18000,
   },
   {
@@ -845,8 +845,8 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'shadow_dust',  qty: 4 },
     ],
     levelRequired: 88,
-    xpPerItem: 2200,
-    secPerItem: 6000,
+    xpPerItem: 20000,
+    secPerItem: 720,
     goldCost: 15000,
   },
   {
@@ -860,8 +860,8 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'star_bloom',  qty: 2 },
     ],
     levelRequired: 85,
-    xpPerItem: 1800,
-    secPerItem: 4800,
+    xpPerItem: 13000,
+    secPerItem: 540,
     goldCost: 10000,
   },
   {
@@ -875,8 +875,8 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'lich_crystal', qty: 1 },
     ],
     levelRequired: 82,
-    xpPerItem: 1600,
-    secPerItem: 4200,
+    xpPerItem: 10000,
+    secPerItem: 420,
     goldCost: 8000,
   },
 
@@ -892,8 +892,8 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'clovers',       qty: 3 },
     ],
     levelRequired: 40,
-    xpPerItem: 350,
-    secPerItem: 1500,
+    xpPerItem: 1500,
+    secPerItem: 90,
     goldCost: 1500,
   },
   {
@@ -908,8 +908,8 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'crystal_root', qty: 1 },
     ],
     levelRequired: 60,
-    xpPerItem: 700,
-    secPerItem: 3000,
+    xpPerItem: 3500,
+    secPerItem: 180,
     goldCost: 4000,
   },
   {
@@ -924,8 +924,8 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
       { id: 'star_bloom',    qty: 3 },
     ],
     levelRequired: 80,
-    xpPerItem: 1500,
-    secPerItem: 5400,
+    xpPerItem: 8000,
+    secPerItem: 360,
     goldCost: 8000,
   },
 ]
