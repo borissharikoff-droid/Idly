@@ -21,7 +21,7 @@ export function ActivityFeed({ userId }: ActivityFeedProps) {
     return (
       <div className="space-y-2">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-10 rounded-lg bg-white/[0.03] border border-white/5 animate-pulse" />
+          <div key={i} className="h-10 rounded bg-white/[0.03] border border-white/5 animate-pulse" />
         ))}
       </div>
     )
@@ -29,10 +29,10 @@ export function ActivityFeed({ userId }: ActivityFeedProps) {
 
   if (feed.length === 0) {
     return (
-      <div className="rounded-xl border border-white/8 bg-white/[0.02] px-4 py-6 text-center">
+      <div className="rounded border border-white/8 bg-white/[0.02] px-4 py-6 text-center">
         <p className="text-2xl mb-1">📡</p>
         <p className="text-xs text-gray-400">No activity yet</p>
-        <p className="text-[10px] text-gray-600 mt-0.5">Boss kills and achievements appear here</p>
+        <p className="text-micro text-gray-600 mt-0.5">Boss kills and achievements appear here</p>
       </div>
     )
   }
@@ -42,13 +42,13 @@ export function ActivityFeed({ userId }: ActivityFeedProps) {
       {feed.map((entry) => {
         const { icon, text } = formatActivityEntry(entry)
         return (
-          <div key={entry.id} className="flex items-center gap-2.5 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/5">
+          <div key={entry.id} className="flex items-center gap-2.5 px-3 py-2 rounded bg-white/[0.03] border border-white/5">
             <span className="text-sm shrink-0">{icon}</span>
             <div className="min-w-0 flex-1">
-              <span className="text-[11px] font-semibold text-gray-200">{entry.username} </span>
-              <span className="text-[11px] text-gray-400">{text}</span>
+              <span className="text-caption font-semibold text-gray-200">{entry.username} </span>
+              <span className="text-caption text-gray-400">{text}</span>
             </div>
-            <span className="text-[10px] text-gray-600 font-mono shrink-0">{relativeTime(entry.created_at)}</span>
+            <span className="text-micro text-gray-600 font-mono shrink-0">{relativeTime(entry.created_at)}</span>
           </div>
         )
       })}

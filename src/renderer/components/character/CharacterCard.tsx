@@ -49,16 +49,16 @@ export function CharacterCard({ locked = false, onSlotInspect }: CharacterCardPr
 
   return (
     <>
-      <div className="rounded-xl border border-white/[0.09] bg-discord-card/80 p-3 space-y-2">
+      <div className="rounded-card border border-white/[0.09] bg-surface-2/80 p-3 space-y-2">
         <div className="flex items-center justify-between">
-          <p className="text-[10px] uppercase tracking-widest text-gray-400 font-mono font-semibold">Character</p>
+          <p className="text-micro uppercase tracking-widest text-gray-400 font-mono font-semibold">Character</p>
           <div className="flex items-center gap-2">
             {warriorLevel > 0 && (
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-md" style={{ color: '#EF4444', background: '#EF444415', border: '1px solid #EF444430' }}>
+              <span className="text-micro font-mono px-1.5 py-0.5 rounded-md" style={{ color: '#EF4444', background: '#EF444415', border: '1px solid #EF444430' }}>
                 ⚔ Lvl.{warriorLevel}
               </span>
             )}
-            {locked && <span className="text-[10px] text-amber-400/90 font-mono">locked</span>}
+            {locked && <span className="text-micro text-amber-400/90 font-mono">locked</span>}
           </div>
         </div>
 

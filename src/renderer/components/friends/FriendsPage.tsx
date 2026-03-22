@@ -219,7 +219,7 @@ export function FriendsPage({ friendsModel }: FriendsPageProps) {
                 <button
                   onClick={() => { setShowParty(!showParty); setShowLeaderboard(false); setShowGuild(false) }}
                   className={`text-xs px-3 py-1 rounded-full border transition-colors ${
-                    showParty ? 'border-cyber-neon/50 text-cyber-neon bg-cyber-neon/10' : 'border-white/10 text-gray-400 hover:text-white'
+                    showParty ? 'border-accent/50 text-accent bg-accent/10' : 'border-white/10 text-gray-400 hover:text-white'
                   }`}
                 >
                   Party
@@ -227,7 +227,7 @@ export function FriendsPage({ friendsModel }: FriendsPageProps) {
                 <button
                   onClick={() => { setShowLeaderboard(!showLeaderboard); setShowGuild(false); setShowParty(false) }}
                   className={`text-xs px-3 py-1 rounded-full border transition-colors ${
-                    showLeaderboard ? 'border-cyber-neon/50 text-cyber-neon bg-cyber-neon/10' : 'border-white/10 text-gray-400 hover:text-white'
+                    showLeaderboard ? 'border-accent/50 text-accent bg-accent/10' : 'border-white/10 text-gray-400 hover:text-white'
                   }`}
                 >
                   Leaderboard
@@ -248,7 +248,7 @@ export function FriendsPage({ friendsModel }: FriendsPageProps) {
           {/* RaidPartyPanel removed — party members are auto-invited when raid starts */}
           {incomingCount > 0 && !showLeaderboard && !showGuild && (
             <PendingRequests
-              requests={pendingRequests}
+              requests={pendingRequests.filter((r) => r.direction === 'incoming')}
               onAccept={acceptRequest}
               onReject={rejectRequest}
             />

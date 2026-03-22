@@ -633,7 +633,7 @@ const BONUS_MATERIAL_POOL: Record<ChestType, Array<{ itemId: string; weight: num
   rare_chest: [
     { itemId: 'ore_iron',      weight: 4, minQty: 1, maxQty: 3 },
     { itemId: 'monster_fang',  weight: 4, minQty: 1, maxQty: 3 },
-    { itemId: 'magic_essence', weight: 2, minQty: 1, maxQty: 2 },
+    { itemId: 'magic_essence', weight: 4, minQty: 1, maxQty: 2 },
   ],
   epic_chest: [
     { itemId: 'ore_iron',      weight: 2, minQty: 2, maxQty: 4 },
@@ -810,3 +810,43 @@ export function getCombatStatsFromEquipped(equippedBySlot: Partial<Record<LootSl
   }
   return out
 }
+
+// ── Salvage ───────────────────────────────────────────────────────────────────
+
+export interface SalvageYield { id: string; qty: number }
+
+/** Base materials by rarity when salvaging. */
+const SALVAGE_BASE: Record<LootRarity, SalvageYield[]> = {
+  common:    [{ id: 'ore_iron',      qty: 4 }, { id: 'slime_gel',    qty: 2 }, { id: 'goblin_tooth', qty: 1 }],
+  rare:      [{ id: 'magic_essence', qty: 3 }, { id: 'ancient_scale', qty: 2 }, { id: 'wolf_fang',   qty: 1 }],
+  epic:      [{ id: 'void_crystal',  qty: 3 }, { id: 'shadow_dust',  qty: 2 }, { id: 'troll_hide',   qty: 1 }],
+  legendary: [{ id: 'shadow_dust',   qty: 3 }, { id: 'lich_crystal', qty: 2 }, { id: 'dragon_scale', qty: 1 }],
+  mythic:    [{ id: 'storm_shard',   qty: 3 }, { id: 'titan_core',   qty: 2 }, { id: 'dragon_scale', qty: 2 }],
+}
+
+/** Slot-specific bonus materials on top of base. */
+const SALVAGE_SLOT_BONUS: Partial<Record<LootSlot, SalvageYield[]>> = {
+  weapon: [{ id: 'ore_iron', qty: 2 }],
+  head:   [{ id: 'ore_iron', qty: 1 }],
+  body:   [{ id: 'ore_iron', qty: 3 }],
+  legs:   [{ id: 'ore_iron', qty: 1 }],
+  ring:   [{ id: 'magic_essence', qty: 1 }],
+}
+
+/** Returns salvage output for an item (base + slot bonus), or null if not salvageable. */
+export function getSalvageOutput(item: LootItemDef): SalvageYield[] | null {
+  if (!LOOT_SLOTS.includes(item.slot as typeof LOOT_SLOTS[number])) return null
+  const base = SALVAGE_BASE[item.rarity] ?? []
+  const bonus = SALVAGE_SLOT_BONUS[item.slot] ?? []
+  // Merge: add bonus quantities to existing entries or append
+  const merged = [...base.map((y) => ({ ...y }))]
+  for (const b of bonus) {
+    const existing = merged.find((m) => m.id === b.id)
+    if (existing) existing.qty += b.qty
+    else merged.push({ ...b })
+  }
+  return merged
+}
+
+/** @deprecated Use getSalvageOutput */
+export const SALVAGE_YIELDS = SALVAGE_BASE

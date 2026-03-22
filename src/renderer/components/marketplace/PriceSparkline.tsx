@@ -10,7 +10,7 @@ interface PriceSparklineProps {
 export function PriceSparkline({ prices, width = 120, height = 32, color = '#f59e0b' }: PriceSparklineProps) {
   if (prices.length < 2) {
     return (
-      <span className="text-[10px] text-gray-600 font-mono">no data</span>
+      <span className="text-micro text-gray-600 font-mono">no data</span>
     )
   }
 

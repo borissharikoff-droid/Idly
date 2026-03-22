@@ -56,7 +56,7 @@ export function FriendList({ friends, onSelectFriend, onMessageFriend, unreadByF
 
   if (friends.length === 0) {
     return (
-      <div className="rounded-xl bg-discord-card/80 border border-white/10 p-6 text-center">
+      <div className="rounded-card bg-surface-2/80 border border-white/10 p-6 text-center">
         <span className="text-3xl block mb-3">👥</span>
         <p className="text-white font-medium text-sm mb-1">No squad yet</p>
         <p className="text-gray-500 text-xs mb-3">Add your first friend by username to compete and flex stats.</p>
@@ -97,10 +97,10 @@ export function FriendList({ friends, onSelectFriend, onMessageFriend, unreadByF
           <div
             key={f.id}
             onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, friend: f }) }}
-            className={`w-full flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+            className={`w-full flex items-center gap-3 rounded border p-3 text-left transition-all ${
               f.is_online
-                ? 'bg-discord-card/90 border-white/10 hover:border-white/20 hover:-translate-y-[1px]'
-                : 'bg-discord-card/50 border-white/5 opacity-70 hover:opacity-90 hover:-translate-y-[1px]'
+                ? 'bg-surface-2/90 border-white/10 hover:border-white/20 hover:-translate-y-[1px]'
+                : 'bg-surface-2/50 border-white/5 opacity-70 hover:opacity-90 hover:-translate-y-[1px]'
             }`}
           >
             <button
@@ -120,8 +120,8 @@ export function FriendList({ friends, onSelectFriend, onMessageFriend, unreadByF
                 ringOpacity={0.95}
               />
               {/* Online indicator */}
-              <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-discord-card ${
-                f.is_online ? 'bg-cyber-neon' : 'bg-gray-600'
+              <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-surface-2 ${
+                f.is_online ? 'bg-accent' : 'bg-gray-600'
               }`} />
             </div>
 
@@ -130,15 +130,15 @@ export function FriendList({ friends, onSelectFriend, onMessageFriend, unreadByF
               <div className="flex items-center gap-1.5 mb-0.5">
                 <span className="text-sm font-semibold text-white truncate">{f.username || 'Anonymous'}</span>
                 {f.guild_tag && (
-                  <span className="text-[10px] px-1 py-[1px] rounded font-bold border border-amber-500/40 bg-amber-500/10 text-amber-400 shrink-0" title={`Guild: ${f.guild_tag}`}>
+                  <span className="text-micro px-1 py-[1px] rounded font-bold border border-amber-500/40 bg-amber-500/10 text-amber-400 shrink-0" title={`Guild: ${f.guild_tag}`}>
                     [{f.guild_tag}]
                   </span>
                 )}
-                <span className="text-[10px] text-cyber-neon font-mono shrink-0" title={hasSyncedSkills ? 'Total skill level' : 'Skill sync pending'}>
+                <span className="text-micro text-accent font-mono shrink-0" title={hasSyncedSkills ? 'Total skill level' : 'Skill sync pending'}>
                   {totalSkillDisplay}
                 </span>
                 {f.streak_count > 0 && (
-                  <span className="text-[10px] text-orange-400 font-mono shrink-0" title="Streak">🔥{f.streak_count}d</span>
+                  <span className="text-micro text-orange-400 font-mono shrink-0" title="Streak">🔥{f.streak_count}d</span>
                 )}
               </div>
 
@@ -149,25 +149,25 @@ export function FriendList({ friends, onSelectFriend, onMessageFriend, unreadByF
                     isLeveling ? (() => {
                       const skill = getSkillByName(levelingSkill ?? '')
                       return (
-                        <span className="text-[11px] text-gray-400 font-medium flex items-center gap-1.5">
+                        <span className="text-caption text-gray-400 font-medium flex items-center gap-1.5">
                           {skill?.icon && <span className="text-sm">{skill.icon}</span>}
                           Leveling {levelingSkill}{liveDuration ? ` • ${liveDuration}` : ''}
                         </span>
                       )
                     })() : activityLabel ? (
-                      <span className="text-[11px] text-blue-400 truncate">{activityLabel}</span>
+                      <span className="text-caption text-blue-400 truncate">{activityLabel}</span>
                     ) : (
-                      <span className="text-[11px] text-gray-400">Online</span>
+                      <span className="text-caption text-gray-400">Online</span>
                     )
                   ) : (
-                    <span className="text-[11px] text-gray-600">{formatLastSeen(f.last_seen_at)}</span>
+                    <span className="text-caption text-gray-600">{formatLastSeen(f.last_seen_at)}</span>
                   )}
                 </div>
                 {f.is_online && appName && (() => {
                   const skill = levelingSkill ? getSkillByName(levelingSkill) : null
                   const activityLine = getSkillActivityLine(skill?.id ?? null, appName)
                   return (
-                    <span className="text-[10px] text-gray-500 truncate">
+                    <span className="text-micro text-gray-500 truncate">
                       {activityLine}{liveDuration ? ` • ${liveDuration}` : ''}
                     </span>
                   )
@@ -183,12 +183,12 @@ export function FriendList({ friends, onSelectFriend, onMessageFriend, unreadByF
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onMessageFriend(f) }}
-                  className="relative p-1.5 rounded-lg text-gray-400 hover:text-cyber-neon hover:bg-white/5 transition-colors"
+                  className="relative p-1.5 rounded text-gray-400 hover:text-accent hover:bg-white/5 transition-colors"
                   title="Message"
                 >
                   <MessageCircle className="w-[18px] h-[18px]" />
                   {unread > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-1 flex items-center justify-center rounded-full bg-discord-red text-[10px] font-bold text-white">
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[14px] h-[14px] px-1 flex items-center justify-center rounded-full bg-red-500 text-micro font-bold text-white">
                       {unread > 99 ? '99+' : unread}
                     </span>
                   )}
@@ -215,25 +215,25 @@ export function FriendList({ friends, onSelectFriend, onMessageFriend, unreadByF
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ duration: 0.08 }}
-              className="fixed z-[60] min-w-[144px] rounded-lg bg-[#0d1117] border border-white/10 shadow-2xl overflow-hidden"
+              className="fixed z-[60] min-w-[144px] rounded-card bg-surface-0 border border-white/10 shadow-2xl overflow-hidden"
               style={{ top: y, left: x }}
             >
               <div className="px-2.5 py-1 border-b border-white/[0.06]">
-                <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider truncate">{f.username ?? 'Friend'}</p>
+                <p className="text-micro font-semibold text-gray-400 uppercase tracking-wider truncate">{f.username ?? 'Friend'}</p>
               </div>
               <button type="button" onClick={() => { setCtxMenu(null); playClickSound(); onSelectFriend(f) }}
-                className="w-full text-left px-2.5 py-1.5 text-[10px] font-mono text-gray-300 hover:bg-white/[0.06] transition-colors">
+                className="w-full text-left px-2.5 py-1.5 text-micro font-mono text-gray-300 hover:bg-white/[0.06] transition-colors">
                 View profile
               </button>
               {onMessageFriend && (
                 <button type="button" onClick={() => { setCtxMenu(null); playClickSound(); onMessageFriend(f) }}
-                  className="w-full text-left px-2.5 py-1.5 text-[10px] font-mono text-indigo-300 hover:bg-indigo-500/10 transition-colors">
+                  className="w-full text-left px-2.5 py-1.5 text-micro font-mono text-indigo-300 hover:bg-indigo-500/10 transition-colors">
                   Message
                 </button>
               )}
               {canInvite && (
                 <button type="button" disabled={inviting === f.id} onClick={() => handleInviteToParty(f.id)}
-                  className="w-full text-left px-2.5 py-1.5 text-[10px] font-mono text-cyber-neon hover:bg-cyber-neon/10 transition-colors disabled:opacity-40">
+                  className="w-full text-left px-2.5 py-1.5 text-micro font-mono text-accent hover:bg-accent/10 transition-colors disabled:opacity-40">
                   {inviting === f.id ? 'Inviting...' : 'Invite to party'}
                 </button>
               )}

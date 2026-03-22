@@ -8,6 +8,7 @@ import { SKILLS } from '../../lib/skills'
 import { fetchActiveListings, partialBuyListing, cancelListing, expireOldListings, fetchTradeHistory, fetchPriceHistory, type ListingWithSeller, type CancelListingResult, type TradeHistoryEntry, type PriceHistoryEntry } from '../../services/marketplaceService'
 import { PriceSparkline } from './PriceSparkline'
 import { useGoldStore } from '../../stores/goldStore'
+import { fmt } from '../../lib/format'
 import { useAuthStore } from '../../stores/authStore'
 import { useInventoryStore } from '../../stores/inventoryStore'
 import { useNavBadgeStore } from '../../stores/navBadgeStore'
@@ -132,19 +133,19 @@ function OrderBookTile({ row, onOpenOffers, index }: { row: OrderBookRow; onOpen
       layout
       type="button"
       onClick={() => onOpenOffers(row)}
-      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-colors hover:border-white/20 text-left group"
+      className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded border transition-colors hover:border-white/20 text-left group"
       style={{ borderColor: theme.border, backgroundColor: `${theme.color}06` }}
     >
       {/* icon */}
       <div
-        className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 relative transition-transform group-hover:scale-105"
+        className="w-10 h-10 rounded flex items-center justify-center shrink-0 relative transition-transform group-hover:scale-105"
         style={{ borderColor: theme.border, borderWidth: 1, backgroundColor: `${theme.color}15` }}
       >
         <LootVisualShared icon={meta.icon} image={meta.image} className="w-6 h-6 object-contain" scale={meta.scale} />
         {row.totalQty > 1 && (
           <span
-            className="absolute -top-1.5 -right-1.5 text-[10px] font-bold px-1 py-px rounded-full border leading-none"
-            style={{ color: theme.color, backgroundColor: '#11111b', borderColor: theme.border }}
+            className="absolute -top-1.5 -right-1.5 text-micro font-bold px-1 py-px rounded-full border leading-none"
+            style={{ color: theme.color, backgroundColor: '#111214', borderColor: theme.border }}
           >
             ×{row.totalQty}
           </span>
@@ -152,18 +153,18 @@ function OrderBookTile({ row, onOpenOffers, index }: { row: OrderBookRow; onOpen
       </div>
       {/* name + info */}
       <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-semibold text-white truncate">{meta.name}</p>
+        <p className="text-caption font-semibold text-white truncate">{meta.name}</p>
         <div className="flex items-center gap-1.5 mt-0.5">
           <span
-            className="text-[10px] font-medium px-1.5 py-px rounded capitalize"
+            className="text-micro font-medium px-1.5 py-px rounded capitalize"
             style={{ color: theme.color, backgroundColor: `${theme.color}18` }}
           >
             {meta.rarity}
           </span>
           {meta.item && !['consumable', 'plant', 'material'].includes(meta.item.slot) && (
-            <span className="text-[10px] text-gray-500">IP {getItemPower(meta.item)}</span>
+            <span className="text-micro text-gray-500">IP {getItemPower(meta.item)}</span>
           )}
-          <span className="text-[10px] text-gray-600 truncate">
+          <span className="text-micro text-gray-600 truncate">
             {row.offers.length > 1
               ? `${row.offers.length} offers · ${allSellers.length === 1 ? allSellers[0] : `${allSellers.length} sellers`}`
               : (allSellers[0] ?? 'Unknown')}
@@ -172,9 +173,9 @@ function OrderBookTile({ row, onOpenOffers, index }: { row: OrderBookRow; onOpen
       </div>
       {/* floor price chip (always green since it's the cheapest offer) */}
       <div className="shrink-0">
-        <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border transition-colors bg-green-500/10 border-green-500/25 group-hover:bg-green-500/16">
-          <span className="text-[10px] text-green-400">🪙</span>
-          <span className="font-bold text-[11px] tabular-nums text-green-400">{row.floorPrice.toLocaleString()}</span>
+        <div className="flex items-center gap-1 px-2.5 py-1.5 rounded border transition-colors bg-green-500/10 border-green-500/25 group-hover:bg-green-500/16">
+          <span className="text-micro text-green-400">🪙</span>
+          <span className="font-bold text-caption tabular-nums text-green-400">{fmt(row.floorPrice)}</span>
           <span className="text-[7px] font-mono text-green-400/55 ml-0.5 tracking-wide">floor</span>
         </div>
       </div>
@@ -205,38 +206,38 @@ function MyListingRow({ group, cancellingId, onCancel, index }: {
       {...LIST_ITEM}
       transition={{ duration: 0.2, delay: Math.min(index * 0.03, 0.3) }}
       layout
-      className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-all"
+      className="flex items-center gap-2.5 px-3 py-2.5 rounded border transition-all"
       style={{ borderColor: theme.border, backgroundColor: `${theme.color}08` }}
     >
       <div
-        className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 relative"
+        className="w-10 h-10 rounded flex items-center justify-center shrink-0 relative"
         style={{ borderColor: theme.border, borderWidth: 1, backgroundColor: `${theme.color}15` }}
       >
         <LootVisualShared icon={meta.icon} image={meta.image} className="w-6 h-6 object-contain" scale={meta.scale} />
         {group.totalQty > 1 && (
           <span
-            className="absolute -top-1.5 -right-1.5 text-[10px] font-bold px-1 py-px rounded-full border leading-none"
-            style={{ color: theme.color, backgroundColor: '#11111b', borderColor: theme.border }}
+            className="absolute -top-1.5 -right-1.5 text-micro font-bold px-1 py-px rounded-full border leading-none"
+            style={{ color: theme.color, backgroundColor: '#111214', borderColor: theme.border }}
           >
             ×{group.totalQty}
           </span>
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-semibold text-white truncate">{meta.name}</p>
-        <p className="text-[10px] text-gray-500 mt-0.5">
+        <p className="text-caption font-semibold text-white truncate">{meta.name}</p>
+        <p className="text-micro text-gray-500 mt-0.5">
           {group.ids.length > 1 ? `${group.ids.length} orders · ` : ''}{group.pricePerUnit}🪙{group.totalQty > 1 ? '/ea' : ''}
         </p>
       </div>
-      <div className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 shrink-0">
-        <span className="text-amber-400 text-[10px]">🪙</span>
-        <span className="text-amber-400 font-bold text-[11px] tabular-nums">{group.pricePerUnit * group.totalQty}</span>
+      <div className="flex items-center gap-1 px-2.5 py-1.5 rounded bg-amber-500/10 border border-amber-500/20 shrink-0">
+        <span className="text-amber-400 text-micro">🪙</span>
+        <span className="text-amber-400 font-bold text-caption tabular-nums">{group.pricePerUnit * group.totalQty}</span>
       </div>
       <button
         type="button"
         disabled={isCancelling}
         onClick={() => { playClickSound(); onCancel(group) }}
-        className="px-2.5 py-1.5 rounded-lg text-[10px] font-semibold bg-red-500/12 border border-red-500/25 text-red-400 hover:bg-red-500/20 disabled:opacity-50 transition-all whitespace-nowrap shrink-0"
+        className="px-2.5 py-1.5 rounded text-micro font-semibold bg-red-500/12 border border-red-500/25 text-red-400 hover:bg-red-500/20 disabled:opacity-50 transition-all whitespace-nowrap shrink-0"
       >
         {isCancelling ? '...' : group.ids.length > 1 ? `Cancel ×${group.ids.length}` : 'Cancel'}
       </button>
@@ -280,31 +281,31 @@ function HistoryRow({ entry, userId, index }: { entry: TradeHistoryEntry; userId
     <motion.div
       {...LIST_ITEM}
       transition={{ duration: 0.2, delay: Math.min(index * 0.025, 0.3) }}
-      className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border"
+      className="flex items-center gap-2.5 px-3 py-2.5 rounded border"
       style={{ borderColor: `${theme.border}40`, backgroundColor: `${theme.color}04` }}
     >
       <div
-        className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+        className="w-9 h-9 rounded flex items-center justify-center shrink-0"
         style={{ borderColor: theme.border, borderWidth: 1, backgroundColor: `${theme.color}12` }}
       >
         <LootVisualShared icon={meta.icon} image={meta.image} className="w-5 h-5 object-contain" scale={meta.scale} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-semibold text-white truncate">
+        <p className="text-caption font-semibold text-white truncate">
           {meta.name}{entry.quantity > 1 ? ` ×${entry.quantity}` : ''}
         </p>
-        <p className="text-[10px] text-gray-500 truncate mt-0.5">
+        <p className="text-micro text-gray-500 truncate mt-0.5">
           {isSeller ? `→ ${otherUser}` : `← ${otherUser}`} · {timeAgo(entry.created_at)}
         </p>
       </div>
       <div className="flex items-center gap-2 shrink-0">
         {entry.status === 'sold' && (
-          <span className="text-[10px] tabular-nums font-semibold" style={{ color: isSeller ? '#22c55e' : '#3b82f6' }}>
-            {isSeller ? '+' : '−'}{totalGold}🪙
+          <span className="text-micro tabular-nums font-semibold" style={{ color: isSeller ? '#22c55e' : '#3b82f6' }}>
+            {isSeller ? '+' : '−'}{fmt(totalGold)}🪙
           </span>
         )}
         <span
-          className="text-[10px] font-medium px-1.5 py-0.5 rounded-md border"
+          className="text-micro font-medium px-1.5 py-0.5 rounded-md border"
           style={{ color: statusColor, borderColor: `${statusColor}30`, backgroundColor: `${statusColor}12` }}
         >
           {statusLabel}
@@ -457,28 +458,28 @@ function SellTab({ onListed, onToast, floorPriceMap }: { onListed: () => void; o
         <button
           type="button"
           onClick={() => { playClickSound(); setQuickListPrice(undefined); setSelectedItem(entry.id) }}
-          className="relative w-full flex items-center gap-2 p-2 rounded-lg border border-white/[0.06] bg-discord-darker/50 hover:bg-discord-darker/80 active:scale-[0.98] transition-all text-left overflow-hidden group"
+          className="relative w-full flex items-center gap-2 p-2 rounded border border-white/[0.06] bg-surface-0/50 hover:bg-surface-0/80 active:scale-[0.98] transition-all text-left overflow-hidden group"
         >
           {/* Left rarity accent */}
           <div className="absolute left-0 top-1 bottom-1 w-[2px] rounded-full" style={{ background: theme.color, opacity: normalizeRarity(meta.rarity) === 'common' ? 0.3 : 0.7 }} />
           {/* Icon box */}
           <div
-            className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 overflow-hidden transition-transform group-hover:scale-105"
+            className="w-10 h-10 rounded flex items-center justify-center shrink-0 overflow-hidden transition-transform group-hover:scale-105"
             style={{ background: '#0a0a14', border: `1px solid ${theme.color}30` }}
           >
             <LootVisualShared icon={meta.icon} image={meta.image} className="w-6 h-6 object-contain" scale={meta.scale} />
           </div>
           {/* Info */}
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-semibold text-gray-100 leading-tight truncate">{meta.name}</p>
+            <p className="text-micro font-semibold text-gray-100 leading-tight truncate">{meta.name}</p>
             <div className="flex items-center gap-1 mt-0.5">
-              <span className="text-[10px] font-mono uppercase" style={{ color: theme.color }}>{meta.rarity}</span>
+              <span className="text-micro font-mono uppercase" style={{ color: theme.color }}>{meta.rarity}</span>
             </div>
-            {perkChip && <p className="text-[10px] text-gray-500 truncate mt-0.5">{perkChip}</p>}
+            {perkChip && <p className="text-micro text-gray-500 truncate mt-0.5">{perkChip}</p>}
           </div>
           {/* Qty + Sell label */}
-          {entry.qty > 1 && <span className="text-[10px] font-mono font-bold shrink-0" style={{ color: theme.color }}>×{entry.qty}</span>}
-          <span className="text-[10px] text-amber-400/70 font-medium shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">Sell</span>
+          {entry.qty > 1 && <span className="text-micro font-mono font-bold shrink-0" style={{ color: theme.color }}>×{entry.qty}</span>}
+          <span className="text-micro text-amber-400/70 font-medium shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">Sell</span>
         </button>
         {/* Quick List button — only shown when active floor exists */}
         {activeFloor !== undefined && (
@@ -486,7 +487,7 @@ function SellTab({ onListed, onToast, floorPriceMap }: { onListed: () => void; o
             type="button"
             onClick={(e) => handleQuickList(e, entry)}
             title={`Quick list at ${activeFloor - 1}g (floor − 1)`}
-            className="absolute top-0.5 right-0.5 px-1 py-0.5 rounded text-[10px] font-bold border text-amber-400 border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 transition-colors leading-none z-10"
+            className="absolute top-0.5 right-0.5 px-1 py-0.5 rounded text-micro font-bold border text-amber-400 border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 transition-colors leading-none z-10"
           >
             ⚡
           </button>
@@ -511,9 +512,9 @@ function SellTab({ onListed, onToast, floorPriceMap }: { onListed: () => void; o
           value={sellSearch}
           onChange={(e) => setSellSearch(e.target.value)}
           placeholder={`Search ${sellable.length} item${sellable.length !== 1 ? 's' : ''} in inventory...`}
-          className="w-full text-[10px] font-mono px-2.5 py-1.5 pl-7 rounded-lg border border-white/[0.08] bg-[#11111b] text-gray-200 placeholder-gray-500 outline-none focus:border-amber-500/40 transition-colors"
+          className="w-full text-micro font-mono px-2.5 py-1.5 pl-7 rounded border border-white/[0.08] bg-surface-0 text-gray-200 placeholder-gray-500 outline-none focus:border-amber-500/40 transition-colors"
         />
-        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 pointer-events-none">🔍</span>
+        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-micro text-gray-500 pointer-events-none">🔍</span>
         {sellSearch && (
           <button type="button" onClick={() => setSellSearch('')} className="absolute right-1.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 px-1"><X className="w-3 h-3" /></button>
         )}
@@ -529,15 +530,15 @@ function SellTab({ onListed, onToast, floorPriceMap }: { onListed: () => void; o
               key={f.id}
               type="button"
               onClick={() => { playClickSound(); setFilterBy(f.id) }}
-              className={`flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-medium transition-all ${
+              className={`flex items-center gap-1 px-2 py-0.5 rounded-md border text-micro font-medium transition-all ${
                 active
                   ? 'border-amber-500/40 bg-amber-500/10 text-amber-400'
-                  : 'border-white/[0.08] bg-discord-darker/30 text-gray-400 hover:text-gray-200 hover:border-white/20'
+                  : 'border-white/[0.08] bg-surface-0/30 text-gray-400 hover:text-gray-200 hover:border-white/20'
               }`}
             >
-              <span className="text-[10px] leading-none">{f.icon}</span>
+              <span className="text-micro leading-none">{f.icon}</span>
               <span>{f.label}</span>
-              {!active && count > 0 && <span className="ml-0.5 text-[10px] font-mono opacity-50">{count}</span>}
+              {!active && count > 0 && <span className="ml-0.5 text-micro font-mono opacity-50">{count}</span>}
             </button>
           )
         })}
@@ -551,7 +552,7 @@ function SellTab({ onListed, onToast, floorPriceMap }: { onListed: () => void; o
         <motion.div
           initial={{ opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="py-14 text-center rounded-2xl border border-white/[0.06] bg-[#1e1e2e]/40"
+          className="py-14 text-center rounded-card border border-white/[0.06] bg-surface-1/40"
         >
           <span className="text-4xl mb-3 block opacity-40">📦</span>
           <p className="text-xs text-gray-400 font-medium">
@@ -562,7 +563,7 @@ function SellTab({ onListed, onToast, floorPriceMap }: { onListed: () => void; o
         <div className="grid grid-cols-3 gap-1">
           {grouped.map(({ key, label, icon, items: grpItems }) => (
             <React.Fragment key={key}>
-              <div className="col-span-full text-[10px] font-mono uppercase tracking-widest text-gray-500 pt-1 pb-0.5 flex items-center gap-2">
+              <div className="col-span-full text-micro font-mono uppercase tracking-widest text-gray-500 pt-1 pb-0.5 flex items-center gap-2">
                 <span className="flex items-center gap-1.5">{icon} {label}</span>
                 <div className="flex-1 border-t border-white/[0.05]" />
                 <span>{grpItems.length}</span>
@@ -945,7 +946,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
               type="button"
               onClick={handleRefresh}
               disabled={refreshing}
-              className="w-7 h-7 flex items-center justify-center rounded-lg border border-white/10 text-gray-400 hover:text-white hover:border-white/25 transition-colors disabled:opacity-40 active:scale-95"
+              className="w-7 h-7 flex items-center justify-center rounded border border-white/10 text-gray-400 hover:text-white hover:border-white/25 transition-colors disabled:opacity-40 active:scale-95"
               title="Refresh"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
@@ -958,9 +959,9 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
             <button
               type="button"
               onClick={() => setShowInfo((v) => !v)}
-              className={`w-[18px] h-[18px] rounded-full border text-[10px] font-bold flex items-center justify-center transition-colors ${
+              className={`w-[18px] h-[18px] rounded-full border text-micro font-bold flex items-center justify-center transition-colors ${
                 showInfo
-                  ? 'border-cyber-neon/50 text-cyber-neon bg-cyber-neon/10'
+                  ? 'border-accent/50 text-accent bg-accent/10'
                   : 'border-white/20 text-gray-500 hover:text-gray-300 hover:border-white/35'
               }`}
             >
@@ -973,9 +974,9 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -4 }}
                   transition={{ duration: 0.12 }}
-                  className="absolute left-0 top-6 z-50 w-60 rounded-xl border border-white/10 bg-[#1a1a2e]/95 p-3 shadow-2xl backdrop-blur-md"
+                  className="absolute left-0 top-6 z-50 w-60 rounded-card border border-white/10 bg-surface-1/95 p-3 shadow-2xl backdrop-blur-md"
                 >
-                  <p className="text-[10px] uppercase tracking-wider text-gray-500 font-mono mb-2">How it works</p>
+                  <p className="text-micro uppercase tracking-wider text-gray-500 font-mono mb-2">How it works</p>
                   <ul className="space-y-1.5">
                     {[
                       'Buy and sell items with other players.',
@@ -984,8 +985,8 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                       'Listings expire after 7 days.',
                     ].map((tip) => (
                       <li key={tip} className="flex items-start gap-1.5">
-                        <span className="text-cyber-neon/60 mt-px text-[10px] leading-tight shrink-0">▸</span>
-                        <span className="text-[11px] text-gray-300 leading-snug">{tip}</span>
+                        <span className="text-accent/60 mt-px text-micro leading-tight shrink-0">▸</span>
+                        <span className="text-caption text-gray-300 leading-snug">{tip}</span>
                       </li>
                     ))}
                   </ul>
@@ -997,7 +998,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
       />
 
       {/* Tabs */}
-      <div className="flex rounded-xl bg-[#11111b]/80 border border-white/[0.06] p-1 gap-1">
+      <div className="flex rounded bg-surface-0/80 border border-white/[0.06] p-1 gap-1">
         {([
           { id: 'listings' as TabId, label: 'Browse', count: otherCount },
           { id: 'sell' as TabId, label: 'Sell' },
@@ -1008,7 +1009,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id)}
-            className={`relative flex-1 py-1.5 rounded-lg text-[11px] font-medium transition-all active:scale-[0.97] ${
+            className={`relative flex-1 py-1.5 rounded text-caption font-medium transition-all active:scale-[0.97] ${
               activeTab === tab.id
                 ? 'text-white'
                 : 'text-gray-500 hover:text-gray-300'
@@ -1017,14 +1018,14 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
             {activeTab === tab.id && (
               <motion.div
                 layoutId="marketplace-tab-bg"
-                className="absolute inset-0 rounded-lg bg-white/10 border border-white/[0.06]"
+                className="absolute inset-0 rounded bg-white/10 border border-white/[0.06]"
                 transition={{ type: 'spring', duration: 0.35, bounce: 0.15 }}
               />
             )}
             <span className="relative z-10">
               {tab.label}
               {tab.count != null && tab.count > 0 && (
-                <span className="ml-1 text-[10px] opacity-50">{tab.count}</span>
+                <span className="ml-1 text-micro opacity-50">{tab.count}</span>
               )}
             </span>
           </button>
@@ -1047,12 +1048,12 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={`Search ${otherCount} listing${otherCount !== 1 ? 's' : ''}...`}
-                className="flex-1 min-w-0 px-3 py-1.5 rounded-lg bg-[#11111b] border border-white/[0.08] text-white text-xs placeholder-gray-500 focus:border-cyber-neon/40 outline-none transition-all"
+                className="flex-1 min-w-0 px-3 py-1.5 rounded bg-surface-0 border border-white/[0.08] text-white text-xs placeholder-gray-500 focus:border-accent/40 outline-none transition-all"
               />
               <button
                 type="button"
                 onClick={() => setSortBy((s) => s === 'price_asc' ? 'price_desc' : s === 'price_desc' ? 'newest' : 'price_asc')}
-                className="px-2.5 py-1.5 rounded-lg bg-[#11111b] border border-white/[0.08] text-gray-400 text-xs hover:text-white transition-colors whitespace-nowrap shrink-0 active:scale-95"
+                className="px-2.5 py-1.5 rounded bg-surface-0 border border-white/[0.08] text-gray-400 text-xs hover:text-white transition-colors whitespace-nowrap shrink-0 active:scale-95"
                 title="Sort order"
               >
                 {sortBy === 'newest' ? '🕒 New' : sortBy === 'price_asc' ? '🪙 ↑' : '🪙 ↓'}
@@ -1061,7 +1062,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                 <button
                   type="button"
                   onClick={clearFilters}
-                  className="px-2.5 py-1.5 rounded-lg bg-[#11111b] border border-cyber-neon/30 text-cyber-neon text-xs hover:bg-cyber-neon/10 transition-colors whitespace-nowrap shrink-0 active:scale-95"
+                  className="px-2.5 py-1.5 rounded bg-surface-0 border border-accent/30 text-accent text-xs hover:bg-accent/10 transition-colors whitespace-nowrap shrink-0 active:scale-95"
                 >
                   ×{activeFiltersCount}
                 </button>
@@ -1081,10 +1082,10 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                   key={f.id}
                   type="button"
                   onClick={() => { setPerkFilter(f.id); setSkillFilter('') }}
-                  className={`px-2 py-0.5 rounded-md border text-[11px] font-medium transition-all active:scale-95 ${
+                  className={`px-2 py-0.5 rounded-md border text-caption font-medium transition-all active:scale-95 ${
                     perkFilter === f.id
-                      ? 'border-cyber-neon/50 bg-cyber-neon/12 text-cyber-neon'
-                      : 'border-white/[0.08] bg-[#11111b] text-gray-400 hover:text-gray-200 hover:border-white/20'
+                      ? 'border-accent/50 bg-accent/12 text-accent'
+                      : 'border-white/[0.08] bg-surface-0 text-gray-400 hover:text-gray-200 hover:border-white/20'
                   }`}
                 >
                   {f.label}
@@ -1094,10 +1095,10 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                 type="button"
                 onClick={() => setFiltersExpanded((v) => !v)}
                 title={filtersExpanded ? 'Hide filters' : 'More filters'}
-                className={`px-2 py-0.5 rounded-md border text-[11px] transition-all active:scale-95 ${
+                className={`px-2 py-0.5 rounded-md border text-caption transition-all active:scale-95 ${
                   filtersExpanded
                     ? 'border-white/20 bg-white/8 text-gray-300'
-                    : 'border-white/[0.08] bg-[#11111b] text-gray-500 hover:text-gray-300 hover:border-white/20'
+                    : 'border-white/[0.08] bg-surface-0 text-gray-500 hover:text-gray-300 hover:border-white/20'
                 }`}
               >
                 {filtersExpanded ? '▲' : '▼'}
@@ -1117,10 +1118,10 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                       key={s.id}
                       type="button"
                       onClick={() => setSkillFilter((prev) => prev === s.id ? '' : s.id)}
-                      className={`px-2 py-0.5 rounded-md border text-[10px] transition-all ${
+                      className={`px-2 py-0.5 rounded-md border text-micro transition-all ${
                         skillFilter === s.id
                           ? 'border-white/30 bg-white/10 text-white'
-                          : 'border-white/[0.06] bg-[#11111b] text-gray-500 hover:text-gray-300 hover:border-white/15'
+                          : 'border-white/[0.06] bg-surface-0 text-gray-500 hover:text-gray-300 hover:border-white/15'
                       }`}
                     >
                       {s.icon} {s.name}
@@ -1136,10 +1137,10 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="rounded-lg border border-white/[0.07] bg-[#11111b]/60 p-2 space-y-1.5 overflow-hidden"
+                  className="rounded-card border border-white/[0.07] bg-surface-0/60 p-2 space-y-1.5 overflow-hidden"
                 >
                   <div className="flex items-center gap-1 flex-wrap">
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-gray-600 mr-1">Rarity</span>
+                    <span className="text-micro font-mono uppercase tracking-wider text-gray-600 mr-1">Rarity</span>
                     {RARITY_ORDER.map((r) => {
                       const t = RARITY_THEME[normalizeRarity(r)]
                       const active = rarityFilter === r
@@ -1148,7 +1149,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                           key={r}
                           type="button"
                           onClick={() => setRarityFilter((prev) => prev === r ? '' : r)}
-                          className="px-2 py-0.5 rounded-md border text-[10px] font-medium capitalize transition-all"
+                          className="px-2 py-0.5 rounded-md border text-micro font-medium capitalize transition-all"
                           style={active
                             ? { borderColor: t.border, background: `${t.glow}18`, color: t.color }
                             : { borderColor: 'rgba(255,255,255,0.07)', background: 'transparent', color: '#9ca3af' }}
@@ -1159,19 +1160,19 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                     })}
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-mono uppercase tracking-wider text-gray-600 mr-1">Price 🪙</span>
+                    <span className="text-micro font-mono uppercase tracking-wider text-gray-600 mr-1">Price 🪙</span>
                     <input
                       type="number" min={0} value={priceMin}
                       onChange={(e) => setPriceMin(e.target.value)}
                       placeholder="Min"
-                      className="grindly-no-spinner w-14 px-1.5 py-0.5 rounded-md bg-[#0d0d1a] border border-white/[0.08] text-white text-[11px] placeholder-gray-600 focus:border-cyber-neon/40 outline-none text-center"
+                      className="grindly-no-spinner w-14 px-1.5 py-0.5 rounded-md bg-[#0d0d1a] border border-white/[0.08] text-white text-caption placeholder-gray-600 focus:border-accent/40 outline-none text-center"
                     />
-                    <span className="text-gray-600 text-[10px]">–</span>
+                    <span className="text-gray-600 text-micro">–</span>
                     <input
                       type="number" min={0} value={priceMax}
                       onChange={(e) => setPriceMax(e.target.value)}
                       placeholder="Max"
-                      className="grindly-no-spinner w-14 px-1.5 py-0.5 rounded-md bg-[#0d0d1a] border border-white/[0.08] text-white text-[11px] placeholder-gray-600 focus:border-cyber-neon/40 outline-none text-center"
+                      className="grindly-no-spinner w-14 px-1.5 py-0.5 rounded-md bg-[#0d0d1a] border border-white/[0.08] text-white text-caption placeholder-gray-600 focus:border-accent/40 outline-none text-center"
                     />
                   </div>
                 </motion.div>
@@ -1195,13 +1196,13 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
             {loading ? (
               <div className="space-y-2">
                 {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="rounded-xl border border-white/[0.06] bg-[#1e1e2e]/50 p-3 flex items-center gap-2.5">
-                    <SkeletonBlock className="w-10 h-10 rounded-lg shrink-0" />
+                  <div key={i} className="rounded border border-white/[0.06] bg-surface-1/50 p-3 flex items-center gap-2.5">
+                    <SkeletonBlock className="w-10 h-10 rounded shrink-0" />
                     <div className="flex-1 min-w-0 space-y-2">
                       <SkeletonBlock className="h-3 w-24" />
                       <SkeletonBlock className="h-2.5 w-16" />
                     </div>
-                    <SkeletonBlock className="h-8 w-16 rounded-lg" />
+                    <SkeletonBlock className="h-8 w-16 rounded" />
                   </div>
                 ))}
               </div>
@@ -1209,7 +1210,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
               <motion.div
                 initial={{ opacity: 0, scale: 0.97 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="py-14 text-center rounded-2xl border border-white/[0.06] bg-[#1e1e2e]/40"
+                className="py-14 text-center rounded-card border border-white/[0.06] bg-surface-1/40"
               >
                 <span className="text-4xl mb-3 block opacity-40">🛒</span>
                 <p className="text-xs text-gray-400 font-medium">
@@ -1219,7 +1220,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                   <button
                     type="button"
                     onClick={clearFilters}
-                    className="mt-3 px-4 py-1.5 rounded-lg border border-cyber-neon/30 text-cyber-neon text-[10px] hover:bg-cyber-neon/10 transition-colors"
+                    className="mt-3 px-4 py-1.5 rounded border border-accent/30 text-accent text-micro hover:bg-accent/10 transition-colors"
                   >
                     Clear filters
                   </button>
@@ -1229,11 +1230,11 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
               <div className="space-y-1.5">
                 {/* Floor Board toggle */}
                 <div className="flex items-center justify-between mb-0.5">
-                  <span className="text-[10px] text-gray-600 font-mono">{orderBook.length} item{orderBook.length !== 1 ? 's' : ''}</span>
+                  <span className="text-micro text-gray-600 font-mono">{orderBook.length} item{orderBook.length !== 1 ? 's' : ''}</span>
                   <button
                     type="button"
                     onClick={() => { playClickSound(); setShowFloorBoard((v) => !v) }}
-                    className={`flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-mono transition-colors ${showFloorBoard ? 'bg-green-500/15 border-green-500/35 text-green-400' : 'border-white/10 text-gray-500 hover:border-white/20 hover:text-gray-400'}`}
+                    className={`flex items-center gap-1 px-2 py-0.5 rounded-md border text-micro font-mono transition-colors ${showFloorBoard ? 'bg-green-500/15 border-green-500/35 text-green-400' : 'border-white/10 text-gray-500 hover:border-white/20 hover:text-gray-400'}`}
                   >
                     🏷 {showFloorBoard ? 'List' : 'Floors'}
                   </button>
@@ -1241,11 +1242,11 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
 
                 {showFloorBoard ? (
                   /* ── Compact floor board ── */
-                  <div className="rounded-xl border border-white/[0.07] bg-[#11111b]/60 overflow-hidden">
+                  <div className="rounded-card border border-white/[0.07] bg-surface-0/60 overflow-hidden">
                     <div className="flex items-center px-3 py-1.5 border-b border-white/[0.05]">
-                      <span className="text-[10px] uppercase tracking-widest text-gray-600 font-mono flex-1">Item</span>
-                      <span className="text-[10px] uppercase tracking-widest text-gray-600 font-mono w-12 text-right">Floor</span>
-                      <span className="text-[10px] uppercase tracking-widest text-gray-600 font-mono w-10 text-right">Qty</span>
+                      <span className="text-micro uppercase tracking-widest text-gray-600 font-mono flex-1">Item</span>
+                      <span className="text-micro uppercase tracking-widest text-gray-600 font-mono w-12 text-right">Floor</span>
+                      <span className="text-micro uppercase tracking-widest text-gray-600 font-mono w-10 text-right">Qty</span>
                     </div>
                     {orderBook.map((row) => {
                       const m = getItemMeta(row.itemId)
@@ -1258,10 +1259,10 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                           className="w-full flex items-center px-3 py-1.5 border-b border-white/[0.04] last:border-0 hover:bg-white/[0.03] transition-colors gap-2"
                         >
                           <span className="text-sm shrink-0">{m.icon}</span>
-                          <span className="flex-1 text-[10px] text-gray-300 truncate text-left">{m.name}</span>
+                          <span className="flex-1 text-micro text-gray-300 truncate text-left">{m.name}</span>
                           <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: theme.color }} />
-                          <span className="w-12 text-right text-[11px] font-bold font-mono text-green-400">{row.floorPrice.toLocaleString()}</span>
-                          <span className="w-10 text-right text-[10px] text-gray-600 font-mono">×{row.totalQty}</span>
+                          <span className="w-12 text-right text-caption font-bold font-mono text-green-400">{fmt(row.floorPrice)}</span>
+                          <span className="w-10 text-right text-micro text-gray-600 font-mono">×{row.totalQty}</span>
                         </button>
                       )
                     })}
@@ -1291,10 +1292,10 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
             {loading ? (
               <div className="space-y-2">
                 {[1, 2].map((i) => (
-                  <div key={i} className="rounded-xl border border-white/[0.06] bg-[#1e1e2e]/50 p-3 flex items-center gap-2.5">
-                    <SkeletonBlock className="w-10 h-10 rounded-lg shrink-0" />
+                  <div key={i} className="rounded border border-white/[0.06] bg-surface-1/50 p-3 flex items-center gap-2.5">
+                    <SkeletonBlock className="w-10 h-10 rounded shrink-0" />
                     <div className="flex-1 space-y-2"><SkeletonBlock className="h-3 w-24" /></div>
-                    <SkeletonBlock className="h-8 w-16 rounded-lg" />
+                    <SkeletonBlock className="h-8 w-16 rounded" />
                   </div>
                 ))}
               </div>
@@ -1302,14 +1303,14 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
               <motion.div
                 initial={{ opacity: 0, scale: 0.97 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="py-14 text-center rounded-2xl border border-white/[0.06] bg-[#1e1e2e]/40"
+                className="py-14 text-center rounded-card border border-white/[0.06] bg-surface-1/40"
               >
                 <span className="text-4xl mb-3 block opacity-40">📦</span>
                 <p className="text-xs text-gray-400 font-medium">You have no active listings</p>
                 <button
                   type="button"
                   onClick={() => { playClickSound(); setActiveTab('sell') }}
-                  className="mt-3 px-4 py-1.5 rounded-lg bg-gradient-to-r from-amber-500/20 to-amber-600/15 border border-amber-500/30 text-amber-300 text-[11px] font-semibold hover:from-amber-500/30 hover:to-amber-600/25 transition-all active:scale-95"
+                  className="mt-3 px-4 py-1.5 rounded bg-gradient-to-r from-amber-500/20 to-amber-600/15 border border-amber-500/30 text-amber-300 text-caption font-semibold hover:from-amber-500/30 hover:to-amber-600/25 transition-all active:scale-95"
                 >
                   + Sell an item
                 </button>
@@ -1341,8 +1342,8 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
             {historyLoading ? (
               <div className="space-y-2">
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="rounded-xl border border-white/[0.06] bg-[#1e1e2e]/50 p-3 flex items-center gap-2.5">
-                    <SkeletonBlock className="w-9 h-9 rounded-lg shrink-0" />
+                  <div key={i} className="rounded border border-white/[0.06] bg-surface-1/50 p-3 flex items-center gap-2.5">
+                    <SkeletonBlock className="w-9 h-9 rounded shrink-0" />
                     <div className="flex-1 space-y-2"><SkeletonBlock className="h-3 w-28" /></div>
                     <SkeletonBlock className="h-5 w-12 rounded-md" />
                   </div>
@@ -1352,7 +1353,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
               <motion.div
                 initial={{ opacity: 0, scale: 0.97 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="py-14 text-center rounded-2xl border border-white/[0.06] bg-[#1e1e2e]/40"
+                className="py-14 text-center rounded-card border border-white/[0.06] bg-surface-1/40"
               >
                 <span className="text-4xl mb-3 block opacity-40">📜</span>
                 <p className="text-xs text-gray-400 font-medium">No trade history yet</p>
@@ -1380,7 +1381,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
             >
               <motion.div
                 {...MODAL_CARD}
-                className="w-[320px] rounded-2xl bg-[#1a1a2e] border border-white/10 p-4 flex flex-col shadow-2xl max-h-[80vh] overflow-y-auto"
+                className="w-[320px] rounded-card bg-surface-1 border border-white/10 p-4 flex flex-col shadow-2xl max-h-[80vh] overflow-y-auto"
                 style={{ boxShadow: '0 0 60px rgba(0,0,0,0.5)' }}
                 onClick={(e) => e.stopPropagation()}
               >
@@ -1392,7 +1393,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                       {/* Header */}
                       <div className="flex items-center gap-3 mb-4">
                         <div
-                          className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                          className="w-11 h-11 rounded flex items-center justify-center shrink-0"
                           style={{ backgroundColor: `${theme.color}18`, border: `1px solid ${theme.border}`, boxShadow: `0 0 16px ${theme.glow}` }}
                         >
                           <LootVisualShared icon={meta.icon} image={meta.image} className="w-7 h-7 object-contain" scale={meta.scale} />
@@ -1401,12 +1402,12 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                           <p className="text-sm font-semibold text-white truncate">{meta.name}</p>
                           <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                             <span
-                              className="text-[10px] font-medium px-1.5 py-px rounded capitalize"
+                              className="text-micro font-medium px-1.5 py-px rounded capitalize"
                               style={{ color: theme.color, backgroundColor: `${theme.color}18` }}
                             >{meta.rarity}</span>
-                            <span className="text-[10px] text-gray-500">{offersTarget.offers.length} offer{offersTarget.offers.length !== 1 ? 's' : ''} · {offersTarget.totalQty} total</span>
-                            <span className="flex items-center gap-0.5 px-1.5 py-px rounded bg-green-500/12 border border-green-500/25 text-[10px] font-bold text-green-400 font-mono">
-                              🏷 {offersTarget.floorPrice.toLocaleString()}g
+                            <span className="text-micro text-gray-500">{offersTarget.offers.length} offer{offersTarget.offers.length !== 1 ? 's' : ''} · {offersTarget.totalQty} total</span>
+                            <span className="flex items-center gap-0.5 px-1.5 py-px rounded bg-green-500/12 border border-green-500/25 text-micro font-bold text-green-400 font-mono">
+                              🏷 {fmt(offersTarget.floorPrice)}g
                             </span>
                           </div>
                         </div>
@@ -1421,7 +1422,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                       {priceHistory.length >= 2 && (
                         <div className="flex flex-col items-center gap-1 mb-3 pb-3 border-b border-white/[0.06]">
                           <PriceSparkline prices={priceHistory.map((p) => p.price_gold)} width={120} height={28} />
-                          <p className="text-[10px] text-gray-600 font-mono">last {priceHistory.length} sales</p>
+                          <p className="text-micro text-gray-600 font-mono">last {priceHistory.length} sales</p>
                         </div>
                       )}
 
@@ -1435,32 +1436,32 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                           return (
                             <div
                               key={offer.pricePerUnit}
-                              className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg border transition-colors ${isFloor ? 'border-green-500/20 bg-green-500/[0.04]' : 'border-white/[0.07] bg-white/[0.02]'}`}
+                              className={`flex items-center gap-2.5 px-2.5 py-2 rounded border transition-colors ${isFloor ? 'border-green-500/20 bg-green-500/[0.04]' : 'border-white/[0.07] bg-white/[0.02]'}`}
                             >
                               {/* Price */}
                               <div className="shrink-0 flex flex-col items-center gap-0.5">
                                 <div className={`flex items-center gap-1 px-2 py-1 rounded-md border ${isFloor ? 'bg-green-500/10 border-green-500/25' : 'bg-amber-500/8 border-amber-500/15'}`}>
-                                  <span className={`text-[10px] ${isFloor ? 'text-green-400' : 'text-amber-400'}`}>🪙</span>
-                                  <span className={`font-bold text-[11px] tabular-nums ${isFloor ? 'text-green-400' : 'text-amber-400'}`}>{offer.pricePerUnit.toLocaleString()}</span>
+                                  <span className={`text-micro ${isFloor ? 'text-green-400' : 'text-amber-400'}`}>🪙</span>
+                                  <span className={`font-bold text-caption tabular-nums ${isFloor ? 'text-green-400' : 'text-amber-400'}`}>{fmt(offer.pricePerUnit)}</span>
                                 </div>
                                 {isFloor
-                                  ? <span className="text-[10px] font-mono text-green-400/70 tracking-wide">floor</span>
-                                  : <span className="text-[10px] font-mono text-gray-600">+{aboveFloor}g ({abovePct}%)</span>
+                                  ? <span className="text-micro font-mono text-green-400/70 tracking-wide">floor</span>
+                                  : <span className="text-micro font-mono text-gray-600">+{aboveFloor}g ({abovePct}%)</span>
                                 }
                               </div>
                               {/* Info */}
                               <div className="flex-1 min-w-0">
-                                <p className="text-[10px] text-gray-300 truncate">
+                                <p className="text-micro text-gray-300 truncate">
                                   {offer.sellers.length === 1 ? offer.sellers[0] : `${offer.sellers.length} sellers`}
                                 </p>
-                                <p className="text-[10px] text-gray-600">×{offer.totalQty} available</p>
+                                <p className="text-micro text-gray-600">×{offer.totalQty} available</p>
                               </div>
                               {/* Buy button */}
                               <button
                                 type="button"
                                 onClick={() => { setOffersTarget(null); handleBuyClick(offersTarget.itemId, offer) }}
                                 disabled={!canAfford}
-                                className="px-2.5 py-1.5 rounded-lg border text-[10px] font-semibold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0 bg-cyber-neon/15 border-cyber-neon/35 text-cyber-neon hover:bg-cyber-neon/25"
+                                className="px-2.5 py-1.5 rounded border text-micro font-semibold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed shrink-0 bg-accent/15 border-accent/35 text-accent hover:bg-accent/25"
                               >
                                 {canAfford ? 'Buy' : 'Can\'t afford'}
                               </button>
@@ -1490,7 +1491,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
             >
               <motion.div
                 {...MODAL_CARD}
-                className="w-[320px] rounded-2xl bg-[#1a1a2e] border border-white/10 p-5 flex flex-col shadow-2xl"
+                className="w-[320px] rounded-card bg-surface-1 border border-white/10 p-5 flex flex-col shadow-2xl"
                 style={{ boxShadow: '0 0 60px rgba(0,0,0,0.5)' }}
                 onClick={(e) => e.stopPropagation()}
               >
@@ -1506,33 +1507,33 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                     <>
                       <div className="flex flex-col items-center mb-4">
                         <div
-                          className="w-16 h-16 rounded-2xl flex items-center justify-center mb-2.5 relative"
+                          className="w-16 h-16 rounded flex items-center justify-center mb-2.5 relative"
                           style={{ backgroundColor: `${theme.color}18`, border: `1px solid ${theme.border}`, boxShadow: `0 0 24px ${theme.glow}` }}
                         >
                           <LootVisualShared icon={meta.icon} image={meta.image} className="w-11 h-11 object-contain" scale={meta.scale} />
                         </div>
                         <p className="text-sm font-semibold text-white text-center">{meta.name}</p>
                         <span
-                          className="inline-flex mt-1 text-[10px] px-2 py-0.5 rounded-md border font-mono uppercase tracking-wide"
+                          className="inline-flex mt-1 text-micro px-2 py-0.5 rounded-md border font-mono uppercase tracking-wide"
                           style={{ color: theme.color, borderColor: theme.border, backgroundColor: `${theme.color}1A` }}
                         >
                           {meta.rarity}
                         </span>
                         {meta.item && getItemPerkDescription(meta.item) && (
-                          <p className="text-[10px] text-gray-400 text-center mt-1.5 leading-snug max-w-[220px]">{getItemPerkDescription(meta.item)}</p>
+                          <p className="text-micro text-gray-400 text-center mt-1.5 leading-snug max-w-[220px]">{getItemPerkDescription(meta.item)}</p>
                         )}
                         {/* Price history sparkline */}
                         {priceHistory.length >= 2 && (
                           <div className="flex flex-col items-center gap-1 mt-2">
                             <PriceSparkline prices={priceHistory.map((p) => p.price_gold)} width={120} height={28} />
-                            <p className="text-[10px] text-gray-600 font-mono">last {priceHistory.length} sales</p>
+                            <p className="text-micro text-gray-600 font-mono">last {priceHistory.length} sales</p>
                           </div>
                         )}
                       </div>
 
                       {maxQty > 1 && (
-                        <div className="mb-3 rounded-xl bg-black/20 border border-white/[0.06] p-3">
-                          <p className="text-[10px] text-gray-500 font-mono mb-2.5 text-center">
+                        <div className="mb-3 rounded bg-black/20 border border-white/[0.06] p-3">
+                          <p className="text-micro text-gray-500 font-mono mb-2.5 text-center">
                             Available: {maxQty} · {offer.pricePerUnit} 🪙 each
                           </p>
                           <div className="flex items-center justify-center gap-2">
@@ -1540,40 +1541,40 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                               type="button"
                               onClick={() => setBuyQty((q) => Math.max(1, q - 1))}
                               disabled={buying}
-                              className="w-8 h-8 rounded-lg border border-white/15 text-gray-300 hover:bg-white/10 text-sm font-bold transition-colors active:scale-90 disabled:opacity-40"
+                              className="w-8 h-8 rounded border border-white/15 text-gray-300 hover:bg-white/10 text-sm font-bold transition-colors active:scale-90 disabled:opacity-40"
                             >−</button>
                             <input
                               type="number"
                               min={1} max={maxQty} value={buyQty}
                               disabled={buying}
                               onChange={(e) => setBuyQty(Math.max(1, Math.min(maxQty, Math.floor(Number(e.target.value) || 1))))}
-                              className="grindly-no-spinner w-16 text-center bg-[#11111b] border border-white/10 rounded-lg text-white text-sm font-bold py-1.5 outline-none focus:border-cyber-neon/40 disabled:opacity-40"
+                              className="grindly-no-spinner w-16 text-center bg-surface-0 border border-white/10 rounded text-white text-sm font-bold py-1.5 outline-none focus:border-accent/40 disabled:opacity-40"
                             />
                             <button
                               type="button"
                               onClick={() => setBuyQty((q) => Math.min(maxQty, q + 1))}
                               disabled={buying}
-                              className="w-8 h-8 rounded-lg border border-white/15 text-gray-300 hover:bg-white/10 text-sm font-bold transition-colors active:scale-90 disabled:opacity-40"
+                              className="w-8 h-8 rounded border border-white/15 text-gray-300 hover:bg-white/10 text-sm font-bold transition-colors active:scale-90 disabled:opacity-40"
                             >+</button>
                             <button
                               type="button"
                               onClick={() => setBuyQty(maxQty)}
                               disabled={buying}
-                              className="px-2.5 py-1 rounded-lg border border-white/15 text-gray-400 text-[10px] hover:bg-white/10 transition-colors disabled:opacity-40"
+                              className="px-2.5 py-1 rounded border border-white/15 text-gray-400 text-micro hover:bg-white/10 transition-colors disabled:opacity-40"
                             >Max</button>
                           </div>
                         </div>
                       )}
 
-                      <div className={`flex flex-col items-center gap-1 mb-4 px-3 py-2.5 rounded-xl border ${canAfford ? 'bg-amber-500/8 border-amber-500/20' : 'bg-red-500/8 border-red-500/20'}`}>
+                      <div className={`flex flex-col items-center gap-1 mb-4 px-3 py-2.5 rounded border ${canAfford ? 'bg-amber-500/8 border-amber-500/20' : 'bg-red-500/8 border-red-500/20'}`}>
                         <div className="flex items-center gap-1.5">
                           <span className="text-amber-400">🪙</span>
                           <span className={`font-bold text-base tabular-nums ${canAfford ? 'text-amber-400' : 'text-red-400'}`}>{buyCost}</span>
                           <span className="text-gray-500 text-xs">gold</span>
-                          {!canAfford && <span className="text-red-400 text-[10px] ml-1">({buyCost - (gold ?? 0)} short)</span>}
+                          {!canAfford && <span className="text-red-400 text-micro ml-1">({buyCost - (gold ?? 0)} short)</span>}
                         </div>
                         {clampedBuyQty > 1 && (
-                          <p className="text-[10px] text-gray-500 font-mono">
+                          <p className="text-micro text-gray-500 font-mono">
                             {clampedBuyQty} × {offer.pricePerUnit} 🪙
                           </p>
                         )}
@@ -1584,17 +1585,17 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                           type="button"
                           onClick={() => setBuyTarget(null)}
                           disabled={buying}
-                          className="flex-1 py-2.5 rounded-xl border border-white/15 text-gray-400 text-xs hover:bg-white/5 transition-colors disabled:opacity-40 active:scale-[0.97]"
+                          className="flex-1 py-2.5 rounded border border-white/15 text-gray-400 text-xs hover:bg-white/5 transition-colors disabled:opacity-40 active:scale-[0.97]"
                         >Cancel</button>
                         <button
                           type="button"
                           onClick={() => handleBuy(clampedBuyQty)}
                           disabled={!canAfford || buying}
-                          className="flex-1 py-2.5 rounded-xl bg-cyber-neon/20 border border-cyber-neon/40 text-cyber-neon text-xs font-semibold hover:bg-cyber-neon/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-[0.97]"
+                          className="flex-1 py-2.5 rounded bg-accent/20 border border-accent/40 text-accent text-xs font-semibold hover:bg-accent/30 disabled:opacity-40 disabled:cursor-not-allowed transition-all active:scale-[0.97]"
                         >
                           {buying ? (
                             <span className="flex items-center justify-center gap-1.5">
-                              <span className="w-3 h-3 border-2 border-cyber-neon/40 border-t-cyber-neon rounded-full animate-spin" />
+                              <span className="w-3 h-3 border-2 border-accent/40 border-t-accent rounded-full animate-spin" />
                               Buying...
                             </span>
                           ) : maxQty > 1 ? `Buy ×${clampedBuyQty}` : 'Buy'}
@@ -1622,7 +1623,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
             >
               <motion.div
                 {...MODAL_CARD}
-                className="w-[300px] rounded-2xl bg-[#1a1a2e] border border-white/10 p-5 flex flex-col shadow-2xl"
+                className="w-[300px] rounded-card bg-surface-1 border border-white/10 p-5 flex flex-col shadow-2xl"
                 style={{ boxShadow: '0 0 60px rgba(0,0,0,0.5)' }}
                 onClick={(e) => e.stopPropagation()}
               >
@@ -1633,7 +1634,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                     <>
                       <div className="flex items-center gap-3 mb-3">
                         <div
-                          className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0"
+                          className="w-10 h-10 rounded flex items-center justify-center shrink-0"
                           style={{ backgroundColor: `${theme.color}15`, border: `1px solid ${theme.border}` }}
                         >
                           <LootVisualShared icon={meta.icon} image={meta.image} className="w-6 h-6 object-contain" scale={meta.scale} />
@@ -1642,23 +1643,23 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                           <p className="text-sm font-semibold text-white">
                             Cancel {cancelTarget.ids.length > 1 ? `${cancelTarget.ids.length} listings` : 'listing'}?
                           </p>
-                          <p className="text-[10px] text-gray-500 mt-0.5">
+                          <p className="text-micro text-gray-500 mt-0.5">
                             {meta.name}{cancelTarget.totalQty > 1 ? ` ×${cancelTarget.totalQty}` : ''} → inventory
                           </p>
                         </div>
                       </div>
-                      {cancelError && <p className="text-[11px] text-red-400 mb-3">{cancelError}</p>}
+                      {cancelError && <p className="text-caption text-red-400 mb-3">{cancelError}</p>}
                       <div className="flex gap-2">
                         <button
                           type="button"
                           onClick={() => { setCancelTarget(null); setCancelError(null) }}
-                          className="flex-1 py-2.5 rounded-xl border border-white/15 text-gray-400 text-xs hover:bg-white/5 transition-colors active:scale-[0.97]"
+                          className="flex-1 py-2.5 rounded border border-white/15 text-gray-400 text-xs hover:bg-white/5 transition-colors active:scale-[0.97]"
                         >Keep</button>
                         <button
                           type="button"
                           disabled={cancelTarget.ids.some((id) => cancellingId === id)}
                           onClick={() => handleCancelConfirm(cancelTarget)}
-                          className="flex-1 py-2.5 rounded-xl bg-red-500/15 border border-red-500/30 text-red-400 text-xs font-semibold hover:bg-red-500/25 disabled:opacity-50 transition-all active:scale-[0.97]"
+                          className="flex-1 py-2.5 rounded bg-red-500/15 border border-red-500/30 text-red-400 text-xs font-semibold hover:bg-red-500/25 disabled:opacity-50 transition-all active:scale-[0.97]"
                         >
                           {cancelTarget.ids.some((id) => cancellingId === id) ? (
                             <span className="flex items-center justify-center gap-1.5">

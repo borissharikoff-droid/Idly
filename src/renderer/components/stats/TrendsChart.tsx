@@ -124,8 +124,8 @@ export const TrendsChart = memo(function TrendsChart({
 
   if (loading) {
     return (
-      <div className="rounded-xl bg-discord-card/80 border border-white/10 p-3">
-        <p className="text-[10px] text-gray-500 font-mono animate-pulse">Loading trends...</p>
+      <div className="rounded-card bg-surface-2/80 border border-white/10 p-3">
+        <p className="text-micro text-gray-500 font-mono animate-pulse">Loading trends...</p>
       </div>
     )
   }
@@ -133,11 +133,11 @@ export const TrendsChart = memo(function TrendsChart({
   return (
     <div className="space-y-3">
       {/* Bar chart */}
-      <div className="rounded-xl bg-discord-card/80 border border-white/10 p-3">
+      <div className="rounded-card bg-surface-2/80 border border-white/10 p-3">
         <div className="flex items-center justify-between mb-2.5">
           <div className="flex items-center gap-2">
-            <p className="text-[10px] uppercase tracking-wider text-gray-500 font-mono">Daily Tracked Time</p>
-            {refreshing && <span className="text-[10px] font-mono text-cyber-neon/80">Updating...</span>}
+            <p className="text-micro uppercase tracking-wider text-gray-500 font-mono">Daily Tracked Time</p>
+            {refreshing && <span className="text-micro font-mono text-accent/80">Updating...</span>}
           </div>
           {showRangeControls ? (
             <div className="flex gap-1 flex-wrap justify-end">
@@ -145,8 +145,8 @@ export const TrendsChart = memo(function TrendsChart({
                 <button
                   key={r}
                   onClick={() => setRange(r)}
-                  className={`text-[10px] px-2 py-0.5 rounded-md font-mono transition-colors ${
-                    range === r ? 'bg-cyber-neon/15 text-cyber-neon border border-cyber-neon/30' : 'text-gray-600 hover:text-gray-400'
+                  className={`text-micro px-2 py-0.5 rounded-md font-mono transition-colors ${
+                    range === r ? 'bg-accent/15 text-accent border border-accent/30' : 'text-gray-600 hover:text-gray-400'
                   }`}
                 >
                   {r === 'custom' ? 'Custom' : r}
@@ -154,12 +154,12 @@ export const TrendsChart = memo(function TrendsChart({
               ))}
             </div>
           ) : (
-            <span className="text-[10px] font-mono text-gray-500">{periodLabel || `${days} days`}</span>
+            <span className="text-micro font-mono text-gray-500">{periodLabel || `${days} days`}</span>
           )}
         </div>
         {showRangeControls && range === 'custom' && (
-          <div className="mb-2.5 rounded-lg bg-discord-darker/70 border border-white/10 p-2 flex items-center gap-2">
-            <span className="text-[10px] uppercase tracking-wide text-gray-500 font-mono">Days</span>
+          <div className="mb-2.5 rounded bg-surface-0/70 border border-white/10 p-2 flex items-center gap-2">
+            <span className="text-micro uppercase tracking-wide text-gray-500 font-mono">Days</span>
             <input
               type="number"
               min={1}
@@ -169,7 +169,7 @@ export const TrendsChart = memo(function TrendsChart({
                 const next = Number(e.target.value)
                 if (Number.isFinite(next)) setCustomDays(Math.max(1, Math.min(3650, Math.round(next))))
               }}
-              className="w-24 rounded-md border border-white/10 bg-discord-darker px-2 py-1 text-xs text-white font-mono focus:outline-none focus:border-cyber-neon/40"
+              className="w-24 rounded-md border border-white/10 bg-surface-0 px-2 py-1 text-xs text-white font-mono focus:outline-none focus:border-accent/40"
             />
             <span className="text-xs text-gray-400">days back from today</span>
           </div>
@@ -178,15 +178,15 @@ export const TrendsChart = memo(function TrendsChart({
         {/* Summary stats */}
         <div className="flex gap-3 mb-3">
           <div>
-            <p className="text-[10px] text-gray-600 font-mono">Total</p>
-            <p className="text-xs font-mono font-bold text-cyber-neon">{formatDuration(totalPeriodSeconds)}</p>
+            <p className="text-micro text-gray-600 font-mono">Total</p>
+            <p className="text-xs font-mono font-bold text-accent">{formatDuration(totalPeriodSeconds)}</p>
           </div>
           <div>
-            <p className="text-[10px] text-gray-600 font-mono">Avg/day</p>
+            <p className="text-micro text-gray-600 font-mono">Avg/day</p>
             <p className="text-xs font-mono font-bold text-white">{formatDuration(avgDailySeconds)}</p>
           </div>
           <div>
-            <p className="text-[10px] text-gray-600 font-mono">Sessions</p>
+            <p className="text-micro text-gray-600 font-mono">Sessions</p>
             <p className="text-xs font-mono font-bold text-white">{totalPeriodSessions}</p>
           </div>
         </div>
@@ -209,7 +209,7 @@ export const TrendsChart = memo(function TrendsChart({
                     transitionDelay: `${Math.min(i * 8, 120)}ms`,
                   }}
                   className={`w-full rounded-t-sm ${
-                    d.total_seconds > 0 ? 'bg-cyber-neon/60 group-hover:bg-cyber-neon/80' : 'bg-white/[0.03]'
+                    d.total_seconds > 0 ? 'bg-accent/60 group-hover:bg-accent/80' : 'bg-white/[0.03]'
                   }`}
                 />
               </div>
@@ -233,8 +233,8 @@ export const TrendsChart = memo(function TrendsChart({
       </div>
 
       {/* Contribution Heatmap */}
-      <div className="rounded-xl bg-discord-card/80 border border-white/10 p-3">
-        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-mono mb-2">Activity Heatmap (90 days)</p>
+      <div className="rounded-card bg-surface-2/80 border border-white/10 p-3">
+        <p className="text-micro uppercase tracking-wider text-gray-500 font-mono mb-2">Activity Heatmap (90 days)</p>
         <div className="flex gap-0.5">
           {weeks.map((week, wi) => (
             <div key={wi} className="flex flex-col gap-0.5 flex-1">
@@ -250,7 +250,7 @@ export const TrendsChart = memo(function TrendsChart({
           ))}
         </div>
         <div className="flex items-center justify-end gap-1 mt-2">
-          <span className="text-[10px] text-gray-600 font-mono">Less</span>
+          <span className="text-micro text-gray-600 font-mono">Less</span>
           {[0, 0.25, 0.5, 0.75, 1].map((v, i) => (
             <div
               key={i}
@@ -258,7 +258,7 @@ export const TrendsChart = memo(function TrendsChart({
               style={{ backgroundColor: v === 0 ? 'rgba(255,255,255,0.03)' : `rgba(0,255,136,${v * 0.75})` }}
             />
           ))}
-          <span className="text-[10px] text-gray-600 font-mono">More</span>
+          <span className="text-micro text-gray-600 font-mono">More</span>
         </div>
       </div>
     </div>

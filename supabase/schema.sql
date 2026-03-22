@@ -359,6 +359,33 @@ CREATE TABLE IF NOT EXISTS public.guild_hall_contributions (
   PRIMARY KEY (guild_id, item_id)
 );
 
+-- RLS for guild tables (policies live in the DB; listed here for documentation)
+ALTER TABLE public.guilds ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "guilds_public_read"    ON public.guilds FOR SELECT USING (true);
+CREATE POLICY "guilds_insert_auth"    ON public.guilds FOR INSERT WITH CHECK (auth.uid() IS NOT NULL AND owner_id = auth.uid());
+CREATE POLICY "guilds_owner_update"   ON public.guilds FOR UPDATE USING (owner_id = auth.uid());
+
+ALTER TABLE public.guild_members ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "guild_members_read"        ON public.guild_members FOR SELECT USING (true);
+CREATE POLICY "guild_members_insert"      ON public.guild_members FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "guild_members_delete_own"  ON public.guild_members FOR DELETE USING (user_id = auth.uid());
+
+ALTER TABLE public.guild_chest_items ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "guild_chest_read"    ON public.guild_chest_items FOR SELECT
+  USING (EXISTS (SELECT 1 FROM guild_members WHERE guild_id = guild_chest_items.guild_id AND user_id = auth.uid()));
+CREATE POLICY "guild_chest_insert"  ON public.guild_chest_items FOR INSERT
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM public.guild_members WHERE guild_id = guild_chest_items.guild_id AND user_id = auth.uid())
+  );
+
+ALTER TABLE public.guild_activity_log ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "guild_activity_read"    ON public.guild_activity_log FOR SELECT
+  USING (EXISTS (SELECT 1 FROM guild_members WHERE guild_id = guild_activity_log.guild_id AND user_id = auth.uid()));
+CREATE POLICY "guild_activity_insert"  ON public.guild_activity_log FOR INSERT
+  WITH CHECK (
+    EXISTS (SELECT 1 FROM public.guild_members WHERE guild_id = guild_activity_log.guild_id AND user_id = auth.uid())
+  );
+
 ALTER TABLE guild_hall_contributions ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "guild_members_read_contributions"
@@ -402,6 +429,88 @@ RETURNS VOID AS $$
   )
   WHERE id = p_guild_id;
 $$ LANGUAGE sql SECURITY DEFINER;
+
+-- RPC: sync_chests — кап 999/тип, дельта +50/sync, только легитимные типы
+CREATE OR REPLACE FUNCTION public.sync_chests(p_chests jsonb) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_chest jsonb; v_type text; v_qty int; v_old_qty int; v_final_qty int;
+  MAX_QTY CONSTANT int:=999; MAX_DELTA CONSTANT int:=50;
+  VALID_TYPES CONSTANT text[]:=ARRAY['common_chest','rare_chest','epic_chest','legendary_chest'];
+BEGIN
+  FOR v_chest IN SELECT * FROM jsonb_array_elements(p_chests) LOOP
+    v_type:=trim(v_chest->>'chest_type'); v_qty:=LEAST(GREATEST(COALESCE((v_chest->>'quantity')::int,0),0),MAX_QTY);
+    CONTINUE WHEN v_type IS NULL OR NOT(v_type=ANY(VALID_TYPES));
+    SELECT quantity INTO v_old_qty FROM public.user_chests WHERE user_id=auth.uid() AND chest_type=v_type;
+    IF NOT FOUND THEN v_final_qty:=LEAST(v_qty,MAX_DELTA);
+    ELSIF v_qty<v_old_qty THEN v_final_qty:=GREATEST(v_qty,0);
+    ELSE v_final_qty:=LEAST(v_qty,v_old_qty+MAX_DELTA); END IF;
+    IF v_final_qty=0 THEN DELETE FROM public.user_chests WHERE user_id=auth.uid() AND chest_type=v_type;
+    ELSE INSERT INTO public.user_chests(user_id,chest_type,quantity,updated_at) VALUES(auth.uid(),v_type,v_final_qty,now())
+      ON CONFLICT(user_id,chest_type) DO UPDATE SET quantity=EXCLUDED.quantity,updated_at=now(); END IF;
+  END LOOP;
+END;$$;
+REVOKE ALL ON FUNCTION public.sync_chests(jsonb) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.sync_chests(jsonb) TO authenticated;
+
+-- RPC: sync_inventory — server caps items at 9999, uses auth.uid()
+-- (replaces direct user_inventory upsert from client)
+CREATE OR REPLACE FUNCTION public.sync_inventory(p_items jsonb) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_item jsonb; v_item_id text; v_qty int;
+BEGIN
+  FOR v_item IN SELECT * FROM jsonb_array_elements(p_items) LOOP
+    v_item_id := trim(v_item->>'item_id');
+    v_qty := LEAST(GREATEST(COALESCE((v_item->>'quantity')::int,0),0),9999);
+    CONTINUE WHEN v_item_id IS NULL OR v_item_id='';
+    IF v_qty=0 THEN DELETE FROM public.user_inventory WHERE user_id=auth.uid() AND item_id=v_item_id;
+    ELSE INSERT INTO public.user_inventory(user_id,item_id,quantity,updated_at) VALUES(auth.uid(),v_item_id,v_qty,now()) ON CONFLICT(user_id,item_id) DO UPDATE SET quantity=EXCLUDED.quantity,updated_at=now(); END IF;
+  END LOOP;
+END;$$;
+REVOKE ALL ON FUNCTION public.sync_inventory(jsonb) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.sync_inventory(jsonb) TO authenticated;
+
+-- RPC: sync_skills — caps XP 5M, level 99, prestige 10, uses auth.uid()
+CREATE OR REPLACE FUNCTION public.sync_skills(p_skills jsonb) RETURNS void LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_skill jsonb; v_skill_id text; v_xp bigint; v_level int; v_prestige int;
+BEGIN
+  FOR v_skill IN SELECT * FROM jsonb_array_elements(p_skills) LOOP
+    v_skill_id:=trim(v_skill->>'skill_id'); v_xp:=LEAST(GREATEST(COALESCE((v_skill->>'total_xp')::bigint,0),0),5000000);
+    v_level:=LEAST(GREATEST(COALESCE((v_skill->>'level')::int,0),0),99); v_prestige:=LEAST(GREATEST(COALESCE((v_skill->>'prestige_count')::int,0),0),10);
+    CONTINUE WHEN v_skill_id IS NULL OR v_skill_id='';
+    INSERT INTO public.user_skills(user_id,skill_id,total_xp,level,prestige_count,updated_at) VALUES(auth.uid(),v_skill_id,v_xp,v_level,v_prestige,now())
+    ON CONFLICT(user_id,skill_id) DO UPDATE SET total_xp=EXCLUDED.total_xp,level=EXCLUDED.level,prestige_count=EXCLUDED.prestige_count,updated_at=now();
+  END LOOP;
+END;$$;
+REVOKE ALL ON FUNCTION public.sync_skills(jsonb) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.sync_skills(jsonb) TO authenticated;
+
+-- RPC: create_listing — atomic price validation + inventory deduction
+CREATE OR REPLACE FUNCTION public.create_listing(p_item_id text,p_quantity int,p_price_gold int) RETURNS jsonb LANGUAGE plpgsql SECURITY DEFINER SET search_path=public AS $$
+DECLARE v_current_qty int; v_listing_id uuid;
+BEGIN
+  IF p_item_id IS NULL OR trim(p_item_id)='' THEN RETURN jsonb_build_object('ok',false,'error','invalid item_id'); END IF;
+  IF p_quantity<1 THEN RETURN jsonb_build_object('ok',false,'error','quantity must be >= 1'); END IF;
+  IF p_price_gold<1 OR p_price_gold>10000000 THEN RETURN jsonb_build_object('ok',false,'error','price must be 1-10000000'); END IF;
+  SELECT quantity INTO v_current_qty FROM public.user_inventory WHERE user_id=auth.uid() AND item_id=p_item_id FOR UPDATE;
+  IF v_current_qty IS NULL OR v_current_qty<p_quantity THEN RETURN jsonb_build_object('ok',false,'error','insufficient inventory'); END IF;
+  IF v_current_qty-p_quantity<=0 THEN DELETE FROM public.user_inventory WHERE user_id=auth.uid() AND item_id=p_item_id;
+  ELSE UPDATE public.user_inventory SET quantity=quantity-p_quantity,updated_at=now() WHERE user_id=auth.uid() AND item_id=p_item_id; END IF;
+  INSERT INTO public.marketplace_listings(seller_id,item_id,quantity,price_gold,status) VALUES(auth.uid(),p_item_id,p_quantity,p_price_gold,'active') RETURNING id INTO v_listing_id;
+  RETURN jsonb_build_object('ok',true,'listing_id',v_listing_id);
+END;$$;
+REVOKE ALL ON FUNCTION public.create_listing(text,int,int) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.create_listing(text,int,int) TO authenticated;
+
+-- RPC: sync gold — server-side cap, uses auth.uid(), cannot touch other users
+CREATE OR REPLACE FUNCTION public.sync_gold(p_gold BIGINT)
+RETURNS BIGINT LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE v_capped BIGINT;
+BEGIN
+  v_capped := LEAST(GREATEST(p_gold, 0), 100000000);
+  UPDATE public.profiles SET gold = v_capped, updated_at = now() WHERE id = auth.uid();
+  RETURN v_capped;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.sync_gold(BIGINT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.sync_gold(BIGINT) TO authenticated;
 
 -- RPC: get price history for marketplace sparkline
 CREATE OR REPLACE FUNCTION get_price_history(p_item_id TEXT, p_limit INT DEFAULT 20)
@@ -528,3 +637,9 @@ CREATE POLICY "raid_history_insert" ON public.raid_history
 -- filters never match → member-leave and invite events are silently dropped.
 ALTER TABLE public.party_members REPLICA IDENTITY FULL;
 ALTER TABLE public.party_invites REPLICA IDENTITY FULL;
+ALTER TABLE public.party_craft_sessions REPLICA IDENTITY FULL;
+
+-- ── Realtime Publication ───────────────────────────────────────────────────────
+-- All party/craft tables must be in supabase_realtime for events to fire.
+ALTER PUBLICATION supabase_realtime ADD TABLE public.party_members;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.party_craft_sessions;

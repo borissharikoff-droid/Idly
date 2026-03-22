@@ -243,7 +243,7 @@ export function SettingsPage() {
               className="overflow-hidden"
             >
               <div className="space-y-2 pl-3 border-l border-white/5">
-                <p className="text-[10px] uppercase tracking-wider text-gray-500 font-mono mt-1">Desktop popup per event</p>
+                <p className="text-micro uppercase tracking-wider text-gray-500 font-mono mt-1">Desktop popup per event</p>
                 <ToggleRow
                   label="Level ups"
                   sublabel="When a skill levels up"
@@ -279,7 +279,7 @@ export function SettingsPage() {
 
         <Divider />
 
-        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-mono">Smart reminders</p>
+        <p className="text-micro uppercase tracking-wider text-gray-500 font-mono">Smart reminders</p>
         <ToggleRow
           label="Grind reminder"
           sublabel="Nudge if no session today"
@@ -330,7 +330,7 @@ export function SettingsPage() {
         {message && (
           message.type === 'ok'
             ? <InlineSuccess message={message.text} />
-            : <p className="text-xs text-discord-red">{message.text}</p>
+            : <p className="text-xs text-red-500">{message.text}</p>
         )}
       </Section>
 
@@ -339,13 +339,13 @@ export function SettingsPage() {
         <motion.button
           whileTap={MOTION.interactive.tap}
           onClick={() => signOut()}
-          className="w-full py-2.5 rounded-xl bg-discord-red/10 border border-discord-red/20 text-discord-red font-semibold text-sm hover:bg-discord-red/20 transition-colors"
+          className="w-full py-2.5 rounded bg-red-500/10 border border-red-500/20 text-red-500 font-semibold text-sm hover:bg-red-500/20 transition-colors"
         >
           Sign Out
         </motion.button>
       )}
 
-      <p className="text-center text-[11px] text-gray-600 pb-2 font-mono">
+      <p className="text-center text-caption text-gray-600 pb-2 font-mono">
         Grindly v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0'}
       </p>
     </motion.div>
@@ -371,7 +371,7 @@ function Section({ id, title, icon, open, onToggle, children }: {
   children: React.ReactNode
 }) {
   return (
-    <div className="rounded-xl bg-discord-card/80 border border-white/[0.06] overflow-hidden">
+    <div className="rounded-card bg-surface-2/80 border border-white/[0.06] overflow-hidden">
       <button
         type="button"
         onClick={() => onToggle(id)}
@@ -415,19 +415,19 @@ function ToggleRow({ label, sublabel, enabled, onChange, compact, accent }: {
     <div className={`flex items-center justify-between ${compact ? 'py-0.5' : ''}`}>
       <div className="min-w-0 mr-3">
         <p className={`text-white ${compact ? 'text-xs' : 'text-sm'} ${accent ? 'font-semibold' : ''} truncate`}>{label}</p>
-        {sublabel && <p className={`text-gray-500 truncate ${compact ? 'text-[10px]' : 'text-xs'}`}>{sublabel}</p>}
+        {sublabel && <p className={`text-gray-500 truncate ${compact ? 'text-micro' : 'text-xs'}`}>{sublabel}</p>}
       </div>
       <button
         onClick={() => { onChange(!enabled); playClickSound() }}
         className={`w-9 h-[22px] rounded-full relative transition-colors shrink-0 ${
-          enabled ? 'bg-cyber-neon/40' : 'bg-discord-darker border border-white/10'
+          enabled ? 'bg-accent/40' : 'bg-surface-0 border border-white/10'
         }`}
       >
         <motion.div
           animate={{ x: enabled ? 16 : 2 }}
           transition={{ type: 'spring', stiffness: 500, damping: 30 }}
           className={`absolute top-[3px] w-4 h-4 rounded-full shadow-sm ${
-            enabled ? 'bg-cyber-neon' : 'bg-gray-500'
+            enabled ? 'bg-accent' : 'bg-gray-500'
           }`}
         />
       </button>
@@ -451,7 +451,7 @@ function SliderRow({ label, value, onChange }: {
         step={0.05}
         value={value}
         onChange={(e) => onChange(parseFloat(e.target.value))}
-        className="flex-1 accent-cyber-neon h-1"
+        className="flex-1 accent-accent h-1"
       />
       <span className="text-xs text-gray-500 w-8 text-right font-mono">
         {Math.round(value * 100)}%
@@ -467,8 +467,8 @@ function Divider() {
 
 function StatusBadge({ connected }: { connected: boolean }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 text-xs font-mono ${connected ? 'text-cyber-neon' : 'text-gray-500'}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-cyber-neon' : 'bg-gray-600'}`} />
+    <span className={`inline-flex items-center gap-1.5 text-xs font-mono ${connected ? 'text-accent' : 'text-gray-500'}`}>
+      <span className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-accent' : 'bg-gray-600'}`} />
       {connected ? 'connected' : 'offline'}
     </span>
   )
@@ -479,7 +479,7 @@ function ActionButton({ label, onClick }: { label: string; onClick: () => void }
     <motion.button
       whileTap={MOTION.interactive.tap}
       onClick={onClick}
-      className="flex-1 py-2 rounded-lg bg-discord-darker border border-white/[0.06] text-sm text-white font-medium hover:border-white/15 transition-colors"
+      className="flex-1 py-2 rounded bg-surface-0 border border-white/[0.06] text-sm text-white font-medium hover:border-white/15 transition-colors"
     >
       {label}
     </motion.button>
@@ -502,8 +502,8 @@ function LinkRow({ icon, label, sublabel, url }: { icon: React.ReactNode; label:
     >
       <span className="text-base flex items-center justify-center w-5">{icon}</span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm text-white group-hover:text-cyber-neon transition-colors truncate">{label}</p>
-        <p className="text-[11px] text-gray-500 truncate">{sublabel}</p>
+        <p className="text-sm text-white group-hover:text-accent transition-colors truncate">{label}</p>
+        <p className="text-caption text-gray-500 truncate">{sublabel}</p>
       </div>
       <span className="text-gray-600 group-hover:text-gray-400 text-xs transition-colors">↗</span>
     </button>

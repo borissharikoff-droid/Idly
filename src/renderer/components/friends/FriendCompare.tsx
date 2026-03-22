@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { fmt } from '../../lib/format'
 import { motion } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
@@ -36,16 +37,16 @@ function StatRow({ label, myVal, theirVal, suffix, higherIsBetter = true }: {
 
   return (
     <div className="flex items-center gap-2 py-2">
-      <div className={`flex-1 text-right font-mono text-sm font-bold ${iWin ? 'text-cyber-neon' : tie ? 'text-white' : 'text-gray-500'}`}>
-        {myVal.toLocaleString()}{suffix || ''}
-        {iWin && <span className="ml-1 text-[10px]">✓</span>}
+      <div className={`flex-1 text-right font-mono text-sm font-bold ${iWin ? 'text-accent' : tie ? 'text-white' : 'text-gray-500'}`}>
+        {fmt(myVal)}{suffix || ''}
+        {iWin && <span className="ml-1 text-micro">✓</span>}
       </div>
       <div className="w-24 text-center">
-        <span className="text-[10px] text-gray-400 font-mono uppercase tracking-wider">{label}</span>
+        <span className="text-micro text-gray-400 font-mono uppercase tracking-wider">{label}</span>
       </div>
-      <div className={`flex-1 text-left font-mono text-sm font-bold ${theyWin ? 'text-cyber-neon' : tie ? 'text-white' : 'text-gray-500'}`}>
-        {theyWin && <span className="mr-1 text-[10px]">✓</span>}
-        {theirVal.toLocaleString()}{suffix || ''}
+      <div className={`flex-1 text-left font-mono text-sm font-bold ${theyWin ? 'text-accent' : tie ? 'text-white' : 'text-gray-500'}`}>
+        {theyWin && <span className="mr-1 text-micro">✓</span>}
+        {fmt(theirVal)}{suffix || ''}
       </div>
     </div>
   )
@@ -156,7 +157,7 @@ export function FriendCompare({ friend, onBack }: CompareProps) {
       <BackButton onClick={onBack} />
 
       {/* Header: You vs Friend */}
-      <div className="rounded-2xl bg-discord-card/80 border border-white/10 p-4">
+      <div className="rounded-card bg-surface-2/80 border border-white/10 p-4">
         <div className="flex items-center justify-between">
           {/* My avatar */}
           <div className="flex flex-col items-center gap-1.5">
@@ -174,11 +175,11 @@ export function FriendCompare({ friend, onBack }: CompareProps) {
           {/* Score */}
           <div className="text-center">
             <div className="flex items-center gap-2">
-              <span className={`text-2xl font-mono font-bold ${myScore > theirScore ? 'text-cyber-neon' : 'text-gray-500'}`}>{myScore}</span>
+              <span className={`text-2xl font-mono font-bold ${myScore > theirScore ? 'text-accent' : 'text-gray-500'}`}>{myScore}</span>
               <span className="text-gray-600 text-xs">vs</span>
-              <span className={`text-2xl font-mono font-bold ${theirScore > myScore ? 'text-cyber-neon' : 'text-gray-500'}`}>{theirScore}</span>
+              <span className={`text-2xl font-mono font-bold ${theirScore > myScore ? 'text-accent' : 'text-gray-500'}`}>{theirScore}</span>
             </div>
-            <p className="text-[10px] text-gray-600 font-mono mt-0.5">CATEGORIES WON</p>
+            <p className="text-micro text-gray-600 font-mono mt-0.5">CATEGORIES WON</p>
           </div>
 
           {/* Friend avatar */}
@@ -197,19 +198,19 @@ export function FriendCompare({ friend, onBack }: CompareProps) {
       </div>
 
       {/* Detailed comparisons */}
-      <div className="rounded-2xl bg-discord-card/80 border border-white/10 p-4 divide-y divide-white/5">
+      <div className="rounded-card bg-surface-2/80 border border-white/10 p-4 divide-y divide-white/5">
         <StatRow label="Total skill lvl" myVal={me.totalSkillLevel} theirVal={them.totalSkillLevel} />
         <StatRow label="Streak" myVal={me.streak} theirVal={them.streak} suffix="d" />
         <div className="flex items-center gap-2 py-2">
-          <div className={`flex-1 text-right font-mono text-sm font-bold ${me.totalGrindSeconds > them.totalGrindSeconds ? 'text-cyber-neon' : me.totalGrindSeconds === them.totalGrindSeconds ? 'text-white' : 'text-gray-500'}`}>
+          <div className={`flex-1 text-right font-mono text-sm font-bold ${me.totalGrindSeconds > them.totalGrindSeconds ? 'text-accent' : me.totalGrindSeconds === them.totalGrindSeconds ? 'text-white' : 'text-gray-500'}`}>
             {formatDuration(me.totalGrindSeconds)}
-            {me.totalGrindSeconds > them.totalGrindSeconds && <span className="ml-1 text-[10px]">✓</span>}
+            {me.totalGrindSeconds > them.totalGrindSeconds && <span className="ml-1 text-micro">✓</span>}
           </div>
           <div className="w-24 text-center">
-            <span className="text-[10px] text-gray-400 font-mono uppercase tracking-wider">Grind Time</span>
+            <span className="text-micro text-gray-400 font-mono uppercase tracking-wider">Grind Time</span>
           </div>
-          <div className={`flex-1 text-left font-mono text-sm font-bold ${them.totalGrindSeconds > me.totalGrindSeconds ? 'text-cyber-neon' : me.totalGrindSeconds === them.totalGrindSeconds ? 'text-white' : 'text-gray-500'}`}>
-            {them.totalGrindSeconds > me.totalGrindSeconds && <span className="mr-1 text-[10px]">✓</span>}
+          <div className={`flex-1 text-left font-mono text-sm font-bold ${them.totalGrindSeconds > me.totalGrindSeconds ? 'text-accent' : me.totalGrindSeconds === them.totalGrindSeconds ? 'text-white' : 'text-gray-500'}`}>
+            {them.totalGrindSeconds > me.totalGrindSeconds && <span className="mr-1 text-micro">✓</span>}
             {formatDuration(them.totalGrindSeconds)}
           </div>
         </div>
@@ -218,9 +219,9 @@ export function FriendCompare({ friend, onBack }: CompareProps) {
       </div>
 
       {/* Verdict */}
-      <div className="rounded-xl bg-discord-card/80 border border-white/10 p-3 text-center">
+      <div className="rounded-card bg-surface-2/80 border border-white/10 p-3 text-center">
         {myScore > theirScore ? (
-          <p className="text-sm text-cyber-neon font-bold">🏆 You're ahead! Keep grinding!</p>
+          <p className="text-sm text-accent font-bold">🏆 You're ahead! Keep grinding!</p>
         ) : theirScore > myScore ? (
           <p className="text-sm text-orange-400 font-bold">💪 Time to catch up! Grind harder!</p>
         ) : (

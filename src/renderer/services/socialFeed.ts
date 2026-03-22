@@ -56,14 +56,10 @@ export async function publishSocialFeedEvent(
   const published = readPublishedKeys()
   if (published.includes(fullKey)) return
 
-  const { error } = await supabase
-    .from('social_feed_events')
-    .insert({
-      user_id: user.id,
-      event_type: eventType,
-      payload,
-      created_at: new Date().toISOString(),
-    })
+  // RPC: валидирует event_type, размер payload ≤ 2KB, макс 20 за вызов
+  const { error } = await supabase.rpc('publish_feed_events', {
+    p_events: [{ event_type: eventType, payload }],
+  })
 
   if (!error) {
     writePublishedKeys([...published, fullKey])

@@ -975,6 +975,17 @@ function pushCurrentSegment(now: number): void {
 }
 
 function poll(): void {
+  // AFK detection must run even when paused — otherwise emitIdle(false) never fires
+  // and the session stays paused forever after the user returns from AFK.
+  if (latestWinInfo) {
+    const idleMs = latestWinInfo.idleMs ?? 0
+    if (idleMs >= afkThresholdMs && !isIdle) {
+      emitIdle(true)
+    } else if (idleMs < afkThresholdMs && isIdle) {
+      emitIdle(false)
+    }
+  }
+
   if (isPaused) return
   const now = Date.now()
 
@@ -982,15 +993,6 @@ function poll(): void {
     const { appName: rawName, title: windowTitle, keys } = latestWinInfo
     totalSessionKeystrokes += keys
     currentSegmentKeystrokes += keys
-
-    // AFK detection: real idle = no mouse/keyboard (GetLastInputInfo from detector)
-    // Threshold is always 3 min regardless of activity type — only real input resets the timer
-    const idleMs = latestWinInfo.idleMs ?? 0
-    if (idleMs >= afkThresholdMs && !isIdle) {
-      emitIdle(true)
-    } else if (idleMs < afkThresholdMs && isIdle) {
-      emitIdle(false)
-    }
 
     // Idle (desktop with no title) does not give XP; Unknown windows use title-based categorization
     const heuristicsClassification =

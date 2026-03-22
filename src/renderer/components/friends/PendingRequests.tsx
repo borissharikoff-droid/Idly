@@ -17,7 +17,7 @@ export function PendingRequests({ requests, onAccept, onReject }: PendingRequest
   return (
     <div className="space-y-3">
       {incoming.length > 0 && (
-        <div className="rounded-xl bg-discord-card/80 border border-white/10 p-4">
+        <div className="rounded-card bg-surface-2/80 border border-white/10 p-4">
           <p className="text-xs uppercase tracking-wider text-gray-400 font-mono mb-3">
             [ incoming requests — {incoming.length} ]
           </p>
@@ -48,14 +48,14 @@ export function PendingRequests({ requests, onAccept, onReject }: PendingRequest
                   <motion.button
                     whileTap={{ scale: 0.9 }}
                     onClick={() => onAccept(req.friendship_id)}
-                    className="px-3 py-1.5 rounded-lg bg-cyber-neon/20 text-cyber-neon text-xs font-semibold hover:bg-cyber-neon/30 transition-colors border border-cyber-neon/30"
+                    className="px-3 py-1.5 rounded bg-accent/20 text-accent text-xs font-semibold hover:bg-accent/30 transition-colors border border-accent/30"
                   >
                     Accept
                   </motion.button>
                   <motion.button
                     whileTap={{ scale: 0.9 }}
                     onClick={() => onReject(req.friendship_id)}
-                    className="px-3 py-1.5 rounded-lg bg-discord-red/20 text-discord-red text-xs font-semibold hover:bg-discord-red/30 transition-colors border border-discord-red/30"
+                    className="px-3 py-1.5 rounded bg-red-500/20 text-red-500 text-xs font-semibold hover:bg-red-500/30 transition-colors border border-red-500/30"
                   >
                     Reject
                   </motion.button>
@@ -67,7 +67,7 @@ export function PendingRequests({ requests, onAccept, onReject }: PendingRequest
       )}
 
       {outgoing.length > 0 && (
-        <div className="rounded-xl bg-discord-card/80 border border-white/10 p-4">
+        <div className="rounded-card bg-surface-2/80 border border-white/10 p-4">
           <p className="text-xs uppercase tracking-wider text-gray-400 font-mono mb-3">
             [ sent requests — {outgoing.length} ]
           </p>
@@ -91,7 +91,7 @@ export function PendingRequests({ requests, onAccept, onReject }: PendingRequest
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={() => onReject(req.friendship_id)}
-                className="text-gray-500 hover:text-discord-red text-xs shrink-0"
+                className="text-gray-500 hover:text-red-500 text-xs shrink-0"
                 title="Cancel request"
               >
                 ✕

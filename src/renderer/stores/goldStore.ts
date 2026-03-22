@@ -37,15 +37,17 @@ export const useGoldStore = create<GoldState>((set, get) => ({
     }
   },
 
-  async syncToSupabase(userId: string) {
+  async syncToSupabase(_userId: string) {
     if (!supabase) return
     const { gold } = get()
-    const { error } = await supabase
-      .from('profiles')
-      .update({ gold: Math.max(0, gold), updated_at: new Date().toISOString() })
-      .eq('id', userId)
+    // Uses server-side RPC — auth.uid() resolved on server, capped at 100M
+    const { data, error } = await supabase
+      .rpc('sync_gold', { p_gold: Math.max(0, gold) })
     if (error) {
       console.warn('[goldStore] syncToSupabase failed:', error.message)
+    } else if (typeof data === 'number' && data !== gold) {
+      // Server applied a cap — sync back
+      set({ gold: data })
     }
   },
 }))

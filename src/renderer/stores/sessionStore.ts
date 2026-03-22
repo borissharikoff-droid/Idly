@@ -280,6 +280,13 @@ function startXpTicking() {
     if (reward) {
       useChestDropStore.getState().enqueue(reward.id, reward.chestType)
     }
+
+    // First-chest guarantee: new users get a guaranteed chest ~8s after starting first session
+    if (elapsedSeconds >= 8 && localStorage.getItem('grindly_first_chest_pending') === '1') {
+      localStorage.removeItem('grindly_first_chest_pending')
+      const result = useInventoryStore.getState().rollSessionChestDrop({ source: 'skill_grind', focusCategory })
+      useChestDropStore.getState().enqueue(result.rewardId, result.chestType)
+    }
   }, XP_TICK_INTERVAL_MS)
 }
 
@@ -417,20 +424,6 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
     const api = typeof window !== 'undefined' ? window.electronAPI : null
 
-    let skillXPAtStart: Record<string, number> = {}
-    try {
-      if (api?.db?.getAllSkillXP) {
-        const rows = (await api.db.getAllSkillXP()) as { skill_id: string; total_xp: number }[]
-        skillXPAtStart = Object.fromEntries((rows || []).map((r) => [r.skill_id, r.total_xp]))
-      } else if (typeof localStorage !== 'undefined') {
-        try {
-          const stored = JSON.parse(localStorage.getItem('grindly_skill_xp') || '{}') as Record<string, number>
-          skillXPAtStart = { ...stored }
-        } catch { /* ignore */ }
-      }
-    } catch {
-      /* fallback: empty skill XP at start */
-    }
     const prev = get()
     const requestedFocusDurationMs = options?.focusDurationMs && options.focusDurationMs > 0
       ? options.focusDurationMs
@@ -457,6 +450,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
           rewards: [],
         })
       : null
+
+    // Set status to 'running' immediately so the UI unlocks — don't block on IPC
     set({
       status: 'running',
       elapsedSeconds: 0,
@@ -473,9 +468,28 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       progressionEvents: streakShieldEvent ? [streakShieldEvent] : [],
       sessionRewards: [],
       sessionSkillXP: {},
-      skillXPAtStart,
+      skillXPAtStart: {},
       skillLevelNotified: {},
       pendingSkillLevelUpSkill: null,
+    })
+
+    // Load skillXPAtStart asynchronously after UI is unblocked
+    Promise.resolve().then(async () => {
+      let skillXPAtStart: Record<string, number> = {}
+      try {
+        if (api?.db?.getAllSkillXP) {
+          const rows = (await api.db.getAllSkillXP()) as { skill_id: string; total_xp: number }[]
+          skillXPAtStart = Object.fromEntries((rows || []).map((r) => [r.skill_id, r.total_xp]))
+        } else if (typeof localStorage !== 'undefined') {
+          try {
+            const stored = JSON.parse(localStorage.getItem('grindly_skill_xp') || '{}') as Record<string, number>
+            skillXPAtStart = { ...stored }
+          } catch { /* ignore */ }
+        }
+      } catch { /* fallback: empty */ }
+      if (get().sessionId === sessionId) {
+        set({ skillXPAtStart })
+      }
     })
     track('session_start')
     if (api) {

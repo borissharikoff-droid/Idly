@@ -99,7 +99,7 @@ export function MessageBanner({ onNavigateToChat }: MessageBannerProps) {
             }}
             onMouseEnter={pause}
             onMouseLeave={resume}
-            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-discord-card/95 border border-white/15 shadow-xl backdrop-blur hover:bg-discord-card transition-colors text-left cursor-pointer"
+            className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-card bg-surface-2/95 border border-white/15 shadow-xl backdrop-blur hover:bg-surface-2 transition-colors text-left cursor-pointer"
           >
             <div className="w-8 h-8 rounded-full bg-white/10 border border-white/10 flex items-center justify-center shrink-0 text-sm overflow-hidden">
               {visible.senderAvatar?.startsWith('http') ? (
@@ -109,8 +109,8 @@ export function MessageBanner({ onNavigateToChat }: MessageBannerProps) {
               )}
             </div>
             <div className="flex-1 min-w-0 overflow-hidden">
-              <p className="text-[11px] text-gray-400 leading-tight">New message</p>
-              <p className="text-[12px] font-medium text-white line-clamp-2 break-words">
+              <p className="text-caption text-gray-400 leading-tight">New message</p>
+              <p className="text-xs font-medium text-white line-clamp-2 break-words">
                 {(visible.senderName.length > 25 ? `${visible.senderName.slice(0, 25)}…` : visible.senderName)}: {visible.preview}
               </p>
             </div>

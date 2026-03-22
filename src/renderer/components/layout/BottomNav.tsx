@@ -9,6 +9,7 @@ import { useNavCustomizationStore } from '../../stores/navCustomizationStore'
 import { MOTION } from '../../lib/motion'
 import { getUIIcons } from '../../lib/itemConfig'
 import { useAdminConfigStore } from '../../stores/adminConfigStore'
+import { TAB_SHORTCUTS } from '../../hooks/useKeyboardShortcuts'
 import {
   Home, Zap, Users, BarChart3, MoreHorizontal,
   Package, ShoppingCart, Sword, Sprout, Hammer, UtensilsCrossed,
@@ -55,14 +56,16 @@ function NavIcon({ tabId, adminIcon }: { tabId: TabId; adminIcon: string }) {
 interface BottomNavProps {
   activeTab: TabId
   onTabChange: (tab: TabId) => void
+  tourHighlightTab?: TabId | null
 }
 
-export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
+export function BottomNav({ activeTab, onTabChange, tourHighlightTab }: BottomNavProps) {
   useAdminConfigStore((s) => s.rev)
   const uiIcons = getUIIcons()
   const pinnedTabs = useNavCustomizationStore((s) => s.pinnedTabs)
   const setPinnedTabs = useNavCustomizationStore((s) => s.setPinnedTabs)
   const [moreOpen, setMoreOpen] = useState(false)
+
   const [dropTarget, setDropTarget] = useState<number | null>(null)
   const popupRef = useRef<HTMLDivElement>(null)
   const moreButtonRef = useRef<HTMLButtonElement>(null)
@@ -180,13 +183,13 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
           <>
             <motion.div
               ref={popupRef}
-              className="fixed bottom-[58px] left-1/2 z-50 w-[280px] -translate-x-1/2 rounded-2xl border border-white/[0.10] bg-[#1a1a2a] shadow-2xl overflow-hidden"
+              className="fixed bottom-[58px] left-1/2 z-50 w-[280px] -translate-x-1/2 rounded-card border border-white/[0.08] bg-surface-2 shadow-popup overflow-hidden"
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 8, scale: 0.96 }}
               transition={{ duration: MOTION.duration.fast, ease: MOTION.easingSoft }}
             >
-              <p className="text-[10px] font-mono text-gray-600 text-center pt-2 pb-0.5 px-2 select-none">
+              <p className="text-micro font-mono text-gray-600 text-center pt-2 pb-0.5 px-2 select-none tracking-wide">
                 drag any icon to the bar below to pin it
               </p>
 
@@ -208,23 +211,23 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
                       type="button"
                       whileTap={{ scale: 0.94 }}
                       onClick={() => navigate(tab.id)}
-                      className={`relative flex flex-col items-center gap-1 px-2 py-2.5 rounded-xl transition-colors select-none w-full ${
+                      className={`relative flex flex-col items-center gap-1 px-2 py-2.5 rounded transition-colors select-none w-full ${
                         isActive
-                          ? 'bg-cyber-neon/15 text-cyber-neon ring-1 ring-inset ring-cyber-neon/20'
+                          ? 'bg-accent/15 text-accent ring-1 ring-inset ring-accent/20'
                           : 'text-gray-400 hover:text-gray-200 hover:bg-white/[0.06]'
                       }`}
                     >
                       <span className="text-lg leading-none">
                         <NavIcon tabId={tab.id} adminIcon={adminIcon} />
                       </span>
-                      <span className="text-[10px] font-mono leading-none tracking-wide">{tab.label}</span>
+                      <span className="text-micro font-mono leading-none tracking-wide">{tab.label}</span>
                       {badge && (
-                        <span className={`absolute top-1 right-1.5 min-w-[13px] h-[13px] px-0.5 flex items-center justify-center rounded-full text-[10px] font-bold text-white ${badge.color}`}>
+                        <span className={`absolute top-1 right-1.5 min-w-[13px] h-[13px] px-0.5 flex items-center justify-center rounded-full text-micro font-bold text-white ${badge.color}`}>
                           {badge.count > 99 ? '99+' : badge.count}
                         </span>
                       )}
                       {pulse && !badge && (
-                        <span className="absolute top-1.5 right-2 w-2 h-2 rounded-full bg-cyber-neon animate-pulse" />
+                        <span className="absolute top-1.5 right-2 w-2 h-2 rounded-full bg-accent animate-pulse" />
                       )}
                     </motion.button>
                     </div>
@@ -242,7 +245,7 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
         onDragOver={(e) => e.preventDefault()}
         onDrop={onDropNavArea}
       >
-        <nav className="flex items-stretch gap-1.5 rounded-2xl bg-discord-nav border border-white/[0.07] px-1.5 py-1.5 shadow-nav w-full max-w-xs">
+        <nav className="flex items-stretch gap-1.5 rounded bg-surface-1 border border-white/[0.07] px-1.5 py-1.5 shadow-nav w-full max-w-xs">
 
           {/* Pinned tabs (1–4, variable) */}
           {pinnedTabs.map((tabId, slotIndex) => {
@@ -267,28 +270,31 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
               <button
                 type="button"
                 onClick={() => navigate(tabId)}
-                className={`relative w-full flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition-all duration-150 select-none ${
-                  isDropTarget
-                    ? 'ring-1 ring-cyber-neon/60 bg-cyber-neon/10 text-cyber-neon'
+                title={TAB_SHORTCUTS[tabId] ? `${tab.label} [${TAB_SHORTCUTS[tabId]}]` : tab.label}
+                className={`relative w-full flex flex-col items-center justify-center gap-0.5 py-1.5 rounded transition-all duration-150 select-none ${
+                  tourHighlightTab === tabId
+                    ? 'ring-2 ring-accent bg-accent/20 text-accent animate-pulse'
+                    : isDropTarget
+                    ? 'ring-1 ring-accent/60 bg-accent/15 text-accent'
                     : active
-                    ? 'bg-cyber-neon/15 text-cyber-neon shadow-glow-sm'
+                    ? 'bg-accent/15 text-accent'
                     : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
                 }`}
               >
                 <span className="grindly-tab-icon leading-none" aria-hidden>
                   <NavIcon tabId={tabId} adminIcon={adminIcon} />
                 </span>
-                <span className="text-[10px] font-mono leading-none tracking-wide">{tab.label}</span>
+                <span className="text-micro font-mono leading-none tracking-wide">{tab.label}</span>
                 {badge && (
                   <span
-                    className={`absolute -top-0.5 right-1 min-w-[14px] h-[14px] px-1 flex items-center justify-center rounded-full text-[10px] font-bold text-white border-2 border-discord-nav ${badge.color}`}
+                    className={`absolute -top-0.5 right-1 min-w-[14px] h-[14px] px-1 flex items-center justify-center rounded-full text-micro font-bold text-white border-2 border-surface-1 ${badge.color}`}
                     aria-label={`${badge.count} new`}
                   >
                     {badge.count > 99 ? '99+' : badge.count}
                   </span>
                 )}
                 {pulse && !badge && (
-                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full border border-discord-nav bg-cyber-neon animate-pulse" />
+                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full border border-surface-1 bg-accent animate-pulse" />
                 )}
               </button>
               </div>
@@ -301,18 +307,18 @@ export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
             type="button"
             whileTap={MOTION.interactive.tap}
             onClick={() => { playClickSound(); setMoreOpen((o) => !o) }}
-            className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition-all duration-200 ${
+            className={`relative flex-1 flex flex-col items-center justify-center gap-0.5 py-1.5 rounded transition-all duration-200 ${
               moreOpen || moreIsActiveTab
-                ? 'bg-cyber-neon/15 text-cyber-neon shadow-glow-sm'
+                ? 'bg-accent/15 text-accent'
                 : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'
             }`}
             aria-label="More"
             aria-expanded={moreOpen}
           >
             <MoreHorizontal className="w-[18px] h-[18px]" aria-hidden />
-            <span className="text-[10px] font-mono leading-none tracking-wide">More</span>
+            <span className="text-micro font-mono leading-none tracking-wide">More</span>
             {moreBadge && !moreOpen && (
-              <span className="absolute top-1 right-1 w-2 h-2 rounded-full border border-discord-nav bg-lime-500" />
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full border border-surface-1 bg-accent" />
             )}
           </motion.button>
         </nav>

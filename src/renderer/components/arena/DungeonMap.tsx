@@ -3,6 +3,7 @@
 // Shows which room is active, which are completed, which are upcoming.
 
 import { motion } from 'framer-motion'
+import { fmt } from '../../lib/format'
 import type { ZoneDef } from '../../lib/combat'
 
 interface DungeonMapProps {
@@ -36,7 +37,7 @@ export function DungeonMap({ zone, mobIndex, goldEarned, themeColor }: DungeonMa
                 <motion.div
                   animate={active ? { scale: [1, 1.08, 1], opacity: [0.85, 1, 0.85] } : {}}
                   transition={active ? { repeat: Infinity, duration: 1.4, ease: 'easeInOut' } : {}}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center text-base border transition-all ${
+                  className={`w-8 h-8 rounded flex items-center justify-center text-base border transition-all ${
                     done
                       ? 'border-green-500/50 bg-green-500/15'
                       : active
@@ -46,13 +47,13 @@ export function DungeonMap({ zone, mobIndex, goldEarned, themeColor }: DungeonMa
                   style={active ? { borderColor: `${themeColor}60`, background: `${themeColor}18` } : undefined}
                 >
                   {done ? (
-                    <span className="text-green-400 text-[11px] font-bold">✓</span>
+                    <span className="text-green-400 text-caption font-bold">✓</span>
                   ) : (
                     <span className={upcoming ? 'opacity-40 text-sm' : 'text-sm'}>{room.icon}</span>
                   )}
                 </motion.div>
                 <p
-                  className={`text-[10px] font-mono leading-tight text-center truncate w-full ${
+                  className={`text-micro font-mono leading-tight text-center truncate w-full ${
                     active ? 'text-white' : done ? 'text-green-400/70' : 'text-gray-600'
                   }`}
                 >
@@ -62,7 +63,7 @@ export function DungeonMap({ zone, mobIndex, goldEarned, themeColor }: DungeonMa
 
               {/* Connector arrow (not after last) */}
               {i < rooms.length - 1 && (
-                <span className={`text-[10px] shrink-0 -mt-2 ${done ? 'text-green-500/60' : 'text-gray-700'}`}>›</span>
+                <span className={`text-micro shrink-0 -mt-2 ${done ? 'text-green-500/60' : 'text-gray-700'}`}>›</span>
               )}
             </div>
           )
@@ -72,7 +73,7 @@ export function DungeonMap({ zone, mobIndex, goldEarned, themeColor }: DungeonMa
       {/* Accumulated gold */}
       {goldEarned > 0 && (
         <div className="flex items-center justify-center gap-1">
-          <span className="text-[10px] text-amber-400 font-mono">🪙 {goldEarned}g accumulated</span>
+          <span className="text-micro text-amber-400 font-mono">🪙 {fmt(goldEarned)}g accumulated</span>
         </div>
       )}
     </div>

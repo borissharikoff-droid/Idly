@@ -114,7 +114,7 @@ export function BulkChestOpenModal({ open, chestType, result, onClose }: BulkChe
             exit={{ scale: 0.88, opacity: 0, y: 16 }}
             transition={{ type: 'spring', stiffness: 340, damping: 28, mass: 0.9 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-[340px] max-h-[80vh] rounded-2xl border p-5 text-center relative overflow-hidden flex flex-col"
+            className="w-[340px] max-h-[80vh] rounded-lg border p-5 text-center relative overflow-hidden flex flex-col"
             style={{
               borderColor: chestTheme.border,
               background: `linear-gradient(160deg, ${chestTheme.glow}1A 0%, rgba(8,8,16,0.97) 55%)`,
@@ -126,7 +126,7 @@ export function BulkChestOpenModal({ open, chestType, result, onClose }: BulkChe
           >
             <motion.div
               aria-hidden
-              className="absolute inset-0 pointer-events-none rounded-2xl"
+              className="absolute inset-0 pointer-events-none rounded-lg"
               style={{ background: `radial-gradient(circle at 50% 12%, ${chestTheme.glow} 0%, transparent 55%)` }}
               animate={{ opacity: isRevealed ? [0.45, 0.65, 0.5] : [0.25, 0.45, 0.25] }}
               transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
@@ -142,7 +142,7 @@ export function BulkChestOpenModal({ open, chestType, result, onClose }: BulkChe
               }
             >
               <div
-                className="w-[80px] h-[80px] rounded-2xl border flex items-center justify-center"
+                className="w-[80px] h-[80px] rounded-lg border flex items-center justify-center"
                 style={{
                   borderColor: chestTheme.border,
                   background: `radial-gradient(circle at 50% 35%, ${chestTheme.glow}60 0%, rgba(8,8,16,0.92) 70%)`,
@@ -163,7 +163,7 @@ export function BulkChestOpenModal({ open, chestType, result, onClose }: BulkChe
                 {isRevealed ? (
                   <motion.p
                     key="done"
-                    className="absolute inset-0 text-[11px] font-mono uppercase tracking-wider text-center"
+                    className="absolute inset-0 text-caption font-mono uppercase tracking-wider text-center"
                     style={{ color: chestTheme.color }}
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -175,7 +175,7 @@ export function BulkChestOpenModal({ open, chestType, result, onClose }: BulkChe
                 ) : (
                   <motion.span
                     key="opening"
-                    className="absolute inset-0 text-[11px] font-mono uppercase tracking-wider text-center flex items-center justify-center"
+                    className="absolute inset-0 text-caption font-mono uppercase tracking-wider text-center flex items-center justify-center"
                     style={{ color: chestTheme.color }}
                     initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -200,7 +200,7 @@ export function BulkChestOpenModal({ open, chestType, result, onClose }: BulkChe
               {/* Equipment items */}
               {sortedItems.length > 0 && (
                 <div className="space-y-1.5">
-                  <p className="text-[10px] font-mono text-gray-500 uppercase tracking-wider text-left">Items</p>
+                  <p className="text-micro font-mono text-gray-500 uppercase tracking-wider text-left">Items</p>
                   <div className="grid grid-cols-2 gap-1.5">
                     {sortedItems.map((entry, i) => {
                       const theme = getRarityTheme(entry.def.rarity)
@@ -225,8 +225,8 @@ export function BulkChestOpenModal({ open, chestType, result, onClose }: BulkChe
                             )}
                           </div>
                           <div className="relative text-left min-w-0">
-                            <p className="text-[11px] font-medium text-white/90 truncate leading-tight">{entry.def.name}</p>
-                            <p className="text-[10px] font-mono uppercase" style={{ color: theme.color }}>
+                            <p className="text-caption font-medium text-white/90 truncate leading-tight">{entry.def.name}</p>
+                            <p className="text-micro font-mono uppercase" style={{ color: theme.color }}>
                               {entry.def.rarity}{entry.qty > 1 ? ` ×${entry.qty}` : ''}
                             </p>
                           </div>
@@ -249,7 +249,7 @@ export function BulkChestOpenModal({ open, chestType, result, onClose }: BulkChe
                   <span className="text-2xl">🪙</span>
                   <div className="text-left">
                     <p className="text-lg font-bold text-amber-400 tabular-nums">+{result.totalGold}</p>
-                    <p className="text-[10px] font-mono text-amber-500/60 uppercase tracking-widest">Gold</p>
+                    <p className="text-micro font-mono text-amber-500/60 uppercase tracking-widest">Gold</p>
                   </div>
                 </motion.div>
               )}
@@ -257,7 +257,7 @@ export function BulkChestOpenModal({ open, chestType, result, onClose }: BulkChe
               {/* Materials */}
               {sortedMaterials.length > 0 && (
                 <div className="mt-2.5 space-y-1.5">
-                  <p className="text-[10px] font-mono text-gray-500 uppercase tracking-wider text-left">Materials</p>
+                  <p className="text-micro font-mono text-gray-500 uppercase tracking-wider text-left">Materials</p>
                   <div className="grid grid-cols-2 gap-2">
                     {sortedMaterials.map((mat, i) => {
                       const theme = getRarityTheme(mat.def.rarity)
@@ -267,7 +267,7 @@ export function BulkChestOpenModal({ open, chestType, result, onClose }: BulkChe
                           initial={{ opacity: 0, scale: 0.85 }}
                           animate={{ opacity: 1, scale: 1 }}
                           transition={{ delay: 0.05 + i * 0.03, type: 'spring', stiffness: 300, damping: 22 }}
-                          className="rounded-xl border p-2.5 flex flex-col items-center gap-1.5 relative overflow-hidden"
+                          className="rounded-lg border p-2.5 flex flex-col items-center gap-1.5 relative overflow-hidden"
                           style={{
                             borderColor: `${theme.color}35`,
                             background: `linear-gradient(160deg, ${theme.glow}15 0%, rgba(8,8,16,0.95) 65%)`,
@@ -282,7 +282,7 @@ export function BulkChestOpenModal({ open, chestType, result, onClose }: BulkChe
                             )}
                           </div>
                           <span className="relative text-sm font-bold tabular-nums" style={{ color: theme.color }}>×{mat.qty}</span>
-                          <span className="relative text-[10px] text-center leading-tight text-gray-400 truncate w-full">{mat.def.name}</span>
+                          <span className="relative text-micro text-center leading-tight text-gray-400 truncate w-full">{mat.def.name}</span>
                         </motion.div>
                       )
                     })}
@@ -293,7 +293,7 @@ export function BulkChestOpenModal({ open, chestType, result, onClose }: BulkChe
               {/* Seed Zips */}
               {result.seedZips.length > 0 && (
                 <div className="mt-2.5 space-y-1.5">
-                  <p className="text-[10px] font-mono text-gray-500 uppercase tracking-wider text-left">Seed Zips</p>
+                  <p className="text-micro font-mono text-gray-500 uppercase tracking-wider text-left">Seed Zips</p>
                   <div className="grid grid-cols-3 gap-1.5">
                     {result.seedZips.map((sz) => {
                       const theme = getRarityTheme(sz.tier)
@@ -309,8 +309,8 @@ export function BulkChestOpenModal({ open, chestType, result, onClose }: BulkChe
                               ? <img src={display.image} className="w-7 h-7 object-contain" style={{ imageRendering: 'pixelated' }} draggable={false} />
                               : <span className="text-xl">{display.icon}</span>}
                           </div>
-                          <span className="text-[11px] font-bold tabular-nums" style={{ color: theme.color }}>×{sz.qty}</span>
-                          <span className="text-[10px] text-center leading-tight text-gray-400 truncate w-full">{display.name}</span>
+                          <span className="text-caption font-bold tabular-nums" style={{ color: theme.color }}>×{sz.qty}</span>
+                          <span className="text-micro text-center leading-tight text-gray-400 truncate w-full">{display.name}</span>
                         </div>
                       )
                     })}
@@ -333,7 +333,7 @@ export function BulkChestOpenModal({ open, chestType, result, onClose }: BulkChe
               <button
                 type="button"
                 onClick={() => { playClickSound(); onClose() }}
-                className="w-full h-10 rounded-xl text-[13px] font-semibold transition-all active:scale-[0.97]"
+                className="w-full h-10 rounded-lg text-body font-semibold transition-all active:scale-[0.97]"
                 style={{ color: chestTheme.color, border: `1px solid ${chestTheme.border}`, background: `${chestTheme.color}22` }}
               >
                 Done

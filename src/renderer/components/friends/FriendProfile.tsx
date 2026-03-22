@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
+import { fmt } from '../../lib/format'
 import { MessageCircle } from '../../lib/icons'
 import { motion } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
@@ -39,7 +40,7 @@ interface FriendSkillRow {
 
 
 function formatXp(xp: number): string {
-  return Math.max(0, Math.floor(xp)).toLocaleString()
+  return fmt(Math.max(0, xp))
 }
 
 function mapAllSkillsToRows(profile: FriendProfileType): FriendSkillRow[] {
@@ -290,9 +291,9 @@ export function FriendProfile({ profile, onBack, onMessage }: FriendProfileProps
           <div className="h-4 w-14 rounded bg-white/10" />
           <div className="h-8 w-52 rounded-full bg-white/10" />
         </div>
-        <div className="rounded-2xl border border-white/10 bg-discord-card/70 p-5">
+        <div className="rounded border border-white/10 bg-surface-2/70 p-5">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-xl bg-white/10" />
+            <div className="w-16 h-16 rounded bg-white/10" />
             <div className="flex-1 space-y-2">
               <div className="h-4 w-32 rounded bg-white/10" />
               <div className="h-3 w-20 rounded bg-white/10" />
@@ -300,11 +301,11 @@ export function FriendProfile({ profile, onBack, onMessage }: FriendProfileProps
           </div>
         </div>
         <div className="grid grid-cols-3 gap-2">
-          <div className="h-16 rounded-xl bg-white/10 border border-white/5" />
-          <div className="h-16 rounded-xl bg-white/10 border border-white/5" />
-          <div className="h-16 rounded-xl bg-white/10 border border-white/5" />
+          <div className="h-16 rounded bg-white/10 border border-white/5" />
+          <div className="h-16 rounded bg-white/10 border border-white/5" />
+          <div className="h-16 rounded bg-white/10 border border-white/5" />
         </div>
-        <div className="h-56 rounded-xl bg-white/10 border border-white/5" />
+        <div className="h-56 rounded bg-white/10 border border-white/5" />
       </motion.div>
     )
   }
@@ -325,7 +326,7 @@ export function FriendProfile({ profile, onBack, onMessage }: FriendProfileProps
             type="button"
             onClick={handleInvite}
             disabled={inviteSent}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-mono border border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 disabled:opacity-50 disabled:cursor-default transition-colors"
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full text-micro font-mono border border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 disabled:opacity-50 disabled:cursor-default transition-colors"
           >
             {inviteSent ? '✓ Invited' : `⚔ Invite to [${myGuild!.tag}]`}
           </button>
@@ -333,7 +334,7 @@ export function FriendProfile({ profile, onBack, onMessage }: FriendProfileProps
       />
       {/* Profile Hero */}
       <div
-        className="rounded-2xl border overflow-hidden"
+        className="rounded-card border overflow-hidden"
         style={{
           borderColor: profile.is_online ? 'rgba(0,255,135,0.12)' : 'rgba(255,255,255,0.10)',
           background: profile.is_online
@@ -349,24 +350,24 @@ export function FriendProfile({ profile, onBack, onMessage }: FriendProfileProps
                 frameId={effectiveFrame}
                 sizeClass="w-14 h-14"
                 textClass="text-2xl"
-                roundedClass="rounded-xl"
+                roundedClass="rounded"
                 ringInsetClass="-inset-0.5"
               />
-              <span className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-discord-card ${profile.is_online ? 'bg-cyber-neon' : 'bg-gray-600'}`} />
+              <span className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-surface-2 ${profile.is_online ? 'bg-accent' : 'bg-gray-600'}`} />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-white font-bold text-[15px] truncate">{profile.username || 'Anonymous'}</h3>
                 {profile.guild_tag && (
-                  <span className="text-[10px] px-1 py-[1px] rounded font-bold border border-amber-500/40 bg-amber-500/10 text-amber-400 shrink-0" title={`Guild: ${profile.guild_tag}`}>
+                  <span className="text-micro px-1 py-[1px] rounded font-bold border border-amber-500/40 bg-amber-500/10 text-amber-400 shrink-0" title={`Guild: ${profile.guild_tag}`}>
                     [{profile.guild_tag}]
                   </span>
                 )}
-                <span className="grindly-badge text-cyber-neon border-cyber-neon/30 bg-cyber-neon/10 text-[10px]" title="Total skill level">
+                <span className="grindly-badge text-accent border-accent/30 bg-accent/10 text-micro" title="Total skill level">
                   {totalSkillLevel}/{MAX_TOTAL_SKILL_LEVEL}
                 </span>
               </div>
-              <p className="text-[11px] mt-1 text-gray-400">
+              <p className="text-caption mt-1 text-gray-400">
                 {profile.is_online
                   ? (isLeveling
                     ? `Leveling ${levelingSkill}${liveDuration ? ` · ${liveDuration}` : ''}${appName ? ` · ${getSkillActivityLine(getSkillByName(levelingSkill ?? '')?.id ?? null, appName)}` : ''}`
@@ -379,7 +380,7 @@ export function FriendProfile({ profile, onBack, onMessage }: FriendProfileProps
                 type="button"
                 onClick={onMessage}
                 whileTap={MOTION.interactive.tap}
-                className="shrink-0 self-start p-2 rounded-lg border border-cyber-neon/30 text-cyber-neon bg-cyber-neon/10 hover:bg-cyber-neon/20 transition-colors"
+                className="shrink-0 self-start p-2 rounded border border-accent/30 text-accent bg-accent/10 hover:bg-accent/20 transition-colors"
                 title="Message"
                 aria-label="Message"
               >
@@ -397,15 +398,15 @@ export function FriendProfile({ profile, onBack, onMessage }: FriendProfileProps
             { value: String(totalSessionsCount), label: 'Sessions', color: '#94a3b8' },
           ].map(({ value, label, color }, i) => (
             <div key={label} className={`text-center py-2.5 ${i > 0 ? 'border-l border-white/[0.06]' : ''}`}>
-              <p className="text-[13px] font-mono font-bold leading-none" style={{ color }}>{value}</p>
-              <p className="text-[10px] font-mono text-gray-500 uppercase tracking-wider mt-0.5">{label}</p>
+              <p className="text-body font-mono font-bold leading-none" style={{ color }}>{value}</p>
+              <p className="text-micro font-mono text-gray-500 uppercase tracking-wider mt-0.5">{label}</p>
             </div>
           ))}
         </div>
       </div>
 
       {/* Gear */}
-      <div className="rounded-xl border border-white/[0.09] bg-discord-card/80 p-3">
+      <div className="rounded-card border border-white/[0.09] bg-surface-2/80 p-3">
         {(() => {
           // Compute warrior + grindly bonuses from friend's skill data
           const skillMap = new Map(allSkills.map((s) => [s.skill_id, s]))
@@ -430,9 +431,9 @@ export function FriendProfile({ profile, onBack, onMessage }: FriendProfileProps
       </div>
 
       {/* Skills — compact bars */}
-      <div className="rounded-xl bg-discord-card/80 border border-white/10 p-3">
+      <div className="rounded-card bg-surface-2/80 border border-white/10 p-3">
         <div className="mb-2">
-          <p className="text-[10px] uppercase tracking-widest text-gray-500 font-mono font-semibold">Skills</p>
+          <p className="text-micro uppercase tracking-widest text-gray-500 font-mono font-semibold">Skills</p>
         </div>
         <div className="space-y-[3px]">
           {(() => {
@@ -447,14 +448,20 @@ export function FriendProfile({ profile, onBack, onMessage }: FriendProfileProps
               const pct = unknownSkill ? 0 : xpProg && xpProg.needed > 0
                 ? Math.min(100, (xpProg.current / xpProg.needed) * 100)
                 : (hasConfirmedSkillRows ? Math.min(100, (level / 99) * 100) : 0)
+              const hours = hasRealXp ? Math.floor(totalXp / 3600) : null
+              const hoursLabel = hours === null ? null
+                : hours >= 1 ? `${hours}h`
+                : totalXp >= 60 ? `${Math.floor(totalXp / 60)}m`
+                : totalXp > 0 ? '<1m'
+                : null
               const xpTitle = hasRealXp
-                ? `${skillDef.name}: ${formatXp(totalXp)} XP`
+                ? `${skillDef.name}: LVL ${level} · ${hoursLabel ?? '0m'} spent`
                 : `${skillDef.name}: LVL ${level}`
               const isActive = levelingSkill === skillDef.name
               return (
-                <div key={skillDef.id} title={xpTitle} className={`flex items-center gap-2 px-2 py-[5px] rounded-lg transition-colors ${isActive ? 'bg-cyber-neon/[0.04]' : ''}`}>
-                  <span className="text-[13px] leading-none shrink-0 w-5 text-center">{skillDef.icon}</span>
-                  <span className={`text-[11px] w-[70px] shrink-0 truncate ${isActive ? 'text-white font-semibold' : 'text-gray-400'}`}>{skillDef.name}</span>
+                <div key={skillDef.id} title={xpTitle} className={`flex items-center gap-2 px-2 py-[5px] rounded transition-colors ${isActive ? 'bg-accent/[0.04]' : ''}`}>
+                  <span className="text-body leading-none shrink-0 w-5 text-center">{skillDef.icon}</span>
+                  <span className={`text-caption w-[70px] shrink-0 truncate ${isActive ? 'text-white font-semibold' : 'text-gray-400'}`}>{skillDef.name}</span>
                   <div className="flex-1 h-[10px] rounded bg-black/25 overflow-hidden relative">
                     <div
                       className="absolute inset-y-0 left-0 rounded transition-all duration-500"
@@ -465,8 +472,11 @@ export function FriendProfile({ profile, onBack, onMessage }: FriendProfileProps
                       }}
                     />
                   </div>
-                  <span className="text-[11px] font-mono font-bold tabular-nums w-5 text-right shrink-0" style={{ color: unknownSkill ? '#4b5563' : skillDef.color }}>
+                  <span className="text-caption font-mono font-bold tabular-nums w-5 text-right shrink-0" style={{ color: unknownSkill ? '#4b5563' : skillDef.color }}>
                     {unknownSkill ? '--' : level}
+                  </span>
+                  <span className="text-micro font-mono tabular-nums w-[26px] text-right shrink-0 text-gray-600">
+                    {hoursLabel ?? ''}
                   </span>
                 </div>
               )
@@ -476,10 +486,10 @@ export function FriendProfile({ profile, onBack, onMessage }: FriendProfileProps
       </div>
 
       {/* Achievements */}
-      <div className="rounded-xl bg-discord-card/80 border border-white/10 p-3">
+      <div className="rounded-card bg-surface-2/80 border border-white/10 p-3">
         <div className="flex items-center justify-between mb-2">
-          <p className="text-[10px] uppercase tracking-widest text-gray-500 font-mono font-semibold">Achievements</p>
-          <span className="text-[10px] text-gray-500 font-mono">{unlockedIdsForDisplay.length}/{ACHIEVEMENTS.length}</span>
+          <p className="text-micro uppercase tracking-widest text-gray-500 font-mono font-semibold">Achievements</p>
+          <span className="text-micro text-gray-500 font-mono">{unlockedIdsForDisplay.length}/{ACHIEVEMENTS.length}</span>
         </div>
         {/* Progress bar */}
         <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden mb-2.5">
@@ -490,11 +500,11 @@ export function FriendProfile({ profile, onBack, onMessage }: FriendProfileProps
             {/* Last 3 featured */}
             <div className="space-y-1">
               {unlockedAchievements.slice(-3).reverse().map(a => (
-                <div key={a.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-discord-darker/30">
+                <div key={a.id} className="flex items-center gap-2 px-2 py-1.5 rounded bg-surface-0/30">
                   <span className="text-base shrink-0">{a.icon}</span>
                   <div className="min-w-0 flex-1">
-                    <span className="text-[11px] font-semibold text-white">{a.name}</span>
-                    <span className="text-[10px] text-gray-500 ml-1.5">{a.description}</span>
+                    <span className="text-caption font-semibold text-white">{a.name}</span>
+                    <span className="text-micro text-gray-500 ml-1.5">{a.description}</span>
                   </div>
                 </div>
               ))}
@@ -517,8 +527,8 @@ export function FriendProfile({ profile, onBack, onMessage }: FriendProfileProps
 
       {/* Activity Insights — sessions + progression feed */}
       {(sessions.length > 0 || publicProgressEvents.length > 0) && (
-        <div className="rounded-xl bg-discord-card/80 border border-white/10 p-3 space-y-3">
-          <p className="text-[10px] uppercase tracking-widest text-gray-500 font-mono font-semibold">Activity</p>
+        <div className="rounded-card bg-surface-2/80 border border-white/10 p-3 space-y-3">
+          <p className="text-micro uppercase tracking-widest text-gray-500 font-mono font-semibold">Activity</p>
 
           {/* Recent sessions with bars */}
           {sessions.length > 0 && (() => {
@@ -529,13 +539,13 @@ export function FriendProfile({ profile, onBack, onMessage }: FriendProfileProps
                   const pct = Math.max(8, (s.duration_seconds / maxDur) * 100)
                   return (
                     <div key={s.id} className="flex items-center gap-2.5 py-0.5">
-                      <span className="text-[10px] text-gray-500 font-mono w-[50px] shrink-0">
+                      <span className="text-micro text-gray-500 font-mono w-[50px] shrink-0">
                         {new Date(s.start_time).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </span>
                       <div className="flex-1 h-2 rounded-sm bg-black/20 overflow-hidden">
                         <div className="h-full rounded-sm" style={{ width: `${pct}%`, background: 'linear-gradient(90deg, rgba(0,255,135,0.3), rgba(0,255,135,0.08))' }} />
                       </div>
-                      <span className="text-[11px] text-cyber-neon font-mono font-bold w-[44px] text-right shrink-0">{formatDuration(s.duration_seconds)}</span>
+                      <span className="text-caption text-accent font-mono font-bold w-[44px] text-right shrink-0">{formatDuration(s.duration_seconds)}</span>
                     </div>
                   )
                 })}
@@ -579,9 +589,9 @@ export function FriendProfile({ profile, onBack, onMessage }: FriendProfileProps
                   })()
                   return (
                     <div key={event.id} className="flex items-center gap-2 py-1 px-1">
-                      <span className="text-[11px] shrink-0 w-4 text-center">{icon}</span>
-                      <span className="text-[11px] text-gray-300 flex-1 min-w-0 truncate">{label}</span>
-                      <span className="text-[10px] text-gray-600 font-mono shrink-0">{ago}</span>
+                      <span className="text-caption shrink-0 w-4 text-center">{icon}</span>
+                      <span className="text-caption text-gray-300 flex-1 min-w-0 truncate">{label}</span>
+                      <span className="text-micro text-gray-600 font-mono shrink-0">{ago}</span>
                     </div>
                   )
                 })}

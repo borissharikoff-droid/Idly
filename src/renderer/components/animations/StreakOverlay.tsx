@@ -204,7 +204,7 @@ export function StreakOverlay({ streak, onClose }: StreakOverlayProps) {
 
         {/* Tier label badge */}
         <div
-          className="inline-block mt-3 px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-[0.2em]"
+          className="inline-block mt-3 px-4 py-1 rounded-full text-micro font-bold uppercase tracking-[0.2em]"
           style={{
             border: `1px solid ${tier.color}44`,
             background: `${tier.color}15`,
@@ -217,7 +217,7 @@ export function StreakOverlay({ streak, onClose }: StreakOverlayProps) {
 
         {/* Subtitle */}
         <p
-          className="text-[13px] mt-2"
+          className="text-body mt-2"
           style={{
             color: 'rgba(255,255,255,0.4)',
             animation: 'streak-fade-up 0.5s 2.1s cubic-bezier(0.16,1,0.3,1) both',
@@ -235,7 +235,7 @@ export function StreakOverlay({ streak, onClose }: StreakOverlayProps) {
             {rewards.items.map((r, i) => (
               <div
                 key={i}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-medium"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-caption font-medium"
                 style={{
                   background: `${tier.color}12`,
                   border: `1px solid ${tier.color}30`,
@@ -251,7 +251,7 @@ export function StreakOverlay({ streak, onClose }: StreakOverlayProps) {
         {/* Continue button */}
         <button
           onClick={handleClose}
-          className="mt-6 px-12 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-95 hover:brightness-125"
+          className="mt-6 px-12 py-2.5 rounded-lg text-sm font-semibold transition-all active:scale-95 hover:brightness-125"
           style={{
             background: `linear-gradient(135deg, ${tier.color}25 0%, ${tier.color}10 100%)`,
             border: `1px solid ${tier.color}40`,

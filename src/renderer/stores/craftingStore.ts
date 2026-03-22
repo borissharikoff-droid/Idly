@@ -12,6 +12,19 @@ import { track } from '../lib/analytics'
 
 const STORAGE_KEY = 'grindly_crafting_v2'
 
+// ── Mastery ───────────────────────────────────────────────────────────────────
+
+/** Mastery tier per recipe, based on cumulative items crafted. */
+export function getMasteryTier(count: number): 0 | 1 | 2 | 3 {
+  if (count >= 200) return 3
+  if (count >= 50)  return 2
+  if (count >= 10)  return 1
+  return 0
+}
+
+export const MASTERY_TIER_LABELS = ['', 'Apprentice', 'Journeyman', 'Master'] as const
+export const MASTERY_THRESHOLDS  = [10, 50, 200] as const
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface CraftJob {
@@ -32,6 +45,8 @@ interface CraftingState {
   craftXp: number
   activeJob: CraftJob | null
   queue: CraftJob[]
+  /** Cumulative items crafted per recipe, used for mastery tiers. */
+  recipeMastery: Record<string, number>
 
   hydrate: () => void
 
@@ -45,15 +60,19 @@ interface CraftingState {
     qty: number,
     itemsOwned: Record<string, number>,
     onConsume: (id: string, qty: number) => void,
+    /** Extra speed multiplier, e.g. 0.5 for party craft with 2 members */
+    extraSpeedMult?: number,
   ) => 'ok' | 'not_enough' | 'no_gold' | 'invalid'
 
   /**
    * Advance the active job based on wall time. Call every ~2s from App.
    * onGrant receives (itemId, qty, xpGained) — all three must be applied by caller.
+   * onRefund (optional) called when mastery tier 2/3 procs an ingredient refund.
    */
   tick: (
     now: number,
     onGrant: (itemId: string, qty: number, xpGained: number) => void,
+    onRefund?: (id: string, qty: number) => void,
   ) => void
 
   /** Cancel a job (active or queued). Refunds unconsumed ingredient quantities. */
@@ -72,9 +91,10 @@ interface Snapshot {
   craftXp: number
   activeJob: CraftJob | null
   queue: CraftJob[]
+  recipeMastery?: Record<string, number>
 }
 
-function save(s: Pick<CraftingState, 'craftXp' | 'activeJob' | 'queue'>) {
+function save(s: Pick<CraftingState, 'craftXp' | 'activeJob' | 'queue' | 'recipeMastery'>) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)) } catch { /* ignore */ }
 }
 
@@ -95,18 +115,20 @@ export const useCraftingStore = create<CraftingState>((set, get) => ({
   craftXp: 0,
   activeJob: null,
   queue: [],
+  recipeMastery: {},
 
   hydrate() {
     const snap = load()
     if (!snap) return
     set({
-      craftXp:   snap.craftXp   ?? 0,
-      activeJob: snap.activeJob ?? null,
-      queue:     snap.queue     ?? [],
+      craftXp:       snap.craftXp       ?? 0,
+      activeJob:     snap.activeJob     ?? null,
+      queue:         snap.queue         ?? [],
+      recipeMastery: snap.recipeMastery ?? {},
     })
   },
 
-  startCraft(recipeId, qty, itemsOwned, onConsume) {
+  startCraft(recipeId, qty, itemsOwned, onConsume, extraSpeedMult = 1) {
     const recipe = CRAFT_RECIPE_MAP[recipeId]
     if (!recipe) return 'invalid'
     if (!canAffordRecipe(recipe, qty, itemsOwned)) return 'not_enough'
@@ -132,7 +154,7 @@ export const useCraftingStore = create<CraftingState>((set, get) => ({
     const crafterSpeedMult = getCrafterSpeedMultiplier(crafterLevel)
     const grindlySpeedMult = computeGrindlyBonuses(getGrindlyLevel()).craftSpeedMultiplier
     const guildCraftMult = getGuildCraftSpeedMultiplier(useGuildStore.getState().hallLevel)
-    const speedMult = crafterSpeedMult * grindlySpeedMult * guildCraftMult
+    const speedMult = crafterSpeedMult * grindlySpeedMult * guildCraftMult * extraSpeedMult
     const effectiveSecPerItem = Math.max(1, Math.round(recipe.secPerItem * speedMult))
 
     const job: CraftJob = {
@@ -152,13 +174,13 @@ export const useCraftingStore = create<CraftingState>((set, get) => ({
     const newActive = activeJob ? activeJob : job
     const newQueue  = activeJob ? [...queue, job] : queue
 
-    const snap = { craftXp: get().craftXp, activeJob: newActive, queue: newQueue }
+    const snap = { craftXp: get().craftXp, activeJob: newActive, queue: newQueue, recipeMastery: get().recipeMastery }
     save(snap)
     set({ activeJob: newActive, queue: newQueue })
     return 'ok'
   },
 
-  tick(now, onGrant) {
+  tick(now, onGrant, onRefund) {
     const { activeJob } = get()
     if (!activeJob) return
 
@@ -168,23 +190,43 @@ export const useCraftingStore = create<CraftingState>((set, get) => ({
 
     const remaining = activeJob.totalQty - activeJob.doneQty
     const completable = Math.min(newlyCompleted, remaining)
-    const xpGained = completable * activeJob.xpPerItem
 
-    // Crafter level double-output perk
+    // Mastery bonuses
+    const masteryCount = get().recipeMastery[activeJob.recipeId] ?? 0
+    const masteryTier  = getMasteryTier(masteryCount)
+    const xpMult       = masteryTier >= 1 ? 1.2 : 1.0
+    const xpGained     = Math.round(completable * activeJob.xpPerItem * xpMult)
+
+    // Crafter level double-output perk + mastery bonus output (tier 3: +10% per item)
     const crafterLevel = skillLevelFromXP(get().craftXp)
     const doubleChance = getCrafterDoubleChance(crafterLevel)
     let outputQty = completable * activeJob.outputQty
-    if (doubleChance > 0) {
-      for (let i = 0; i < completable; i++) {
-        if (Math.random() < doubleChance) outputQty += activeJob.outputQty
-      }
+    for (let i = 0; i < completable; i++) {
+      if (doubleChance > 0 && Math.random() < doubleChance) outputQty += activeJob.outputQty
+      if (masteryTier >= 3 && Math.random() < 0.10)        outputQty += activeJob.outputQty
     }
 
     onGrant(activeJob.outputItemId, outputQty, xpGained)
 
+    // Mastery ingredient refund (tier 2: 15%, tier 3: 20%) — per item roll
+    if (onRefund && masteryTier >= 2) {
+      const refundChance = masteryTier >= 3 ? 0.20 : 0.15
+      for (let i = 0; i < completable; i++) {
+        if (Math.random() < refundChance) {
+          for (const ing of activeJob.ingredients) {
+            onRefund(ing.id, ing.qty)
+          }
+        }
+      }
+    }
+
     const newDone = activeJob.doneQty + completable
     const newCraftXp = get().craftXp + xpGained
     const newQueue = [...get().queue]
+    const newMastery = {
+      ...get().recipeMastery,
+      [activeJob.recipeId]: masteryCount + completable,
+    }
 
     let newActiveJob: CraftJob | null
     if (newDone >= activeJob.totalQty) {
@@ -201,9 +243,9 @@ export const useCraftingStore = create<CraftingState>((set, get) => ({
       newActiveJob = { ...activeJob, doneQty: newDone, startedAt: now }
     }
 
-    const snap = { craftXp: newCraftXp, activeJob: newActiveJob, queue: newQueue }
+    const snap = { craftXp: newCraftXp, activeJob: newActiveJob, queue: newQueue, recipeMastery: newMastery }
     save(snap)
-    set({ craftXp: newCraftXp, activeJob: newActiveJob, queue: newQueue })
+    set({ craftXp: newCraftXp, activeJob: newActiveJob, queue: newQueue, recipeMastery: newMastery })
   },
 
   cancelJob(jobId, onRefund) {
@@ -234,7 +276,7 @@ export const useCraftingStore = create<CraftingState>((set, get) => ({
       }
     }
 
-    const snap = { craftXp: get().craftXp, activeJob: newActiveJob, queue: newQueue }
+    const snap = { craftXp: get().craftXp, activeJob: newActiveJob, queue: newQueue, recipeMastery: get().recipeMastery }
     save(snap)
     set({ activeJob: newActiveJob, queue: newQueue })
   },

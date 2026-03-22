@@ -493,7 +493,7 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     outputItemId: 'compost',
     outputQty: 3,
     isIntermediate: true,
-    ingredients: [{ id: 'wheat', qty: 5 }, { id: 'herbs', qty: 3 }],
+    ingredients: [{ id: 'wheat', qty: 2 }, { id: 'herbs', qty: 1 }],
     levelRequired: 0,
     xpPerItem: 80,
     secPerItem: 6,
@@ -789,13 +789,13 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     goldCost: 4000,
   },
   {
-    // Shadow Dust × 2 + Lich Crystal × 1 → Lich Sigil Ring
+    // Dragon Scale × 4 + Dragon Heart × 1 → Lich Sigil Ring (Zone 6 mats — gate to Zone 7)
     id: 'recipe_lich_ring',
     outputItemId: 'craft_lich_ring',
     outputQty: 1,
     ingredients: [
-      { id: 'shadow_dust',  qty: 2 },
-      { id: 'lich_crystal', qty: 1 },
+      { id: 'dragon_scale', qty: 4 },
+      { id: 'dragon_heart', qty: 1 },
     ],
     levelRequired: 68,
     xpPerItem: 6000,

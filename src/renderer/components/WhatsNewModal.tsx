@@ -83,22 +83,22 @@ export function WhatsNewModal({ patch, open, onClose }: { patch: PatchNote | nul
             transition={{ type: 'spring', damping: 28, stiffness: 350 }}
           >
             <div
-              className="pointer-events-auto w-full max-w-[340px] rounded-2xl overflow-hidden shadow-2xl"
+              className="pointer-events-auto w-full max-w-[340px] rounded-card overflow-hidden shadow-2xl"
               style={{ background: 'rgba(16,16,28,0.98)', border: '1px solid rgba(255,255,255,0.08)' }}
             >
               {/* Header */}
               <div className="px-5 pt-5 pb-3">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-lg">🎉</span>
-                  <h2 className="text-[16px] font-bold text-white">What's New</h2>
+                  <h2 className="text-base font-bold text-white">What's New</h2>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md"
+                  <span className="text-caption font-mono font-bold px-2 py-0.5 rounded-md"
                     style={{ color: '#22c55e', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)' }}>
                     v{patch.version}
                   </span>
-                  <span className="text-[11px] text-gray-400">{patch.title}</span>
-                  <span className="text-[10px] text-gray-600 ml-auto font-mono">{patch.date}</span>
+                  <span className="text-caption text-gray-400">{patch.title}</span>
+                  <span className="text-micro text-gray-600 ml-auto font-mono">{patch.date}</span>
                 </div>
               </div>
 
@@ -116,12 +116,12 @@ export function WhatsNewModal({ patch, open, onClose }: { patch: PatchNote | nul
                         className="flex items-start gap-2"
                       >
                         <span
-                          className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded mt-0.5 shrink-0"
+                          className="text-micro font-bold uppercase px-1.5 py-0.5 rounded mt-0.5 shrink-0"
                           style={{ color: meta.color, background: `${meta.color}15`, border: `1px solid ${meta.color}25` }}
                         >
                           {meta.label}
                         </span>
-                        <span className="text-[11px] text-gray-300 leading-snug">{item.text}</span>
+                        <span className="text-caption text-gray-300 leading-snug">{item.text}</span>
                       </motion.div>
                     )
                   })}
@@ -134,7 +134,7 @@ export function WhatsNewModal({ patch, open, onClose }: { patch: PatchNote | nul
                   type="button"
                   whileTap={{ scale: 0.96 }}
                   onClick={() => { playClickSound(); onClose() }}
-                  className="w-full py-2.5 rounded-xl text-[13px] font-bold text-white"
+                  className="w-full py-2.5 rounded text-body font-bold text-white"
                   style={{
                     background: 'linear-gradient(135deg, #22c55e, #16a34a)',
                     boxShadow: '0 4px 16px rgba(34,197,94,0.2)',

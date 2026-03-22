@@ -3,7 +3,6 @@ import { Bell } from '../../lib/icons'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
 import { getStreakMultiplier } from '../../lib/xp'
-import { computeTotalSkillLevel, MAX_TOTAL_SKILL_LEVEL } from '../../lib/skills'
 import { FRAMES, getEquippedFrame } from '../../lib/cosmetics'
 import { playClickSound } from '../../lib/sounds'
 import { useAlertStore } from '../../stores/alertStore'
@@ -19,6 +18,7 @@ import { useNavigationStore } from '../../stores/navigationStore'
 import { useSessionStore } from '../../stores/sessionStore'
 import { PartyMemberCtxMenu, type CtxTarget } from '../party/PartyMemberCtxMenu'
 import { useChatTargetStore } from '../../stores/chatTargetStore'
+import { fmt } from '../../lib/format'
 
 interface ProfileBarProps {
   onNavigateProfile?: () => void
@@ -34,7 +34,6 @@ export function ProfileBar({ onNavigateProfile, onNavigateInventory }: ProfileBa
   const setReturnTab = useNavigationStore((s) => s.setReturnTab)
   const [username, setUsername] = useState('Grindly')
   const [avatar, setAvatar] = useState('🤖')
-  const [totalSkillLevel, setTotalSkillLevel] = useState(0)
   const [frameId, setFrameId] = useState<string | null>(null)
   const [streak, setStreak] = useState(0)
   const activeFrame = FRAMES.find(f => f.id === frameId)
@@ -84,11 +83,6 @@ export function ProfileBar({ onNavigateProfile, onNavigateInventory }: ProfileBa
       }).catch(() => {})
     }
     const api = window.electronAPI
-    if (api?.db?.getAllSkillXP) {
-      api.db.getAllSkillXP().then((rows: { skill_id: string; total_xp: number }[]) => {
-        setTotalSkillLevel(computeTotalSkillLevel(rows || []))
-      })
-    }
     setFrameId(getEquippedFrame())
     if (api?.db?.getStreak) {
       api.db.getStreak().then((s: number) => setStreak(s || 0))
@@ -157,12 +151,12 @@ export function ProfileBar({ onNavigateProfile, onNavigateInventory }: ProfileBa
             ringInsetClass="-inset-0.5"
           />
           {lootCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-cyber-neon text-discord-darker text-[10px] font-bold flex items-center justify-center shadow-[0_0_6px_rgba(0,255,136,0.5)]">
+            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-accent text-white text-micro font-bold flex items-center justify-center border border-surface-1">
               {lootCount}
             </span>
           )}
           {myMember && !lootCount && (
-            <span className="absolute -bottom-0.5 -right-0.5 text-[10px] leading-none drop-shadow-md">
+            <span className="absolute -bottom-0.5 -right-0.5 text-micro leading-none drop-shadow-md">
               {ROLE_ICONS[myMember.role]}
             </span>
           )}
@@ -173,17 +167,13 @@ export function ProfileBar({ onNavigateProfile, onNavigateInventory }: ProfileBa
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-white font-medium text-sm leading-none truncate">{username}</span>
 
-            <span className="text-cyber-neon font-mono text-[11px] leading-none cursor-default" title="Total skill level">
-              {totalSkillLevel}/{MAX_TOTAL_SKILL_LEVEL}
-            </span>
-
             {isAfkPaused && (
-              <span className="font-mono text-[10px] leading-none px-1 py-0.5 rounded bg-amber-500/20 text-amber-300 animate-pulse" title="Session paused — AFK detected">
+              <span className="font-mono text-micro leading-none px-1.5 py-0.5 rounded border border-amber-500/35 bg-amber-500/15 text-amber-300 animate-pulse" title="Session paused — AFK detected">
                 {afkLabel}
               </span>
             )}
             {!isAfkPaused && showResumed && (
-              <span className="font-mono text-[10px] leading-none px-1 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
+              <span className="font-mono text-micro leading-none px-1.5 py-0.5 rounded border border-emerald-500/30 bg-emerald-500/12 text-emerald-400">
                 ▶ Resumed
               </span>
             )}
@@ -191,7 +181,7 @@ export function ProfileBar({ onNavigateProfile, onNavigateInventory }: ProfileBa
           <div className="flex items-center gap-2 mt-0.5 text-xs">
             <span className="text-amber-400/90 flex items-center gap-1">
               <span aria-hidden>🪙</span>
-              <span className="font-mono tabular-nums">{gold}</span>
+              <span className="font-mono tabular-nums">{fmt(gold)}</span>
             </span>
             {streak > 0 && (
               <span
@@ -215,12 +205,12 @@ export function ProfileBar({ onNavigateProfile, onNavigateInventory }: ProfileBa
           <button
             ref={bellRef}
             onClick={toggleBell}
-            className="w-8 h-8 rounded-lg bg-discord-card/60 border border-white/[0.06] flex items-center justify-center text-gray-400 hover:text-white hover:border-white/10 transition-colors relative"
+            className="w-8 h-8 rounded bg-surface-2/60 border border-white/[0.07] flex items-center justify-center text-gray-400 hover:text-white hover:border-white/12 hover:bg-surface-3/60 transition-colors relative"
             title="Notifications"
           >
             <Bell className="w-[15px] h-[15px]" />
             {unreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-orange-500 text-white text-[10px] font-bold flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-orange-500 text-white text-micro font-bold flex items-center justify-center border border-surface-1">
                 {unreadCount > 9 ? '9+' : unreadCount}
               </span>
             )}
@@ -263,7 +253,7 @@ export function ProfileBar({ onNavigateProfile, onNavigateInventory }: ProfileBa
                   ringInsetClass="-inset-[1px]"
                   ringOpacity={0.6}
                 />
-                <span className="absolute -bottom-0.5 -right-0.5 text-[10px] leading-none drop-shadow-md">
+                <span className="absolute -bottom-0.5 -right-0.5 text-micro leading-none drop-shadow-md">
                   {ROLE_ICONS[m.role]}
                 </span>
               </button>

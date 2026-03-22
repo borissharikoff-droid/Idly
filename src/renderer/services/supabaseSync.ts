@@ -302,33 +302,25 @@ export async function syncSkillsToSupabase(
         .map((r) => ({ skill_id: normalizeSkillId(r.skill_id), total_xp: r.total_xp ?? 0 }))
       const cloudSkillRows = cloudHigherRows.length > 0 ? cloudHigherRows : undefined
 
+      // RPC: server caps XP at 5M, level 0-99, prestige 0-10, uses auth.uid()
+      const rpcSkills = payload.map(({ skill_id, total_xp, level, prestige_count }) => ({
+        skill_id,
+        total_xp: total_xp ?? 0,
+        level: level ?? 0,
+        prestige_count: prestige_count ?? 0,
+      }))
       const primaryRes = await withTimeout(
-        supabase
-          .from('user_skills')
-          .upsert(payload, { onConflict: 'user_id,skill_id' }),
+        supabase.rpc('sync_skills', { p_skills: rpcSkills }),
         10000,
-        'user_skills upsert',
+        'sync_skills rpc',
       )
       if (primaryRes.error) {
-        // Backward-compatible fallback: some deployments may not have total_xp yet.
-        const levelOnlyPayload = payload.map(({ user_id, skill_id, level, updated_at }) => ({
-          user_id,
-          skill_id,
-          level,
-          updated_at,
-        }))
-        const fallbackRes = await withTimeout(
-          supabase
-            .from('user_skills')
-            .upsert(levelOnlyPayload, { onConflict: 'user_id,skill_id' }),
+        // Fallback to direct upsert if RPC not yet deployed
+        await withTimeout(
+          supabase.from('user_skills').upsert(payload, { onConflict: 'user_id,skill_id' }),
           10000,
-          'user_skills upsert level-only',
+          'user_skills upsert fallback',
         )
-        if (fallbackRes.error) {
-          // Last-resort compatibility path for schemas without unique constraint
-          // on (user_id, skill_id) or with partial migrations.
-          await manualSyncWithoutConflict(user.id, payload, levelOnlyPayload)
-        }
       }
 
       // Merge pending + admin overrides so callers know which skills were force-set
@@ -386,18 +378,11 @@ export async function syncSessionToSupabase(
 export async function syncAchievementsToSupabase(achievementIds: string[]): Promise<AchievementSyncResult> {
   if (!supabase || achievementIds.length === 0) return { ok: false, synced: 0, error: 'Supabase not configured or no achievements' }
   try {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return { ok: false, synced: 0, error: 'No authenticated user' }
-    const payload = achievementIds.map((achievementId) => ({
-      user_id: user.id,
-      achievement_id: achievementId,
-      unlocked_at: new Date().toISOString(),
-    }))
-    const { error } = await supabase
-      .from('user_achievements')
-      .upsert(payload, { onConflict: 'user_id,achievement_id' })
+    // RPC: валидирует формат ID (a-z0-9_), макс 30 за вызов, нет дублей
+    const { data, error } = await supabase.rpc('grant_achievements', { p_achievement_ids: achievementIds })
     if (error) return { ok: false, synced: 0, error: error.message }
-    return { ok: true, synced: payload.length }
+    const result = data as { ok: boolean; synced: number } | null
+    return { ok: result?.ok ?? true, synced: result?.synced ?? 0 }
   } catch (err) {
     return { ok: false, synced: 0, error: err instanceof Error ? err.message : String(err) }
   }
@@ -465,18 +450,16 @@ export async function syncSkillXpEventsToSupabase(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { ok: false, synced: 0, error: 'No authenticated user' }
 
-    const payload = valid.map((entry) => ({
-      user_id: user.id,
+    // RPC: валидирует skill_id, source, xp_delta ≤ 200k, время не из будущего/не старше 30д
+    const rpcPayload = valid.map((entry) => ({
       skill_id: entry.skillId,
       xp_delta: Math.floor(entry.xpDelta),
       source: entry.source,
       happened_at: entry.happenedAt ?? new Date().toISOString(),
-      created_at: new Date().toISOString(),
     }))
-
-    const { error } = await supabase.from('skill_xp_events').insert(payload)
+    const { error } = await supabase.rpc('record_xp_events', { p_events: rpcPayload })
     if (error) return { ok: false, synced: 0, error: error.message }
-    return { ok: true, synced: payload.length }
+    return { ok: true, synced: rpcPayload.length }
   } catch (err) {
     return { ok: false, synced: 0, error: err instanceof Error ? err.message : String(err) }
   }
@@ -601,11 +584,13 @@ export async function syncInventoryToSupabase(
         const r = row as { chest_type: string; quantity: number }
         if (r.chest_type in cloudChests) cloudChests[r.chest_type] = r.quantity ?? 0
       }
+      // Local is authoritative for chests — same as items. Prevents opened chests from being
+      // restored via Math.max against a stale cloud value.
       chestsToSync = {
-        common_chest: Math.max(chests.common_chest ?? 0, cloudChests.common_chest),
-        rare_chest: Math.max(chests.rare_chest ?? 0, cloudChests.rare_chest),
-        epic_chest: Math.max(chests.epic_chest ?? 0, cloudChests.epic_chest),
-        legendary_chest: Math.max(chests.legendary_chest ?? 0, cloudChests.legendary_chest),
+        common_chest: chests.common_chest ?? 0,
+        rare_chest: chests.rare_chest ?? 0,
+        epic_chest: chests.epic_chest ?? 0,
+        legendary_chest: chests.legendary_chest ?? 0,
       }
     }
 
@@ -634,7 +619,7 @@ export async function syncInventoryToSupabase(
       }))
 
     const chestPayload = (['common_chest', 'rare_chest', 'epic_chest', 'legendary_chest'] as ChestType[])
-      .filter((ct) => (chestsToSync[ct] ?? 0) > 0)
+      .filter((ct) => (chestsToSync[ct] ?? 0) >= 0)
       .map((chest_type) => ({
         user_id: user.id,
         chest_type,
@@ -643,17 +628,16 @@ export async function syncInventoryToSupabase(
       }))
 
     if (itemPayload.length > 0) {
-      const { error: invErr } = await supabase
-        .from('user_inventory')
-        .upsert(itemPayload, { onConflict: 'user_id,item_id' })
+      // RPC: server caps quantities at 9999, uses auth.uid() — user_id cannot be spoofed
+      const rpcItems = itemPayload.map(({ item_id, quantity }) => ({ item_id, quantity }))
+      const { error: invErr } = await supabase.rpc('sync_inventory', { p_items: rpcItems })
       if (invErr) return { ok: false, itemsSynced: 0, chestsSynced: 0, error: invErr.message }
     }
 
     if (chestPayload.length > 0) {
-      const { error: chestErr } = await supabase
-        .from('user_chests')
-        .upsert(chestPayload, { onConflict: 'user_id,chest_type' })
-      // Don't abort the whole sync if user_chests table is missing — items still sync correctly
+      // RPC: server caps at 999/тип, дельта +50/sync, только легитимные типы
+      const rpcChests = chestPayload.map(({ chest_type, quantity }) => ({ chest_type, quantity }))
+      const { error: chestErr } = await supabase.rpc('sync_chests', { p_chests: rpcChests })
       if (chestErr) console.warn('[supabaseSync] user_chests sync skipped:', chestErr.message)
     }
 

@@ -7,7 +7,7 @@ interface NavCustomizationState {
   setPinnedTabs: (tabs: TabId[]) => void
 }
 
-export const DEFAULT_PINNED: TabId[] = ['home', 'skills', 'friends', 'stats']
+export const DEFAULT_PINNED: TabId[] = ['home', 'skills', 'friends', 'arena']
 
 export const useNavCustomizationStore = create<NavCustomizationState>()(
   persist(

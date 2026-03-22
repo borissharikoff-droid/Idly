@@ -41,7 +41,7 @@ export function LevelUpModal() {
           exit={{ scale: 0.9, opacity: 0, y: 10 }}
           transition={{ type: 'spring', damping: 20, stiffness: 300 }}
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-[280px] rounded-2xl bg-discord-card border border-cyber-neon/40 shadow-[0_0_40px_rgba(0,255,136,0.3)] overflow-hidden relative"
+          className="w-full max-w-[280px] rounded-lg bg-surface-2 border border-cyber-neon/40 shadow-[0_0_40px_rgba(0,255,136,0.3)] overflow-hidden relative"
         >
           <div className="absolute inset-0 bg-gradient-to-b from-cyber-neon/10 to-transparent pointer-events-none" />
 
@@ -52,7 +52,7 @@ export function LevelUpModal() {
               transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
               className="mb-2"
             >
-              <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyber-neon to-discord-accent animate-pulse">
+              <span className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyber-neon to-accent animate-pulse">
                 LEVEL UP!
               </span>
             </motion.div>
@@ -75,7 +75,7 @@ export function LevelUpModal() {
                 transition={{ delay: 0.4 }}
                 className="space-y-2 mt-2"
               >
-                <p className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Rewards Unlocked</p>
+                <p className="text-micro text-gray-400 uppercase tracking-wider font-bold">Rewards Unlocked</p>
                 {rewards.map((reward, i) => (
                   <motion.div
                     key={i}
@@ -98,7 +98,7 @@ export function LevelUpModal() {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.6 }}
               onClick={handleContinue}
-              className="mt-5 px-8 py-2.5 rounded-xl bg-cyber-neon/20 border border-cyber-neon/40 text-cyber-neon text-sm font-bold active:scale-95 transition-all hover:bg-cyber-neon/30 hover:shadow-[0_0_20px_rgba(0,255,136,0.3)]"
+              className="mt-5 px-8 py-2.5 rounded-lg bg-cyber-neon/20 border border-cyber-neon/40 text-cyber-neon text-sm font-bold active:scale-95 transition-all hover:bg-cyber-neon/30 hover:shadow-[0_0_20px_rgba(0,255,136,0.3)]"
             >
               Continue Grinding
             </motion.button>

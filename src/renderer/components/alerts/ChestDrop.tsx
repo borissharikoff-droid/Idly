@@ -90,14 +90,14 @@ export function ChestDrop() {
                 animate={{ scale: 1, y: 0, opacity: 1 }}
                 exit={{ scale: 0.92, y: 10, opacity: 0 }}
                 transition={MOTION.spring.pop}
-                className="w-[300px] rounded-2xl bg-discord-card overflow-hidden"
+                className="w-[300px] rounded-card bg-surface-2 overflow-hidden"
                 style={{ border: `1px solid ${theme.border}`, boxShadow: `0 0 28px ${theme.glow}40` }}
               >
                 <div className="p-5 text-center">
                   <motion.div
                     animate={{ y: [0, -5, 0] }}
                     transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-                    className="w-20 h-20 mx-auto rounded-xl flex items-center justify-center relative"
+                    className="w-20 h-20 mx-auto rounded flex items-center justify-center relative"
                     style={{ border: `1px solid ${theme.border}`, background: `radial-gradient(circle at 50% 40%, ${theme.glow}30 0%, rgba(8,8,16,0.9) 70%)`, boxShadow: `0 0 18px ${theme.glow}44` }}
                   >
                     {chest.image ? (
@@ -113,18 +113,18 @@ export function ChestDrop() {
                     )}
                   </motion.div>
                   <p
-                    className="text-[10px] font-mono uppercase tracking-wider mt-3"
+                    className="text-micro font-mono uppercase tracking-wider mt-3"
                     style={{ color: theme.color }}
                   >
                     {chest.rarity === 'common' ? 'Bag dropped' : chest.rarity === 'rare' ? 'Rare drop!' : chest.rarity === 'epic' ? 'Epic drop!' : 'Legendary drop!'}
                   </p>
                   <p className="text-white font-semibold text-base mt-0.5">{chest.name}</p>
-                  <p className="text-[11px] text-gray-500 mt-1">Dropped during your grind.</p>
+                  <p className="text-caption text-gray-500 mt-1">Dropped during your grind.</p>
                   <div className="mt-4 flex gap-2">
                     <button
                       type="button"
                       onClick={handleOpen}
-                      className="flex-1 py-2 rounded-lg text-sm font-semibold transition-colors"
+                      className="flex-1 py-2 rounded text-sm font-semibold transition-colors"
                       style={{ border: `1px solid ${theme.border}`, background: `${theme.color}22`, color: theme.color }}
                     >
                       Open
@@ -132,13 +132,13 @@ export function ChestDrop() {
                     <button
                       type="button"
                       onClick={handleLater}
-                      className="flex-1 py-2 rounded-lg border border-white/15 text-gray-400 text-sm font-semibold hover:bg-white/5 transition-colors"
+                      className="flex-1 py-2 rounded border border-white/15 text-gray-400 text-sm font-semibold hover:bg-white/5 transition-colors"
                     >
                       Later
                     </button>
                   </div>
                 </div>
-                <div className="h-0.5 bg-discord-darker/60">
+                <div className="h-0.5 bg-surface-0/60">
                   <div
                     className="h-full transition-[width] duration-100"
                     style={{ width: `${progress}%`, backgroundColor: `${theme.color}99` }}

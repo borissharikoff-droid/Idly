@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useCraftingStore } from '../stores/craftingStore'
+import { usePartyCraftStore } from '../stores/partyCraftStore'
 import { useInventoryStore } from '../stores/inventoryStore'
 import { useToastStore } from '../stores/toastStore'
 import { LOOT_ITEMS } from '../lib/loot'
@@ -38,6 +39,9 @@ export function useCraftTick() {
         } else {
           batchRef.current = { jobId: jobBefore?.id ?? '', itemId, qty, xp: xpGained }
         }
+      }, (id, refundQty) => {
+        // Mastery ingredient refund — silently return materials to inventory
+        addItem(id, refundQty)
       })
 
       const jobAfter = useCraftingStore.getState().activeJob
@@ -55,6 +59,11 @@ export function useCraftTick() {
             qty: batch.qty,
             xp: batch.xp,
           })
+        }
+        // Distribute XP to party helpers if this was a party craft
+        const partyCraftSession = usePartyCraftStore.getState().session
+        if (partyCraftSession?.status === 'crafting' && partyCraftSession.recipe_id === jobBefore.recipeId) {
+          usePartyCraftStore.getState().completeSession(partyCraftSession.id).catch(() => {})
         }
         batchRef.current = null
         // Sync crafted items to Supabase so periodic merge doesn't lose them

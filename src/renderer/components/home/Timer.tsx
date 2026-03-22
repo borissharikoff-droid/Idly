@@ -30,7 +30,7 @@ export function Timer() {
         layout
         className={`font-mono text-6xl font-bold tabular-nums tracking-wider transition-colors duration-300 select-none ${
           status === 'running'
-            ? 'text-cyber-neon animate-timer-glow'
+            ? 'text-accent animate-timer-glow'
             : status === 'paused'
               ? 'text-yellow-400'
               : 'text-white/25'
@@ -47,7 +47,7 @@ export function Timer() {
             transition={{ duration: MOTION.duration.base, ease: MOTION.easingSoft }}
             className="mt-3 flex justify-center"
           >
-            <span className="text-xs font-bold tracking-wider px-3 py-1 rounded-full bg-cyber-neon/15 text-cyber-neon border border-cyber-neon/30">
+            <span className="text-xs font-bold tracking-wider px-3 py-1 rounded-full bg-accent/15 text-accent border border-accent/30">
               FOCUS {formatTime(focusRemainingSeconds)}
             </span>
           </motion.div>

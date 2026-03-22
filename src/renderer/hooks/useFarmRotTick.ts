@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { useFarmStore } from '../stores/farmStore'
-import { useToastStore } from '../stores/toastStore'
 
 const ROT_CHECK_INTERVAL_MS = 5_000
 
@@ -14,11 +13,8 @@ export function useFarmRotTick() {
     const check = () => {
       const store = useFarmStore.getState()
 
-      // Check rot
-      const rottedSlots = store.checkAllRots()
-      if (rottedSlots.length > 0) {
-        useToastStore.getState().push({ kind: 'crop_rot', count: rottedSlots.length })
-      }
+      // Check rot (silent — no toast)
+      store.checkAllRots()
 
       // Auto-complete farmhouse build if timer finished
       store.completeFarmhouseBuild()

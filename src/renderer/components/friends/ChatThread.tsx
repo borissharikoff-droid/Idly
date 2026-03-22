@@ -62,11 +62,11 @@ function CopyToast({ visible }: { visible: boolean }) {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -10, scale: 0.95 }}
           transition={{ type: 'spring', stiffness: 400, damping: 32 }}
-          className="fixed top-10 left-1/2 -translate-x-1/2 z-[80] px-4 py-2 rounded-xl text-xs font-medium shadow-2xl"
+          className="fixed top-10 left-1/2 -translate-x-1/2 z-[80] px-4 py-2 rounded text-xs font-medium shadow-2xl"
           style={{ background: 'rgba(16,16,26,0.97)', border: '1px solid rgba(0,255,170,0.25)', backdropFilter: 'blur(12px)' }}
         >
           <div className="h-px absolute top-0 left-0 right-0" style={{ background: 'linear-gradient(90deg, transparent, rgba(0,255,170,0.5), transparent)' }} />
-          <span className="text-cyber-neon">Copied to clipboard</span>
+          <span className="text-accent">Copied to clipboard</span>
         </motion.div>
       )}
     </AnimatePresence>
@@ -75,7 +75,7 @@ function CopyToast({ visible }: { visible: boolean }) {
 
 function ReadReceipt({ read }: { read: boolean }) {
   return (
-    <span className={`inline-flex ml-1 ${read ? 'text-cyber-neon/70' : 'text-gray-500/50'}`} title={read ? 'Read' : 'Sent'}>
+    <span className={`inline-flex ml-1 ${read ? 'text-accent/70' : 'text-gray-500/50'}`} title={read ? 'Read' : 'Sent'}>
       {read ? (
         <svg width="14" height="9" viewBox="0 0 16 10" fill="none" className="inline-block">
           <path d="M1 5.5L4.5 9L11 2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -100,7 +100,7 @@ function TypingIndicator({ name }: { name: string }) {
       transition={{ duration: 0.15 }}
       className="flex items-center gap-2 px-1 py-1"
     >
-      <div className="flex items-center gap-[3px] px-3.5 py-2.5 rounded-2xl rounded-bl-sm bg-white/[0.08] border border-white/[0.08]">
+      <div className="flex items-center gap-[3px] px-3.5 py-2.5 rounded rounded-bl-sm bg-white/[0.08] border border-white/[0.08]">
         {[0, 1, 2].map((i) => (
           <motion.span
             key={i}
@@ -110,7 +110,7 @@ function TypingIndicator({ name }: { name: string }) {
           />
         ))}
       </div>
-      <span className="text-[10px] text-gray-500">{name} is typing</span>
+      <span className="text-micro text-gray-500">{name} is typing</span>
     </motion.div>
   )
 }
@@ -123,9 +123,9 @@ interface ReplyPreviewProps {
 
 function ReplyPreview({ message, senderName, onClear }: ReplyPreviewProps) {
   return (
-    <div className="flex items-center gap-2 px-3 py-2 mb-2 rounded-xl bg-white/[0.04] border-l-2 border-cyber-neon/50 text-xs">
+    <div className="flex items-center gap-2 px-3 py-2 mb-2 rounded bg-white/[0.04] border-l-2 border-accent/50 text-xs">
       <div className="flex-1 min-w-0">
-        <span className="text-cyber-neon/80 font-medium">{senderName}</span>
+        <span className="text-accent/80 font-medium">{senderName}</span>
         <p className="text-gray-400 truncate mt-0.5">{message.body.slice(0, 80)}{message.body.length > 80 ? '...' : ''}</p>
       </div>
       <button
@@ -339,23 +339,23 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, 
         <button
           type="button"
           onClick={() => { onOpenProfile?.(); playClickSound() }}
-          className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl hover:bg-white/[0.04] transition-colors cursor-pointer"
+          className="flex items-center gap-2.5 px-3 py-1.5 rounded hover:bg-white/[0.04] transition-colors cursor-pointer"
         >
           {/* Avatar */}
           <div className="relative">
-            <div className="w-7 h-7 rounded-full bg-discord-card flex items-center justify-center text-xs font-bold text-gray-300 overflow-hidden border border-white/10">
+            <div className="w-7 h-7 rounded-full bg-surface-2 flex items-center justify-center text-xs font-bold text-gray-300 overflow-hidden border border-white/10">
               {isImageUrl(profile.avatar_url)
                 ? <img src={profile.avatar_url!} alt="" className="w-full h-full object-cover" />
                 : (profile.avatar_url || profile.username?.[0]?.toUpperCase() || '?')
               }
             </div>
-            <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#1e1e2e] ${profile.is_online ? 'bg-emerald-400' : 'bg-gray-500'}`} />
+            <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#1e2024] ${profile.is_online ? 'bg-emerald-400' : 'bg-gray-500'}`} />
           </div>
           <div className="text-left">
             <p className="text-sm text-white font-medium leading-none">{profile.username || 'Friend'}</p>
-            <p className="text-[10px] text-gray-500 mt-0.5">
+            <p className="text-micro text-gray-500 mt-0.5">
               {peerIsTyping ? (
-                <span className="text-cyber-neon/70">typing...</span>
+                <span className="text-accent/70">typing...</span>
               ) : (
                 profile.is_online ? 'Online' : 'Offline'
               )}
@@ -376,16 +376,16 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, 
               <SkeletonBlock className="h-5 w-16 rounded-full" />
             </div>
             <div className="flex justify-start">
-              <SkeletonBlock className="h-12 w-40 rounded-2xl rounded-bl-sm" />
+              <SkeletonBlock className="h-12 w-40 rounded rounded-bl-sm" />
             </div>
             <div className="flex justify-end">
-              <SkeletonBlock className="h-10 w-32 rounded-2xl rounded-br-sm bg-cyber-neon/10" />
+              <SkeletonBlock className="h-10 w-32 rounded rounded-br-sm bg-accent/10" />
             </div>
             <div className="flex justify-start">
-              <SkeletonBlock className="h-14 w-36 rounded-2xl rounded-bl-sm" />
+              <SkeletonBlock className="h-14 w-36 rounded rounded-bl-sm" />
             </div>
             <div className="flex justify-end">
-              <SkeletonBlock className="h-8 w-28 rounded-2xl rounded-br-sm bg-cyber-neon/10" />
+              <SkeletonBlock className="h-8 w-28 rounded rounded-br-sm bg-accent/10" />
             </div>
           </div>
         ) : messages.length === 0 ? (
@@ -403,7 +403,7 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, 
                 {/* Date divider */}
                 <div className="flex items-center justify-center py-3">
                   <div className="h-px flex-1 bg-white/[0.04]" />
-                  <span className="text-[10px] text-gray-500 font-medium px-3">
+                  <span className="text-micro text-gray-500 font-medium px-3">
                     {group.label}
                   </span>
                   <div className="h-px flex-1 bg-white/[0.04]" />
@@ -447,7 +447,7 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, 
                       {!isMe && (
                         <div className="w-7 shrink-0 self-end">
                           {last && (
-                            <div className="w-7 h-7 rounded-full bg-discord-card flex items-center justify-center text-[10px] font-bold text-gray-400 overflow-hidden border border-white/10">
+                            <div className="w-7 h-7 rounded-full bg-surface-2 flex items-center justify-center text-micro font-bold text-gray-400 overflow-hidden border border-white/10">
                               {isImageUrl(profile.avatar_url)
                                 ? <img src={profile.avatar_url!} alt="" className="w-full h-full object-cover" />
                                 : (profile.avatar_url || profile.username?.[0]?.toUpperCase() || '?')
@@ -481,16 +481,16 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, 
 
                       {/* Message bubble */}
                       <div
-                        className={`max-w-[75%] px-3.5 py-2 text-[13px] leading-relaxed transition-all duration-75 ${
+                        className={`max-w-[75%] px-3.5 py-2 text-body leading-relaxed transition-all duration-75 ${
                           isMe
-                            ? 'bg-cyber-neon/12 text-white border border-cyber-neon/20'
+                            ? 'bg-accent/12 text-white border border-accent/20'
                             : 'bg-white/[0.06] text-gray-100 border border-white/[0.06]'
-                        } ${isHovered ? (isMe ? 'bg-cyber-neon/18' : 'bg-white/[0.09]') : ''}`}
+                        } ${isHovered ? (isMe ? 'bg-accent/18' : 'bg-white/[0.09]') : ''}`}
                         style={{ borderRadius: radius }}
                       >
                         {/* Quoted reply */}
                         {quoteLine && (
-                          <div className={`text-[11px] mb-1.5 pl-2 py-1 border-l-2 ${isMe ? 'border-cyber-neon/40 text-cyber-neon/50' : 'border-white/20 text-gray-400'} truncate`}>
+                          <div className={`text-caption mb-1.5 pl-2 py-1 border-l-2 ${isMe ? 'border-accent/40 text-accent/50' : 'border-white/20 text-gray-400'} truncate`}>
                             {quoteLine}
                           </div>
                         )}
@@ -498,7 +498,7 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, 
                         {/* Footer: time + read receipt */}
                         {showTime && (
                           <div className={`flex items-center gap-1 mt-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
-                            <span className={`text-[10px] ${isMe ? 'text-cyber-neon/40' : 'text-gray-500/60'}`}>
+                            <span className={`text-micro ${isMe ? 'text-accent/40' : 'text-gray-500/60'}`}>
                               {new Date(m.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
                             </span>
                             {isMe && <ReadReceipt read={m.read_at != null} />}
@@ -587,7 +587,7 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, 
             }}
             placeholder={replyTo ? 'Type your reply...' : 'Message...'}
             rows={1}
-            className="flex-1 resize-none min-h-[40px] rounded-2xl bg-[#11111b]/80 border border-white/[0.06] px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-cyber-neon/30 transition-colors"
+            className="flex-1 resize-none min-h-[40px] rounded bg-surface-0/80 border border-white/[0.06] px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent/30 transition-colors"
           />
           <motion.button
             onClick={handleSend}
@@ -595,7 +595,7 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, 
             whileTap={!sending && input.trim() ? { scale: 0.9 } : {}}
             className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-150 ${
               input.trim()
-                ? 'bg-cyber-neon/20 text-cyber-neon border border-cyber-neon/30 hover:bg-cyber-neon/30 shadow-sm shadow-cyber-neon/10'
+                ? 'bg-accent/20 text-accent border border-accent/30 hover:bg-accent/30 shadow-sm shadow-accent/10'
                 : 'bg-white/[0.04] text-gray-500 border border-white/[0.06]'
             } disabled:opacity-30 disabled:cursor-not-allowed`}
           >

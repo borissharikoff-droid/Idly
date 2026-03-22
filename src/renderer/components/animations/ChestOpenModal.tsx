@@ -233,6 +233,68 @@ export function ChestOpenModal({
   if (typeof document === 'undefined') return null
   return createPortal(
     <AnimatePresence>
+      {/* No-chest fallback — boss dropped gold/materials but rolled no chest (15% chance) */}
+      {open && !chest && (goldDropped > 0 || warriorXP > 0 || bonusMaterials.length > 0) && (
+        <motion.div
+          key="no-chest-modal"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+          className="fixed inset-0 z-[120] flex items-center justify-center p-4"
+          onClick={onClose}
+        >
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+          <motion.div
+            initial={{ scale: 0.88, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: 12 }}
+            transition={{ type: 'spring', stiffness: 340, damping: 28 }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-[280px] rounded-lg border border-white/10 p-5 text-center relative overflow-hidden"
+            style={{ background: 'linear-gradient(160deg, rgba(255,255,255,0.04) 0%, rgba(8,8,16,0.97) 60%)' }}
+          >
+            <p className="text-2xl mb-2">🏆</p>
+            <p className="text-sm font-bold text-white">Boss Defeated</p>
+            <p className="text-micro font-mono text-gray-500 mt-0.5 mb-4">No chest this time</p>
+            <div className="flex flex-wrap justify-center gap-2 mb-4">
+              {goldDropped > 0 && (
+                <div className="flex flex-col items-center gap-1 rounded-lg border border-amber-500/25 bg-amber-500/08 px-3 py-2">
+                  <span className="text-xl">🪙</span>
+                  <span className="text-sm font-bold text-amber-400">+{goldDropped}</span>
+                  <span className="text-micro font-mono text-amber-600 uppercase tracking-widest">Gold</span>
+                </div>
+              )}
+              {bonusMaterials.map((mat) => {
+                const matDef = LOOT_ITEMS.find((x) => x.id === mat.itemId)
+                if (!matDef) return null
+                const matTheme = getRarityTheme(matDef.rarity)
+                return (
+                  <div key={mat.itemId} className="flex flex-col items-center gap-1 rounded-lg border px-3 py-2" style={{ borderColor: `${matTheme.color}30`, background: `${matTheme.color}0a` }}>
+                    {matDef.image ? <img src={matDef.image} className="w-6 h-6 object-contain" style={{ imageRendering: 'pixelated' }} draggable={false} /> : <span className="text-xl">{matDef.icon}</span>}
+                    <span className="text-sm font-bold tabular-nums" style={{ color: matTheme.color }}>×{mat.qty}</span>
+                    <span className="text-micro font-mono uppercase tracking-widest" style={{ color: `${matTheme.color}99` }}>{matDef.name}</span>
+                  </div>
+                )
+              })}
+              {warriorXP > 0 && (
+                <div className="flex flex-col items-center gap-1 rounded-lg border border-red-500/25 bg-red-500/08 px-3 py-2">
+                  <span className="text-xl">🗡️</span>
+                  <span className="text-sm font-bold text-red-400">+{warriorXP}</span>
+                  <span className="text-micro font-mono text-red-600 uppercase tracking-widest">Warrior XP</span>
+                </div>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => { playClickSound(); onClose() }}
+              className="w-full h-9 rounded-lg text-body font-semibold text-white/50 border border-white/10 bg-white/[0.04] hover:text-white/70 hover:bg-white/[0.07] transition-all active:scale-[0.97]"
+            >
+              Done
+            </button>
+          </motion.div>
+        </motion.div>
+      )}
       {open && chest && (
         // Outer wrapper — stable key: only mounts/unmounts when modal opens/closes entirely.
         // This keeps the backdrop from flashing on "Open more".
@@ -268,7 +330,7 @@ export function ChestOpenModal({
             exit={{ scale: 0.88, opacity: 0, y: 16 }}
             transition={{ type: 'spring', stiffness: 340, damping: 28, mass: 0.9 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-[300px] rounded-2xl border p-5 text-center relative overflow-hidden"
+            className="w-[300px] rounded-lg border p-5 text-center relative overflow-hidden"
             style={{
               borderColor: chestTheme.border,
               background: `linear-gradient(160deg, ${chestTheme.glow}1A 0%, rgba(8,8,16,0.97) 55%)`,
@@ -281,7 +343,7 @@ export function ChestOpenModal({
             {/* Card ambient glow — continuous, not keyed */}
             <motion.div
               aria-hidden
-              className="absolute inset-0 pointer-events-none rounded-2xl"
+              className="absolute inset-0 pointer-events-none rounded-lg"
               style={{ background: `radial-gradient(circle at 50% 12%, ${chestTheme.glow} 0%, transparent 55%)` }}
               animate={{ opacity: isRevealed ? [0.45, 0.65, 0.5] : [0.25, 0.45, 0.25] }}
               transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
@@ -299,7 +361,7 @@ export function ChestOpenModal({
                 {/* Colored radial backdrop glow (inside card context) */}
                 {animCfg.backdropGlow && (
                   <motion.div
-                    className="absolute inset-0 pointer-events-none rounded-2xl"
+                    className="absolute inset-0 pointer-events-none rounded-lg"
                     initial={{ opacity: 0 }}
                     animate={{
                       opacity: isLegendary && !isRevealed
@@ -318,7 +380,7 @@ export function ChestOpenModal({
                 {/* Legendary: rotating conic rays */}
                 {animCfg.hasRays && (
                   <motion.div
-                    className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl"
+                    className="absolute inset-0 pointer-events-none overflow-hidden rounded-lg"
                     animate={{ opacity: isRevealed ? 1 : 0 }}
                     transition={{ duration: 0.6, ease: 'easeOut' }}
                   >
@@ -345,7 +407,7 @@ export function ChestOpenModal({
                     <motion.div
                       key="border-ring"
                       aria-hidden
-                      className="absolute inset-0 rounded-2xl pointer-events-none border-2"
+                      className="absolute inset-0 rounded-lg pointer-events-none border-2"
                       style={{ borderColor: chestTheme.color }}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: [0, 0.9, 0] }}
@@ -360,7 +422,7 @@ export function ChestOpenModal({
                   {isRevealed && animCfg.flashOpacity > 0 && (
                     <motion.div
                       key="flash"
-                      className="absolute inset-0 pointer-events-none rounded-2xl"
+                      className="absolute inset-0 pointer-events-none rounded-lg"
                       style={{ background: `radial-gradient(circle at 50% 42%, ${rarityTheme.color} 0%, transparent 60%)` }}
                       initial={{ opacity: animCfg.flashOpacity }}
                       animate={{ opacity: 0 }}
@@ -397,7 +459,7 @@ export function ChestOpenModal({
                         }
                       : { type: 'spring', stiffness: 220, damping: 16 }
                     }
-                    className="w-[92px] h-[92px] rounded-2xl border flex items-center justify-center relative overflow-hidden"
+                    className="w-[92px] h-[92px] rounded-lg border flex items-center justify-center relative overflow-hidden"
                     style={{
                       borderColor: chestTheme.border,
                       background: `radial-gradient(circle at 50% 35%, ${chestTheme.glow}60 0%, rgba(8,8,16,0.92) 70%)`,
@@ -417,7 +479,7 @@ export function ChestOpenModal({
                     {isRevealed ? (
                       <motion.p
                         key="revealed"
-                        className="absolute inset-0 text-[11px] font-mono uppercase tracking-wider text-center"
+                        className="absolute inset-0 text-caption font-mono uppercase tracking-wider text-center"
                         style={{ color: item ? rarityTheme.color : chestTheme.color }}
                         initial={{ opacity: 0, y: 6 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -431,7 +493,7 @@ export function ChestOpenModal({
                     ) : (
                       <motion.span
                         key="opening"
-                        className="absolute inset-0 text-[11px] font-mono uppercase tracking-wider text-center flex items-center justify-center"
+                        className="absolute inset-0 text-caption font-mono uppercase tracking-wider text-center flex items-center justify-center"
                         style={{ color: chestTheme.color }}
                         initial={{ opacity: 0, y: 6 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -452,7 +514,7 @@ export function ChestOpenModal({
                   if (count < 2) return null
                   return (
                     <motion.p
-                      className="text-[10px] text-gray-500 mt-0.5"
+                      className="text-micro text-gray-500 mt-0.5"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: 0.15, duration: 0.25 }}
@@ -512,7 +574,7 @@ export function ChestOpenModal({
                         onMouseMove={handleLootMouseMove}
                         onMouseEnter={() => setHovering(true)}
                         onMouseLeave={() => { setHovering(false); setTilt({ x: 0, y: 0 }) }}
-                        className="rounded-xl border p-3.5 relative overflow-hidden cursor-default snap-start flex-none"
+                        className="rounded-lg border p-3.5 relative overflow-hidden cursor-default snap-start flex-none"
                         style={{
                           width: (goldDropped > 0 || warriorXP > 0 || seedZipTier || bonusMaterials.length > 0) ? '220px' : '100%',
                           borderColor: rarityTheme.border,
@@ -525,7 +587,7 @@ export function ChestOpenModal({
                         }}
                       >
                         <div
-                          className="absolute inset-0 pointer-events-none rounded-xl"
+                          className="absolute inset-0 pointer-events-none rounded-lg"
                           style={{
                             background: `radial-gradient(circle at ${glowX}% ${glowY}%, ${rarityTheme.glow} 0%, transparent 55%)`,
                             opacity: hovering ? 0.45 : 0.28,
@@ -533,7 +595,7 @@ export function ChestOpenModal({
                           }}
                         />
                         <motion.div
-                          className="absolute inset-0 pointer-events-none rounded-xl"
+                          className="absolute inset-0 pointer-events-none rounded-lg"
                           animate={{ opacity: [0.25, 0.5, 0.28] }}
                           transition={{ duration: 1.9, repeat: Infinity, ease: 'easeInOut' }}
                           style={{ boxShadow: `inset 0 0 18px ${rarityTheme.glow}` }}
@@ -569,7 +631,7 @@ export function ChestOpenModal({
                         <div className="flex items-center justify-center gap-1.5 mt-0.5">
                           <motion.p
                             key={`rarity:${revealKey}`}
-                            className="text-[10px] font-mono uppercase tracking-wider"
+                            className="text-micro font-mono uppercase tracking-wider"
                             style={{ color: rarityTheme.color }}
                             animate={isRevealed && item.rarity !== 'common' ? { scale: [1, 1.22, 1] } : {}}
                             transition={{ duration: 0.38, delay: 0.1 }}
@@ -578,22 +640,22 @@ export function ChestOpenModal({
                           </motion.p>
                           {(['head', 'body', 'legs', 'ring', 'weapon'] as string[]).includes(item.slot) && (
                             <span
-                              className="text-[10px] font-mono uppercase tracking-widest px-1 py-px rounded"
+                              className="text-micro font-mono uppercase tracking-widest px-1 py-px rounded"
                               style={{ color: `${rarityTheme.color}99`, background: `${rarityTheme.color}14`, border: `1px solid ${rarityTheme.color}28` }}
                             >
                               {item.slot}
                             </span>
                           )}
                         </div>
-                        {item.description && <p className="text-[10px] text-gray-500 italic mt-1 leading-snug">{item.description}</p>}
-                        <p className="text-[10px] text-gray-400 mt-1 leading-snug">{getItemPerkDescription(item)}</p>
+                        {item.description && <p className="text-micro text-gray-500 italic mt-1 leading-snug">{item.description}</p>}
+                        <p className="text-micro text-gray-400 mt-1 leading-snug">{getItemPerkDescription(item)}</p>
                       </motion.div>
                       ) : null}
 
                       {/* Gold bonus card */}
                       {goldDropped > 0 && (
                         <motion.div
-                          className="flex-none w-[130px] snap-start rounded-xl border border-amber-500/25 flex flex-col items-center justify-center gap-2 py-4 relative overflow-hidden"
+                          className="flex-none w-[130px] snap-start rounded-lg border border-amber-500/25 flex flex-col items-center justify-center gap-2 py-4 relative overflow-hidden"
                           style={{ background: 'linear-gradient(160deg, rgba(245,158,11,0.10) 0%, rgba(8,8,16,0.95) 65%)' }}
                           initial={{ opacity: 0, x: 20, scale: 0.88 }}
                           animate={{ opacity: isRevealed ? 1 : 0, x: isRevealed ? 0 : 20, scale: isRevealed ? 1 : 0.88 }}
@@ -602,7 +664,7 @@ export function ChestOpenModal({
                           <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 50% 35%, rgba(245,158,11,0.18) 0%, transparent 65%)' }} />
                           <span className="text-3xl relative">🪙</span>
                           <span className="text-xl font-bold text-amber-400 tabular-nums relative">+{goldDropped}</span>
-                          <span className="text-[10px] font-mono text-amber-500/60 uppercase tracking-widest relative">Gold</span>
+                          <span className="text-micro font-mono text-amber-500/60 uppercase tracking-widest relative">Gold</span>
                         </motion.div>
                       )}
 
@@ -614,7 +676,7 @@ export function ChestOpenModal({
                         return (
                           <motion.div
                             key={mat.itemId}
-                            className="flex-none w-[130px] snap-start rounded-xl border flex flex-col items-center justify-center gap-2 py-4 relative overflow-hidden"
+                            className="flex-none w-[130px] snap-start rounded-lg border flex flex-col items-center justify-center gap-2 py-4 relative overflow-hidden"
                             style={{ borderColor: `${matTheme.color}40`, background: `linear-gradient(160deg, ${matTheme.glow}18 0%, rgba(8,8,16,0.95) 65%)` }}
                             initial={{ opacity: 0, x: 20, scale: 0.88 }}
                             animate={{ opacity: isRevealed ? 1 : 0, x: isRevealed ? 0 : 20, scale: isRevealed ? 1 : 0.88 }}
@@ -629,7 +691,7 @@ export function ChestOpenModal({
                               )}
                             </div>
                             <span className="text-lg font-bold tabular-nums relative" style={{ color: matTheme.color }}>×{mat.qty}</span>
-                            <span className="text-[10px] font-medium text-center leading-tight px-2 relative" style={{ color: `${matTheme.color}cc` }}>{matDef.name}</span>
+                            <span className="text-micro font-medium text-center leading-tight px-2 relative" style={{ color: `${matTheme.color}cc` }}>{matDef.name}</span>
                           </motion.div>
                         )
                       })}
@@ -637,7 +699,7 @@ export function ChestOpenModal({
                       {/* Warrior XP card */}
                       {warriorXP > 0 && (
                         <motion.div
-                          className="flex-none w-[130px] snap-start rounded-xl border border-red-500/25 flex flex-col items-center justify-center gap-2 py-4 relative overflow-hidden"
+                          className="flex-none w-[130px] snap-start rounded-lg border border-red-500/25 flex flex-col items-center justify-center gap-2 py-4 relative overflow-hidden"
                           style={{ background: 'linear-gradient(160deg, rgba(239,68,68,0.10) 0%, rgba(8,8,16,0.95) 65%)' }}
                           initial={{ opacity: 0, x: 20, scale: 0.88 }}
                           animate={{ opacity: isRevealed ? 1 : 0, x: isRevealed ? 0 : 20, scale: isRevealed ? 1 : 0.88 }}
@@ -646,7 +708,7 @@ export function ChestOpenModal({
                           <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 50% 35%, rgba(239,68,68,0.18) 0%, transparent 65%)' }} />
                           <span className="text-3xl relative">🗡️</span>
                           <span className="text-xl font-bold text-red-400 tabular-nums relative">+{warriorXP}</span>
-                          <span className="text-[10px] font-mono text-red-500/60 uppercase tracking-widest relative">Warrior XP</span>
+                          <span className="text-micro font-mono text-red-500/60 uppercase tracking-widest relative">Warrior XP</span>
                         </motion.div>
                       )}
 
@@ -656,7 +718,7 @@ export function ChestOpenModal({
                         const zipDisplay = getSeedZipDisplay(seedZipTier)
                         return (
                           <motion.div
-                            className="flex-none w-[130px] snap-start rounded-xl border flex flex-col items-center justify-center gap-2 py-4 relative overflow-hidden"
+                            className="flex-none w-[130px] snap-start rounded-lg border flex flex-col items-center justify-center gap-2 py-4 relative overflow-hidden"
                             style={{ borderColor: zipTheme.border, background: `linear-gradient(160deg, ${zipTheme.glow}18 0%, rgba(8,8,16,0.95) 65%)` }}
                             initial={{ opacity: 0, x: 20, scale: 0.88 }}
                             animate={{ opacity: isRevealed ? 1 : 0, x: isRevealed ? 0 : 20, scale: isRevealed ? 1 : 0.88 }}
@@ -667,7 +729,7 @@ export function ChestOpenModal({
                               ? <img src={zipDisplay.image} className="w-10 h-10 object-contain relative" />
                               : <span className="text-3xl relative">{zipDisplay.icon}</span>}
                             <span className="text-sm font-semibold text-center leading-tight px-2 relative" style={{ color: zipTheme.color }}>{zipDisplay.name}</span>
-                            <span className="text-[10px] font-mono uppercase tracking-widest relative" style={{ color: `${zipTheme.color}88` }}>Seed Zip</span>
+                            <span className="text-micro font-mono uppercase tracking-widest relative" style={{ color: `${zipTheme.color}88` }}>Seed Zip</span>
                           </motion.div>
                         )
                       })()}
@@ -689,7 +751,7 @@ export function ChestOpenModal({
                       <button
                         type="button"
                         onClick={() => { playClickSound(); onOpenAll() }}
-                        className="flex-1 h-10 rounded-xl text-[13px] font-semibold transition-all active:scale-[0.97]"
+                        className="flex-1 h-10 rounded-lg text-body font-semibold transition-all active:scale-[0.97]"
                         style={{ color: chestTheme.color, border: `1px solid ${chestTheme.border}`, background: `${chestTheme.color}22` }}
                       >
                         Open All ({openAllCount})
@@ -698,7 +760,7 @@ export function ChestOpenModal({
                         <button
                           type="button"
                           onClick={() => { playClickSound(); onOpenNext?.() }}
-                          className="h-10 px-3 rounded-xl text-[13px] font-semibold text-white/40 border border-white/10 bg-white/[0.04] hover:text-white/60 hover:bg-white/[0.07] transition-all active:scale-[0.97]"
+                          className="h-10 px-3 rounded-lg text-body font-semibold text-white/40 border border-white/10 bg-white/[0.04] hover:text-white/60 hover:bg-white/[0.07] transition-all active:scale-[0.97]"
                         >
                           +1
                         </button>
@@ -706,7 +768,7 @@ export function ChestOpenModal({
                       <button
                         type="button"
                         onClick={() => { playClickSound(); onClose() }}
-                        className="h-10 px-3 rounded-xl text-[13px] font-semibold text-white/40 border border-white/10 bg-white/[0.04] hover:text-white/60 hover:bg-white/[0.07] transition-all active:scale-[0.97]"
+                        className="h-10 px-3 rounded-lg text-body font-semibold text-white/40 border border-white/10 bg-white/[0.04] hover:text-white/60 hover:bg-white/[0.07] transition-all active:scale-[0.97]"
                       >
                         Done
                       </button>
@@ -716,7 +778,7 @@ export function ChestOpenModal({
                       <button
                         type="button"
                         onClick={() => { playClickSound(); onOpenNext?.() }}
-                        className="flex-1 h-10 rounded-xl text-[13px] font-semibold transition-all active:scale-[0.97]"
+                        className="flex-1 h-10 rounded-lg text-body font-semibold transition-all active:scale-[0.97]"
                         style={{ color: chestTheme.color, border: `1px solid ${chestTheme.border}`, background: `${chestTheme.color}22` }}
                       >
                         Open more
@@ -724,7 +786,7 @@ export function ChestOpenModal({
                       <button
                         type="button"
                         onClick={() => { playClickSound(); onClose() }}
-                        className="flex-1 h-10 rounded-xl text-[13px] font-semibold text-white/40 border border-white/10 bg-white/[0.04] hover:text-white/60 hover:bg-white/[0.07] transition-all active:scale-[0.97]"
+                        className="flex-1 h-10 rounded-lg text-body font-semibold text-white/40 border border-white/10 bg-white/[0.04] hover:text-white/60 hover:bg-white/[0.07] transition-all active:scale-[0.97]"
                       >
                         Done
                       </button>
@@ -733,7 +795,7 @@ export function ChestOpenModal({
                     <button
                       type="button"
                       onClick={() => { playClickSound(); onClose() }}
-                      className="flex-1 h-10 rounded-xl text-[13px] font-semibold transition-all active:scale-[0.97]"
+                      className="flex-1 h-10 rounded-lg text-body font-semibold transition-all active:scale-[0.97]"
                       style={{ color: chestTheme.color, border: `1px solid ${chestTheme.border}`, background: `${chestTheme.color}22` }}
                     >
                       Done
@@ -746,7 +808,7 @@ export function ChestOpenModal({
                   {chainMessage && (
                     <motion.p
                       key={chainMessage}
-                      className="text-[10px] text-center text-orange-300/90 font-medium mt-2"
+                      className="text-micro text-center text-orange-300/90 font-medium mt-2"
                       initial={{ opacity: 0, y: 4 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0 }}

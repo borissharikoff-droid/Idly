@@ -70,13 +70,16 @@ export function FocusModeDock() {
     }
   }, [open])
 
-  const [dropdownPos, setDropdownPos] = useState({ left: 0, top: 0 })
+  const [dropdownPos, setDropdownPos] = useState({ left: 0, top: 0, openUp: false })
   useLayoutEffect(() => {
     if (!open || !containerRef.current) return
     const rect = containerRef.current.getBoundingClientRect()
+    const spaceBelow = window.innerHeight - rect.bottom
+    const openUp = spaceBelow < 80
     setDropdownPos({
       left: rect.left + rect.width / 2,
-      top: rect.bottom + 8,
+      top: openUp ? rect.top - 8 : rect.bottom + 8,
+      openUp,
     })
   }, [open])
 
@@ -87,10 +90,11 @@ export function FocusModeDock() {
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 4, scale: 0.98 }}
         transition={{ duration: MOTION.duration.base, ease: MOTION.easingSoft }}
-        className="fixed z-50 inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-discord-card/95 backdrop-blur-sm px-2 py-1.5 shadow-xl"
+        className="fixed z-50 inline-flex items-center gap-1.5 rounded-card border border-white/10 bg-surface-2/95 backdrop-blur-sm px-2 py-1.5 shadow-xl"
         style={{
           left: dropdownPos.left,
-          top: dropdownPos.top,
+          top: dropdownPos.openUp ? undefined : dropdownPos.top,
+          bottom: dropdownPos.openUp ? (window.innerHeight - dropdownPos.top) : undefined,
           transform: 'translateX(-50%)',
         }}
       >
@@ -98,7 +102,7 @@ export function FocusModeDock() {
           <button
             key={hours}
             onClick={() => { handlePick(hours).catch(() => {}) }}
-            className="text-[11px] font-mono py-1.5 px-2.5 rounded-lg border border-white/10 text-gray-300 hover:text-cyber-neon hover:border-cyber-neon/40 hover:bg-cyber-neon/8 transition-colors duration-200"
+            className="text-caption font-mono py-1.5 px-2.5 rounded border border-white/10 text-gray-300 hover:text-accent hover:border-accent/40 hover:bg-accent/8 transition-colors duration-200"
           >
             {hours}h
           </button>
@@ -111,7 +115,7 @@ export function FocusModeDock() {
               disableFocusMode().catch(() => {})
               setOpen(false)
             }}
-            className="text-[11px] font-mono py-1.5 px-2.5 rounded-lg border border-white/10 text-gray-400 hover:text-white hover:border-white/20 transition-colors duration-200"
+            className="text-caption font-mono py-1.5 px-2.5 rounded border border-white/10 text-gray-400 hover:text-white hover:border-white/20 transition-colors duration-200"
           >
             off
           </button>
@@ -130,7 +134,7 @@ export function FocusModeDock() {
               disableFocusMode().catch(() => {})
             }}
             title="Cancel focus mode"
-            className="text-[11px] font-mono py-1.5 px-2 rounded-lg border border-white/10 text-gray-400 hover:text-white hover:border-white/20 hover:bg-white/5 transition-colors duration-200"
+            className="text-caption font-mono py-1.5 px-2 rounded border border-white/10 text-gray-400 hover:text-white hover:border-white/20 hover:bg-white/5 transition-colors duration-200"
           >
             off
           </button>
@@ -149,7 +153,7 @@ export function FocusModeDock() {
           }
           className={`text-xs py-2 px-3 rounded-lg border transition-all duration-150 ${
             focusModeActive
-              ? 'border-cyber-neon/45 text-cyber-neon bg-cyber-neon/8'
+              ? 'border-accent/45 text-accent bg-accent/8'
               : 'border-white/10 text-gray-500 hover:text-gray-300 hover:border-white/20 hover:bg-white/[0.03]'
           }`}
         >

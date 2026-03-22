@@ -35,7 +35,7 @@ export function AvatarWithFrame({
         />
       )}
       <div
-        className={`relative frame-avatar ${sizeClass} ${roundedClass} flex items-center justify-center bg-discord-darker overflow-hidden ${
+        className={`relative frame-avatar ${sizeClass} ${roundedClass} flex items-center justify-center bg-surface-0 overflow-hidden ${
           frame ? 'border-2' : 'border border-white/10'
         }`}
         style={frame ? { borderColor: frame.color } : undefined}

@@ -274,31 +274,31 @@ export function SessionDetail({ sessionId, onBack }: SessionDetailProps) {
 
       {/* Quick stats row */}
       <div className="grid grid-cols-3 gap-2">
-        <div className="rounded-lg bg-discord-card/80 border border-white/5 p-2 text-center">
+        <div className="rounded bg-surface-2/80 border border-white/5 p-2 text-center">
           <p className="text-sm font-mono font-bold text-white">{formatNum(totalKeystrokes)}</p>
-          <p className="text-[10px] text-gray-500 font-mono">keys ({keysPerMin}/min)</p>
+          <p className="text-micro text-gray-500 font-mono">keys ({keysPerMin}/min)</p>
         </div>
-        <div className="rounded-lg bg-discord-card/80 border border-white/5 p-2 text-center">
+        <div className="rounded bg-surface-2/80 border border-white/5 p-2 text-center">
           <p className="text-sm font-mono font-bold text-white">{contextSwitches}</p>
-          <p className="text-[10px] text-gray-500 font-mono">switches ({switchRate}/min)</p>
+          <p className="text-micro text-gray-500 font-mono">switches ({switchRate}/min)</p>
         </div>
-        <div className="rounded-lg bg-discord-card/80 border border-white/5 p-2 text-center">
+        <div className="rounded bg-surface-2/80 border border-white/5 p-2 text-center">
           <p className="text-sm font-mono font-bold text-white">{categoryGroups.length}</p>
-          <p className="text-[10px] text-gray-500 font-mono">categories</p>
+          <p className="text-micro text-gray-500 font-mono">categories</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-        <div className="rounded-lg border border-cyber-neon/20 bg-cyber-neon/5 p-2">
-          <p className="text-[10px] uppercase tracking-wider text-cyber-neon/80 font-mono">What went well</p>
+        <div className="rounded border border-accent/20 bg-accent/5 p-2">
+          <p className="text-micro uppercase tracking-wider text-accent/80 font-mono">What went well</p>
           <p className="text-xs text-gray-300 mt-1">
             {categoryGroups[0]
               ? `${categoryGroups[0].label} led this session at ${Math.round(categoryGroups[0].pct)}% of tracked time.`
               : 'Tracked activity is limited for this session.'}
           </p>
         </div>
-        <div className="rounded-lg border border-discord-red/25 bg-discord-red/10 p-2">
-          <p className="text-[10px] uppercase tracking-wider text-discord-red/90 font-mono">Needs attention</p>
+        <div className="rounded border border-red-500/25 bg-red-500/10 p-2">
+          <p className="text-micro uppercase tracking-wider text-red-500/90 font-mono">Needs attention</p>
           <p className="text-xs text-gray-300 mt-1">
             {focusRisk}. {switchRatePerMin > 0.7 ? 'Try longer uninterrupted blocks in one app.' : 'Keep context switching low to maintain depth.'}
           </p>
@@ -307,8 +307,8 @@ export function SessionDetail({ sessionId, onBack }: SessionDetailProps) {
 
       {/* Chronological timeline */}
       {timelineSegments.length > 0 && session && (
-        <div className="rounded-xl bg-discord-card/80 border border-white/10 p-3">
-          <p className="text-[10px] uppercase tracking-wider text-gray-500 font-mono mb-2">Timeline (what happened)</p>
+        <div className="rounded-card bg-surface-2/80 border border-white/10 p-3">
+          <p className="text-micro uppercase tracking-wider text-gray-500 font-mono mb-2">Timeline (what happened)</p>
           <div className="flex gap-px h-3 rounded-full overflow-hidden">
             {timelineSegments.map((seg, i) => {
               const totalSpan = session.end_time - session.start_time
@@ -320,7 +320,7 @@ export function SessionDetail({ sessionId, onBack }: SessionDetailProps) {
             })}
           </div>
           {interruptionPoints.length > 0 && (
-            <p className="text-[10px] text-discord-red mt-2">
+            <p className="text-micro text-red-500 mt-2">
               {interruptionPoints.length} distraction interruptions detected from focus flow.
             </p>
           )}
@@ -328,7 +328,7 @@ export function SessionDetail({ sessionId, onBack }: SessionDetailProps) {
             {categoryGroups.map((cat) => (
               <div key={cat.category} className="flex items-center gap-1">
                 <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: cat.color }} />
-                <span className="text-[10px] text-gray-400">{cat.label}</span>
+                <span className="text-micro text-gray-400">{cat.label}</span>
               </div>
             ))}
           </div>
@@ -336,15 +336,15 @@ export function SessionDetail({ sessionId, onBack }: SessionDetailProps) {
       )}
 
       {/* Session diagnosis */}
-      <div className="rounded-xl bg-discord-card/80 border border-white/10 p-3 space-y-2">
-        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-mono">Session Diagnosis</p>
+      <div className="rounded-card bg-surface-2/80 border border-white/10 p-3 space-y-2">
+        <p className="text-micro uppercase tracking-wider text-gray-500 font-mono">Session Diagnosis</p>
         <p className="text-xs text-gray-300">{storyIntro}</p>
         <div className="space-y-1.5">
           {timelineSegments.slice(0, 8).map((seg, idx) => {
             const segSec = Math.round((seg.end - seg.start) / 1000)
             const stamp = new Date(seg.start).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
             return (
-              <div key={`${seg.start}-${idx}`} className="flex items-center gap-2 text-[11px]">
+              <div key={`${seg.start}-${idx}`} className="flex items-center gap-2 text-caption">
                 <div className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: seg.color }} />
                 <span className="text-gray-500 font-mono shrink-0">{stamp}</span>
                 <span className="text-gray-300 truncate flex-1">{seg.app}</span>
@@ -353,7 +353,7 @@ export function SessionDetail({ sessionId, onBack }: SessionDetailProps) {
             )
           })}
           {timelineSegments.length > 8 && (
-            <p className="text-[10px] text-gray-600">+{timelineSegments.length - 8} more timeline events</p>
+            <p className="text-micro text-gray-600">+{timelineSegments.length - 8} more timeline events</p>
           )}
         </div>
       </div>
@@ -365,7 +365,7 @@ export function SessionDetail({ sessionId, onBack }: SessionDetailProps) {
             const isExpanded = expandedCat === group.category
             return (
               <motion.div key={group.category} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: gi * 0.04, duration: MOTION.duration.fast, ease: MOTION.easing }}
-                className="rounded-xl bg-discord-card/80 border border-white/10 overflow-hidden"
+                className="rounded-card bg-surface-2/80 border border-white/10 overflow-hidden"
               >
                 <button type="button" onClick={() => setExpandedCat(isExpanded ? null : group.category)}
                   className="w-full flex items-center gap-2 p-3 text-left hover:bg-white/[0.02] transition-colors"
@@ -373,8 +373,8 @@ export function SessionDetail({ sessionId, onBack }: SessionDetailProps) {
                   <span className="text-sm shrink-0">{group.emoji}</span>
                   <span className="text-xs font-semibold text-white flex-1 min-w-0 truncate">{group.label}</span>
                   <span className="text-xs font-mono font-bold shrink-0" style={{ color: group.color }}>{Math.round(group.pct)}%</span>
-                  <span className="text-[10px] text-gray-500 font-mono shrink-0">{formatMs(group.totalSeconds * 1000)}</span>
-                  <span className={`text-gray-600 text-[10px] ml-1 transition-transform ${isExpanded ? 'rotate-90' : ''}`}>›</span>
+                  <span className="text-micro text-gray-500 font-mono shrink-0">{formatMs(group.totalSeconds * 1000)}</span>
+                  <span className={`text-gray-600 text-micro ml-1 transition-transform ${isExpanded ? 'rotate-90' : ''}`}>›</span>
                 </button>
                 <AnimatePresence>
                   {isExpanded && (
@@ -384,19 +384,19 @@ export function SessionDetail({ sessionId, onBack }: SessionDetailProps) {
                           <div key={app.name}>
                             <div className="flex items-center gap-2">
                               <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: group.color, opacity: 0.5 }} />
-                              <span className="text-[11px] text-gray-300 truncate flex-1 min-w-0">{app.name}</span>
+                              <span className="text-caption text-gray-300 truncate flex-1 min-w-0">{app.name}</span>
                               {app.keystrokes > 0 && (
-                                <span className="text-[10px] text-gray-600 font-mono shrink-0">{formatNum(app.keystrokes)} keys</span>
+                                <span className="text-micro text-gray-600 font-mono shrink-0">{formatNum(app.keystrokes)} keys</span>
                               )}
-                              <span className="text-[10px] text-gray-500 font-mono shrink-0">{formatMs(app.seconds * 1000)}</span>
+                              <span className="text-micro text-gray-500 font-mono shrink-0">{formatMs(app.seconds * 1000)}</span>
                             </div>
                             {app.titles.length > 0 && (
                               <div className="pl-4 mt-0.5 space-y-0.5">
                                 {app.titles.map((t, ti) => (
                                   <div key={ti} className="flex items-center gap-1.5">
-                                    <span className="text-[10px] text-gray-700 shrink-0">—</span>
-                                    <span className="text-[10px] text-gray-500 truncate flex-1 min-w-0">{t.title}</span>
-                                    <span className="text-[10px] text-gray-600 font-mono shrink-0">{formatMs(t.seconds * 1000)}</span>
+                                    <span className="text-micro text-gray-700 shrink-0">—</span>
+                                    <span className="text-micro text-gray-500 truncate flex-1 min-w-0">{t.title}</span>
+                                    <span className="text-micro text-gray-600 font-mono shrink-0">{formatMs(t.seconds * 1000)}</span>
                                   </div>
                                 ))}
                               </div>
@@ -414,7 +414,7 @@ export function SessionDetail({ sessionId, onBack }: SessionDetailProps) {
       )}
 
       {categoryGroups.length === 0 && (
-        <div className="rounded-xl bg-discord-card/80 border border-white/10 p-4">
+        <div className="rounded-card bg-surface-2/80 border border-white/10 p-4">
           <p className="text-gray-500 text-sm text-center">No activity data for this session.</p>
         </div>
       )}

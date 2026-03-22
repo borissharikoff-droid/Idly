@@ -148,7 +148,7 @@ function ToastItem({ toast, onDismiss, onNavigate }: { toast: Toast; onDismiss: 
 
   return (
     <div
-      className="rounded-xl overflow-hidden shadow-2xl"
+      className="rounded-card overflow-hidden shadow-2xl"
       style={{
         background: 'rgba(16,16,26,0.97)',
         border: `1px solid ${accent}35`,
@@ -171,9 +171,9 @@ function ToastItem({ toast, onDismiss, onNavigate }: { toast: Toast; onDismiss: 
         >
           <span className="text-lg leading-none shrink-0">{icon}</span>
           <div className="min-w-0 flex-1">
-            <p className="text-[12px] font-semibold text-white leading-tight truncate">{title}</p>
+            <p className="text-xs font-semibold text-white leading-tight truncate">{title}</p>
             {body && (
-              <p className="text-[10px] font-mono mt-0.5 truncate" style={{ color: `${accent}cc` }}>
+              <p className="text-micro font-mono mt-0.5 truncate" style={{ color: `${accent}cc` }}>
                 {body}
               </p>
             )}
@@ -185,7 +185,7 @@ function ToastItem({ toast, onDismiss, onNavigate }: { toast: Toast; onDismiss: 
             <button
               type="button"
               onClick={handleClaim}
-              className="text-[10px] font-bold px-2 py-0.5 rounded-md transition-colors"
+              className="text-micro font-bold px-2 py-0.5 rounded-md transition-colors"
               style={{ color: accent, background: `${accent}20`, border: `1px solid ${accent}40` }}
             >
               Claim
@@ -194,7 +194,7 @@ function ToastItem({ toast, onDismiss, onNavigate }: { toast: Toast; onDismiss: 
           <button
             type="button"
             onClick={() => { playClickSound(); onDismiss() }}
-            className="text-[10px] text-gray-500 hover:text-gray-300 p-0.5 transition-colors"
+            className="text-micro text-gray-500 hover:text-gray-300 p-0.5 transition-colors"
             aria-label="Dismiss"
           >
             ✕

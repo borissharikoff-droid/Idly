@@ -1,103 +1,118 @@
 You are executing the `/x` command for the **Grindly** project.
 
-Your job is to write a killer Twitter/X post about what's happening in the app — features, patches, insights, or anything that would go viral with the indie game / productivity app crowd.
+You receive a topic/theme as the argument (e.g., "patch 4.0.0", "guilds", "hot zone"). Based on this, you produce either a single post or a thread — whichever format fits the content better. You also generate a matching image using the mascot.
 
 ---
 
-## Step 1 — Read current context (run in parallel)
+## Step 1 — Gather context (run in parallel)
 
-Gather intel simultaneously:
-- `git log --oneline -20` → recent commits
-- `git describe --tags --abbrev=0` → current version tag
-- Read `C:\Users\fillo\.claude\projects\C--idly\memory\changelog_draft.md` → what's been shipping
-- `git diff HEAD~5 --stat` → recent file activity to detect what areas are hot
+- `git log --oneline -20`
+- `git describe --tags --abbrev=0`
+- Read `C:\Users\fillo\.claude\projects\C--idly\memory\changelog_draft.md`
 
 ---
 
-## Step 2 — Pick the post angle
+## Step 2 — Decide: single post or thread?
 
-Based on the gathered context, pick the **best angle** for right now. Only one post — make it count.
+**Single post** if the topic is focused, punchy, or a specific mechanic/insight — one tweet captures it cleanly.
 
-**Angle options (pick what fits best):**
+**Thread** if the topic is a major release, a complex system, or has 4+ distinct things to say.
 
-| Angle | When to use | Tone |
-|-------|-------------|------|
-| 🚀 **Feature drop** | Fresh feature just landed | Hype, concrete, show the "aha" |
-| 🔧 **Patch insight** | Balance changes / bug fixes that are spicy | Honest dev log vibes |
-| 💡 **Gameplay tip** | Non-obvious mechanic most users miss | "Did you know..." format |
-| 📊 **Stats/numbers** | XP formula, level curves, economy data | Nerdy + shareable |
-| 🏆 **Milestone/meta** | Version milestone, feature count, scope | Proud builder energy |
-| 🧵 **Concept thread** | Explain a system (guilds, marketplace, raids) | Educational, long-form intro |
-| 😤 **Hot take** | Opinion on productivity apps, gamification, grind culture | Controversial-but-true |
-| 🎮 **Game feel moment** | A micro-interaction, animation, satisfying loop | Atmospheric, show don't tell |
-
-**Decision rule:** Prefer angles tied to the most recent 3–5 commits. Fresh = more authentic engagement.
+Pick whichever format makes better content. Do not default to one or the other.
 
 ---
 
-## Step 3 — Write the post
+## Step 3 — Write the content
 
-### Format rules:
-- **Max 280 characters** for single tweet. If it wants to be a thread, write 2–3 tweets numbered (1/3, 2/3, 3/3)
-- No corporate speak. Write like a **builder talking to other builders or players**
+### Voice & style rules (apply to both formats):
+- Write like a builder talking to other builders or players
 - Hook in the first line — no "We're excited to announce" garbage
-- Use line breaks for breathing room
-- Use **1–2 relevant emojis max** — don't spam them
-- End with something that invites engagement: a question, a flex, or a punchy one-liner
-- Hashtags: only if genuinely relevant. Max 2. Examples: `#indiedev` `#gamedev` `#buildinpublic` `#pixelart`
-- **No links unless asked**
+- Concrete and specific — name the feature, name the number, name the mechanic
+- No corporate speak
+- Max 1–2 emojis per tweet total
+- Each tweet ≤ 280 characters
 
-### Post style palette (vary each time, don't repeat the same structure twice in a row):
-- Raw builder voice: "shipped X today. here's what it does and why:"
-- Contrast hook: "most productivity apps do X. we did Y instead."
-- Number lead: "tracked 847 hours across skills this week. what people actually spend time on:"
-- Story: short 2-sentence arc with a twist
-- Visual description: describe what a UI moment looks/feels like
+### Single post extras:
+- End with an engagement hook (question, flex, or punchy one-liner)
+- Pick 2–3 relevant hashtags from: `#indiedev` `#gamedev` `#buildinpublic` `#pixelart` `#productivity` — only ones that genuinely fit
+- Hashtags go at the end on their own line
 
----
-
-## Step 4 — Write the image generation prompt
-
-Below the post, output a separator and an image prompt for generating a visual to go with the tweet.
-
-**Mascot reference:** Grindly's mascot is a tiny cute pixel-art purple square character — like a Minecraft block with eyes and stubby legs. Friendly, round pixel eyes, small smile. Primary color: `#9b59ff` purple. It's the brand character.
-
-**Image prompt format:**
-```
----
-🎨 IMAGE PROMPT (for Midjourney / DALL-E / Ideogram):
-
-[Prompt here]
-```
-
-**Image prompt rules:**
-- Feature the mascot doing something thematically tied to the post
-- Style: pixel art, 16-bit or 32-bit, dark background, clean composition
-- Mood should match the tweet's angle (hype = action pose, insight = thinking pose, etc.)
-- Suggest a specific scene (e.g., "mascot standing in front of a dungeon gate", "mascot holding a chart")
-- Keep prompt under 100 words, concrete and visual
-- Append: `pixel art style, 32-bit, dark background #1a1a2e, clean composition, no text`
+### Thread extras:
+- Number tweets `1/N, 2/N, ...`
+- Structure: hook → one tweet per major point → rapid-fire "plus" tweet → CTA with hashtags
+- Hashtags only in the last tweet
 
 ---
 
-## Step 5 — Output
+## Step 4 — Generate image via OpenAI API
 
-Output ONLY this — two labeled sections, each with a fenced code block. No extra text before, between, or after. No preamble. The code block content must start on the very first line inside the fence (no blank line after the opening ```).
+**Mascot:** `C:\Users\fillo\OneDrive\Рабочий стол\1.png`
+Tiny cute pixel-art purple square character, round eyes, stubby legs, color `#9b59ff`. Always use as reference.
 
-**Tweet** `[angle]`:
-```
-[tweet text here — no blank line before this]
+Compose an image prompt that matches the post's content and mood:
+- Mascot doing something thematically tied to the topic
+- Hype/release → action pose or celebration
+- Mechanic explanation → thinking or pointing at something
+- Specific scene (e.g. "mascot standing at a forge crafting glowing armor", "mascot leading a party into a dungeon")
+- End every prompt with: `pixel art style, 32-bit, dark background #1a1a2e, clean composition, no text`
+- Under 80 words
+
+**Run this to generate** (fill in PROMPT):
+
+```bash
+cd C:/idly && export OPENAI_API_KEY=$(grep OPENAI_API_KEY .env | cut -d= -f2-) && \
+node --input-type=module << 'EOF'
+import fs from 'fs';
+import path from 'path';
+import FormData from 'form-data';
+import fetch from 'node-fetch';
+
+const apiKey = process.env.OPENAI_API_KEY;
+const prompt = `PROMPT`;
+const outDir = 'C:/idly/x_images';
+fs.mkdirSync(outDir, { recursive: true });
+
+const form = new FormData();
+form.append('model', 'gpt-image-1');
+form.append('prompt', prompt);
+form.append('image[]', fs.createReadStream('C:/Users/fillo/OneDrive/Рабочий стол/1.png'));
+form.append('size', '1024x1024');
+
+const res = await fetch('https://api.openai.com/v1/images/edits', {
+  method: 'POST',
+  headers: { Authorization: 'Bearer ' + apiKey, ...form.getHeaders() },
+  body: form
+});
+const json = await res.json();
+if (json.error) { console.error('Error:', json.error.message); process.exit(1); }
+const buf = Buffer.from(json.data[0].b64_json, 'base64');
+const outPath = path.join(outDir, 'tweet_1.png');
+fs.writeFileSync(outPath, buf);
+console.log('Saved:', outPath);
+EOF
 ```
 
-**Image prompt**:
-```
-[image prompt here — no blank line before this]
-```
-
-No extra commentary. No "here's why I chose this angle". Nothing outside these two blocks.
+For threads: run once per tweet, changing `tweet_1.png` → `tweet_N.png` for each.
 
 ---
 
-## Optional: If the user passes an argument to `/x`
+## Step 5 — Write to file
 
-If the user wrote `/x <topic>` (e.g., `/x guilds`, `/x hot zone`, `/x raids`), focus the post on that topic specifically. Still pick the best angle, but constrain it to the given topic.
+Write all content to `C:\idly\x_post.md`. Format:
+
+```markdown
+# X — [topic] — [YYYY-MM-DD]
+
+[tweet text, or numbered tweets for thread]
+
+---
+Image: x_images/tweet_1.png
+Prompt: [prompt used]
+```
+
+---
+
+## Step 6 — Output to user
+
+1. Report: `✓ x_post.md` and `✓ x_images/tweet_1.png` (or list of images for thread)
+2. Print the post(s) in a plain code block — clean, copyable, no markdown decoration around the tweet text itself

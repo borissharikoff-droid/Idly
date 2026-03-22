@@ -118,12 +118,23 @@ function clearStaleActiveBattle() {
 }
 clearStaleActiveBattle()
 
-function rollMaterial(mob: MobDef, dropMultiplier = 1): { id: string; qty: number } | null {
-  if (!mob.materialDropId || !mob.materialDropChance) return null
-  const chance = Math.min(1, mob.materialDropChance * dropMultiplier)
-  if (Math.random() >= chance) return null
-  const qty = mob.materialDropQty ?? 1
-  return { id: mob.materialDropId, qty: dropMultiplier > 1 ? qty * 2 : qty }
+function rollMaterial(mob: MobDef, dropMultiplier = 1): { id: string; qty: number }[] {
+  const drops: { id: string; qty: number }[] = []
+  if (mob.materialDropId && mob.materialDropChance) {
+    const chance = Math.min(1, mob.materialDropChance * dropMultiplier)
+    if (Math.random() < chance) {
+      const qty = mob.materialDropQty ?? 1
+      drops.push({ id: mob.materialDropId, qty: dropMultiplier > 1 ? qty * 2 : qty })
+    }
+  }
+  if (mob.bonusMaterialDropId && mob.bonusMaterialDropChance) {
+    const chance = Math.min(1, mob.bonusMaterialDropChance * dropMultiplier)
+    if (Math.random() < chance) {
+      const qty = mob.bonusMaterialDropQty ?? 1
+      drops.push({ id: mob.bonusMaterialDropId, qty })
+    }
+  }
+  return drops
 }
 
 function randomGold(min: number, max: number, goldMultiplier = 1): number {
@@ -469,11 +480,13 @@ export const useArenaStore = create<ArenaState>()(
             void grantWarriorXP(mob.xpReward)
             warriorXP = mob.xpReward
 
-            const materialDrop = rollMaterial(mob, dropMult)
-            if (materialDrop) {
+            const materialDrops = rollMaterial(mob, dropMult)
+            for (const materialDrop of materialDrops) {
               useInventoryStore.getState().addItem(materialDrop.id, materialDrop.qty)
-              const matItem = LOOT_ITEMS.find((x) => x.id === materialDrop.id)
-              matDrop = { id: materialDrop.id, name: matItem?.name ?? materialDrop.id, icon: matItem?.icon ?? '📦', qty: materialDrop.qty }
+              if (!matDrop) {
+                const matItem = LOOT_ITEMS.find((x) => x.id === materialDrop.id)
+                matDrop = { id: materialDrop.id, name: matItem?.name ?? materialDrop.id, icon: matItem?.icon ?? '📦', qty: materialDrop.qty }
+              }
             }
 
             if (activeDungeon) {
@@ -539,6 +552,11 @@ export const useArenaStore = create<ArenaState>()(
               useInventoryStore.getState().addItem(bossForChest.materialDropId, qty)
               const matItem = LOOT_ITEMS.find((i) => i.id === bossForChest.materialDropId)
               matDrop = { id: bossForChest.materialDropId, name: matItem?.name ?? bossForChest.materialDropId, icon: matItem?.icon ?? '📦', qty }
+            }
+            // Grant secondary boss material drop if defined
+            if (bossForChest.bonusMaterialDropId) {
+              const qty = bossForChest.bonusMaterialDropQty ?? 1
+              useInventoryStore.getState().addItem(bossForChest.bonusMaterialDropId, qty)
             }
             void bossDropMult // used above for chest tier
 
@@ -625,6 +643,9 @@ export const useArenaStore = create<ArenaState>()(
             // Boss-exclusive material drop
             if (bossForChest.materialDropId) {
               useInventoryStore.getState().addItem(bossForChest.materialDropId, bossForChest.materialDropQty ?? 1)
+            }
+            if (bossForChest.bonusMaterialDropId) {
+              useInventoryStore.getState().addItem(bossForChest.bonusMaterialDropId, bossForChest.bonusMaterialDropQty ?? 1)
             }
             // Grant accumulated dungeon gold (mob gold) — same as endBattle
             if (activeBattle.dungeonZoneId) {
@@ -768,8 +789,8 @@ export const useArenaStore = create<ArenaState>()(
               totalGold += gold
               void grantWarriorXP(mob.xpReward)
               totalWarriorXP += mob.xpReward
-              const drop = rollMaterial(mob, autoDropMult)
-              if (drop) {
+              const drops = rollMaterial(mob, autoDropMult)
+              for (const drop of drops) {
                 useInventoryStore.getState().addItem(drop.id, drop.qty)
                 const matItem = LOOT_ITEMS.find((x) => x.id === drop.id)
                 if (materialMap[drop.id]) {
@@ -840,6 +861,16 @@ export const useArenaStore = create<ArenaState>()(
                 materialMap[zone.boss.materialDropId].qty += qty
               } else {
                 materialMap[zone.boss.materialDropId] = { name: matItem?.name ?? zone.boss.materialDropId, icon: matItem?.icon ?? '📦', qty }
+              }
+            }
+            if (zone.boss.bonusMaterialDropId) {
+              const qty = zone.boss.bonusMaterialDropQty ?? 1
+              useInventoryStore.getState().addItem(zone.boss.bonusMaterialDropId, qty)
+              const matItem = LOOT_ITEMS.find((x) => x.id === zone.boss.bonusMaterialDropId)
+              if (materialMap[zone.boss.bonusMaterialDropId]) {
+                materialMap[zone.boss.bonusMaterialDropId].qty += qty
+              } else {
+                materialMap[zone.boss.bonusMaterialDropId] = { name: matItem?.name ?? zone.boss.bonusMaterialDropId, icon: matItem?.icon ?? '📦', qty }
               }
             }
             set((s) => ({

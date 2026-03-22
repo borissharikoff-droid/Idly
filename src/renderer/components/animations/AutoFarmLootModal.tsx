@@ -6,12 +6,12 @@ import { ITEM_LOSS_CHANCE } from '../../stores/arenaStore'
 import { CHEST_DEFS, LOOT_ITEMS, getRarityTheme, getItemPerkDescription } from '../../lib/loot'
 import { PixelConfetti } from '../home/PixelConfetti'
 import { playChestOpeningSound, playClickSound, playLootRaritySound } from '../../lib/sounds'
+import { fmt } from '../../lib/format'
 
 function formatShort(n: number): string {
   if (!Number.isFinite(n) || n < 0) return '0'
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
-  return Math.floor(n).toString()
+  return fmt(n)
 }
 
 interface AutoFarmLootModalProps {
@@ -210,7 +210,7 @@ export function AutoFarmLootModal({ open, result, onClose }: AutoFarmLootModalPr
             exit={{ scale: 0.88, opacity: 0, y: 16 }}
             transition={{ type: 'spring', stiffness: 340, damping: 28, mass: 0.9 }}
             onClick={(e) => e.stopPropagation()}
-            className="w-[300px] rounded-2xl border p-5 text-center relative overflow-hidden"
+            className="w-[300px] rounded-lg border p-5 text-center relative overflow-hidden"
             style={{
               borderColor: AMBER.border,
               background: `linear-gradient(160deg, ${AMBER.glow}1A 0%, rgba(8,8,16,0.97) 55%)`,
@@ -223,7 +223,7 @@ export function AutoFarmLootModal({ open, result, onClose }: AutoFarmLootModalPr
             {/* Ambient glow */}
             <motion.div
               aria-hidden
-              className="absolute inset-0 pointer-events-none rounded-2xl"
+              className="absolute inset-0 pointer-events-none rounded-lg"
               style={{ background: `radial-gradient(circle at 50% 12%, ${AMBER.glow} 0%, transparent 55%)` }}
               animate={{ opacity: isRevealed ? [0.45, 0.65, 0.5] : [0.25, 0.45, 0.25] }}
               transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
@@ -250,7 +250,7 @@ export function AutoFarmLootModal({ open, result, onClose }: AutoFarmLootModalPr
                     }
                   : { type: 'spring', stiffness: 220, damping: 16 }
                 }
-                className="w-[76px] h-[76px] rounded-2xl border flex items-center justify-center relative overflow-hidden"
+                className="w-[76px] h-[76px] rounded-lg border flex items-center justify-center relative overflow-hidden"
                 style={{
                   borderColor: AMBER.border,
                   background: `radial-gradient(circle at 50% 35%, ${AMBER.glow}55 0%, rgba(8,8,16,0.92) 70%)`,
@@ -265,7 +265,7 @@ export function AutoFarmLootModal({ open, result, onClose }: AutoFarmLootModalPr
               <AnimatePresence mode="wait">
                 <motion.p
                   key={isRevealed ? 'revealed' : 'opening'}
-                  className="absolute inset-0 text-[11px] font-mono uppercase tracking-wider text-center"
+                  className="absolute inset-0 text-caption font-mono uppercase tracking-wider text-center"
                   style={{ color: AMBER.color }}
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -284,7 +284,7 @@ export function AutoFarmLootModal({ open, result, onClose }: AutoFarmLootModalPr
             {/* Item count */}
             {isRevealed && itemCount >= 2 && (
               <motion.p
-                className="text-[10px] text-gray-500 mt-0.5"
+                className="text-micro text-gray-500 mt-0.5"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.15, duration: 0.25 }}
@@ -375,7 +375,7 @@ export function AutoFarmLootModal({ open, result, onClose }: AutoFarmLootModalPr
               <button
                 type="button"
                 onClick={() => { playClickSound(); onClose() }}
-                className="flex-1 h-10 rounded-xl text-[13px] font-semibold transition-all active:scale-[0.97]"
+                className="flex-1 h-10 rounded-lg text-body font-semibold transition-all active:scale-[0.97]"
                 style={{ color: AMBER.color, border: `1px solid ${AMBER.border}`, background: `${AMBER.color}22` }}
               >
                 Done
@@ -400,7 +400,7 @@ function GearCard({ item, count, hasMultiple, delay }: {
   const theme = getRarityTheme(item.rarity)
   return (
     <motion.div
-      className="rounded-xl border p-3.5 relative overflow-hidden cursor-default snap-start flex-none"
+      className="rounded-lg border p-3.5 relative overflow-hidden cursor-default snap-start flex-none"
       style={{
         width: hasMultiple ? '220px' : '100%',
         borderColor: theme.border,
@@ -412,11 +412,11 @@ function GearCard({ item, count, hasMultiple, delay }: {
       transition={{ type: 'spring', stiffness: 280, damping: 24, delay }}
     >
       <div
-        className="absolute inset-0 pointer-events-none rounded-xl"
+        className="absolute inset-0 pointer-events-none rounded-lg"
         style={{ background: `radial-gradient(circle at 50% 38%, ${theme.glow} 0%, transparent 55%)`, opacity: 0.28 }}
       />
       <motion.div
-        className="absolute inset-0 pointer-events-none rounded-xl"
+        className="absolute inset-0 pointer-events-none rounded-lg"
         animate={{ opacity: [0.25, 0.5, 0.28] }}
         transition={{ duration: 1.9, repeat: Infinity, ease: 'easeInOut' }}
         style={{ boxShadow: `inset 0 0 18px ${theme.glow}` }}
@@ -424,7 +424,7 @@ function GearCard({ item, count, hasMultiple, delay }: {
       {/* Stack count badge */}
       {count > 1 && (
         <div
-          className="absolute top-2 right-2 z-10 min-w-[22px] h-[22px] rounded-full flex items-center justify-center text-[11px] font-black tabular-nums"
+          className="absolute top-2 right-2 z-10 min-w-[22px] h-[22px] rounded-full flex items-center justify-center text-caption font-black tabular-nums"
           style={{ background: theme.color, color: '#000', boxShadow: `0 0 8px ${theme.glow}88` }}
         >
           ×{count}
@@ -444,9 +444,9 @@ function GearCard({ item, count, hasMultiple, delay }: {
         </motion.div>
       </div>
       <p className="text-sm text-white font-semibold mt-2 leading-tight">{item.name}</p>
-      <p className="text-[10px] font-mono uppercase tracking-wider mt-0.5" style={{ color: theme.color }}>{item.rarity}</p>
-      {item.description && <p className="text-[10px] text-gray-500 italic mt-1 leading-snug">{item.description}</p>}
-      <p className="text-[10px] text-gray-400 mt-1 leading-snug">{getItemPerkDescription(item)}</p>
+      <p className="text-micro font-mono uppercase tracking-wider mt-0.5" style={{ color: theme.color }}>{item.rarity}</p>
+      {item.description && <p className="text-micro text-gray-500 italic mt-1 leading-snug">{item.description}</p>}
+      <p className="text-micro text-gray-400 mt-1 leading-snug">{getItemPerkDescription(item)}</p>
     </motion.div>
   )
 }
@@ -463,7 +463,7 @@ function BonusCard({ icon, image, value, label, color, delay }: {
 }) {
   return (
     <motion.div
-      className="flex-none w-[130px] snap-start rounded-xl border flex flex-col items-center justify-center gap-1.5 py-3.5 relative overflow-hidden"
+      className="flex-none w-[130px] snap-start rounded-lg border flex flex-col items-center justify-center gap-1.5 py-3.5 relative overflow-hidden"
       style={{ borderColor: `${color}40`, background: `linear-gradient(160deg, ${color}10 0%, rgba(8,8,16,0.95) 65%)` }}
       initial={{ opacity: 0, x: 20, scale: 0.88 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
@@ -471,7 +471,7 @@ function BonusCard({ icon, image, value, label, color, delay }: {
     >
       <div className="absolute inset-0 pointer-events-none" style={{ background: `radial-gradient(circle at 50% 35%, ${color}18 0%, transparent 65%)` }} />
       <div
-        className="w-12 h-12 rounded-xl flex items-center justify-center relative"
+        className="w-12 h-12 rounded-lg flex items-center justify-center relative"
         style={{ backgroundColor: `${color}15`, border: `1px solid ${color}30`, boxShadow: `0 0 12px ${color}22` }}
       >
         {image ? (
@@ -481,7 +481,7 @@ function BonusCard({ icon, image, value, label, color, delay }: {
         )}
       </div>
       <span className="text-lg font-bold tabular-nums relative" style={{ color }}>{value}</span>
-      <span className="text-[10px] font-mono uppercase tracking-widest relative" style={{ color: `${color}88` }}>{label}</span>
+      <span className="text-micro font-mono uppercase tracking-widest relative" style={{ color: `${color}88` }}>{label}</span>
     </motion.div>
   )
 }
@@ -496,7 +496,7 @@ function DeathCard({ boss, lostItem, delay }: {
   const lossChancePct = Math.round(ITEM_LOSS_CHANCE * 100)
   return (
     <motion.div
-      className="flex-none w-[160px] snap-start rounded-xl border border-red-500/30 flex flex-col items-center justify-center gap-1.5 py-4 px-2 relative overflow-hidden"
+      className="flex-none w-[160px] snap-start rounded-lg border border-red-500/30 flex flex-col items-center justify-center gap-1.5 py-4 px-2 relative overflow-hidden"
       style={{ background: 'linear-gradient(160deg, rgba(239,68,68,0.10) 0%, rgba(8,8,16,0.95) 65%)' }}
       initial={{ opacity: 0, x: 20, scale: 0.88 }}
       animate={{ opacity: 1, x: 0, scale: 1 }}
@@ -504,13 +504,13 @@ function DeathCard({ boss, lostItem, delay }: {
     >
       <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 50% 35%, rgba(239,68,68,0.15) 0%, transparent 65%)' }} />
       <span className="text-3xl relative">💀</span>
-      <span className="text-[11px] font-semibold text-red-300 text-center relative leading-tight">Died vs {boss}</span>
+      <span className="text-caption font-semibold text-red-300 text-center relative leading-tight">Died vs {boss}</span>
       {lostItem ? (
-        <span className="text-[10px] text-red-400/80 text-center relative leading-tight">
+        <span className="text-micro text-red-400/80 text-center relative leading-tight">
           Lost {lostItem.icon} {lostItem.name} ({lossChancePct}%)
         </span>
       ) : (
-        <span className="text-[10px] text-gray-500 text-center relative leading-tight">
+        <span className="text-micro text-gray-500 text-center relative leading-tight">
           Gear survived ({100 - lossChancePct}% safe)
         </span>
       )}

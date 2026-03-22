@@ -129,7 +129,7 @@ export function WelcomeBanner() {
 
         {/* Card body */}
         <motion.div
-          className="relative rounded-2xl border border-white/[0.07] overflow-hidden z-10"
+          className="relative rounded border border-white/[0.07] overflow-hidden z-10"
           style={{
             background: 'linear-gradient(165deg, rgba(88,101,242,0.10) 0%, rgba(30,31,40,0.95) 45%, rgba(0,255,136,0.03) 100%)',
           }}
@@ -177,11 +177,11 @@ export function WelcomeBanner() {
               }}
               transition={{ type: 'spring', stiffness: 200, damping: 20 }}
             >
-              <p className="text-white font-semibold text-[13px] leading-tight mb-1.5">
+              <p className="text-white font-semibold text-body leading-tight mb-1.5">
                 Welcome to Grindly
               </p>
 
-              <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 text-[11px] text-gray-300/90">
+              <div className="flex flex-wrap items-center justify-center gap-x-1.5 gap-y-0.5 text-caption text-gray-300/90">
                 <span>track time</span>
                 <span className="text-white/15">&middot;</span>
                 <span>get loot</span>
@@ -191,30 +191,11 @@ export function WelcomeBanner() {
                 <span>compete</span>
               </div>
 
-              <p className="text-cyber-neon/60 text-[11px] mt-1.5">{'<3'}</p>
+              <p className="text-accent/60 text-caption mt-1.5">{'<3'}</p>
             </motion.div>
           </div>
         </motion.div>
 
-        <style>{`
-          @keyframes iconFloat0 {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            50% { transform: translateY(-5px) rotate(3deg); }
-          }
-          @keyframes iconFloat1 {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            50% { transform: translateY(-6px) rotate(-2deg); }
-          }
-          @keyframes iconFloat2 {
-            0%, 100% { transform: translateY(0px) scale(1); }
-            50% { transform: translateY(-4px) scale(1.06); }
-          }
-          @keyframes iconFloat3 {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            33% { transform: translateY(-5px) rotate(2deg); }
-            66% { transform: translateY(-2px) rotate(-2deg); }
-          }
-        `}</style>
       </div>
     </motion.div>
   )

@@ -22,6 +22,7 @@ import { SKILLS, skillLevelFromXP } from '../../lib/skills'
 import { CharacterCard } from '../character/CharacterCard'
 import { PageHeader } from '../shared/PageHeader'
 import { Sword } from '../../lib/icons'
+import { fmt } from '../../lib/format'
 import { BackpackButton } from '../shared/BackpackButton'
 import { GoldDisplay } from '../marketplace/GoldDisplay'
 import { InventoryPage } from '../inventory/InventoryPage'
@@ -36,8 +37,7 @@ import { useNavigationStore } from '../../stores/navigationStore'
 function formatShort(n: number): string {
   if (!Number.isFinite(n) || n < 0) return '0'
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
-  return Math.floor(n).toString()
+  return fmt(n)
 }
 
 // ─── Food selector ───────────────────────────────────────────────────────────
@@ -156,7 +156,7 @@ function ZoneCard({
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className={`rounded-2xl border overflow-hidden ${isActive ? 'rounded-b-none border-b-0' : ''}`}
+        className={`rounded-card border overflow-hidden ${isActive ? 'rounded-b-none border-b-0' : ''}`}
         style={isActive ? {
           borderColor: `${tc}55`,
           background: `linear-gradient(160deg, ${tc}22 0%, rgba(13,13,26,0.97) 60%)`,
@@ -188,27 +188,27 @@ function ZoneCard({
             <div className="flex-1 min-w-0">
               {/* Name + badges */}
               <div className="flex items-center gap-2 flex-wrap">
-                <p className={`text-[13px] font-bold ${unlocked ? 'text-white' : 'text-gray-500'}`}>
+                <p className={`text-body font-bold ${unlocked ? 'text-white' : 'text-gray-500'}`}>
                   {zone.name}
                 </p>
                 {cleared && !isActive && killCount > 0 && (
-                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full border border-amber-500/50 text-amber-400/80">×{killCount}</span>
+                  <span className="text-micro font-mono px-1.5 py-0.5 rounded-full border border-amber-500/50 text-amber-400/80">×{killCount}</span>
                 )}
                 {isActive && (
-                  <span className="text-[10px] font-semibold font-mono px-1.5 py-0.5 rounded-full animate-pulse"
+                  <span className="text-micro font-semibold font-mono px-1.5 py-0.5 rounded-full animate-pulse"
                     style={{ color: tc, border: `1px solid ${tc}40`, background: `${tc}15` }}>
                     ● {isAutoMode ? 'AUTO' : 'ACTIVE'}
                   </span>
                 )}
                 {isHotZone && (
-                  <span className="text-[10px] font-bold font-mono px-1.5 py-0.5 rounded-full border border-orange-500/60 text-orange-400 bg-orange-500/10 animate-pulse">
+                  <span className="text-micro font-bold font-mono px-1.5 py-0.5 rounded-full border border-orange-500/60 text-orange-400 bg-orange-500/10 animate-pulse">
                     🔥 HOT
                   </span>
                 )}
               </div>
 
               {/* Boss name as lore text */}
-              <p className="text-[10px] text-gray-500 mt-0.5 leading-snug italic">
+              <p className="text-micro text-gray-500 mt-0.5 leading-snug italic">
                 {zone.boss.name}
               </p>
             </div>
@@ -216,7 +216,7 @@ function ZoneCard({
 
           {/* Stats row */}
           {!isActive && (
-            <div className="flex gap-3 mt-3 text-[10px] font-mono text-gray-500">
+            <div className="flex gap-3 mt-3 text-micro font-mono text-gray-500">
               <span>Boss HP <span className="text-white">{formatShort(zone.boss.hp)}</span></span>
               <span>Reward <span className="text-amber-400">{zone.boss.rewards.chestTier.replace('_chest', '')}</span></span>
               <span>Mobs <span className="text-white">{zone.mobs.length} + boss</span></span>
@@ -240,7 +240,7 @@ function ZoneCard({
                   </span>
                 )
               })}
-              <span className="text-[10px] text-gray-600 font-mono mx-0.5">›</span>
+              <span className="text-micro text-gray-600 font-mono mx-0.5">›</span>
               <span className={`text-sm leading-none transition-all ${isBossFight ? '' : 'opacity-45'}`}
                 style={isBossFight ? { filter: 'drop-shadow(0 0 5px gold)' } : undefined}>
                 {zone.boss.image
@@ -266,14 +266,14 @@ function ZoneCard({
                     <div className="h-full rounded-full transition-all duration-700"
                       style={{ width: `${barPct}%`, background: barColor, boxShadow: `0 0 6px ${barColor}70` }} />
                   </div>
-                  <span className="text-[10px] font-mono font-semibold shrink-0 w-12 text-right" style={{ color: barColor }}>{label}</span>
+                  <span className="text-micro font-mono font-semibold shrink-0 w-12 text-right" style={{ color: barColor }}>{label}</span>
                 </div>
               )
             })()}
 
             {/* Requirements section */}
             <div className="px-4 pb-3 space-y-1.5 border-t" style={{ borderColor: `${tc}12` }}>
-              <p className="text-[10px] uppercase tracking-wider font-mono text-gray-600 mt-2.5">Requirements</p>
+              <p className="text-micro uppercase tracking-wider font-mono text-gray-600 mt-2.5">Requirements</p>
 
               {/* Prev zone unlock */}
               {zone.prevZoneId && (() => {
@@ -281,8 +281,8 @@ function ZoneCard({
                 const done = clearedZones.includes(zone.prevZoneId!)
                 return (
                   <div className="flex items-center gap-2">
-                    <span className={`text-[10px] ${done ? 'text-green-400' : 'text-red-400'}`}>{done ? '✓' : '✗'}</span>
-                    <span className="text-[10px] text-gray-400">Clear {prevZone?.name ?? zone.prevZoneId}</span>
+                    <span className={`text-micro ${done ? 'text-green-400' : 'text-red-400'}`}>{done ? '✓' : '✗'}</span>
+                    <span className="text-micro text-gray-400">Clear {prevZone?.name ?? zone.prevZoneId}</span>
                   </div>
                 )
               })()}
@@ -292,8 +292,8 @@ function ZoneCard({
                 const hasLevel = (skillLevels['warrior'] ?? 0) >= zone.warriorLevelRequired!
                 return (
                   <div className="flex items-center gap-2">
-                    <span className={`text-[10px] ${hasLevel ? 'text-green-400' : 'text-red-400'}`}>{hasLevel ? '✓' : '✗'}</span>
-                    <span className="text-[10px] text-gray-400">Warrior Lvl.{zone.warriorLevelRequired}</span>
+                    <span className={`text-micro ${hasLevel ? 'text-green-400' : 'text-red-400'}`}>{hasLevel ? '✓' : '✗'}</span>
+                    <span className="text-micro text-gray-400">Warrior Lvl.{zone.warriorLevelRequired}</span>
                   </div>
                 )
               })()}
@@ -304,13 +304,13 @@ function ZoneCard({
                 const has = (ownedItems[gateItemId] ?? 0) >= 1
                 return (
                   <div key={gateItemId} className="flex items-center gap-2">
-                    <span className={`text-[10px] ${has ? 'text-green-400' : 'text-red-400'}`}>{has ? '✓' : '✗'}</span>
-                    <span className="text-[10px] text-gray-400 flex-1">{item?.icon ?? '📦'} {item?.name ?? gateItemId}</span>
+                    <span className={`text-micro ${has ? 'text-green-400' : 'text-red-400'}`}>{has ? '✓' : '✗'}</span>
+                    <span className="text-micro text-gray-400 flex-1">{item?.icon ?? '📦'} {item?.name ?? gateItemId}</span>
                     {!has && navigateTo && (
                       <button
                         type="button"
                         onClick={() => { playClickSound(); navigateTo('craft') }}
-                        className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-orange-500/40 text-orange-400 hover:bg-orange-500/10 transition-colors shrink-0"
+                        className="text-micro font-mono px-1.5 py-0.5 rounded border border-orange-500/40 text-orange-400 hover:bg-orange-500/10 transition-colors shrink-0"
                       >
                         Craft →
                       </button>
@@ -326,11 +326,11 @@ function ZoneCard({
                 const enough = owned >= c.quantity
                 return (
                   <div key={c.itemId} className="flex items-center gap-2">
-                    <span className={`text-[10px] ${enough ? 'text-green-400' : 'text-red-400'}`}>{enough ? '✓' : '✗'}</span>
-                    <span className="text-[10px] text-gray-400">
+                    <span className={`text-micro ${enough ? 'text-green-400' : 'text-red-400'}`}>{enough ? '✓' : '✗'}</span>
+                    <span className="text-micro text-gray-400">
                       {item?.icon ?? '📦'} {item?.name ?? c.itemId} ×{c.quantity}
                     </span>
-                    <span className="ml-auto text-[10px] font-mono text-gray-600">
+                    <span className="ml-auto text-micro font-mono text-gray-600">
                       {owned}/{c.quantity} available
                     </span>
                   </div>
@@ -339,7 +339,7 @@ function ZoneCard({
 
               {/* No requirements */}
               {!zone.prevZoneId && !zone.warriorLevelRequired && (!zone.gateItems?.length) && (!zone.entryCost?.length) && (
-                <p className="text-[10px] font-mono text-gray-600 italic">No requirements</p>
+                <p className="text-micro font-mono text-gray-600 italic">No requirements</p>
               )}
             </div>
 
@@ -353,11 +353,11 @@ function ZoneCard({
             {/* CTA */}
             <div className="px-4 pb-4">
               {inActiveRaid ? (
-                <div className="w-full py-2.5 rounded-xl text-[10px] font-mono text-center text-amber-500/70 border border-amber-500/20 bg-amber-500/05">
+                <div className="w-full py-2.5 rounded text-micro font-mono text-center text-amber-500/70 border border-amber-500/20 bg-amber-500/05">
                   🔒 Raid in progress — dungeons locked
                 </div>
               ) : activeBattle ? (
-                <div className="w-full py-2.5 rounded-xl text-[10px] font-mono text-center text-gray-500 border border-white/[0.06]">
+                <div className="w-full py-2.5 rounded text-micro font-mono text-center text-gray-500 border border-white/[0.06]">
                   In battle...
                 </div>
               ) : unlocked ? (
@@ -366,7 +366,7 @@ function ZoneCard({
                     <button
                       type="button"
                       onClick={() => { playClickSound(); onEnter(zone.id) }}
-                      className="flex-1 py-2.5 rounded-xl text-[12px] font-bold transition-all active:scale-[0.98]"
+                      className="flex-1 py-2.5 rounded text-xs font-bold transition-all active:scale-[0.98]"
                       style={{
                         background: `linear-gradient(135deg, ${tc}30, ${tc}18)`,
                         border: `1px solid ${tc}60`,
@@ -380,7 +380,7 @@ function ZoneCard({
                     <button
                       type="button"
                       disabled
-                      className="flex-1 py-2.5 rounded-xl text-[12px] font-bold disabled:opacity-35"
+                      className="flex-1 py-2.5 rounded text-xs font-bold disabled:opacity-35"
                       style={{ background: 'transparent', border: `1px solid ${tc}25`, color: tc }}
                     >
                       Insufficient entry cost
@@ -391,7 +391,7 @@ function ZoneCard({
                       type="button"
                       title={`Auto-run ${passCount} dungeon pass${passCount === 1 ? '' : 'es'} — runs automatically without manual battles`}
                       onClick={() => { playClickSound(); onAutoFarm(zone.id) }}
-                      className="px-3 py-2.5 rounded-xl text-[10px] font-semibold transition-all active:scale-[0.98]"
+                      className="px-3 py-2.5 rounded text-micro font-semibold transition-all active:scale-[0.98]"
                       style={{ color: '#fbbf24', border: '1px solid rgba(251,191,36,0.28)', background: 'rgba(251,191,36,0.08)' }}
                     >
                       🎫 ×{passCount}
@@ -402,7 +402,7 @@ function ZoneCard({
                 <button
                   type="button"
                   disabled
-                  className="w-full py-2.5 rounded-xl text-[12px] font-bold disabled:opacity-35"
+                  className="w-full py-2.5 rounded text-xs font-bold disabled:opacity-35"
                   style={{ background: 'transparent', border: `1px solid ${tc}15`, color: '#6b7280' }}
                 >
                   🔒 Locked
@@ -422,7 +422,7 @@ function ZoneCard({
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="overflow-hidden rounded-b-2xl border border-t-0"
+            className="overflow-hidden rounded-b border border-t-0"
             style={{ borderColor: `${tc}55`, background: `linear-gradient(180deg, ${tc}12 0%, rgba(12,12,20,0.95) 100%)` }}
           >
             {battleComplete ? (
@@ -439,7 +439,7 @@ function ZoneCard({
                   </div>
                 </div>
                 {!battleState?.victory && lastInsuranceUsed && (
-                  <p className="text-[10px] font-mono text-emerald-400 mt-0.5">
+                  <p className="text-micro font-mono text-emerald-400 mt-0.5">
                     Death Insurance consumed — no items lost!
                   </p>
                 )}
@@ -459,7 +459,7 @@ function ZoneCard({
                   }}
                 >
                   {isBossFight && (
-                    <span className="text-[10px] font-mono uppercase tracking-widest text-amber-400/55 leading-none">boss</span>
+                    <span className="text-micro font-mono uppercase tracking-widest text-amber-400/55 leading-none">boss</span>
                   )}
                   <span
                     className="text-5xl leading-none select-none"
@@ -472,7 +472,7 @@ function ZoneCard({
                       : currentEnemy.icon}
                   </span>
                   <span
-                    className="text-[10px] font-mono tabular-nums leading-none"
+                    className="text-micro font-mono tabular-nums leading-none"
                     style={{ color: bossFlash ? '#fed7aa' : `${tc}88` }}
                   >
                     {Math.max(0, Math.round((battleState.bossHp / activeBattle.bossSnapshot.hp) * 100))}%
@@ -485,16 +485,16 @@ function ZoneCard({
                 {/* Enemy name + dungeon step */}
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-[12px] font-semibold text-white leading-tight">{currentEnemy.name}</p>
-                    <p className="text-[10px] font-mono" style={{ color: `${tc}aa` }}>
+                    <p className="text-xs font-semibold text-white leading-tight">{currentEnemy.name}</p>
+                    <p className="text-micro font-mono" style={{ color: `${tc}aa` }}>
                       {isBossFight ? 'Boss' : `Mob ${mobIndex + 1} of 3`}
                       {!isBossFight && activeBattle.mobDef?.xpReward ? ` · +${formatShort(activeBattle.mobDef.xpReward)} XP` : ''}
                     </p>
                   </div>
                   <div className="flex items-center gap-1.5">
                     {activeDungeon && activeDungeon.goldEarned > 0 && (
-                      <span className="text-[10px] font-mono text-yellow-400 leading-none">
-                        🪙 {activeDungeon.goldEarned}g
+                      <span className="text-micro font-mono text-yellow-400 leading-none">
+                        🪙 {fmt(activeDungeon.goldEarned)}g
                       </span>
                     )}
                     <div className="flex items-center gap-0.5">
@@ -521,10 +521,10 @@ function ZoneCard({
                   {/* Player HP */}
                   <div>
                     <div className="flex justify-between items-center mb-1">
-                      <span className={`text-[10px] font-semibold transition-colors duration-100 ${playerFlash ? 'text-red-300' : playerDanger ? 'text-yellow-400' : 'text-green-400'}`}>
-                        You {playerDanger && <span className="text-[10px]">⚠</span>}
+                      <span className={`text-micro font-semibold transition-colors duration-100 ${playerFlash ? 'text-red-300' : playerDanger ? 'text-yellow-400' : 'text-green-400'}`}>
+                        You {playerDanger && <span className="text-micro">⚠</span>}
                       </span>
-                      <span className="text-[10px] text-gray-400 font-mono tabular-nums">
+                      <span className="text-micro text-gray-400 font-mono tabular-nums">
                         {formatShort(battleState.playerHp)} / {formatShort(activeBattle.playerSnapshot.hp)}
                       </span>
                     </div>
@@ -560,7 +560,7 @@ function ZoneCard({
                             animate={{ opacity: 0, y: -18 }}
                             exit={{ opacity: 0 }}
                             transition={{ duration: 0.75, ease: 'easeOut' }}
-                            className="absolute right-1 top-0 pointer-events-none text-[10px] font-bold font-mono tabular-nums"
+                            className="absolute right-1 top-0 pointer-events-none text-micro font-bold font-mono tabular-nums"
                             style={{ color: '#fca5a5', textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}
                           >
                             -{formatShort(n.value)}
@@ -573,10 +573,10 @@ function ZoneCard({
                   {/* Enemy HP */}
                   <div>
                     <div className="flex justify-between items-center mb-1">
-                      <span className={`text-[10px] font-semibold transition-colors duration-100 ${bossFlash ? 'text-orange-200' : 'text-red-400'}`}>
+                      <span className={`text-micro font-semibold transition-colors duration-100 ${bossFlash ? 'text-orange-200' : 'text-red-400'}`}>
                         {currentEnemy.name}
                       </span>
-                      <span className="text-[10px] text-gray-400 font-mono tabular-nums">
+                      <span className="text-micro text-gray-400 font-mono tabular-nums">
                         {formatShort(battleState.bossHp)} / {formatShort(activeBattle.bossSnapshot.hp)}
                       </span>
                     </div>
@@ -604,7 +604,7 @@ function ZoneCard({
                             animate={{ opacity: 0, y: -18 }}
                             exit={{ opacity: 0 }}
                             transition={{ duration: 0.75, ease: 'easeOut' }}
-                            className="absolute right-1 top-0 pointer-events-none text-[10px] font-bold font-mono tabular-nums"
+                            className="absolute right-1 top-0 pointer-events-none text-micro font-bold font-mono tabular-nums"
                             style={{ color: tc, textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}
                           >
                             -{formatShort(n.value)}
@@ -617,7 +617,7 @@ function ZoneCard({
 
                 {/* Combat stats + footer row */}
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 text-[10px] font-mono flex-wrap">
+                  <div className="flex items-center gap-2 text-micro font-mono flex-wrap">
                     <span style={{ color: '#4ade80bb' }}>⚔ {activeBattle.playerSnapshot.atk}/s</span>
                     <span style={{ color: '#f87171bb' }}>♥ −{activeBattle.bossSnapshot.atk}/s</span>
                     {activeBattle.playerSnapshot.hpRegen > 0 && (
@@ -636,22 +636,22 @@ function ZoneCard({
                   {confirmForfeit ? (
                     <div className="flex flex-col gap-1 items-end">
                       {activeDungeon && activeDungeon.goldEarned > 0 && (
-                        <p className="text-[10px] font-mono text-red-400/80">
-                          lose {activeDungeon.goldEarned}g accumulated
+                        <p className="text-micro font-mono text-red-400/80">
+                          lose {fmt(activeDungeon.goldEarned)}g accumulated
                         </p>
                       )}
                       <div className="flex items-center gap-1">
                         <button
                           type="button"
                           onClick={() => { onForfeit(); setConfirmForfeit(false) }}
-                          className="text-[10px] font-semibold text-red-200 border border-red-500/40 bg-red-500/15 hover:bg-red-500/25 px-2.5 py-1 rounded-lg transition-colors"
+                          className="text-micro font-semibold text-red-200 border border-red-500/40 bg-red-500/15 hover:bg-red-500/25 px-2.5 py-1 rounded transition-colors"
                         >
                           Abandon
                         </button>
                         <button
                           type="button"
                           onClick={() => { playClickSound(); setConfirmForfeit(false) }}
-                          className="text-[10px] font-semibold text-gray-400 hover:text-gray-300 border border-white/10 px-2 py-1 rounded-lg transition-colors"
+                          className="text-micro font-semibold text-gray-400 hover:text-gray-300 border border-white/10 px-2 py-1 rounded transition-colors"
                         >
                           Cancel
                         </button>
@@ -661,7 +661,7 @@ function ZoneCard({
                     <button
                       type="button"
                       onClick={() => { playClickSound(); setConfirmForfeit(true) }}
-                      className="text-[10px] text-gray-400 hover:text-red-400 transition-colors font-mono underline-offset-2 hover:underline"
+                      className="text-micro text-gray-400 hover:text-red-400 transition-colors font-mono underline-offset-2 hover:underline"
                     >
                       forfeit
                     </button>
@@ -732,6 +732,7 @@ export function ArenaPage() {
   const hotZoneDaysLeft = useMemo(() => hotZoneResetsInDays(), [])
   const hotZone = ZONES.find((z) => z.id === hotZoneId)
   const bounties = useBountyStore((s) => s.bounties)
+  const claimBounty = useBountyStore((s) => s.claimBounty)
 
   // Restore auto-mode state on mount (survives tab switches)
   useEffect(() => {
@@ -1149,6 +1150,15 @@ export function ArenaPage() {
                   bonusMaterials: [...matBonuses, ...opened.bonusMaterials],
                   warriorXP,
                 })
+              } else {
+                // Fallback: chest was rolled but inventory count was 0 — show no-chest summary
+                setArenaChestModal({
+                  chestType: null,
+                  itemId: null,
+                  goldDropped: dungeonGold,
+                  bonusMaterials: matBonuses,
+                  warriorXP,
+                })
               }
             } else {
               // No chest — show ChestOpenModal with just gold + materials + XP
@@ -1247,7 +1257,7 @@ export function ArenaPage() {
       <CharacterCard locked={inBattle} />
 
       {/* ── Tab switcher ── */}
-      <div className="flex gap-1 p-1 rounded-xl bg-white/[0.04] border border-white/[0.07]">
+      <div className="flex gap-1 p-1 rounded bg-white/[0.04] border border-white/[0.07]">
         {([
           { id: 'dungeons', label: '🗺 Dungeons', color: '#f87171' },
           { id: 'raids',    label: '⚔ Raids',    color: '#f59e0b' },
@@ -1257,7 +1267,7 @@ export function ArenaPage() {
             key={tab.id}
             type="button"
             onClick={() => { playClickSound(); setArenaTab(tab.id) }}
-            className="flex-1 py-1.5 rounded-lg text-[11px] font-semibold transition-colors"
+            className="flex-1 py-1.5 rounded text-caption font-semibold transition-colors"
             style={arenaTab === tab.id
               ? { background: `${tab.color}20`, color: tab.color, border: `1px solid ${tab.color}55` }
               : { color: '#6b7280' }
@@ -1270,14 +1280,14 @@ export function ArenaPage() {
 
       {/* ── Raids Tab ── */}
       {arenaTab === 'raids' && (
-        <Suspense fallback={<p className="text-[10px] text-gray-600 font-mono text-center py-8 animate-pulse">Loading raids...</p>}>
+        <Suspense fallback={<p className="text-micro text-gray-600 font-mono text-center py-8 animate-pulse">Loading raids...</p>}>
           <RaidsTab />
         </Suspense>
       )}
 
       {/* ── Hall of Raids Tab ── */}
       {arenaTab === 'hall' && (
-        <Suspense fallback={<p className="text-[10px] text-gray-600 font-mono text-center py-8 animate-pulse">Loading hall...</p>}>
+        <Suspense fallback={<p className="text-micro text-gray-600 font-mono text-center py-8 animate-pulse">Loading hall...</p>}>
           <HallOfRaidsTab />
         </Suspense>
       )}
@@ -1290,22 +1300,22 @@ export function ArenaPage() {
         <motion.div
           animate={{ boxShadow: ['0 0 0px rgba(249,115,22,0)', '0 0 12px rgba(249,115,22,0.35)', '0 0 0px rgba(249,115,22,0)'] }}
           transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
-          className="rounded-xl border border-orange-500/50 bg-orange-500/[0.08] px-3 py-2 flex items-center gap-2.5"
+          className="rounded border border-orange-500/50 bg-orange-500/[0.08] px-3 py-2 flex items-center gap-2.5"
         >
           <span className="text-lg">{hotZone.icon}</span>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
-              <p className="text-[11px] font-semibold text-orange-400">🔥 Hot Zone this week: {hotZone.name}</p>
-              <span className="text-[10px] font-bold font-mono px-1 py-0.5 rounded bg-orange-500/20 text-orange-300 border border-orange-500/30 animate-pulse">LIVE</span>
+              <p className="text-caption font-semibold text-orange-400">🔥 Hot Zone this week: {hotZone.name}</p>
+              <span className="text-micro font-bold font-mono px-1 py-0.5 rounded bg-orange-500/20 text-orange-300 border border-orange-500/30 animate-pulse">LIVE</span>
             </div>
-            <p className="text-[10px] text-gray-400 font-mono">2× gold · 2× drops · +1 chest tier · resets in {hotZoneDaysLeft}d</p>
+            <p className="text-micro text-gray-400 font-mono">2× gold · 2× drops · +1 chest tier · resets in {hotZoneDaysLeft}d</p>
           </div>
         </motion.div>
       )}
 
       {/* ── Zone Map ── */}
       <div className="space-y-2.5">
-        <p className="text-[10px] uppercase tracking-wider text-gray-400 font-mono px-0.5">Zones</p>
+        <p className="text-micro uppercase tracking-wider text-gray-400 font-mono px-0.5">Zones</p>
         {ZONES.map((zone) => (
           <ZoneCard
             key={zone.id}
@@ -1343,17 +1353,17 @@ export function ArenaPage() {
 
       {/* ── Daily Bounties ── */}
       {bounties.length > 0 && (
-        <div className="rounded-xl border border-white/[0.10] bg-discord-card p-3">
-          <p className="text-[10px] uppercase tracking-wider text-gray-400 font-mono mb-2">Daily Bounties</p>
+        <div className="rounded-card border border-white/[0.10] bg-surface-2 p-3">
+          <p className="text-micro uppercase tracking-wider text-gray-400 font-mono mb-2">Daily Bounties</p>
           <div className="space-y-2">
             {bounties.map((b) => {
               const done = b.progress >= b.targetCount
               const typeIcon = b.type === 'craft' ? '⚒️' : b.type === 'farm' ? '🌱' : '🍳'
               return (
-                <div key={b.id} className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg border ${b.claimed ? 'border-white/[0.06] opacity-50' : done ? 'border-lime-500/40 bg-lime-500/8' : 'border-white/[0.08]'}`}>
+                <div key={b.id} className={`flex items-center gap-2.5 px-2.5 py-2 rounded border ${b.claimed ? 'border-white/[0.06] opacity-50' : done ? 'border-lime-500/40 bg-lime-500/8' : 'border-white/[0.08]'}`}>
                   <span className="text-base shrink-0">{typeIcon}</span>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[11px] text-white font-medium leading-tight">{b.description}</p>
+                    <p className="text-caption text-white font-medium leading-tight">{b.description}</p>
                     <div className="flex items-center gap-1.5 mt-1">
                       <div className="flex-1 h-1 rounded-full bg-white/[0.08] overflow-hidden">
                         <div
@@ -1361,23 +1371,23 @@ export function ArenaPage() {
                           style={{ width: `${Math.min(100, (b.progress / b.targetCount) * 100)}%`, backgroundColor: done ? '#84cc16' : '#6366f1' }}
                         />
                       </div>
-                      <span className="text-[9px] text-gray-400 font-mono shrink-0">{b.progress}/{b.targetCount}</span>
+                      <span className="text-micro text-gray-400 font-mono shrink-0">{b.progress}/{b.targetCount}</span>
                     </div>
-                    <p className="text-[9px] text-gray-500 font-mono mt-0.5">
-                      +{b.goldReward}g{b.chestReward ? ` · ${b.chestReward.replace('_chest', ' chest')}` : ''}
+                    <p className="text-micro text-gray-500 font-mono mt-0.5">
+                      +{fmt(b.goldReward)}g{b.chestReward ? ` · ${b.chestReward.replace('_chest', ' chest')}` : ''}
                     </p>
                   </div>
                   {done && !b.claimed && (
                     <button
                       type="button"
                       onClick={() => claimBounty(b.id)}
-                      className="shrink-0 px-2 py-1 rounded-lg text-[10px] font-bold bg-lime-500/20 border border-lime-500/50 text-lime-400 hover:bg-lime-500/30 transition-colors"
+                      className="shrink-0 px-2 py-1 rounded text-micro font-bold bg-lime-500/20 border border-lime-500/50 text-lime-400 hover:bg-lime-500/30 transition-colors"
                     >
                       Claim
                     </button>
                   )}
                   {b.claimed && (
-                    <span className="shrink-0 text-[10px] text-gray-500 font-mono">✓</span>
+                    <span className="shrink-0 text-micro text-gray-500 font-mono">✓</span>
                   )}
                 </div>
               )
@@ -1387,7 +1397,7 @@ export function ArenaPage() {
       )}
 
       <div className="text-center">
-        <p className="text-[10px] text-gray-400 font-mono">
+        <p className="text-micro text-gray-400 font-mono">
           Daily zone boss: {ZONES.find((z) => z.boss.id === dailyBossId)?.name ?? '—'}
         </p>
       </div>
@@ -1429,29 +1439,29 @@ export function ArenaPage() {
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.88, opacity: 0 }}
             transition={{ type: 'spring', damping: 22, stiffness: 280 }}
-            className="rounded-2xl border border-red-500/30 bg-[#0d0d18] w-full max-w-xs p-5 text-center space-y-4"
+            className="rounded-card border border-red-500/30 bg-surface-0 w-full max-w-xs p-5 text-center space-y-4"
           >
             <div className="space-y-1">
               <div className="text-4xl leading-none">💀</div>
               <p className="text-base font-bold text-white">You Died</p>
-              <p className="text-[11px] text-gray-400 font-mono">in {dungeonDeathModal.zoneName}</p>
+              <p className="text-caption text-gray-400 font-mono">in {dungeonDeathModal.zoneName}</p>
             </div>
 
-            <div className="rounded-xl bg-white/5 border border-white/10 p-3 space-y-2 text-left">
+            <div className="rounded bg-white/5 border border-white/10 p-3 space-y-2 text-left">
               {dungeonDeathModal.goldLost > 0 && (
-                <div className="flex items-center justify-between text-[12px]">
+                <div className="flex items-center justify-between text-xs">
                   <span className="text-gray-400">Gold lost</span>
                   <span className="text-red-400 font-mono font-semibold">−{dungeonDeathModal.goldLost}g</span>
                 </div>
               )}
               {dungeonDeathModal.insuranceUsed && (
-                <div className="flex items-center gap-1.5 text-[11px] text-emerald-400">
+                <div className="flex items-center gap-1.5 text-caption text-emerald-400">
                   <span>🛡</span>
                   <span>Death Insurance activated — no item lost</span>
                 </div>
               )}
               {dungeonDeathModal.lostItem && (
-                <div className="flex items-center justify-between text-[12px]">
+                <div className="flex items-center justify-between text-xs">
                   <span className="text-gray-400">Item lost</span>
                   <span className="text-red-400 font-mono">
                     {dungeonDeathModal.lostItem.icon} {dungeonDeathModal.lostItem.name}
@@ -1459,7 +1469,7 @@ export function ArenaPage() {
                 </div>
               )}
               {!dungeonDeathModal.goldLost && !dungeonDeathModal.lostItem && !dungeonDeathModal.insuranceUsed && (
-                <p className="text-[11px] text-gray-400 text-center">Nothing lost this time.</p>
+                <p className="text-caption text-gray-400 text-center">Nothing lost this time.</p>
               )}
             </div>
 
@@ -1473,14 +1483,14 @@ export function ArenaPage() {
                   for (const slot of foodSlots) { if (slot) inv2.deleteItem(slot.foodId, 1) }
                   startDungeon(zid, null, foodSlots.some(Boolean) ? foodSlots : undefined)
                 }}
-                className="flex-1 text-[12px] font-semibold px-3 py-2 rounded-xl border border-red-500/50 bg-red-500/15 text-red-300 hover:bg-red-500/25 transition-colors"
+                className="flex-1 text-xs font-semibold px-3 py-2 rounded border border-red-500/50 bg-red-500/15 text-red-300 hover:bg-red-500/25 transition-colors"
               >
                 ⚔ Try Again
               </button>
               <button
                 type="button"
                 onClick={() => setDungeonDeathModal(null)}
-                className="flex-1 text-[12px] font-semibold px-3 py-2 rounded-xl border border-white/10 text-gray-400 hover:text-gray-300 transition-colors"
+                className="flex-1 text-xs font-semibold px-3 py-2 rounded border border-white/10 text-gray-400 hover:text-gray-300 transition-colors"
               >
                 Retreat
               </button>

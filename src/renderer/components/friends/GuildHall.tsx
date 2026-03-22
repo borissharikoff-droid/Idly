@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { fmt } from '../../lib/format'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGuildStore } from '../../stores/guildStore'
 import { useGoldStore } from '../../stores/goldStore'
@@ -50,7 +51,7 @@ function BuffChip({ icon, label, next }: { icon: string; label: string; next?: s
         type="button"
         onMouseEnter={() => setShowTip(true)}
         onMouseLeave={() => setShowTip(false)}
-        className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-[10px] text-amber-300 font-mono hover:border-amber-500/50 transition-colors"
+        className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/25 text-micro text-amber-300 font-mono hover:border-amber-500/50 transition-colors"
       >
         <span>{icon}</span>
         <span>{label}</span>
@@ -61,7 +62,7 @@ function BuffChip({ icon, label, next }: { icon: string; label: string; next?: s
             initial={{ opacity: 0, y: 2 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0 }}
-            className="absolute bottom-full left-0 mb-1 px-2 py-1 bg-[#1a1a2e] border border-white/15 rounded-lg text-[10px] text-gray-400 whitespace-nowrap z-10"
+            className="absolute bottom-full left-0 mb-1 px-2 py-1 bg-surface-1 border border-white/15 rounded text-micro text-gray-400 whitespace-nowrap z-10"
           >
             Next: {next}
           </motion.div>
@@ -87,15 +88,15 @@ function LevelsOverviewModal({ onClose }: { onClose: () => void }) {
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.95, opacity: 0 }}
         transition={{ duration: 0.12 }}
-        className="bg-[#16161f] border border-white/10 rounded-xl w-full max-w-sm max-h-[80vh] overflow-hidden flex flex-col"
+        className="bg-surface-0 border border-white/10 rounded-card w-full max-w-sm max-h-[80vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.06]">
-          <p className="text-[11px] font-bold text-white">🏰 Guild Hall — All Levels</p>
+          <p className="text-caption font-bold text-white">🏰 Guild Hall — All Levels</p>
           <button
             type="button"
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-300 text-[13px] leading-none"
+            className="text-gray-500 hover:text-gray-300 text-body leading-none"
           >
             ✕
           </button>
@@ -104,40 +105,40 @@ function LevelsOverviewModal({ onClose }: { onClose: () => void }) {
           {GUILD_HALL_LEVELS.map((lvl) => (
             <div
               key={lvl.level}
-              className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-2"
+              className="rounded border border-white/[0.06] bg-white/[0.02] p-2"
             >
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-mono text-amber-400/60 bg-amber-500/10 px-1 rounded">
+                  <span className="text-micro font-mono text-amber-400/60 bg-amber-500/10 px-1 rounded">
                     Lv.{lvl.level}
                   </span>
-                  <span className="text-[10px] font-semibold text-white">{lvl.name}</span>
+                  <span className="text-micro font-semibold text-white">{lvl.name}</span>
                 </div>
-                <span className="text-[10px] font-mono text-gray-500">
-                  {lvl.goldCost === 0 ? 'Free' : `${lvl.goldCost.toLocaleString()}🪙`}
+                <span className="text-micro font-mono text-gray-500">
+                  {lvl.goldCost === 0 ? 'Free' : `${fmt(lvl.goldCost)}🪙`}
                 </span>
               </div>
               {/* Buffs */}
               <div className="flex flex-wrap gap-1 mb-1">
-                <span className="text-[10px] text-amber-300 font-mono">+{lvl.xpBonusPct}% XP</span>
-                <span className="text-[10px] text-gray-600">·</span>
-                <span className="text-[10px] text-amber-300 font-mono">+{lvl.goldBonusPct}% Gold</span>
+                <span className="text-micro text-amber-300 font-mono">+{lvl.xpBonusPct}% XP</span>
+                <span className="text-micro text-gray-600">·</span>
+                <span className="text-micro text-amber-300 font-mono">+{lvl.goldBonusPct}% Gold</span>
                 {lvl.chestDropBonusPct > 0 && (
                   <>
-                    <span className="text-[10px] text-gray-600">·</span>
-                    <span className="text-[10px] text-blue-300 font-mono">+{lvl.chestDropBonusPct}% Drop</span>
+                    <span className="text-micro text-gray-600">·</span>
+                    <span className="text-micro text-blue-300 font-mono">+{lvl.chestDropBonusPct}% Drop</span>
                   </>
                 )}
                 {lvl.craftSpeedBonusPct > 0 && (
                   <>
-                    <span className="text-[10px] text-gray-600">·</span>
-                    <span className="text-[10px] text-purple-300 font-mono">-{lvl.craftSpeedBonusPct}% Craft</span>
+                    <span className="text-micro text-gray-600">·</span>
+                    <span className="text-micro text-purple-300 font-mono">-{lvl.craftSpeedBonusPct}% Craft</span>
                   </>
                 )}
                 {lvl.farmYieldBonusPct > 0 && (
                   <>
-                    <span className="text-[10px] text-gray-600">·</span>
-                    <span className="text-[10px] text-green-300 font-mono">+{lvl.farmYieldBonusPct}% Farm</span>
+                    <span className="text-micro text-gray-600">·</span>
+                    <span className="text-micro text-green-300 font-mono">+{lvl.farmYieldBonusPct}% Farm</span>
                   </>
                 )}
               </div>
@@ -149,9 +150,9 @@ function LevelsOverviewModal({ onClose }: { onClose: () => void }) {
                     return (
                       <span
                         key={m.id}
-                        className="text-[10px] text-gray-400 bg-white/[0.04] px-1.5 py-0.5 rounded border border-white/[0.06]"
+                        className="text-micro text-gray-400 bg-white/[0.04] px-1.5 py-0.5 rounded border border-white/[0.06]"
                       >
-                        {meta.icon} {meta.name} ×{m.qty.toLocaleString()}
+                        {meta.icon} {meta.name} ×{fmt(m.qty)}
                       </span>
                     )
                   })}
@@ -159,7 +160,7 @@ function LevelsOverviewModal({ onClose }: { onClose: () => void }) {
               )}
               {/* Build time */}
               {lvl.buildDurationMs > 0 && (
-                <p className="text-[10px] text-gray-600 font-mono mt-1">
+                <p className="text-micro text-gray-600 font-mono mt-1">
                   ⏳ Build: {formatDuration(lvl.buildDurationMs)}
                 </p>
               )}
@@ -211,16 +212,16 @@ function MaterialRow({ matId, required, donated, owned, donating, onDonate }: Ma
       {/* Top row: icon + name + progress */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <span className="text-[11px]">{meta.icon}</span>
-          <span className={`text-[10px] font-medium ${isDone ? 'text-cyber-neon' : 'text-gray-200'}`}>
+          <span className="text-caption">{meta.icon}</span>
+          <span className={`text-micro font-medium ${isDone ? 'text-accent' : 'text-gray-200'}`}>
             {meta.name}
           </span>
-          {isDone && <span className="text-[10px] text-cyber-neon">✓</span>}
+          {isDone && <span className="text-micro text-accent">✓</span>}
         </div>
-        <span className="text-[10px] text-gray-500 font-mono">
-          {donated.toLocaleString()} / {required.toLocaleString()}
+        <span className="text-micro text-gray-500 font-mono">
+          {fmt(donated)} / {fmt(required)}
           {owned > 0 && !isDone && (
-            <span className="text-gray-700 ml-1">({owned.toLocaleString()} owned)</span>
+            <span className="text-gray-700 ml-1">({fmt(owned)} owned)</span>
           )}
         </span>
       </div>
@@ -228,7 +229,7 @@ function MaterialRow({ matId, required, donated, owned, donating, onDonate }: Ma
       {/* Progress bar */}
       <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden">
         <div
-          className={`h-full rounded-full transition-[width] duration-500 ${isDone ? 'bg-cyber-neon' : 'bg-amber-500'}`}
+          className={`h-full rounded-full transition-[width] duration-500 ${isDone ? 'bg-accent' : 'bg-amber-500'}`}
           style={{ width: `${Math.max(pct > 0 ? 2 : 0, pct)}%` }}
         />
       </div>
@@ -250,20 +251,20 @@ function MaterialRow({ matId, required, donated, owned, donating, onDonate }: Ma
             max={maxDonatable}
             value={amount}
             onChange={(e) => handleInputChange(e.target.value)}
-            className="w-14 px-1.5 py-0.5 rounded text-[10px] font-mono bg-white/[0.06] border border-white/10 text-gray-200 text-right focus:outline-none focus:border-amber-500/40"
+            className="w-14 px-1.5 py-0.5 rounded text-micro font-mono bg-white/[0.06] border border-white/10 text-gray-200 text-right focus:outline-none focus:border-amber-500/40"
           />
           <button
             type="button"
             disabled={!canDonate}
             onClick={() => { onDonate(matId, amount) }}
-            className="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/15 border border-amber-500/30 text-amber-400 hover:bg-amber-500/25 disabled:opacity-40 transition-colors"
+            className="px-2 py-0.5 rounded text-micro font-semibold bg-amber-500/15 border border-amber-500/30 text-amber-400 hover:bg-amber-500/25 disabled:opacity-40 transition-colors"
           >
             Donate
           </button>
         </div>
       )}
       {!isDone && maxDonatable === 0 && owned === 0 && (
-        <p className="text-[10px] text-gray-700 font-mono">You have none</p>
+        <p className="text-micro text-gray-700 font-mono">You have none</p>
       )}
     </div>
   )
@@ -378,7 +379,7 @@ export function GuildHall() {
   const handlePayAndBuild = async () => {
     if (!nextDef || donating) return
     if (gold < nextDef.goldCost) {
-      pushToast({ kind: 'generic', message: `Need ${nextDef.goldCost.toLocaleString()}🪙 to start construction`, type: 'error' })
+      pushToast({ kind: 'generic', message: `Need ${fmt(nextDef.goldCost)}🪙 to start construction`, type: 'error' })
       return
     }
     playClickSound()
@@ -416,20 +417,20 @@ export function GuildHall() {
       <div className="space-y-2.5">
 
         {/* ── Hall header ── */}
-        <div className="rounded-xl border border-amber-500/25 bg-discord-card overflow-hidden">
+        <div className="rounded-card border border-amber-500/25 bg-surface-2 overflow-hidden">
           <div className="h-[2px] bg-gradient-to-r from-amber-500/60 via-yellow-400/20 to-transparent" />
           <div className="p-3">
             <div className="flex items-center justify-between mb-2">
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-base">🏰</span>
-                  <span className="text-[13px] font-bold text-white">{currentDef?.name ?? 'Guild Hall'}</span>
-                  <span className="text-[10px] font-mono text-amber-400/70 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                  <span className="text-body font-bold text-white">{currentDef?.name ?? 'Guild Hall'}</span>
+                  <span className="text-micro font-mono text-amber-400/70 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
                     Lv.{hallLevel}/{MAX_HALL_LEVEL}
                   </span>
                 </div>
                 {isBuilding && !buildReady && (
-                  <p className="text-[10px] text-amber-400/60 font-mono mt-0.5">
+                  <p className="text-micro text-amber-400/60 font-mono mt-0.5">
                     Upgrading → Lv.{hallBuildTargetLevel}
                   </p>
                 )}
@@ -438,7 +439,7 @@ export function GuildHall() {
               <button
                 type="button"
                 onClick={() => setShowLevels(true)}
-                className="w-6 h-6 rounded-full border border-white/15 text-gray-500 text-[10px] hover:border-amber-500/40 hover:text-amber-400 transition-colors flex items-center justify-center"
+                className="w-6 h-6 rounded-full border border-white/15 text-gray-500 text-micro hover:border-amber-500/40 hover:text-amber-400 transition-colors flex items-center justify-center"
                 title="View all level costs and rewards"
               >
                 ?
@@ -480,7 +481,7 @@ export function GuildHall() {
                   />
                 )}
                 {hallLevel === MAX_HALL_LEVEL && (
-                  <span className="text-[10px] text-amber-400/50 font-mono self-center ml-1">MAX</span>
+                  <span className="text-micro text-amber-400/50 font-mono self-center ml-1">MAX</span>
                 )}
               </div>
             )}
@@ -497,14 +498,14 @@ export function GuildHall() {
               transition={{ duration: 0.15 }}
               className="overflow-hidden"
             >
-              <div className="rounded-xl border border-amber-500/20 bg-discord-card p-3 space-y-2">
+              <div className="rounded-card border border-amber-500/20 bg-surface-2 p-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] font-mono text-amber-400/70 uppercase tracking-wider">
+                    <p className="text-micro font-mono text-amber-400/70 uppercase tracking-wider">
                       {buildReady ? '✓ Construction Complete' : '⏳ Upgrading Hall'}
                     </p>
                     {!buildReady && (
-                      <p className="text-[12px] font-bold text-white mt-0.5">
+                      <p className="text-xs font-bold text-white mt-0.5">
                         Ready in: {formatCountdown(buildEndMs)}
                       </p>
                     )}
@@ -513,8 +514,8 @@ export function GuildHall() {
                     type="button"
                     onClick={handleComplete}
                     disabled={!buildReady || completing}
-                    className="px-3 py-1.5 rounded-lg text-[10px] font-semibold border transition-colors disabled:opacity-40
-                      enabled:bg-cyber-neon/15 enabled:border-cyber-neon/30 enabled:text-cyber-neon enabled:hover:bg-cyber-neon/25
+                    className="px-3 py-1.5 rounded text-micro font-semibold border transition-colors disabled:opacity-40
+                      enabled:bg-accent/15 enabled:border-accent/30 enabled:text-accent enabled:hover:bg-accent/25
                       disabled:border-white/10 disabled:text-gray-600"
                   >
                     {completing ? '...' : 'Complete'}
@@ -526,7 +527,7 @@ export function GuildHall() {
                     style={{ width: `${Math.max(2, buildPct)}%` }}
                   />
                 </div>
-                <p className="text-[10px] text-gray-600 font-mono text-right">{Math.round(buildPct)}%</p>
+                <p className="text-micro text-gray-600 font-mono text-right">{Math.round(buildPct)}%</p>
               </div>
             </motion.div>
           )}
@@ -534,43 +535,43 @@ export function GuildHall() {
 
         {/* ── Upgrade panel (not building, not max) ── */}
         {!isBuilding && nextDef && (
-          <div className="rounded-xl border border-white/[0.08] bg-discord-card overflow-hidden">
+          <div className="rounded-card border border-white/[0.08] bg-surface-2 overflow-hidden">
             <div className="px-3 pt-2.5 pb-2 border-b border-white/[0.05]">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] uppercase tracking-widest text-gray-500 font-mono">Upgrade to</p>
-                  <p className="text-[12px] font-bold text-white">{nextDef.name} <span className="text-amber-400/70">Lv.{nextDef.level}</span></p>
+                  <p className="text-micro uppercase tracking-widest text-gray-500 font-mono">Upgrade to</p>
+                  <p className="text-xs font-bold text-white">{nextDef.name} <span className="text-amber-400/70">Lv.{nextDef.level}</span></p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] text-gray-600 font-mono">Gold cost</p>
-                  <p className={`text-[11px] font-bold font-mono ${gold >= nextDef.goldCost ? 'text-amber-400' : 'text-red-400'}`}>
-                    {nextDef.goldCost.toLocaleString()}🪙
+                  <p className="text-micro text-gray-600 font-mono">Gold cost</p>
+                  <p className={`text-caption font-bold font-mono ${gold >= nextDef.goldCost ? 'text-amber-400' : 'text-red-400'}`}>
+                    {fmt(nextDef.goldCost)}🪙
                   </p>
                 </div>
               </div>
 
               {/* Next level buffs preview */}
               <div className="flex flex-wrap gap-1 mt-2">
-                <span className="text-[10px] text-gray-600 font-mono self-center">Buffs:</span>
-                <span className="text-[10px] text-amber-300 font-mono">+{nextDef.xpBonusPct}% XP</span>
-                <span className="text-[10px] text-gray-700">·</span>
-                <span className="text-[10px] text-amber-300 font-mono">+{nextDef.goldBonusPct}% Gold</span>
+                <span className="text-micro text-gray-600 font-mono self-center">Buffs:</span>
+                <span className="text-micro text-amber-300 font-mono">+{nextDef.xpBonusPct}% XP</span>
+                <span className="text-micro text-gray-700">·</span>
+                <span className="text-micro text-amber-300 font-mono">+{nextDef.goldBonusPct}% Gold</span>
                 {nextDef.chestDropBonusPct > 0 && (
                   <>
-                    <span className="text-[10px] text-gray-700">·</span>
-                    <span className="text-[10px] text-blue-300 font-mono">+{nextDef.chestDropBonusPct}% Drop</span>
+                    <span className="text-micro text-gray-700">·</span>
+                    <span className="text-micro text-blue-300 font-mono">+{nextDef.chestDropBonusPct}% Drop</span>
                   </>
                 )}
                 {nextDef.craftSpeedBonusPct > 0 && (
                   <>
-                    <span className="text-[10px] text-gray-700">·</span>
-                    <span className="text-[10px] text-purple-300 font-mono">-{nextDef.craftSpeedBonusPct}% Craft</span>
+                    <span className="text-micro text-gray-700">·</span>
+                    <span className="text-micro text-purple-300 font-mono">-{nextDef.craftSpeedBonusPct}% Craft</span>
                   </>
                 )}
                 {nextDef.farmYieldBonusPct > 0 && (
                   <>
-                    <span className="text-[10px] text-gray-700">·</span>
-                    <span className="text-[10px] text-green-300 font-mono">+{nextDef.farmYieldBonusPct}% Farm</span>
+                    <span className="text-micro text-gray-700">·</span>
+                    <span className="text-micro text-green-300 font-mono">+{nextDef.farmYieldBonusPct}% Farm</span>
                   </>
                 )}
               </div>
@@ -604,7 +605,7 @@ export function GuildHall() {
                       const donated = hallContributions[m.id] ?? 0
                       return donated >= m.qty || (items[m.id] ?? 0) <= 0
                     })}
-                    className="flex-1 py-1.5 rounded-lg text-[10px] font-semibold border border-amber-500/25 text-amber-400/70 bg-amber-500/[0.07] hover:bg-amber-500/15 disabled:opacity-40 transition-colors"
+                    className="flex-1 py-1.5 rounded text-micro font-semibold border border-amber-500/25 text-amber-400/70 bg-amber-500/[0.07] hover:bg-amber-500/15 disabled:opacity-40 transition-colors"
                   >
                     {donating ? 'Donating…' : 'Donate All Available'}
                   </button>
@@ -620,25 +621,25 @@ export function GuildHall() {
                     exit={{ opacity: 0, height: 0 }}
                     className="overflow-hidden"
                   >
-                    <div className="mt-1 p-2.5 rounded-lg border border-cyber-neon/25 bg-cyber-neon/[0.05]">
-                      <p className="text-[10px] text-cyber-neon font-semibold mb-1.5">
+                    <div className="mt-1 p-2.5 rounded border border-accent/25 bg-accent/[0.05]">
+                      <p className="text-micro text-accent font-semibold mb-1.5">
                         ✓ All materials collected!
                       </p>
-                      <p className="text-[10px] text-gray-400 mb-2">
+                      <p className="text-micro text-gray-400 mb-2">
                         Pay <span className={`font-bold ${gold >= nextDef.goldCost ? 'text-amber-400' : 'text-red-400'}`}>
-                          {nextDef.goldCost.toLocaleString()}🪙
+                          {fmt(nextDef.goldCost)}🪙
                         </span> from your wallet to begin construction ({formatDuration(nextDef.buildDurationMs)}).
                       </p>
                       <button
                         type="button"
                         onClick={handlePayAndBuild}
                         disabled={gold < nextDef.goldCost || donating}
-                        className="w-full py-1.5 rounded-lg text-[10px] font-semibold border transition-colors
-                          enabled:bg-cyber-neon/15 enabled:border-cyber-neon/30 enabled:text-cyber-neon enabled:hover:bg-cyber-neon/25
+                        className="w-full py-1.5 rounded text-micro font-semibold border transition-colors
+                          enabled:bg-accent/15 enabled:border-accent/30 enabled:text-accent enabled:hover:bg-accent/25
                           disabled:opacity-40 disabled:border-white/10 disabled:text-gray-600"
                       >
                         {donating ? '…' : gold < nextDef.goldCost
-                          ? `Need ${(nextDef.goldCost - gold).toLocaleString()} more 🪙`
+                          ? `Need ${fmt(nextDef.goldCost - gold)} more 🪙`
                           : `Build (${formatDuration(nextDef.buildDurationMs)})`}
                       </button>
                     </div>
@@ -651,9 +652,9 @@ export function GuildHall() {
 
         {/* Max level */}
         {hallLevel >= MAX_HALL_LEVEL && !isBuilding && (
-          <div className="rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3 text-center">
-            <p className="text-[11px] text-amber-400 font-semibold">🏆 Guild Hall at Maximum Level</p>
-            <p className="text-[10px] text-gray-500 mt-0.5">All buffs are fully upgraded.</p>
+          <div className="rounded-card border border-amber-500/20 bg-amber-500/[0.04] p-3 text-center">
+            <p className="text-caption text-amber-400 font-semibold">🏆 Guild Hall at Maximum Level</p>
+            <p className="text-micro text-gray-500 mt-0.5">All buffs are fully upgraded.</p>
           </div>
         )}
       </div>

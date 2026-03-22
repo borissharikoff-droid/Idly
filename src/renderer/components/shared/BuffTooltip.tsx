@@ -1,26 +1,127 @@
 import { useRef, useState, useCallback, useLayoutEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { getItemPower, getItemPerks, type LootItemDef, type LootRarity, type LootSlot } from '../../lib/loot'
-import { RARITY_THEME, normalizeRarity, SLOT_LABEL } from '../loot/LootUI'
+import { LootVisual, RARITY_THEME, normalizeRarity, SLOT_LABEL } from '../loot/LootUI'
 
 interface BuffTooltipProps {
   /** Item with name and perkDescription; if null, no tooltip */
-  item: { name: string; perkDescription: string; rarity?: LootRarity; slot?: LootSlot; perks?: LootItemDef['perks']; perkType?: string; perkValue?: string | number; perkTarget?: string } | null
+  item: { name: string; perkDescription: string; rarity?: LootRarity; slot?: LootSlot; icon?: string; image?: string; renderScale?: number; perks?: LootItemDef['perks']; perkType?: string; perkValue?: string | number; perkTarget?: string } | null
   children: React.ReactNode
   /** Prefer 'top' to avoid overlapping content below */
   placement?: 'top' | 'bottom'
-  /** When true, span uses display:flex + height:100% so children can use h-full inside flex columns */
+  /** When true, span uses display:block + height:100% so children can use h-full inside flex columns */
   stretch?: boolean
 }
 
-const TOOLTIP_OFFSET = 6
+const TOOLTIP_OFFSET = 8
 const VIEWPORT_PADDING = 8
 
-/**
- * Shows a hover tooltip with the item's buff (perk description).
- * Tooltip is rendered in a portal with position:fixed so layout never shifts.
- * Flips placement when near viewport edges so it stays fully visible.
- */
+const PERK_ICONS: Record<string, { icon: string; color: string }> = {
+  atk_boost:   { icon: '⚔',  color: '#f87171' },
+  hp_boost:    { icon: '♥',  color: '#4ade80' },
+  regen_boost: { icon: '❋',  color: '#22d3ee' },
+  def_boost:   { icon: '🛡', color: '#818cf8' },
+  cosmetic:    { icon: '✦',  color: '#fcd34d' },
+}
+
+function ItemTooltipCard({ item }: { item: NonNullable<BuffTooltipProps['item']> }) {
+  const rarity = item.rarity ? normalizeRarity(item.rarity) : null
+  const theme = rarity ? RARITY_THEME[rarity] : null
+  const ip = getItemPower(item as LootItemDef)
+  const perks = item.rarity ? getItemPerks(item as LootItemDef) : []
+
+  return (
+    <div
+      className="rounded overflow-hidden"
+      style={{
+        minWidth: 188,
+        maxWidth: 240,
+        background: `linear-gradient(160deg, rgba(20,21,26,0.98) 0%, rgba(12,13,17,0.99) 100%)`,
+        border: `1px solid ${theme ? theme.border : 'rgba(255,255,255,0.10)'}`,
+        boxShadow: theme
+          ? `0 8px 32px rgba(0,0,0,0.7), 0 0 0 1px ${theme.glow}18, inset 0 1px 0 rgba(255,255,255,0.06)`
+          : '0 8px 32px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.04)',
+      }}
+    >
+      {/* Top accent bar */}
+      {theme && (
+        <div className="h-[2px] w-full" style={{ background: `linear-gradient(90deg, transparent 0%, ${theme.color} 40%, ${theme.color}88 70%, transparent 100%)` }} />
+      )}
+
+      {/* Header: icon + name */}
+      <div className="flex items-center gap-2.5 px-3 pt-2.5 pb-2">
+        {(item.icon || item.image) && (
+          <div
+            className="w-9 h-9 rounded flex items-center justify-center flex-shrink-0"
+            style={theme
+              ? { background: `radial-gradient(circle at 50% 40%, ${theme.glow}50 0%, rgba(5,5,10,0.95) 70%)`, border: `1px solid ${theme.border}66` }
+              : { background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}
+          >
+            <LootVisual icon={item.icon} image={item.image} className="w-6 h-6 object-contain" scale={item.renderScale ?? 1} />
+          </div>
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold leading-tight" style={{ color: theme ? theme.color : 'rgba(255,255,255,0.9)' }}>
+            {item.name}
+          </p>
+          {item.rarity && (
+            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+              <span
+                className="text-[9px] font-mono font-bold uppercase tracking-wider px-1 py-px rounded-sm"
+                style={{ color: theme?.color, background: `${theme?.glow}22`, border: `1px solid ${theme?.border}55` }}
+              >
+                {item.rarity}
+              </span>
+              {item.slot && (
+                <span className="text-[9px] font-mono uppercase tracking-wide text-gray-500">
+                  {SLOT_LABEL[item.slot] ?? item.slot}
+                </span>
+              )}
+              {ip > 0 && (
+                <span className="text-[9px] font-mono text-amber-400/60 ml-auto">
+                  {ip} IP
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Perks */}
+      {perks.length > 0 && (
+        <>
+          <div className="mx-3 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+          <div className="px-3 py-2 space-y-1.5">
+            {perks.map((p, i) => {
+              const perkMeta = PERK_ICONS[p.perkType ?? ''] ?? { icon: '✦', color: '#fcd34d' }
+              return (
+                <div key={i} className="flex items-center gap-2">
+                  <span className="text-xs flex-shrink-0" style={{ color: perkMeta.color, textShadow: `0 0 8px ${perkMeta.color}66` }}>
+                    {perkMeta.icon}
+                  </span>
+                  <span className="text-[11px] leading-snug" style={{ color: 'rgba(255,255,255,0.75)' }}>
+                    {p.perkDescription}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </>
+      )}
+
+      {/* Fallback perk text (non-gear items) */}
+      {perks.length === 0 && item.perkDescription && (
+        <>
+          <div className="mx-3 h-px" style={{ background: 'rgba(255,255,255,0.06)' }} />
+          <div className="px-3 py-2">
+            <p className="text-[11px] leading-snug" style={{ color: 'rgba(255,255,255,0.55)' }}>{item.perkDescription}</p>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 export function BuffTooltip({ item, children, placement = 'bottom', stretch = false }: BuffTooltipProps) {
   const triggerRef = useRef<HTMLSpanElement>(null)
   const tooltipRef = useRef<HTMLDivElement>(null)
@@ -68,11 +169,7 @@ export function BuffTooltip({ item, children, placement = 'bottom', stretch = fa
 
       setStyle({ left, top, transform })
     } else {
-      setStyle({
-        left: centerX,
-        top,
-        transform,
-      })
+      setStyle({ left: centerX, top, transform })
     }
   }, [placement])
 
@@ -119,32 +216,14 @@ export function BuffTooltip({ item, children, placement = 'bottom', stretch = fa
           <div
             ref={tooltipRef}
             role="tooltip"
-            className="fixed z-[200] max-w-[240px] rounded-lg border border-cyber-neon/25 bg-discord-card px-2.5 py-2 shadow-xl pointer-events-none"
+            className="fixed z-[200] pointer-events-none"
             style={{
               left: style.left,
               top: style.top,
               transform: style.transform,
             }}
           >
-            <p className="text-[10px] font-semibold text-cyber-neon">{item.name}</p>
-            {item.rarity && (
-              <div className="flex items-center gap-2 mt-0.5">
-                <span className="text-[10px] font-mono font-bold uppercase" style={{ color: RARITY_THEME[normalizeRarity(item.rarity)].color }}>
-                  {item.rarity}
-                </span>
-                {item.slot && <span className="text-[10px] font-mono text-gray-500 uppercase">{SLOT_LABEL[item.slot] ?? item.slot}</span>}
-                <span className="text-[10px] font-mono text-amber-400/70">IP {getItemPower(item as LootItemDef)}</span>
-              </div>
-            )}
-            {item.rarity && (item.perks?.length || item.perkType) ? (
-              <div className="mt-1 space-y-0.5">
-                {getItemPerks(item as LootItemDef).map((p, i) => (
-                  <p key={i} className="text-[10px] text-green-400 leading-snug">{p.perkDescription}</p>
-                ))}
-              </div>
-            ) : (
-              <p className="text-[10px] text-gray-300 leading-snug mt-0.5">{item.perkDescription}</p>
-            )}
+            <ItemTooltipCard item={item} />
           </div>,
           document.body,
         )}

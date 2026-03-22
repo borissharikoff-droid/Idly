@@ -129,7 +129,7 @@ export function RaidFightModal({ tier, onClose, onComplete }: Props) {
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
         transition={{ duration: 0.15 }}
-        className="w-[340px] rounded-2xl border overflow-hidden shadow-2xl"
+        className="w-[340px] rounded-card border overflow-hidden shadow-2xl"
         style={{ borderColor: `${cfg.color}40`, background: '#0d0d1a' }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -137,16 +137,16 @@ export function RaidFightModal({ tier, onClose, onComplete }: Props) {
         <div className="px-4 py-3 border-b flex items-center gap-2.5" style={{ borderColor: `${cfg.color}25`, background: `${cfg.color}0a` }}>
           <span className="text-2xl" style={{ filter: `drop-shadow(0 0 6px ${cfg.color})` }}>{cfg.icon}</span>
           <div className="flex-1 min-w-0">
-            <p className="text-[12px] font-bold text-white">{cfg.name}</p>
-            <p className="text-[10px] font-mono" style={{ color: `${cfg.color}cc` }}>
+            <p className="text-xs font-bold text-white">{cfg.name}</p>
+            <p className="text-micro font-mono" style={{ color: `${cfg.color}cc` }}>
               {phase === 'backpack' ? 'Prepare Backpack' : `Daily Attack — ${baseBoss.name}`}
             </p>
           </div>
           <div className="flex flex-col items-end gap-0.5">
-            <span className="text-[10px] font-mono text-gray-600 uppercase tracking-wider">
+            <span className="text-micro font-mono text-gray-600 uppercase tracking-wider">
               {phase === 'fighting' ? `${Math.floor(elapsed)}s` : phase === 'result' ? (victory ? 'WIN' : 'DEFEAT') : 'READY'}
             </span>
-            <span className={`text-[10px] font-mono font-bold ${currentPhase === 1 ? 'text-gray-500' : currentPhase === 2 ? 'text-amber-400' : 'text-red-400'}`}>
+            <span className={`text-micro font-mono font-bold ${currentPhase === 1 ? 'text-gray-500' : currentPhase === 2 ? 'text-amber-400' : 'text-red-400'}`}>
               {currentPhase === 1 ? 'Phase 1' : currentPhase === 2 ? '⚠ Phase 2 — Enraged' : '🔥 Phase 3 — Berserk'}
             </span>
           </div>
@@ -156,9 +156,9 @@ export function RaidFightModal({ tier, onClose, onComplete }: Props) {
         {phase === 'backpack' && (
           <div className="px-4 py-4 space-y-4">
             {/* Player stats preview */}
-            <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] px-3 py-2.5">
-              <p className="text-[10px] font-mono text-gray-500 mb-1.5">Your stats</p>
-              <div className="flex gap-4 text-[10px] font-mono">
+            <div className="rounded border border-white/[0.07] bg-white/[0.03] px-3 py-2.5">
+              <p className="text-micro font-mono text-gray-500 mb-1.5">Your stats</p>
+              <div className="flex gap-4 text-micro font-mono">
                 <span className="text-red-400">ATK {(player.atk + foodBuffSummary.atk).toFixed(1)}{foodBuffSummary.atk > 0 && <span className="text-green-400 ml-0.5">(+{foodBuffSummary.atk})</span>}</span>
                 <span className="text-blue-400">DEF {(player.def + foodBuffSummary.def)}{foodBuffSummary.def > 0 && <span className="text-green-400 ml-0.5">(+{foodBuffSummary.def})</span>}</span>
                 <span className="text-green-400">Regen {(player.hpRegen + foodBuffSummary.regen).toFixed(1)}/s{foodBuffSummary.regen > 0 && <span className="text-green-400 ml-0.5">(+{foodBuffSummary.regen})</span>}</span>
@@ -166,30 +166,30 @@ export function RaidFightModal({ tier, onClose, onComplete }: Props) {
             </div>
 
             {/* Boss threat */}
-            <div className="rounded-xl border border-white/[0.07] bg-white/[0.03] px-3 py-2.5 flex items-center gap-3">
+            <div className="rounded border border-white/[0.07] bg-white/[0.03] px-3 py-2.5 flex items-center gap-3">
               <span className="text-2xl">{boss.icon}</span>
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] font-semibold text-white">{boss.name}</p>
-                <p className="text-[10px] font-mono text-gray-500">ATK {boss.atk.toFixed(1)} · HP {boss.hp}</p>
+                <p className="text-micro font-semibold text-white">{boss.name}</p>
+                <p className="text-micro font-mono text-gray-500">ATK {boss.atk.toFixed(1)} · HP {boss.hp}</p>
               </div>
-              <p className="text-[10px] font-mono" style={{ color: outcome.willWin ? '#4ade80' : '#f87171' }}>
+              <p className="text-micro font-mono" style={{ color: outcome.willWin ? '#4ade80' : '#f87171' }}>
                 {outcome.willWin ? `~${outcome.tWinSeconds.toFixed(0)}s win` : 'Risky'}
               </p>
             </div>
 
             {/* Food selector */}
             <div>
-              <p className="text-[10px] font-mono text-gray-500 mb-1.5">Pack food <span className="text-gray-700">(consumed on use)</span></p>
+              <p className="text-micro font-mono text-gray-500 mb-1.5">Pack food <span className="text-gray-700">(consumed on use)</span></p>
               <FoodSelector slots={foodSlots} onChange={setFoodSlots} ownedItems={ownedItems} />
               {!activeFood.length && (
-                <p className="text-[10px] text-gray-700 font-mono mt-1.5">No food packed — fight with base stats.</p>
+                <p className="text-micro text-gray-700 font-mono mt-1.5">No food packed — fight with base stats.</p>
               )}
             </div>
 
             <button
               type="button"
               onClick={() => setPhase('fighting')}
-              className="w-full py-2.5 rounded-xl text-[12px] font-bold transition-colors"
+              className="w-full py-2.5 rounded text-xs font-bold transition-colors"
               style={{ background: `${cfg.color}20`, border: `1px solid ${cfg.color}50`, color: cfg.color }}
             >
               Enter Battle
@@ -197,7 +197,7 @@ export function RaidFightModal({ tier, onClose, onComplete }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="w-full text-[10px] text-gray-600 hover:text-gray-400 transition-colors font-mono text-center"
+              className="w-full text-micro text-gray-600 hover:text-gray-400 transition-colors font-mono text-center"
             >
               cancel
             </button>
@@ -214,7 +214,7 @@ export function RaidFightModal({ tier, onClose, onComplete }: Props) {
                 {/* Player */}
                 <div className="flex-1 text-center">
                   <div
-                    className="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center text-3xl border transition-all duration-150"
+                    className="w-14 h-14 rounded mx-auto flex items-center justify-center text-3xl border transition-all duration-150"
                     style={{
                       borderColor: playerFlash ? '#f87171' : 'rgba(255,255,255,0.1)',
                       background: playerFlash ? 'rgba(248,113,113,0.15)' : 'rgba(255,255,255,0.04)',
@@ -223,7 +223,7 @@ export function RaidFightModal({ tier, onClose, onComplete }: Props) {
                   >
                     ⚔️
                   </div>
-                  <p className="text-[10px] text-gray-400 font-mono mt-1.5">You</p>
+                  <p className="text-micro text-gray-400 font-mono mt-1.5">You</p>
                   <div className="h-1.5 rounded-full bg-white/[0.08] overflow-hidden mt-1">
                     <motion.div
                       className="h-full rounded-full transition-all duration-300"
@@ -233,12 +233,12 @@ export function RaidFightModal({ tier, onClose, onComplete }: Props) {
                       }}
                     />
                   </div>
-                  <p className="text-[10px] font-mono text-gray-600 mt-0.5">{Math.ceil(state.playerHp)}/{player.hp} HP</p>
+                  <p className="text-micro font-mono text-gray-600 mt-0.5">{Math.ceil(state.playerHp)}/{player.hp} HP</p>
                 </div>
 
                 {/* VS */}
                 <div className="flex flex-col items-center gap-1">
-                  <span className="text-[10px] font-mono text-gray-600">VS</span>
+                  <span className="text-micro font-mono text-gray-600">VS</span>
                   <AnimatePresence>
                     {phase === 'fighting' && (
                       <motion.div
@@ -254,7 +254,7 @@ export function RaidFightModal({ tier, onClose, onComplete }: Props) {
                 {/* Boss */}
                 <div className="flex-1 text-center">
                   <div
-                    className="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center text-3xl border transition-all duration-150"
+                    className="w-14 h-14 rounded mx-auto flex items-center justify-center text-3xl border transition-all duration-150"
                     style={{
                       borderColor: bossFlash ? cfg.color : `${cfg.color}30`,
                       background: bossFlash ? `${cfg.color}20` : `${cfg.color}08`,
@@ -263,19 +263,19 @@ export function RaidFightModal({ tier, onClose, onComplete }: Props) {
                   >
                     {boss.icon}
                   </div>
-                  <p className="text-[10px] font-mono mt-1.5" style={{ color: `${cfg.color}cc` }}>{boss.name}</p>
+                  <p className="text-micro font-mono mt-1.5" style={{ color: `${cfg.color}cc` }}>{boss.name}</p>
                   <div className="h-1.5 rounded-full bg-white/[0.08] overflow-hidden mt-1">
                     <motion.div
                       className="h-full rounded-full transition-all duration-300"
                       style={{ width: `${bossHpPct}%`, background: cfg.color }}
                     />
                   </div>
-                  <p className="text-[10px] font-mono text-gray-600 mt-0.5">{Math.ceil(state.bossHp)}/{boss.hp} HP</p>
+                  <p className="text-micro font-mono text-gray-600 mt-0.5">{Math.ceil(state.bossHp)}/{boss.hp} HP</p>
                 </div>
               </div>
 
               {/* Stats row */}
-              <div className="mt-3 flex justify-center gap-4 text-[10px] font-mono text-gray-600">
+              <div className="mt-3 flex justify-center gap-4 text-micro font-mono text-gray-600">
                 <span>ATK {player.atk.toFixed(1)}</span>
                 <span>DEF {player.def}</span>
                 <span>Regen {player.hpRegen.toFixed(1)}/s</span>
@@ -286,7 +286,7 @@ export function RaidFightModal({ tier, onClose, onComplete }: Props) {
 
               {/* Prediction */}
               {phase === 'fighting' && (
-                <p className="text-center text-[10px] font-mono mt-2" style={{ color: outcome.willWin ? '#4ade8088' : '#f8717188' }}>
+                <p className="text-center text-micro font-mono mt-2" style={{ color: outcome.willWin ? '#4ade8088' : '#f8717188' }}>
                   {outcome.willWin ? `Est. win in ${outcome.tWinSeconds.toFixed(0)}s` : 'Outcome uncertain — gear up!'}
                 </p>
               )}
@@ -302,22 +302,22 @@ export function RaidFightModal({ tier, onClose, onComplete }: Props) {
                   className="px-4 pb-4"
                 >
                   <div
-                    className="rounded-xl p-3 text-center border"
+                    className="rounded p-3 text-center border"
                     style={{ borderColor: `${cfg.color}40`, background: `${cfg.color}0c` }}
                   >
                     <p className="text-lg mb-1">🏆</p>
                     <p className="text-sm font-bold text-white">Victory!</p>
-                    <p className="text-[10px] font-mono mt-0.5" style={{ color: cfg.color }}>
+                    <p className="text-micro font-mono mt-0.5" style={{ color: cfg.color }}>
                       +{(RAID_TIER_CONFIGS[tier].contribution_per_win / 1_000).toFixed(0)}K raid damage dealt
                     </p>
                     {activeFood.length > 0 && (
-                      <p className="text-[10px] font-mono text-gray-600 mt-1">{activeFood.length} food consumed</p>
+                      <p className="text-micro font-mono text-gray-600 mt-1">{activeFood.length} food consumed</p>
                     )}
                   </div>
                   <button
                     type="button"
                     onClick={handleResult}
-                    className="w-full mt-3 py-2.5 rounded-xl text-[11px] font-bold transition-colors"
+                    className="w-full mt-3 py-2.5 rounded text-caption font-bold transition-colors"
                     style={{ background: `${cfg.color}20`, border: `1px solid ${cfg.color}40`, color: cfg.color }}
                   >
                     Continue
@@ -333,19 +333,19 @@ export function RaidFightModal({ tier, onClose, onComplete }: Props) {
                 >
                   <div className="text-center py-6">
                     <p className="text-4xl mb-2">💀</p>
-                    <p className="text-[14px] font-bold text-red-400">You Fell in Battle</p>
-                    <p className="text-[10px] text-gray-500 mt-1 font-mono">No damage dealt today.</p>
-                    <p className="text-[10px] text-gray-600 mt-2 font-mono leading-relaxed">
+                    <p className="text-sm font-bold text-red-400">You Fell in Battle</p>
+                    <p className="text-micro text-gray-500 mt-1 font-mono">No damage dealt today.</p>
+                    <p className="text-micro text-gray-600 mt-2 font-mono leading-relaxed">
                       Your party fights on...<br />Return tomorrow with better gear.
                     </p>
                     {activeFood.length > 0 && (
-                      <p className="text-[10px] font-mono text-gray-700 mt-1">{activeFood.length} food consumed</p>
+                      <p className="text-micro font-mono text-gray-700 mt-1">{activeFood.length} food consumed</p>
                     )}
                   </div>
                   <button
                     type="button"
                     onClick={handleResult}
-                    className="w-full py-2.5 rounded-xl text-[11px] font-bold transition-colors"
+                    className="w-full py-2.5 rounded text-caption font-bold transition-colors"
                     style={{ background: 'rgba(248,113,113,0.12)', border: '1px solid rgba(248,113,113,0.3)', color: '#f87171' }}
                   >
                     Back to Raid
@@ -360,7 +360,7 @@ export function RaidFightModal({ tier, onClose, onComplete }: Props) {
                 <button
                   type="button"
                   onClick={onClose}
-                  className="text-[10px] text-gray-600 hover:text-gray-400 transition-colors font-mono"
+                  className="text-micro text-gray-600 hover:text-gray-400 transition-colors font-mono"
                 >
                   cancel
                 </button>

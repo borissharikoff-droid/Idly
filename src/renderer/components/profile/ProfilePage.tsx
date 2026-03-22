@@ -14,11 +14,8 @@ import { PageHeader } from '../shared/PageHeader'
 import { User } from '../../lib/icons'
 import { InlineSuccess } from '../shared/InlineSuccess'
 import { getEquippedPerkRuntime, getItemPower, getRarityTheme, LOOT_ITEMS, type LootSlot, type ChestType, type LootItemDef, type BonusMaterial } from '../../lib/loot'
-import { computePlayerStats } from '../../lib/combat'
-import { useGoldStore } from '../../stores/goldStore'
-import { useArenaStore } from '../../stores/arenaStore'
 import { ensureInventoryHydrated, useInventoryStore } from '../../stores/inventoryStore'
-import { getDailyActivities, getWeeklyActivities, getBestStreak } from '../../services/dailyActivityService'
+import { getDailyActivities, getWeeklyActivities } from '../../services/dailyActivityService'
 import { QuestsSection } from '../quests/QuestsSection'
 import { ChestOpenModal } from '../animations/ChestOpenModal'
 import { AvatarWithFrame } from '../shared/AvatarWithFrame'
@@ -49,7 +46,8 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
   const [profileLoaded, setProfileLoaded] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
-  const [isAvatarPickerOpen, setIsAvatarPickerOpen] = useState(false)
+  const [isProfileEditOpen, setIsProfileEditOpen] = useState(false)
+  const [profileEditTab, setProfileEditTab] = useState<'avatar' | 'frame'>('avatar')
   const [isUsernameEditing, setIsUsernameEditing] = useState(false)
   const [draftUsername, setDraftUsername] = useState('Grindly')
 
@@ -226,7 +224,7 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
   }, [username])
 
   useEffect(() => {
-    setIsAvatarPickerOpen(false)
+    setIsProfileEditOpen(false)
     setIsUsernameEditing(false)
   }, [activeTab])
 
@@ -297,6 +295,19 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
     pushAlert(def)
   }
 
+  const handleClaimAll = () => {
+    const claimable = ACHIEVEMENTS.filter((a) => unlockedIds.includes(a.id) && !claimedIds.includes(a.id))
+    if (claimable.length === 0) return
+    playClickSound()
+    const updated = [...claimedIds, ...claimable.map((a) => a.id)]
+    setClaimedIds(updated)
+    localStorage.setItem('grindly_claimed_achievements', JSON.stringify(updated))
+    for (const def of claimable) unlockCosmeticsFromAchievement(def.id)
+    setUnlockedFrameIds(getUnlockedFrames())
+    // Show alerts for up to 3 achievements to avoid flooding
+    claimable.slice(0, 3).forEach((def) => pushAlert(def))
+  }
+
   const persistCosmeticsToSupabase = (frame: string | null) => {
     if (!supabase || !user) return
     const statusTitle = equippedLootItems.find((entry) => entry.item.slot === 'ring')?.item.perkType === 'status_title'
@@ -310,7 +321,7 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
 
   const handleEquipFrame = (frameId: string) => {
     playClickSound()
-    const newFrame = equippedFrameId === frameId ? null : frameId
+    const newFrame = frameId === 'none' || equippedFrameId === frameId ? null : frameId
     equipFrame(newFrame)
     setEquippedFrameId(newFrame)
     persistCosmeticsToSupabase(newFrame)
@@ -356,7 +367,7 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
         equippedLootItems={equippedLootItems}
         unlockedCount={unlockedCount}
         totalSkillLevel={totalSkillLevel}
-        onAvatarClick={() => { playClickSound(); setIsAvatarPickerOpen((v) => !v) }}
+        onAvatarClick={() => { playClickSound(); setIsProfileEditOpen((v) => !v); setProfileEditTab('avatar') }}
         onUsernameClick={() => { playClickSound(); setIsUsernameEditing(true); setDraftUsername(username) }}
         isUsernameEditing={isUsernameEditing}
         draftUsername={draftUsername}
@@ -370,94 +381,125 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
 
       <ItemInspectModal item={inspectItem} onClose={() => setInspectItemId(null)} />
 
-      {isAvatarPickerOpen && (
-        <div className="rounded-xl bg-discord-card/90 border border-cyber-neon/20 p-3 space-y-2">
-          <p className="text-[10px] uppercase tracking-wider text-gray-500 font-mono">Choose avatar</p>
-          <div className="flex flex-wrap gap-1.5">
-            {FREE_AVATARS.map((a) => (
+      {isProfileEditOpen && (
+        <div className="rounded-card border border-accent/20 bg-surface-2/95 overflow-hidden">
+          {/* Tabs */}
+          <div className="flex border-b border-white/[0.07]">
+            {(['avatar', 'frame'] as const).map((tab) => (
               <button
+                key={tab}
                 type="button"
-                key={a}
-                onClick={() => {
-                  void persistProfile(username, a)
-                  setIsAvatarPickerOpen(false)
-                  playClickSound()
-                }}
-                className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center transition-all active:scale-90 ${
-                  avatar === a
-                    ? 'bg-cyber-neon/20 border-2 border-cyber-neon shadow-glow-sm'
-                    : 'bg-discord-dark border border-white/10 hover:border-white/20'
+                onClick={() => { playClickSound(); setProfileEditTab(tab) }}
+                className={`flex-1 py-2 text-caption font-semibold transition-colors capitalize ${
+                  profileEditTab === tab
+                    ? 'text-accent bg-accent/10 border-b-2 border-accent'
+                    : 'text-gray-500 hover:text-gray-300'
                 }`}
               >
-                {a}
-              </button>
-            ))}
-            {LOCKED_AVATARS.map((la) => {
-              const isUnlocked = unlockedIds.includes(la.achievementId) || unlockedAvatarSet.has(la.emoji)
-              return (
-                <button
-                  type="button"
-                  key={la.emoji}
-                  onClick={() => {
-                    if (!isUnlocked) return
-                    void persistProfile(username, la.emoji)
-                    setIsAvatarPickerOpen(false)
-                    playClickSound()
-                  }}
-                  disabled={!isUnlocked}
-                  title={isUnlocked ? la.emoji : la.unlockHint}
-                  className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center transition-all relative ${
-                    isUnlocked
-                      ? avatar === la.emoji
-                        ? 'bg-cyber-neon/20 border-2 border-cyber-neon shadow-glow-sm active:scale-90'
-                        : 'bg-discord-dark border border-white/10 hover:border-white/20 active:scale-90'
-                      : 'bg-discord-dark/50 border border-white/5 cursor-not-allowed'
-                  }`}
-                >
-                  <span style={{ opacity: isUnlocked ? 1 : 0.25 }}>{la.emoji}</span>
-                  {!isUnlocked && (
-                    <span className="absolute inset-0 flex items-center justify-center text-[10px]">{'\uD83D\uDD12'}</span>
-                  )}
-                </button>
-              )
-            })}
-            {bonusAvatars.map((a) => (
-              <button
-                type="button"
-                key={a}
-                onClick={() => {
-                  void persistProfile(username, a)
-                  setIsAvatarPickerOpen(false)
-                  playClickSound()
-                }}
-                className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center transition-all active:scale-90 ${
-                  avatar === a
-                    ? 'bg-cyber-neon/20 border-2 border-cyber-neon shadow-glow-sm'
-                    : 'bg-discord-dark border border-white/10 hover:border-white/20'
-                }`}
-              >
-                {a}
+                {tab === 'avatar' ? '🤖 Avatar' : '🖼️ Frame'}
               </button>
             ))}
           </div>
+
+          {/* Avatar picker */}
+          {profileEditTab === 'avatar' && (
+            <div className="p-3 space-y-2">
+              <p className="text-micro uppercase tracking-wider text-gray-500 font-mono">Choose avatar</p>
+              <div className="flex flex-wrap gap-1.5">
+                {FREE_AVATARS.map((a) => (
+                  <button type="button" key={a}
+                    onClick={() => { void persistProfile(username, a); setIsProfileEditOpen(false); playClickSound() }}
+                    className={`w-9 h-9 rounded text-lg flex items-center justify-center transition-all active:scale-90 ${
+                      avatar === a ? 'bg-accent/20 border-2 border-accent' : 'bg-surface-1 border border-white/10 hover:border-white/20'
+                    }`}
+                  >{a}</button>
+                ))}
+                {LOCKED_AVATARS.map((la) => {
+                  const isUnlocked = unlockedIds.includes(la.achievementId) || unlockedAvatarSet.has(la.emoji)
+                  return (
+                    <button type="button" key={la.emoji}
+                      onClick={() => { if (!isUnlocked) return; void persistProfile(username, la.emoji); setIsProfileEditOpen(false); playClickSound() }}
+                      disabled={!isUnlocked}
+                      title={isUnlocked ? la.emoji : la.unlockHint}
+                      className={`w-9 h-9 rounded text-lg flex items-center justify-center transition-all relative ${
+                        isUnlocked
+                          ? avatar === la.emoji ? 'bg-accent/20 border-2 border-accent active:scale-90' : 'bg-surface-1 border border-white/10 hover:border-white/20 active:scale-90'
+                          : 'bg-surface-1/50 border border-white/5 cursor-not-allowed'
+                      }`}
+                    >
+                      <span style={{ opacity: isUnlocked ? 1 : 0.25 }}>{la.emoji}</span>
+                      {!isUnlocked && <span className="absolute inset-0 flex items-center justify-center text-micro">🔒</span>}
+                    </button>
+                  )
+                })}
+                {bonusAvatars.map((a) => (
+                  <button type="button" key={a}
+                    onClick={() => { void persistProfile(username, a); setIsProfileEditOpen(false); playClickSound() }}
+                    className={`w-9 h-9 rounded text-lg flex items-center justify-center transition-all active:scale-90 ${
+                      avatar === a ? 'bg-accent/20 border-2 border-accent' : 'bg-surface-1 border border-white/10 hover:border-white/20'
+                    }`}
+                  >{a}</button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Frame picker */}
+          {profileEditTab === 'frame' && (
+            <div className="p-3 space-y-2">
+              <p className="text-micro uppercase tracking-wider text-gray-500 font-mono">Choose frame</p>
+              <div className="grid grid-cols-4 gap-2">
+                {/* No frame option */}
+                <button type="button"
+                  onClick={() => { handleEquipFrame('none'); setIsProfileEditOpen(false) }}
+                  className={`flex flex-col items-center gap-1 p-2 rounded border transition-all ${
+                    !equippedFrameId ? 'border-accent/50 bg-accent/10' : 'border-white/10 hover:border-white/20 bg-surface-1'
+                  }`}
+                >
+                  <div className="w-10 h-10 rounded bg-surface-0 flex items-center justify-center text-lg border border-white/10">{avatar}</div>
+                  <span className="text-micro font-mono text-gray-500">None</span>
+                </button>
+                {FRAMES.map((frame) => {
+                  const isUnlocked = unlockedFrameIds.includes(frame.id) || (frame.achievementId ? unlockedIds.includes(frame.achievementId) : false)
+                  const isActive = equippedFrameId === frame.id
+                  return (
+                    <button type="button" key={frame.id}
+                      onClick={() => { if (!isUnlocked) return; handleEquipFrame(frame.id); setIsProfileEditOpen(false) }}
+                      disabled={!isUnlocked}
+                      className={`flex flex-col items-center gap-1 p-2 rounded border transition-all relative ${
+                        isActive ? 'border-white/30 bg-surface-1' : isUnlocked ? 'border-white/10 hover:border-white/20 bg-surface-1' : 'border-white/[0.06] bg-black/30 cursor-not-allowed'
+                      }`}
+                      style={{ borderColor: isActive ? `${frame.color}60` : undefined }}
+                    >
+                      {!isUnlocked && <div className="absolute inset-0 rounded flex items-center justify-center bg-black/40 text-xs">🔒</div>}
+                      <div className="relative w-10 h-10">
+                        <div className="absolute -inset-[4px] rounded" style={{ background: frame.gradient, opacity: isUnlocked ? 0.7 : 0.2 }} />
+                        <div className="relative w-10 h-10 rounded bg-surface-0 flex items-center justify-center text-lg border-2" style={{ borderColor: `${frame.color}${isUnlocked ? 'b0' : '30'}` }}>
+                          {isUnlocked ? avatar : <span className="text-gray-600 text-sm">?</span>}
+                        </div>
+                      </div>
+                      <span className="text-micro font-mono truncate w-full text-center" style={{ color: isUnlocked ? frame.color : '#4b5563' }}>{frame.name}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {saving && (
-        <p className="text-xs text-center text-cyber-neon/80 font-mono">Saving...</p>
+        <p className="text-xs text-center text-accent/80 font-mono">Saving...</p>
       )}
 
       {message && (
         message.type === 'ok'
           ? <InlineSuccess message={message.text} className="justify-self-center text-center" />
-          : <p className="text-xs text-center text-discord-red">{message.text}</p>
+          : <p className="text-xs text-center text-red-500">{message.text}</p>
       )}
 
-      {/* Next Unlock — always visible on profile */}
-      <NextUnlockTracker unlockedIds={unlockedIds} progressCtx={progressCtx} />
-
       {/* Sub-tabs */}
-      <div className="flex gap-1 bg-discord-darker/50 rounded-xl p-1">
+      <div className="flex gap-1 bg-surface-0/50 rounded p-1">
         {([
           { id: 'quests' as const, label: 'Quests', icon: '📋' },
           { id: 'achievements' as const, label: `Achievements`, icon: '🏆' },
@@ -469,9 +511,9 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
             <button
               key={tab.id}
               onClick={() => { setActiveTab(tab.id); playClickSound() }}
-              className={`relative flex-1 py-2 px-2 rounded-lg text-xs font-medium transition-all ${
+              className={`relative flex-1 py-2 px-2 rounded text-xs font-medium transition-all ${
                 activeTab === tab.id
-                  ? 'bg-discord-card text-white shadow-sm'
+                  ? 'bg-surface-2 text-white shadow-sm'
                   : 'text-gray-500 hover:text-gray-300'
               }`}
             >
@@ -499,105 +541,127 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
             className="space-y-3"
           >
             {/* Daily Bounties */}
-            <div className="rounded-xl border border-white/[0.10] bg-discord-card p-3">
-              <p className="text-[10px] uppercase tracking-wider text-gray-400 font-mono mb-2">Daily Bounties</p>
-              {bounties.length > 0 ? (
+            <div>
+              <p className="text-caption uppercase tracking-widest text-gray-500 font-mono mb-2 px-1">Daily</p>
+              {bounties.length === 0 ? (
+                <p className="text-xs text-gray-600 font-mono px-1">Generating bounties…</p>
+              ) : (
                 <div className="space-y-2">
                   {[...bounties].sort((a, b) => {
                     const rank = (x: typeof a) => (!x.claimed && x.progress >= x.targetCount) ? 0 : !x.claimed ? 1 : 2
                     return rank(a) - rank(b)
                   }).map((b) => {
                     const done = b.progress >= b.targetCount
+                    const pct = Math.min(100, (b.progress / b.targetCount) * 100)
                     const typeIcon = b.type === 'craft' ? '⚒️' : b.type === 'farm' ? '🌱' : '🍳'
                     return (
-                      <div key={b.id} className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg border ${b.claimed ? 'border-white/[0.06] opacity-50' : done ? 'border-lime-500/40 bg-lime-500/[0.08]' : 'border-white/[0.08]'}`}>
-                        <span className="text-base shrink-0">{typeIcon}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[11px] text-white font-medium leading-tight">{b.description}</p>
-                          <div className="flex items-center gap-1.5 mt-1">
-                            <div className="flex-1 h-1 rounded-full bg-white/[0.08] overflow-hidden">
-                              <div className="h-full rounded-full transition-[width] duration-300" style={{ width: `${Math.min(100, (b.progress / b.targetCount) * 100)}%`, backgroundColor: done ? '#84cc16' : '#6366f1' }} />
+                      <div key={b.id} className={`rounded-lg border px-4 py-3 transition-all ${
+                        b.claimed ? 'border-white/[0.05] opacity-40' :
+                        done ? 'border-lime-500/30 bg-lime-500/[0.06]' :
+                        'border-white/[0.08] bg-surface-2/60'
+                      }`}>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="text-lg shrink-0">{typeIcon}</span>
+                            <div className="min-w-0">
+                              <p className={`text-sm font-semibold leading-tight ${b.claimed ? 'text-gray-500' : 'text-white'}`}>{b.description}</p>
+                              <p className="text-caption text-gray-500 mt-0.5">+{b.goldReward}g{b.chestReward ? ` · ${b.chestReward.replace('_chest', ' chest')}` : ''}</p>
                             </div>
-                            <span className="text-[10px] text-gray-400 font-mono shrink-0">{b.progress}/{b.targetCount}</span>
                           </div>
-                          <p className="text-[10px] text-gray-500 font-mono mt-0.5">+{b.goldReward}g{b.chestReward ? ` · ${b.chestReward.replace('_chest', ' chest')}` : ''}</p>
-                        </div>
-                        {done && !b.claimed && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              claimBounty(b.id)
-                              if (b.chestReward) {
-                                const result = openChestAndGrantItem(b.chestReward, { source: 'bounty_reward' })
-                                if (result) {
-                                  const itemDef = result.itemId ? LOOT_ITEMS.find((x) => x.id === result.itemId) ?? null : null
-                                  setBountyModal({ chestType: b.chestReward!, item: itemDef, goldDropped: result.goldDropped, bonusMaterials: result.bonusMaterials })
+                          {b.claimed && <span className="text-lime-500 text-base shrink-0">✓</span>}
+                          {done && !b.claimed && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                claimBounty(b.id)
+                                if (b.chestReward) {
+                                  const result = openChestAndGrantItem(b.chestReward, { source: 'bounty_reward' })
+                                  if (result) {
+                                    const itemDef = result.itemId ? LOOT_ITEMS.find((x) => x.id === result.itemId) ?? null : null
+                                    setBountyModal({ chestType: b.chestReward!, item: itemDef, goldDropped: result.goldDropped, bonusMaterials: result.bonusMaterials })
+                                  }
                                 }
-                              }
-                            }}
-                            className="shrink-0 px-2 py-1 rounded-lg text-[10px] font-bold bg-lime-500/20 border border-lime-500/50 text-lime-400 hover:bg-lime-500/30 transition-colors"
-                          >Claim</button>
+                              }}
+                              className="shrink-0 px-3 py-1.5 rounded text-xs font-bold bg-lime-500/20 border border-lime-500/40 text-lime-400 hover:bg-lime-500/30 transition-colors"
+                            >Claim</button>
+                          )}
+                        </div>
+                        {!b.claimed && (
+                          <div className="mt-2.5 flex items-center gap-2">
+                            <div className="flex-1 h-1.5 rounded-full bg-white/[0.07] overflow-hidden">
+                              <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${pct}%`, backgroundColor: done ? '#84cc16' : '#6366f1' }} />
+                            </div>
+                            <span className="text-caption text-gray-500 font-mono shrink-0">{b.progress}/{b.targetCount}</span>
+                          </div>
                         )}
-                        {b.claimed && <span className="shrink-0 text-[10px] text-gray-500 font-mono">✓</span>}
                       </div>
                     )
                   })}
                 </div>
-              ) : (
-                <p className="text-[10px] text-gray-500 font-mono">Generating bounties…</p>
               )}
             </div>
 
             {/* Weekly Challenges */}
-            <div className="rounded-xl border border-white/[0.10] bg-discord-card p-3">
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] uppercase tracking-wider text-amber-400 font-mono">Weekly Challenges</p>
-                <span className="text-[10px] text-gray-500 font-mono">resets in {weeklyDaysLeft}d</span>
+            <div>
+              <div className="flex items-center justify-between mb-2 px-1">
+                <p className="text-caption uppercase tracking-widest text-amber-400/80 font-mono">Weekly</p>
+                <span className="text-caption text-gray-600 font-mono">resets in {weeklyDaysLeft}d</span>
               </div>
-              {weeklyBounties.length > 0 ? (
+              {weeklyBounties.length === 0 ? (
+                <p className="text-xs text-gray-600 font-mono px-1">Generating challenges…</p>
+              ) : (
                 <div className="space-y-2">
                   {[...weeklyBounties].sort((a, b) => {
                     const rank = (x: typeof a) => (!x.claimed && x.progress >= x.targetCount) ? 0 : !x.claimed ? 1 : 2
                     return rank(a) - rank(b)
                   }).map((b) => {
                     const done = b.progress >= b.targetCount
+                    const pct = Math.min(100, (b.progress / b.targetCount) * 100)
                     const typeIcon = b.type === 'craft' ? '⚒️' : b.type === 'farm' ? '🌱' : b.type === 'cook' ? '🍳' : '⚔️'
                     return (
-                      <div key={b.id} className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg border ${b.claimed ? 'border-white/[0.06] opacity-50' : done ? 'border-amber-500/40 bg-amber-500/[0.06]' : 'border-white/[0.08]'}`}>
-                        <span className="text-base shrink-0">{typeIcon}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[11px] text-white font-medium leading-tight">{b.description}</p>
-                          <div className="flex items-center gap-1.5 mt-1">
-                            <div className="flex-1 h-1 rounded-full bg-white/[0.08] overflow-hidden">
-                              <div className="h-full rounded-full transition-[width] duration-300" style={{ width: `${Math.min(100, (b.progress / b.targetCount) * 100)}%`, backgroundColor: done ? '#f59e0b' : '#6366f1' }} />
+                      <div key={b.id} className={`rounded-lg border px-4 py-3 transition-all ${
+                        b.claimed ? 'border-white/[0.05] opacity-40' :
+                        done ? 'border-amber-500/30 bg-amber-500/[0.05]' :
+                        'border-white/[0.08] bg-surface-2/60'
+                      }`}>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <span className="text-lg shrink-0">{typeIcon}</span>
+                            <div className="min-w-0">
+                              <p className={`text-sm font-semibold leading-tight ${b.claimed ? 'text-gray-500' : 'text-white'}`}>{b.description}</p>
+                              <p className="text-caption text-gray-500 mt-0.5">+{b.goldReward}g{b.chestReward ? ` · ${b.chestReward.replace('_chest', ' chest')}` : ''}</p>
                             </div>
-                            <span className="text-[10px] text-gray-400 font-mono shrink-0">{b.progress}/{b.targetCount}</span>
                           </div>
-                          <p className="text-[10px] text-gray-500 font-mono mt-0.5">+{b.goldReward}g{b.chestReward ? ` · ${b.chestReward.replace('_chest', ' chest')}` : ''}</p>
-                        </div>
-                        {done && !b.claimed && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              claimWeekly(b.id)
-                              if (b.chestReward) {
-                                const result = openChestAndGrantItem(b.chestReward, { source: 'bounty_reward' })
-                                if (result) {
-                                  const itemDef = result.itemId ? LOOT_ITEMS.find((x) => x.id === result.itemId) ?? null : null
-                                  setBountyModal({ chestType: b.chestReward!, item: itemDef, goldDropped: result.goldDropped, bonusMaterials: result.bonusMaterials })
+                          {b.claimed && <span className="text-amber-500 text-base shrink-0">✓</span>}
+                          {done && !b.claimed && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                claimWeekly(b.id)
+                                if (b.chestReward) {
+                                  const result = openChestAndGrantItem(b.chestReward, { source: 'bounty_reward' })
+                                  if (result) {
+                                    const itemDef = result.itemId ? LOOT_ITEMS.find((x) => x.id === result.itemId) ?? null : null
+                                    setBountyModal({ chestType: b.chestReward!, item: itemDef, goldDropped: result.goldDropped, bonusMaterials: result.bonusMaterials })
+                                  }
                                 }
-                              }
-                            }}
-                            className="shrink-0 px-2 py-1 rounded-lg text-[10px] font-bold bg-amber-500/20 border border-amber-500/50 text-amber-400 hover:bg-amber-500/30 transition-colors"
-                          >Claim</button>
+                              }}
+                              className="shrink-0 px-3 py-1.5 rounded text-xs font-bold bg-amber-500/20 border border-amber-500/40 text-amber-400 hover:bg-amber-500/30 transition-colors"
+                            >Claim</button>
+                          )}
+                        </div>
+                        {!b.claimed && (
+                          <div className="mt-2.5 flex items-center gap-2">
+                            <div className="flex-1 h-1.5 rounded-full bg-white/[0.07] overflow-hidden">
+                              <div className="h-full rounded-full transition-[width] duration-500" style={{ width: `${pct}%`, backgroundColor: done ? '#f59e0b' : '#6366f1' }} />
+                            </div>
+                            <span className="text-caption text-gray-500 font-mono shrink-0">{b.progress}/{b.targetCount}</span>
+                          </div>
                         )}
-                        {b.claimed && <span className="shrink-0 text-[10px] text-gray-500 font-mono">✓</span>}
                       </div>
                     )
                   })}
                 </div>
-              ) : (
-                <p className="text-[10px] text-gray-500 font-mono">Generating challenges…</p>
               )}
             </div>
 
@@ -621,10 +685,12 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
             exit={{ opacity: 0, y: -8 }}
             className="space-y-4"
           >
+            <NextUnlockTracker unlockedIds={unlockedIds} progressCtx={progressCtx} />
             <QuestsSection
               unlockedIds={unlockedIds}
               claimedIds={claimedIds}
               onClaimAchievement={handleClaim}
+              onClaimAll={handleClaimAll}
             />
           </motion.div>
         )}
@@ -643,11 +709,11 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.06 }}
-              className="rounded-xl bg-discord-card/80 border border-white/10 p-3"
+              className="rounded-card bg-surface-2/80 border border-white/10 p-3"
             >
               <div className="flex items-center justify-between mb-2">
-                <p className="text-[10px] uppercase tracking-wider text-gray-500 font-mono">Collection</p>
-                <p className="text-[10px] text-gray-600 font-mono">
+                <p className="text-micro uppercase tracking-wider text-gray-500 font-mono">Collection</p>
+                <p className="text-micro text-gray-600 font-mono">
                   {unlockedFrameIds.length + getUnlockedAvatarEmojis().length} / {FRAMES.length + LOCKED_AVATARS.length} unlocked
                 </p>
               </div>
@@ -656,19 +722,19 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
                   initial={{ width: 0 }}
                   animate={{ width: `${((unlockedFrameIds.length + getUnlockedAvatarEmojis().length) / (FRAMES.length + LOCKED_AVATARS.length)) * 100}%` }}
                   transition={{ duration: 0.8, ease: 'easeOut', delay: 0.2 }}
-                  className="h-full rounded-full bg-gradient-to-r from-cyber-neon/70 via-purple-400/70 to-yellow-400/70"
+                  className="h-full rounded-full bg-gradient-to-r from-accent/70 via-purple-400/70 to-yellow-400/70"
                 />
               </div>
               <div className="flex gap-4 mt-2.5">
                 <div className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full bg-cyber-neon/60" />
-                  <span className="text-[10px] text-gray-500 font-mono">
-                    <span className="text-cyber-neon font-semibold">{unlockedFrameIds.length}</span>/{FRAMES.length} Frames
+                  <div className="w-2 h-2 rounded-full bg-accent/60" />
+                  <span className="text-micro text-gray-500 font-mono">
+                    <span className="text-accent font-semibold">{unlockedFrameIds.length}</span>/{FRAMES.length} Frames
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <div className="w-2 h-2 rounded-full bg-purple-400/60" />
-                  <span className="text-[10px] text-gray-500 font-mono">
+                  <span className="text-micro text-gray-500 font-mono">
                     <span className="text-purple-400 font-semibold">{getUnlockedAvatarEmojis().length}</span>/{LOCKED_AVATARS.length} Avatars
                   </span>
                 </div>
@@ -683,11 +749,11 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.15 }}
-              className="rounded-xl bg-discord-card/80 border border-white/10 p-4 space-y-3"
+              className="rounded-card bg-surface-2/80 border border-white/10 p-4 space-y-3"
             >
               <div className="flex items-center justify-between">
-                <p className="text-[10px] uppercase tracking-wider text-gray-500 font-mono">Avatar Frames</p>
-                <p className="text-[10px] text-gray-600 font-mono">{unlockedFrameIds.length}/{FRAMES.length} unlocked</p>
+                <p className="text-micro uppercase tracking-wider text-gray-500 font-mono">Avatar Frames</p>
+                <p className="text-micro text-gray-600 font-mono">{unlockedFrameIds.length}/{FRAMES.length} unlocked</p>
               </div>
 
               {(['Rare', 'Epic', 'Legendary'] as const).map((rarity) => {
@@ -697,7 +763,7 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
                 return (
                   <div key={rarity} className="space-y-2">
                     <div className="flex items-center gap-2 px-0.5">
-                      <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: `${rarityColors[rarity]}90` }}>
+                      <span className="text-micro font-bold uppercase tracking-widest" style={{ color: `${rarityColors[rarity]}90` }}>
                         {rarity === 'Legendary' ? '\u2605' : rarity === 'Epic' ? '\u25C6' : '\u25CF'} {rarity}
                       </span>
                       <div className="flex-1 h-px" style={{ backgroundColor: `${rarityColors[rarity]}15` }} />
@@ -713,11 +779,11 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
                             whileTap={isUnlocked ? { scale: 0.95 } : undefined}
                             onClick={() => isUnlocked && handleEquipFrame(frame.id)}
                             disabled={!isUnlocked}
-                            className={`relative p-3 rounded-2xl border text-center transition-all overflow-hidden ${styleClass} ${
+                            className={`relative p-3 rounded border text-center transition-all overflow-hidden ${styleClass} ${
                               isActive
-                                ? 'bg-discord-dark/90'
+                                ? 'bg-surface-1/90'
                                 : isUnlocked
-                                  ? 'border-white/10 bg-discord-dark/60 hover:border-white/20'
+                                  ? 'border-white/10 bg-surface-1/60 hover:border-white/20'
                                   : 'border-white/[0.06] bg-black/50'
                             }`}
                             style={{
@@ -729,10 +795,10 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
                             }}
                           >
                             <div
-                              className="absolute inset-0 rounded-2xl pointer-events-none transition-opacity duration-300"
+                              className="absolute inset-0 rounded pointer-events-none transition-opacity duration-300"
                               style={{ background: frame.gradient, opacity: isActive ? 0.12 : isUnlocked ? 0.04 : 0.02 }}
                             />
-                            {!isUnlocked && <div className="absolute inset-0 rounded-2xl pointer-events-none bg-black/30" />}
+                            {!isUnlocked && <div className="absolute inset-0 rounded pointer-events-none bg-black/30" />}
 
                             {isActive ? (
                               <span
@@ -742,12 +808,12 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
                                 Active
                               </span>
                             ) : !isUnlocked ? (
-                              <span className="absolute top-2 right-2 z-10 text-[10px] opacity-60">{'\uD83D\uDD12'}</span>
+                              <span className="absolute top-2 right-2 z-10 text-micro opacity-60">{'\uD83D\uDD12'}</span>
                             ) : null}
 
                             <div className="relative mx-auto w-14 h-14 mb-2">
                               <div
-                                className="frame-ring absolute -inset-[6px] rounded-xl"
+                                className="frame-ring absolute -inset-[6px] rounded"
                                 style={{
                                   background: frame.gradient,
                                   opacity: isUnlocked ? (isActive ? 0.95 : 0.6) : 0.25,
@@ -756,19 +822,19 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
                                 }}
                               />
                               <div
-                                className="frame-avatar relative w-14 h-14 rounded-lg bg-discord-darker flex items-center justify-center text-xl border-2"
+                                className="frame-avatar relative w-14 h-14 rounded bg-surface-0 flex items-center justify-center text-xl border-2"
                                 style={{ borderColor: `${frame.color}${isUnlocked ? 'b0' : '40'}` }}
                               >
                                 {isUnlocked ? avatar : <span className="text-gray-600">?</span>}
                               </div>
                             </div>
 
-                            <p className={`text-[11px] font-bold relative ${isUnlocked ? 'text-white' : 'text-gray-500'}`}>{frame.name}</p>
-                            <p className="text-[10px] font-mono relative mt-0.5 capitalize" style={{ color: `${frame.color}${isUnlocked ? '80' : '50'}` }}>
+                            <p className={`text-caption font-bold relative ${isUnlocked ? 'text-white' : 'text-gray-500'}`}>{frame.name}</p>
+                            <p className="text-micro font-mono relative mt-0.5 capitalize" style={{ color: `${frame.color}${isUnlocked ? '80' : '50'}` }}>
                               {frame.style}
                             </p>
                             {!isUnlocked && (
-                              <p className="text-[10px] font-mono mt-1 relative text-gray-500/80">{frame.unlockHint}</p>
+                              <p className="text-micro font-mono mt-1 relative text-gray-500/80">{frame.unlockHint}</p>
                             )}
                           </motion.button>
                         )
@@ -784,15 +850,15 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="rounded-xl bg-discord-card/80 border border-white/10 p-4 space-y-3"
+              className="rounded-card bg-surface-2/80 border border-white/10 p-4 space-y-3"
             >
               <div className="flex items-center justify-between">
-                <p className="text-[10px] uppercase tracking-wider text-gray-500 font-mono">Avatars</p>
-                <p className="text-[10px] text-gray-600 font-mono">{FREE_AVATARS.length + getUnlockedAvatarEmojis().length} available</p>
+                <p className="text-micro uppercase tracking-wider text-gray-500 font-mono">Avatars</p>
+                <p className="text-micro text-gray-600 font-mono">{FREE_AVATARS.length + getUnlockedAvatarEmojis().length} available</p>
               </div>
 
               <div>
-                <p className="text-[10px] text-gray-600 font-mono mb-1.5 uppercase tracking-wider">Default</p>
+                <p className="text-micro text-gray-600 font-mono mb-1.5 uppercase tracking-wider">Default</p>
                 <div className="flex flex-wrap gap-1.5">
                   {FREE_AVATARS.map((a) => {
                     const isCurrent = avatar === a
@@ -801,14 +867,14 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
                         key={a}
                         type="button"
                         onClick={() => { void persistProfile(username, a); playClickSound() }}
-                        className={`w-10 h-10 rounded-xl text-lg flex items-center justify-center transition-all active:scale-90 relative ${
+                        className={`w-10 h-10 rounded text-lg flex items-center justify-center transition-all active:scale-90 relative ${
                           isCurrent
-                            ? 'bg-cyber-neon/20 border-2 border-cyber-neon shadow-glow-sm'
-                            : 'bg-discord-dark border border-white/10 hover:border-white/20 hover:bg-discord-dark/80'
+                            ? 'bg-accent/20 border-2 border-accent'
+                            : 'bg-surface-1 border border-white/10 hover:border-white/20 hover:bg-surface-1/80'
                         }`}
                       >
                         {a}
-                        {isCurrent && <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-cyber-neon" />}
+                        {isCurrent && <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-accent" />}
                       </button>
                     )
                   })}
@@ -816,7 +882,7 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
               </div>
 
               <div>
-                <p className="text-[10px] text-gray-600 font-mono mb-1.5 uppercase tracking-wider">Achievements</p>
+                <p className="text-micro text-gray-600 font-mono mb-1.5 uppercase tracking-wider">Achievements</p>
                 <div className="flex flex-wrap gap-1.5">
                   {LOCKED_AVATARS.map((la) => {
                     const isUnlocked = unlockedIds.includes(la.achievementId) || unlockedAvatarSet.has(la.emoji)
@@ -827,22 +893,22 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
                           type="button"
                           onClick={() => { if (!isUnlocked) return; void persistProfile(username, la.emoji); playClickSound() }}
                           disabled={!isUnlocked}
-                          className={`w-10 h-10 rounded-xl text-lg flex items-center justify-center transition-all relative ${
+                          className={`w-10 h-10 rounded text-lg flex items-center justify-center transition-all relative ${
                             isUnlocked
                               ? isCurrent
-                                ? 'bg-cyber-neon/20 border-2 border-cyber-neon shadow-glow-sm active:scale-90'
-                                : 'bg-discord-dark border border-white/10 hover:border-white/20 hover:bg-discord-dark/80 active:scale-90'
-                              : 'bg-discord-dark/30 border border-white/5 cursor-not-allowed'
+                                ? 'bg-accent/20 border-2 border-accent active:scale-90'
+                                : 'bg-surface-1 border border-white/10 hover:border-white/20 hover:bg-surface-1/80 active:scale-90'
+                              : 'bg-surface-1/30 border border-white/5 cursor-not-allowed'
                           }`}
                         >
                           <span style={{ opacity: isUnlocked ? 1 : 0.15 }}>{la.emoji}</span>
                           {!isUnlocked && (
-                            <span className="absolute inset-0 flex items-center justify-center text-[10px] opacity-70">{'\uD83D\uDD12'}</span>
+                            <span className="absolute inset-0 flex items-center justify-center text-micro opacity-70">{'\uD83D\uDD12'}</span>
                           )}
-                          {isCurrent && isUnlocked && <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-cyber-neon" />}
+                          {isCurrent && isUnlocked && <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-accent" />}
                         </button>
                         {!isUnlocked && (
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 rounded-md bg-discord-darker border border-white/10 text-[10px] text-gray-400 font-mono whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 rounded bg-surface-0 border border-white/10 text-micro text-gray-400 font-mono whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
                             {la.unlockHint}
                           </div>
                         )}
@@ -854,7 +920,7 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
 
               {bonusAvatars.length > 0 && (
                 <div>
-                  <p className="text-[10px] text-purple-400/60 font-mono mb-1.5 uppercase tracking-wider">Bonus</p>
+                  <p className="text-micro text-purple-400/60 font-mono mb-1.5 uppercase tracking-wider">Bonus</p>
                   <div className="flex flex-wrap gap-1.5">
                     {bonusAvatars.map((a) => {
                       const isCurrent = avatar === a
@@ -863,15 +929,15 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
                           key={a}
                           type="button"
                           onClick={() => { void persistProfile(username, a); playClickSound() }}
-                          className={`w-10 h-10 rounded-xl text-lg flex items-center justify-center transition-all active:scale-90 relative ${
+                          className={`w-10 h-10 rounded text-lg flex items-center justify-center transition-all active:scale-90 relative ${
                             isCurrent
-                              ? 'bg-cyber-neon/20 border-2 border-cyber-neon shadow-glow-sm'
-                              : 'bg-discord-dark border border-purple-500/20 hover:border-purple-500/40'
+                              ? 'bg-accent/20 border-2 border-accent'
+                              : 'bg-surface-1 border border-purple-500/20 hover:border-purple-500/40'
                           }`}
                           title="Bonus avatar"
                         >
                           {a}
-                          {isCurrent && <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-cyber-neon" />}
+                          {isCurrent && <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-accent" />}
                         </button>
                       )
                     })}
@@ -909,66 +975,40 @@ function FlexCard({ avatar, username, frameId, equippedLootItems, unlockedCount,
   onItemInspect?: (itemId: string) => void
   guildTag?: string | null
 }) {
-  const gold = useGoldStore((s) => s.gold)
-  const killCounts = useArenaStore((s) => s.killCounts)
-  const clearedZones = useArenaStore((s) => s.clearedZones)
-  const permanentStats = useInventoryStore((s) => s.permanentStats)
-  const equippedBySlot = useInventoryStore((s) => s.equippedBySlot)
 
-  const [grindStats, setGrindStats] = useState({ totalSessions: 0, totalHours: 0, totalKeys: 0, streak: 0, bestStreak: 0 })
+  const [grindStats, setGrindStats] = useState({ totalSessions: 0, totalHours: 0, streak: 0 })
 
   useEffect(() => {
     const load = async () => {
       const api = window.electronAPI
       if (!api?.db) return
       try {
-        const [sessions, seconds, keys, streak] = await Promise.all([
+        const [sessions, seconds, streak] = await Promise.all([
           api.db.getSessionCount?.() ?? 0,
           api.db.getTotalSeconds?.() ?? 0,
-          api.db.getTotalKeystrokes?.() ?? 0,
           api.db.getStreak?.() ?? 0,
         ])
         setGrindStats({
           totalSessions: sessions as number,
           totalHours: Math.floor((seconds as number) / 3600),
-          totalKeys: keys as number,
           streak: streak as number,
-          bestStreak: getBestStreak(),
         })
       } catch { /* ignore */ }
     }
     load()
   }, [])
 
-  // Combat stats
-  const combat = computePlayerStats(equippedBySlot, permanentStats)
-  const totalBossKills = Object.values(killCounts).reduce((a, b) => a + b, 0)
-
   // Total Item Power
   const totalIP = equippedLootItems.reduce((sum, { item }) => sum + getItemPower(item), 0)
 
-  // Rarest equipped item
-  const rarityOrder = ['common', 'rare', 'epic', 'legendary', 'mythic']
-  const rarestItem = equippedLootItems.length > 0
-    ? equippedLootItems.reduce((best, cur) =>
-        rarityOrder.indexOf(cur.item.rarity) > rarityOrder.indexOf(best.item.rarity) ? cur : best
-      )
-    : null
-
   const frame = FRAMES.find((f) => f.id === frameId)
-
-  const formatKeys = (n: number) => {
-    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
-    return String(n)
-  }
 
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.97 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.35, ease: 'easeOut' }}
-      className="rounded-2xl border border-white/10 relative overflow-hidden"
+      className="rounded-card border border-white/10 relative overflow-hidden"
       style={{
         background: frame
           ? `linear-gradient(160deg, ${frame.color}10 0%, rgba(22,23,28,0.97) 50%)`
@@ -984,33 +1024,32 @@ function FlexCard({ avatar, username, frameId, equippedLootItems, unlockedCount,
       )}
 
       {/* Top: identity row */}
-      <div className="flex items-center gap-3.5 p-4 pb-3 relative">
-        {onAvatarClick ? (
-          <button type="button" onClick={onAvatarClick} className="relative group shrink-0">
-            <AvatarWithFrame
-              avatar={avatar}
-              frameId={frameId}
-              sizeClass="w-14 h-14"
-              textClass="text-2xl"
-              roundedClass="rounded-xl"
-              ringInsetClass="-inset-1"
-              ringOpacity={0.9}
-            />
-            <span className="absolute inset-0 rounded-xl bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100 text-[10px] text-white/80 font-mono">edit</span>
+      <div className="flex items-center gap-4 p-4 pb-3 relative">
+        <AvatarWithFrame
+          avatar={avatar}
+          frameId={frameId}
+          sizeClass="w-20 h-20"
+          textClass="text-4xl"
+          roundedClass="rounded-lg"
+          ringInsetClass="-inset-1.5"
+          ringOpacity={0.9}
+        />
+        {/* Edit button — top right */}
+        {onAvatarClick && (
+          <button
+            type="button"
+            onClick={onAvatarClick}
+            title="Edit avatar & frame"
+            className="absolute top-3 right-3 p-1.5 rounded text-gray-500 hover:text-gray-200 hover:bg-white/[0.07] transition-colors"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
           </button>
-        ) : (
-          <AvatarWithFrame
-            avatar={avatar}
-            frameId={frameId}
-            sizeClass="w-14 h-14"
-            textClass="text-2xl"
-            roundedClass="rounded-xl"
-            ringInsetClass="-inset-1"
-            ringOpacity={0.9}
-          />
         )}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 flex-wrap">
+          <div className="flex items-center gap-1.5 flex-wrap mb-1">
             {isUsernameEditing ? (
               <input
                 autoFocus
@@ -1018,101 +1057,51 @@ function FlexCard({ avatar, username, frameId, equippedLootItems, unlockedCount,
                 onChange={(e) => onDraftChange?.(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') onDraftSubmit?.(); if (e.key === 'Escape') onDraftCancel?.() }}
                 onBlur={() => onDraftCancel?.()}
-                className="text-[13px] font-bold text-white bg-discord-darker/80 border border-cyber-neon/30 rounded-md px-1.5 py-0.5 outline-none focus:border-cyber-neon/60 w-28"
+                className="text-[15px] font-bold text-white bg-surface-0/80 border border-accent/30 rounded px-1.5 py-0.5 outline-none focus:border-accent/60 w-36"
                 maxLength={20}
               />
             ) : (
-              <button type="button" onClick={onUsernameClick} className="text-[13px] font-bold text-white hover:text-cyber-neon transition-colors cursor-pointer" title="Click to edit">{username}</button>
+              <button type="button" onClick={onUsernameClick} className="text-[15px] font-bold text-white hover:text-accent transition-colors cursor-pointer" title="Click to edit">{username}</button>
             )}
             {guildTag && (
-              <span className="text-[10px] px-1.5 py-[1px] rounded font-bold border border-amber-500/40 bg-amber-500/10 text-amber-400" title={`Guild: ${guildTag}`}>
+              <span className="text-micro px-1.5 py-[1px] rounded font-bold border border-amber-500/40 bg-amber-500/10 text-amber-400" title={`Guild: ${guildTag}`}>
                 [{guildTag}]
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
             {totalIP > 0 && (
-              <span className="text-[10px] font-mono text-amber-400/80 px-1.5 py-0.5 rounded-md border border-amber-400/15 bg-amber-400/5">
-                {totalIP} IP
+              <span className="text-caption font-mono text-amber-400 px-2 py-0.5 rounded border border-amber-400/20 bg-amber-400/8">
+                ⚔️ {totalIP} IP
               </span>
+            )}
+            {grindStats.totalSessions > 0 && (
+              <span className="text-caption font-mono text-gray-400">{grindStats.totalSessions} sessions</span>
             )}
             {syncButton && <span className="ml-auto">{syncButton}</span>}
           </div>
         </div>
       </div>
 
-      {/* Stat grid */}
-      <div className="grid grid-cols-3 gap-px bg-white/[0.04] mx-4 mb-4 rounded-xl overflow-hidden">
-        <StatCell icon={'\u26A1'} value={String(totalSkillLevel)} label="Skill LVL" color="#00FF88" />
-        <StatCell icon={'\uD83C\uDFC6'} value={`${unlockedCount}/${ACHIEVEMENTS.length}`} label="Achieves" color="#FACC15" />
-        <StatCell icon={'\uD83D\uDD25'} value={grindStats.streak > 0 ? `${grindStats.streak}d` : '-'} label={grindStats.bestStreak > 0 ? `Best ${grindStats.bestStreak}d` : 'Streak'} color="#FF6B35" />
-        <StatCell icon={'\uD83E\uDE99'} value={gold > 0 ? gold.toLocaleString() : '-'} label="Gold" color="#F59E0B" />
-        <StatCell icon={'\u23F1\uFE0F'} value={grindStats.totalHours > 0 ? `${grindStats.totalHours}h` : '-'} label="Grind" color="#818CF8" />
-        <StatCell icon={'\u2328\uFE0F'} value={grindStats.totalKeys > 0 ? formatKeys(grindStats.totalKeys) : '-'} label="Keys" color="#67E8F9" />
-        <StatCell icon={'\u2694\uFE0F'} value={combat.atk > 0 ? `${combat.atk}` : '-'} label="ATK" color="#F87171" />
-        <StatCell icon={'\u2764\uFE0F'} value={combat.hp > 0 ? `${combat.hp}` : '-'} label="HP" color="#34D399" />
-        <StatCell icon={'\uD83D\uDEE1'} value={combat.def > 0 ? `${combat.def}` : '-'} label="DEF" color="#818CF8" />
+      {/* Stat grid — 4 key stats */}
+      <div className="grid grid-cols-4 gap-px bg-white/[0.04] mx-4 mb-4 rounded overflow-hidden">
+        <StatCell icon="⚡" value={String(totalSkillLevel)} label="Skill LVL" color="#00FF88" />
+        <StatCell icon="🏆" value={`${unlockedCount}/${ACHIEVEMENTS.length}`} label="Achieve" color="#FACC15" />
+        <StatCell icon="🔥" value={grindStats.streak > 0 ? `${grindStats.streak}d` : '-'} label="Streak" color="#FF6B35" />
+        <StatCell icon="⏱️" value={grindStats.totalHours > 0 ? `${grindStats.totalHours}h` : '-'} label="Grind" color="#818CF8" />
       </div>
 
-      {/* Equipped gear strip */}
-      {equippedLootItems.length > 0 && (
-        <div className="px-4 pb-3 relative">
-          <div className="flex items-center gap-1.5 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-            {equippedLootItems.map(({ slot, item }) => {
-              const rt = getRarityTheme(item.rarity)
-              return (
-                <button
-                  type="button"
-                  key={slot}
-                  className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg border shrink-0 hover:brightness-125 transition-all active:scale-[0.97] cursor-pointer"
-                  style={{ borderColor: `${rt.color}20`, backgroundColor: `${rt.color}06` }}
-                  title={`${item.name} (${item.rarity}) \u2014 ${slot}`}
-                  onClick={() => onItemInspect?.(item.id)}
-                >
-                  {item.image
-                    ? <img src={item.image} alt="" className="w-4 h-4 object-contain" style={{ imageRendering: 'pixelated' }} draggable={false} />
-                    : <span className="text-sm leading-none">{item.icon}</span>}
-                  <div className="min-w-0 text-left">
-                    <p className="text-[10px] font-medium text-white/90 truncate max-w-[65px]">{item.name}</p>
-                    <p className="text-[7px] font-mono uppercase" style={{ color: rt.color }}>{item.rarity}</p>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      )}
 
-      {/* Bottom: kill/dungeon flex */}
-      {(totalBossKills > 0 || clearedZones.length > 0) && (
-        <div className="px-4 pb-3 flex items-center gap-3 relative">
-          {totalBossKills > 0 && (
-            <span className="text-[10px] font-mono text-red-400/70 inline-flex items-center gap-1">
-              {'\uD83D\uDC80'} {totalBossKills} boss kills
-            </span>
-          )}
-          {clearedZones.length > 0 && (
-            <span className="text-[10px] font-mono text-purple-400/70 inline-flex items-center gap-1">
-              {'\uD83C\uDFF0'} {clearedZones.length} dungeons cleared
-            </span>
-          )}
-          {rarestItem && (
-            <span className="text-[10px] font-mono inline-flex items-center gap-1 ml-auto" style={{ color: getRarityTheme(rarestItem.item.rarity).color }}>
-              {'\u2B50'} {rarestItem.item.rarity}
-            </span>
-          )}
-        </div>
-      )}
     </motion.div>
   )
 }
 
 function StatCell({ icon, value, label, color }: { icon: string; value: string; label: string; color: string }) {
   return (
-    <div className="flex flex-col items-center justify-center py-2.5 px-1 bg-discord-darker/60">
-      <span className="text-[10px] leading-none mb-0.5">{icon}</span>
-      <span className="text-[11px] font-bold tabular-nums" style={{ color }}>{value}</span>
-      <span className="text-[7px] font-mono text-gray-500 uppercase tracking-wider">{label}</span>
+    <div className="flex flex-col items-center justify-center py-3 px-1 bg-surface-0/60">
+      <span className="text-sm leading-none mb-1">{icon}</span>
+      <span className="text-body font-bold tabular-nums" style={{ color }}>{value}</span>
+      <span className="text-micro font-mono text-gray-500 uppercase tracking-wider mt-0.5">{label}</span>
     </div>
   )
 }
@@ -1162,18 +1151,18 @@ function NextUnlockTracker({ unlockedIds, progressCtx }: {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.08 }}
-      className={`rounded-xl border p-3 space-y-2.5 ${
+      className={`rounded border p-3 space-y-2.5 ${
         isAlmostThere
-          ? 'bg-cyber-neon/[0.03] border-cyber-neon/20'
-          : 'bg-discord-card/80 border-white/10'
+          ? 'bg-accent/[0.03] border-accent/20'
+          : 'bg-surface-2/80 border-white/10'
       }`}
     >
       <div className="flex items-center justify-between">
-        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-mono">
+        <p className="text-micro uppercase tracking-wider text-gray-500 font-mono">
           {isAlmostThere ? '\u26A1 Almost there' : 'Next unlocks'}
         </p>
         {isAlmostThere && (
-          <span className="text-[10px] font-mono text-cyber-neon/70 animate-pulse">{Math.round(closest.pct)}% complete</span>
+          <span className="text-micro font-mono text-accent/70 animate-pulse">{Math.round(closest.pct)}% complete</span>
         )}
       </div>
       {candidates.map(({ achievement, progress, cosmetic, pct }, i) => {
@@ -1182,19 +1171,19 @@ function NextUnlockTracker({ unlockedIds, progressCtx }: {
         const rewardColor = frame?.color ?? badge?.color ?? '#00FF88'
         const hint = getActionHint(achievement.id, progress!)
         return (
-          <div key={achievement.id} className={`rounded-lg border p-2.5 ${
+          <div key={achievement.id} className={`rounded border p-2.5 ${
             i === 0 && isAlmostThere
-              ? 'border-cyber-neon/15 bg-cyber-neon/[0.03]'
-              : 'border-white/5 bg-discord-darker/40'
+              ? 'border-accent/15 bg-accent/[0.03]'
+              : 'border-white/5 bg-surface-0/40'
           }`}>
             <div className="flex items-center gap-2 mb-1.5">
               <span className="text-sm leading-none">{achievement.icon}</span>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-1">
-                  <span className="text-[10px] font-medium text-white truncate">{achievement.name}</span>
-                  <span className="text-[10px] font-mono tabular-nums" style={{ color: rewardColor }}>{Math.round(pct)}%</span>
+                  <span className="text-micro font-medium text-white truncate">{achievement.name}</span>
+                  <span className="text-micro font-mono tabular-nums" style={{ color: rewardColor }}>{Math.round(pct)}%</span>
                 </div>
-                <span className="text-[10px] text-gray-500">{progress!.label}</span>
+                <span className="text-micro text-gray-500">{progress!.label}</span>
               </div>
             </div>
             <div className="h-1 rounded-full bg-white/5 overflow-hidden mb-1.5">
@@ -1209,24 +1198,24 @@ function NextUnlockTracker({ unlockedIds, progressCtx }: {
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <div className="flex items-center gap-1.5 flex-wrap">
                 {frame && (
-                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border"
+                  <span className="text-micro font-mono px-1.5 py-0.5 rounded border"
                     style={{ borderColor: `${frame.color}30`, color: frame.color, backgroundColor: `${frame.color}08` }}>
                     {frame.name} frame
                   </span>
                 )}
                 {badge && (
-                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border"
+                  <span className="text-micro font-mono px-1.5 py-0.5 rounded border"
                     style={{ borderColor: `${badge.color}30`, color: badge.color, backgroundColor: `${badge.color}08` }}>
                     {badge.icon} {badge.name}
                   </span>
                 )}
                 {cosmetic.avatarEmoji && (
-                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-white/10 bg-white/5 text-gray-400">
+                  <span className="text-micro font-mono px-1.5 py-0.5 rounded border border-white/10 bg-white/5 text-gray-400">
                     {cosmetic.avatarEmoji} avatar
                   </span>
                 )}
               </div>
-              <span className="text-[10px] text-gray-500 italic shrink-0">{hint}</span>
+              <span className="text-micro text-gray-500 italic shrink-0">{hint}</span>
             </div>
           </div>
         )
@@ -1255,9 +1244,9 @@ function RarityBreakdown({ unlockedFrameIds }: {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1 }}
-      className="rounded-xl bg-discord-card/80 border border-white/10 p-3 space-y-2.5"
+      className="rounded-card bg-surface-2/80 border border-white/10 p-3 space-y-2.5"
     >
-      <p className="text-[10px] uppercase tracking-wider text-gray-500 font-mono">Collection by rarity</p>
+      <p className="text-micro uppercase tracking-wider text-gray-500 font-mono">Collection by rarity</p>
 
       <div className="space-y-1.5">
         {rows.map(({ rarity, totalFrames, ownedFrames }) => {
@@ -1265,7 +1254,7 @@ function RarityBreakdown({ unlockedFrameIds }: {
           const pct = totalFrames > 0 ? (ownedFrames / totalFrames) * 100 : 0
           return (
             <div key={rarity} className="flex items-center gap-2">
-              <span className="text-[10px] font-mono w-[70px] shrink-0" style={{ color: `${color}b0` }}>
+              <span className="text-micro font-mono w-[70px] shrink-0" style={{ color: `${color}b0` }}>
                 {rarityIcons[rarity]} {rarity}
               </span>
               <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
@@ -1274,7 +1263,7 @@ function RarityBreakdown({ unlockedFrameIds }: {
                   style={{ width: `${pct}%`, backgroundColor: `${color}80` }}
                 />
               </div>
-              <span className="text-[10px] font-mono tabular-nums w-8 text-right" style={{ color: ownedFrames === totalFrames && totalFrames > 0 ? color : '#6B7280' }}>
+              <span className="text-micro font-mono tabular-nums w-8 text-right" style={{ color: ownedFrames === totalFrames && totalFrames > 0 ? color : '#6B7280' }}>
                 {ownedFrames}/{totalFrames}
               </span>
             </div>

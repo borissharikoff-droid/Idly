@@ -92,12 +92,12 @@ export function PartyMemberCtxMenu({ target, onClose, onMessage }: Props) {
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.9 }}
           transition={{ duration: 0.08 }}
-          className="fixed z-[60] min-w-[140px] rounded-lg bg-[#0d1117] border border-white/10 shadow-2xl overflow-hidden"
+          className="fixed z-[60] min-w-[140px] rounded-card bg-surface-0 border border-white/10 shadow-2xl overflow-hidden"
           style={{ top: y, left: x }}
         >
           {/* Title */}
           <div className="px-2.5 py-1 border-b border-white/[0.06]">
-            <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider truncate">
+            <p className="text-micro font-semibold text-gray-400 uppercase tracking-wider truncate">
               {target.isSelf ? 'You' : (target.username ?? 'Player')}
             </p>
           </div>
@@ -108,7 +108,7 @@ export function PartyMemberCtxMenu({ target, onClose, onMessage }: Props) {
               onClick={inActiveRaid ? undefined : handleLeave}
               disabled={inActiveRaid}
               title={inActiveRaid ? 'Cannot leave during active raid' : undefined}
-              className="w-full text-left px-2.5 py-1.5 text-[10px] font-mono text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className="w-full text-left px-2.5 py-1.5 text-micro font-mono text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             >
               {inActiveRaid ? '🔒 Leave party' : 'Leave party'}
             </button>
@@ -118,7 +118,7 @@ export function PartyMemberCtxMenu({ target, onClose, onMessage }: Props) {
                 <button
                   type="button"
                   onClick={handleMessage}
-                  className="w-full text-left px-2.5 py-1.5 text-[10px] font-mono text-indigo-300 hover:bg-indigo-500/10 transition-colors"
+                  className="w-full text-left px-2.5 py-1.5 text-micro font-mono text-indigo-300 hover:bg-indigo-500/10 transition-colors"
                 >
                   Message
                 </button>
@@ -129,7 +129,7 @@ export function PartyMemberCtxMenu({ target, onClose, onMessage }: Props) {
                   onClick={inActiveRaid ? undefined : handleKick}
                   disabled={inActiveRaid}
                   title={inActiveRaid ? 'Cannot kick during active raid' : undefined}
-                  className="w-full text-left px-2.5 py-1.5 text-[10px] font-mono text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="w-full text-left px-2.5 py-1.5 text-micro font-mono text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   {inActiveRaid ? '🔒 Kick' : 'Kick'}
                 </button>
@@ -140,7 +140,7 @@ export function PartyMemberCtxMenu({ target, onClose, onMessage }: Props) {
                   onClick={inActiveRaid ? undefined : handleMakeLeader}
                   disabled={inActiveRaid}
                   title={inActiveRaid ? 'Cannot transfer leadership during active raid' : undefined}
-                  className="w-full text-left px-2.5 py-1.5 text-[10px] font-mono text-amber-400 hover:bg-amber-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="w-full text-left px-2.5 py-1.5 text-micro font-mono text-amber-400 hover:bg-amber-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   {inActiveRaid ? '🔒 Make leader' : 'Make leader'}
                 </button>
@@ -149,7 +149,7 @@ export function PartyMemberCtxMenu({ target, onClose, onMessage }: Props) {
                 <button
                   type="button"
                   onClick={handleAddFriend}
-                  className="w-full text-left px-2.5 py-1.5 text-[10px] font-mono text-cyber-neon hover:bg-cyber-neon/10 transition-colors"
+                  className="w-full text-left px-2.5 py-1.5 text-micro font-mono text-accent hover:bg-accent/10 transition-colors"
                 >
                   Add friend
                 </button>

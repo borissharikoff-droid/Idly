@@ -1,4 +1,6 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo, useRef, lazy, Suspense } from 'react'
+
+const StatsPage = lazy(() => import('../stats/StatsPage').then((m) => ({ default: m.StatsPage })))
 import { motion, AnimatePresence } from 'framer-motion'
 import { SKILLS, GRINDLY_PERK_TABLE, skillLevelFromXP, skillXPProgress, formatSkillTime, categoryToSkillId, getPrestigeCount, getPrestigeTier, canPrestige, prestigeSkill, PRESTIGE_TIERS } from '../../lib/skills'
 import { computeWarriorBonuses } from '../../lib/combat'
@@ -10,6 +12,7 @@ import { SkeletonBlock } from '../shared/PageLoading'
 import { EmptyState } from '../shared/EmptyState'
 import { PageHeader } from '../shared/PageHeader'
 import { Zap } from '../../lib/icons'
+import { fmt } from '../../lib/format'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -36,8 +39,7 @@ function formatAppTime(ms: number): string {
 
 function formatXP(xp: number): string {
   if (xp >= 1_000_000) return `${(xp / 1_000_000).toFixed(1)}M`
-  if (xp >= 1_000) return `${(xp / 1_000).toFixed(1)}K`
-  return `${xp}`
+  return fmt(xp)
 }
 
 const SKILL_VERB: Record<string, string> = {
@@ -115,13 +117,13 @@ function PrestigeBadge({ skillId, color, level }: { skillId: string; color: stri
   return (
     <div className="shrink-0 text-center ml-1">
       <div
-        className="w-11 h-11 rounded-lg flex flex-col items-center justify-center relative"
+        className="w-11 h-11 rounded flex flex-col items-center justify-center relative"
         style={{ backgroundColor: bgCol, border: `1.5px solid ${borderCol}` }}
       >
-        <span className="text-[10px] text-gray-500 font-mono leading-none">LVL</span>
+        <span className="text-micro text-gray-500 font-mono leading-none">LVL</span>
         <span className="text-base font-mono font-bold leading-tight" style={{ color }}>{level}</span>
         {prestige > 0 && (
-          <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-[10px] leading-none" title={`Prestige ${prestige}`}>
+          <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 text-micro leading-none" title={`Prestige ${prestige}`}>
             {'★'.repeat(prestige)}
           </span>
         )}
@@ -138,24 +140,24 @@ function PrestigeSection({ skillId, xp, color, onPrestige }: { skillId: string; 
   return (
     <div className="pt-2 border-t border-white/[0.04]">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] text-gray-400">Prestige</span>
+        <span className="text-caption text-gray-400">Prestige</span>
         <div className="flex items-center gap-1.5">
           {tier && (
-            <span className="text-[10px] font-mono font-bold" style={{ color: tier.borderColor }}>
+            <span className="text-micro font-mono font-bold" style={{ color: tier.borderColor }}>
               {tier.label} {'★'.repeat(prestige)}
             </span>
           )}
-          {prestige === 0 && <span className="text-[10px] text-gray-600 font-mono">None</span>}
+          {prestige === 0 && <span className="text-micro text-gray-600 font-mono">None</span>}
         </div>
       </div>
       {prestige > 0 && (
-        <p className="text-[10px] text-gray-500 font-mono mt-0.5">+{prestige * 2}% XP bonus active</p>
+        <p className="text-micro text-gray-500 font-mono mt-0.5">+{prestige * 2}% XP bonus active</p>
       )}
       {canDo && (
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onPrestige() }}
-          className="mt-2 w-full py-1.5 rounded-lg text-[11px] font-mono font-bold uppercase tracking-wider transition-colors"
+          className="mt-2 w-full py-1.5 rounded text-caption font-mono font-bold uppercase tracking-wider transition-colors"
           style={{ backgroundColor: `${color}20`, color, border: `1px solid ${color}40` }}
         >
           Prestige (Reset to LVL 0 for +2% XP)
@@ -200,7 +202,7 @@ function MilestoneTrack({ level, milestones, color }: { level: number; milestone
             width: 7,
             height: 7,
             backgroundColor: color,
-            borderColor: '#1e1e2e',
+            borderColor: '#1e2024',
             transform: 'translate(-50%, -50%)',
           }}
         />
@@ -219,13 +221,13 @@ function PerkRoadmap({ level, milestones, color }: { level: number; milestones: 
   if (display.length === 0) return null
   return (
     <div className="pt-2 border-t border-white/[0.04]">
-      <span className="text-[10px] text-gray-500 font-mono uppercase">Perk milestones</span>
+      <span className="text-micro text-gray-500 font-mono uppercase">Perk milestones</span>
       <div className="mt-1.5 space-y-1">
         {display.map(m => {
           const done = level >= m.level
           const isNext = !done && upcoming[0]?.level === m.level
           return (
-            <div key={m.level} className="flex items-center gap-2 text-[10px]">
+            <div key={m.level} className="flex items-center gap-2 text-micro">
               <span
                 className={`font-mono w-7 text-right shrink-0 ${done ? 'text-gray-600' : isNext ? 'font-bold' : 'text-gray-400'}`}
                 style={isNext ? { color } : undefined}
@@ -252,7 +254,7 @@ function XpTicker({ amount, color, tickKey }: { amount: number; color: string; t
       initial={{ opacity: 1, y: 0 }}
       animate={{ opacity: 0, y: -18 }}
       transition={{ duration: 1.8, ease: 'easeOut' }}
-      className="absolute -top-1 right-12 text-[10px] font-mono font-bold pointer-events-none"
+      className="absolute -top-1 right-12 text-micro font-mono font-bold pointer-events-none"
       style={{ color }}
     >
       +{amount} XP
@@ -265,7 +267,7 @@ function SectionHeader({ label, icon }: { label: string; icon: string }) {
   return (
     <div className="flex items-center gap-2 mb-2.5 mt-1">
       <div className="flex-1 h-px bg-white/[0.06]" />
-      <span className="text-[10px] font-mono text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+      <span className="text-micro font-mono text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
         <span className="text-xs">{icon}</span> {label}
       </span>
       <div className="flex-1 h-px bg-white/[0.06]" />
@@ -275,7 +277,12 @@ function SectionHeader({ label, icon }: { label: string; icon: string }) {
 
 // ── Main component ──────────────────────────────────────────────────────────
 
-export function SkillsPage() {
+export function SkillsPage({ initialTab }: { initialTab?: 'overview' | 'history' } = {}) {
+  const [skillsTab, setSkillsTab] = useState<'overview' | 'history'>(initialTab ?? 'overview')
+  // Sync tab when parent changes initialTab (e.g. Stats nav item redirects here with 'history')
+  useEffect(() => {
+    if (initialTab) setSkillsTab(initialTab)
+  }, [initialTab])
   const [skillData, setSkillData] = useState<SkillRow[]>([])
   const [loading, setLoading] = useState(true)
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -323,6 +330,17 @@ export function SkillsPage() {
     base.set('chef', cookXp)
     return base
   }, [skillData, status, sessionSkillXP, craftXp, cookXp])
+
+  // These must live here (before the loading early return) to satisfy Rules of Hooks
+  const primarySkillIds: string[] = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem('grindly_primary_skills') ?? '[]') } catch { return [] }
+  }, [])
+  const activitySkillsFiltered = useMemo(() => {
+    const activeId = status === 'running' && currentActivity ? categoryToSkillId(currentActivity.category) : null
+    const skills = ACTIVITY_SKILLS.filter(s => s.id !== activeId)
+    if (primarySkillIds.length === 0) return skills
+    return [...skills.filter(s => primarySkillIds.includes(s.id)), ...skills.filter(s => !primarySkillIds.includes(s.id))]
+  }, [status, currentActivity, primarySkillIds])
 
   const handleToggleExpand = (skillId: string) => {
     const isExpanded = expandedId === skillId
@@ -404,33 +422,33 @@ export function SkillsPage() {
     const isProduction = PRODUCTION_SKILL_IDS.has(skill.id)
 
     return (
-      <div className="mx-1 px-3 py-2.5 rounded-b-xl bg-discord-card/50 border border-t-0 border-white/[0.04] space-y-2">
+      <div className="mx-1 px-3 py-2.5 rounded-b bg-surface-2/50 border border-t-0 border-white/[0.04] space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] text-gray-400">Next level</span>
-          <span className="text-[11px] font-mono text-white">LVL {level + 1}</span>
+          <span className="text-caption text-gray-400">Next level</span>
+          <span className="text-caption font-mono text-white">LVL {level + 1}</span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-[11px] text-gray-400">XP remaining</span>
-          <span className="text-[11px] font-mono" style={{ color: skill.color }}>{formatXP(needed - current)}</span>
+          <span className="text-caption text-gray-400">XP remaining</span>
+          <span className="text-caption font-mono" style={{ color: skill.color }}>{formatXP(needed - current)}</span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-[11px] text-gray-400">Time to next</span>
-          <span className="text-[11px] font-mono text-gray-300">
+          <span className="text-caption text-gray-400">Time to next</span>
+          <span className="text-caption font-mono text-gray-300">
             {isProduction ? 'via in-game actions' : `~${Math.ceil((needed - current) / 3600)}h`}
           </span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-[11px] text-gray-400">Total XP</span>
-          <span className="text-[11px] font-mono text-gray-300">{formatXP(xp)}</span>
+          <span className="text-caption text-gray-400">Total XP</span>
+          <span className="text-caption font-mono text-gray-300">{formatXP(xp)}</span>
         </div>
 
         {/* Source / top apps section */}
         <div className="pt-2 border-t border-white/[0.04] min-h-[74px]">
           {skill.category === 'farming' ? (
             <>
-              <span className="text-[10px] text-gray-500 font-mono uppercase">XP Source</span>
-              <p className="mt-1.5 text-[10px] text-gray-400 leading-relaxed">Earned by planting and harvesting crops in the Farm tab.</p>
-              <p className="mt-0.5 text-[10px] text-gray-600 font-mono">Plant +10–160 XP · Harvest +50–800 XP</p>
+              <span className="text-micro text-gray-500 font-mono uppercase">XP Source</span>
+              <p className="mt-1.5 text-micro text-gray-400 leading-relaxed">Earned by planting and harvesting crops in the Farm tab.</p>
+              <p className="mt-0.5 text-micro text-gray-600 font-mono">Plant +10–160 XP · Harvest +50–800 XP</p>
             </>
           ) : skill.category === 'warrior' ? (() => {
             const wLevel = skillLevelFromXP(xp)
@@ -438,34 +456,34 @@ export function SkillsPage() {
             const bonusParts = [bonuses.atk > 0 && `+${bonuses.atk} ATK`, bonuses.hp > 0 && `+${bonuses.hp} HP`, bonuses.hpRegen > 0 && `+${bonuses.hpRegen} Regen`, bonuses.def > 0 && `+${bonuses.def} DEF`].filter(Boolean)
             return (
               <>
-                <span className="text-[10px] text-gray-500 font-mono uppercase">XP Source</span>
-                <p className="mt-1.5 text-[10px] text-gray-400 leading-relaxed">Earned by defeating enemies in the Arena.</p>
-                <p className="mt-0.5 text-[10px] text-gray-600 font-mono">Mob +30–90K XP · Boss +120–15K XP</p>
+                <span className="text-micro text-gray-500 font-mono uppercase">XP Source</span>
+                <p className="mt-1.5 text-micro text-gray-400 leading-relaxed">Earned by defeating enemies in the Arena.</p>
+                <p className="mt-0.5 text-micro text-gray-600 font-mono">Mob +30–90K XP · Boss +120–15K XP</p>
                 {bonusParts.length > 0 && (
-                  <p className="mt-1.5 text-[10px] font-mono" style={{ color: '#EF4444' }}>Bonuses: {bonusParts.join(' · ')}</p>
+                  <p className="mt-1.5 text-micro font-mono" style={{ color: '#EF4444' }}>Bonuses: {bonusParts.join(' · ')}</p>
                 )}
               </>
             )
           })() : skill.category === 'crafting' ? (
             <>
-              <span className="text-[10px] text-gray-500 font-mono uppercase">XP Source</span>
-              <p className="mt-1.5 text-[10px] text-gray-400 leading-relaxed">Earned by crafting items in the Craft tab.</p>
-              <p className="mt-0.5 text-[10px] text-gray-600 font-mono">XP per craft varies by recipe tier</p>
+              <span className="text-micro text-gray-500 font-mono uppercase">XP Source</span>
+              <p className="mt-1.5 text-micro text-gray-400 leading-relaxed">Earned by crafting items in the Craft tab.</p>
+              <p className="mt-0.5 text-micro text-gray-600 font-mono">XP per craft varies by recipe tier</p>
             </>
           ) : skill.category === 'cooking' ? (
             <>
-              <span className="text-[10px] text-gray-500 font-mono uppercase">XP Source</span>
-              <p className="mt-1.5 text-[10px] text-gray-400 leading-relaxed">Earned by cooking food in the Cook tab.</p>
-              <p className="mt-0.5 text-[10px] text-gray-600 font-mono">XP per cook varies by recipe · Mastery grants bonus XP</p>
+              <span className="text-micro text-gray-500 font-mono uppercase">XP Source</span>
+              <p className="mt-1.5 text-micro text-gray-400 leading-relaxed">Earned by cooking food in the Cook tab.</p>
+              <p className="mt-0.5 text-micro text-gray-600 font-mono">XP per cook varies by recipe · Mastery grants bonus XP</p>
             </>
           ) : skill.category === 'grindly' ? (
             <>
-              <span className="text-[10px] text-gray-500 font-mono uppercase">XP Source</span>
-              <p className="mt-1.5 text-[10px] text-gray-400 leading-relaxed">Earned passively based on total skill levels across all skills.</p>
+              <span className="text-micro text-gray-500 font-mono uppercase">XP Source</span>
+              <p className="mt-1.5 text-micro text-gray-400 leading-relaxed">Earned passively based on total skill levels across all skills.</p>
             </>
           ) : (
             <>
-              <span className="text-[10px] text-gray-500 font-mono uppercase">Top apps</span>
+              <span className="text-micro text-gray-500 font-mono uppercase">Top apps</span>
               {topAppsLoadingBySkill[skill.id] ? (
                 <div className="mt-1.5 space-y-1.5">
                   {[1, 2, 3].map((row) => (
@@ -478,14 +496,14 @@ export function SkillsPage() {
               ) : topAppsBySkill[skill.id] && topAppsBySkill[skill.id].length > 0 ? (
                 <div className="mt-1.5 space-y-1">
                   {topAppsBySkill[skill.id].map((a) => (
-                    <div key={a.app_name} className="flex items-center justify-between text-[11px]">
+                    <div key={a.app_name} className="flex items-center justify-between text-caption">
                       <span className="text-gray-300 truncate">{a.app_name}</span>
                       <span className="text-gray-500 font-mono shrink-0 ml-2">{formatAppTime(a.total_ms)}</span>
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="mt-1.5 text-[10px] text-gray-600">No app data yet.</p>
+                <p className="mt-1.5 text-micro text-gray-600">No app data yet.</p>
               )}
             </>
           )}
@@ -522,21 +540,21 @@ export function SkillsPage() {
         <button
           type="button"
           onClick={() => handleToggleExpand(skill.id)}
-          className={`w-full rounded-xl border transition-all duration-200 text-left relative overflow-hidden group ${
+          className={`w-full rounded border transition-all duration-200 text-left relative overflow-hidden group ${
             isLeveling
-              ? 'bg-discord-card border-cyber-neon/40 shadow-[0_0_20px_rgba(0,255,136,0.08)]'
-              : 'bg-discord-card/80 border-white/[0.06] hover:border-white/10'
+              ? 'bg-surface-2 border-accent/40 shadow-[0_0_20px_rgba(88,101,242,0.08)]'
+              : 'bg-surface-2/80 border-white/[0.06] hover:border-white/10'
           }`}
         >
           <div
-            className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl"
+            className="absolute left-0 top-0 bottom-0 w-1 rounded-l"
             style={{ backgroundColor: skill.color, opacity: level > 1 ? 0.8 : 0.2 }}
           />
 
           <div className="pl-4 pr-3 py-3 flex items-center gap-3 relative">
             {/* Icon */}
             <div
-              className="w-10 h-10 rounded-lg flex items-center justify-center shrink-0 text-lg"
+              className="w-10 h-10 rounded flex items-center justify-center shrink-0 text-lg"
               style={{ backgroundColor: `${skill.color}15`, border: `1px solid ${skill.color}30` }}
             >
               {skill.icon}
@@ -545,17 +563,17 @@ export function SkillsPage() {
             {/* Info */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <span className="text-[13px] font-semibold text-white truncate">{skill.name}</span>
+                <span className="text-body font-semibold text-white truncate">{skill.name}</span>
                 {isLeveling && (
                   <span
-                    className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0"
+                    className="text-micro font-mono font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider shrink-0"
                     style={{ backgroundColor: `${skill.color}25`, color: skill.color, border: `1px solid ${skill.color}40` }}
                   >
                     active
                   </span>
                 )}
                 {nextIsMilestone && !isLeveling && (
-                  <span className="text-[10px] font-mono text-amber-400/70 shrink-0" title={`LVL ${level + 1} unlocks a perk`}>★</span>
+                  <span className="text-micro font-mono text-amber-400/70 shrink-0" title={`LVL ${level + 1} unlocks a perk`}>★</span>
                 )}
               </div>
               {/* XP bar */}
@@ -578,8 +596,8 @@ export function SkillsPage() {
                 )}
               </div>
               <div className="flex items-center justify-between mt-1">
-                <span className="text-[10px] text-gray-500 font-mono">{formatXP(current)} / {formatXP(needed)} XP</span>
-                <span className="text-[10px] text-gray-600 font-mono">
+                <span className="text-micro text-gray-500 font-mono">{formatXP(current)} / {formatXP(needed)} XP</span>
+                <span className="text-micro text-gray-600 font-mono">
                   {PRODUCTION_SKILL_IDS.has(skill.id) ? `${formatXP(xp)} XP` : `${timeStr} ${skillVerb(skill.category)}`}
                 </span>
               </div>
@@ -621,7 +639,7 @@ export function SkillsPage() {
     return (
       <div className="p-4 pb-20">
         <div className="space-y-3">
-          <div className="rounded-xl border border-white/10 bg-discord-card/70 p-4">
+          <div className="rounded-card border border-white/10 bg-surface-2/70 p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
                 <SkeletonBlock className="w-8 h-8" />
@@ -637,7 +655,7 @@ export function SkillsPage() {
             </div>
           </div>
           {[1, 2, 3, 4].map((row) => (
-            <div key={row} className="rounded-xl border border-white/10 bg-discord-card/70 p-3">
+            <div key={row} className="rounded-card border border-white/10 bg-surface-2/70 p-3">
               <div className="flex items-center gap-3">
                 <SkeletonBlock className="w-10 h-10" />
                 <div className="flex-1 space-y-2">
@@ -660,7 +678,6 @@ export function SkillsPage() {
   // ── Main render ────────────────────────────────────────────────────────────
 
   const activeSkill = levelingSkillId ? SKILLS.find(s => s.id === levelingSkillId) : null
-  const activitySkillsFiltered = ACTIVITY_SKILLS.filter(s => s.id !== levelingSkillId)
   const productionSkillsFiltered = PRODUCTION_SKILLS.filter(s => s.id !== levelingSkillId)
 
   return (
@@ -673,15 +690,40 @@ export function SkillsPage() {
       {/* Header */}
       <PageHeader
         title="Skills"
-        icon={<Zap className="w-4 h-4 text-cyber-neon" />}
-        className="mb-5"
+        icon={<Zap className="w-4 h-4 text-accent" />}
+        className="mb-4"
         rightSlot={
           <div className="text-right">
-            <p className="text-cyber-neon font-mono text-lg font-bold leading-tight">{totalLevel}</p>
-            <p className="text-[10px] text-gray-500 font-mono">TOTAL LVL</p>
+            <p className="text-accent font-mono text-lg font-bold leading-tight">{totalLevel}</p>
+            <p className="text-micro text-gray-500 font-mono">TOTAL LVL</p>
           </div>
         }
       />
+
+      {/* Tab switcher */}
+      <div className="flex gap-1 mb-4 p-0.5 rounded bg-surface-2/60 border border-white/[0.06]">
+        {(['overview', 'history'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setSkillsTab(tab)}
+            className={`flex-1 py-1.5 rounded text-xs font-semibold transition-all ${
+              skillsTab === tab
+                ? 'bg-accent text-white shadow'
+                : 'text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            {tab === 'overview' ? 'Overview' : 'History'}
+          </button>
+        ))}
+      </div>
+
+      {skillsTab === 'history' && (
+        <Suspense fallback={<div className="text-gray-500 text-sm text-center py-8">Loading...</div>}>
+          <StatsPage />
+        </Suspense>
+      )}
+
+      {skillsTab === 'overview' && (<>
 
       {/* Empty state */}
       {!levelingSkillId && totalLevel <= 8 && skillData.length === 0 && (
@@ -715,6 +757,8 @@ export function SkillsPage() {
         </>
       )}
 
+      </>)}
+
       {/* Prestige confirmation modal */}
       <AnimatePresence>
         {prestigeConfirm && (() => {
@@ -734,21 +778,21 @@ export function SkillsPage() {
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-discord-card rounded-xl border border-white/10 p-5 max-w-xs w-full space-y-3"
+                className="bg-surface-2 rounded-card border border-white/10 p-5 max-w-xs w-full space-y-3"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="text-center">
                   <span className="text-2xl">{skill.icon}</span>
                   <h3 className="text-sm font-bold text-white mt-1">Prestige {skill.name}?</h3>
                   {nextTier && (
-                    <p className="text-[11px] font-mono mt-1" style={{ color: nextTier.borderColor }}>
+                    <p className="text-caption font-mono mt-1" style={{ color: nextTier.borderColor }}>
                       {nextTier.label} Tier {'★'.repeat(nextPrestige)}
                     </p>
                   )}
                 </div>
-                <div className="text-[11px] text-gray-400 space-y-1">
+                <div className="text-caption text-gray-400 space-y-1">
                   <p>This will <span className="text-red-400 font-bold">reset your {skill.name} to LVL 0</span>.</p>
-                  <p>You gain a permanent <span className="text-cyber-neon font-bold">+2% XP bonus</span> for this skill.</p>
+                  <p>You gain a permanent <span className="text-accent font-bold">+2% XP bonus</span> for this skill.</p>
                   {nextTier?.reward && (
                     <p>Reward: <span className="text-white">{nextTier.reward.label}</span></p>
                   )}
@@ -757,14 +801,14 @@ export function SkillsPage() {
                   <button
                     type="button"
                     onClick={() => setPrestigeConfirm(null)}
-                    className="flex-1 py-2 rounded-lg text-[11px] font-mono text-gray-400 bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+                    className="flex-1 py-2 rounded text-caption font-mono text-gray-400 bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={() => handlePrestige(prestigeConfirm)}
-                    className="flex-1 py-2 rounded-lg text-[11px] font-mono font-bold uppercase tracking-wider transition-colors"
+                    className="flex-1 py-2 rounded text-caption font-mono font-bold uppercase tracking-wider transition-colors"
                     style={{ backgroundColor: `${skill.color}25`, color: skill.color, border: `1px solid ${skill.color}40` }}
                   >
                     Prestige

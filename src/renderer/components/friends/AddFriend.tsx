@@ -48,7 +48,7 @@ export function AddFriend({ onAdded }: AddFriendProps) {
     <motion.div
       initial={{ opacity: 0, y: 5 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-xl bg-discord-card/80 border border-white/10 p-4"
+      className="rounded-card bg-surface-2/80 border border-white/10 p-4"
     >
       <p className="text-xs uppercase tracking-wider text-gray-400 font-mono mb-3">[ add to squad ]</p>
       <form onSubmit={handleAdd} className="flex gap-2">
@@ -57,18 +57,18 @@ export function AddFriend({ onAdded }: AddFriendProps) {
           placeholder="Username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          className="flex-1 rounded-lg bg-discord-darker border border-white/10 px-3 py-2 text-white placeholder-gray-500 text-sm focus:border-discord-accent outline-none"
+          className="flex-1 rounded bg-[#111214] border border-white/10 px-3 py-2 text-white placeholder-gray-500 text-sm focus:border-accent outline-none"
         />
         <button
           type="submit"
           disabled={busy}
-          className="px-4 py-2 rounded-lg bg-discord-accent text-white text-sm font-semibold hover:opacity-90 disabled:opacity-50"
+          className="px-4 py-2 rounded bg-accent text-white text-sm font-semibold hover:bg-accent-hover disabled:opacity-50 transition-colors"
         >
           Add
         </button>
       </form>
       {message && (
-        <p className={`mt-2 text-sm ${message.type === 'ok' ? 'text-cyber-neon' : 'text-discord-red'}`}>
+        <p className={`mt-2 text-sm ${message.type === 'ok' ? 'text-accent' : 'text-red-500'}`}>
           {message.text}
         </p>
       )}

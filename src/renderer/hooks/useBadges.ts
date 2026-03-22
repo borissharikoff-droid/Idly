@@ -8,7 +8,7 @@ import { useFarmStore } from '../stores/farmStore'
 import { useBountyStore } from '../stores/bountyStore'
 import { useWeeklyStore } from '../stores/weeklyStore'
 
-export const BADGE_URGENT = 'bg-discord-red'
+export const BADGE_URGENT = 'bg-red-500'
 export const BADGE_READY = 'bg-lime-500'
 
 export function useBadges() {

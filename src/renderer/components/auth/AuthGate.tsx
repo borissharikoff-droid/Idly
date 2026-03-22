@@ -139,6 +139,27 @@ function HeroBanner() {
   )
 }
 
+// Exponential backoff delays after each failure (seconds)
+const LOCKOUT_DELAYS = [0, 0, 30, 60, 120, 300, 900]
+
+function getLockoutKey(id: string) { return `grindly_lockout_${id.toLowerCase().trim()}` }
+
+function getStoredLockout(id: string): { until: number; failures: number } {
+  try {
+    const raw = localStorage.getItem(getLockoutKey(id))
+    if (raw) return JSON.parse(raw)
+  } catch { /* ignore */ }
+  return { until: 0, failures: 0 }
+}
+
+function setStoredLockout(id: string, until: number, failures: number) {
+  localStorage.setItem(getLockoutKey(id), JSON.stringify({ until, failures }))
+}
+
+function clearStoredLockout(id: string) {
+  localStorage.removeItem(getLockoutKey(id))
+}
+
 export function AuthGate({ children }: { children: React.ReactNode }) {
   const { user, loading, init, signIn, signUp } = useAuthStore()
   const [loginId, setLoginId] = useState('')
@@ -151,6 +172,26 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const [busy, setBusy] = useState(false)
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null)
   const [rememberMe, setRememberMe] = useState(true)
+  const [lockoutUntil, setLockoutUntil] = useState(0)
+  const [lockoutSeconds, setLockoutSeconds] = useState(0)
+  const lockoutTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // Countdown timer when locked out
+  useEffect(() => {
+    if (lockoutUntil <= Date.now()) { setLockoutSeconds(0); return }
+    const tick = () => {
+      const remaining = Math.ceil((lockoutUntil - Date.now()) / 1000)
+      if (remaining <= 0) {
+        setLockoutSeconds(0)
+        if (lockoutTimerRef.current) clearInterval(lockoutTimerRef.current)
+      } else {
+        setLockoutSeconds(remaining)
+      }
+    }
+    tick()
+    lockoutTimerRef.current = setInterval(tick, 1000)
+    return () => { if (lockoutTimerRef.current) clearInterval(lockoutTimerRef.current) }
+  }, [lockoutUntil])
 
   useEffect(() => { init() }, [init])
 
@@ -169,7 +210,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex h-full items-center justify-center bg-discord-darker">
+      <div className="flex h-full items-center justify-center bg-surface-0">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -193,6 +234,13 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    // Client-side lockout check
+    if (!isSignUp && lockoutSeconds > 0) {
+      setError(`Too many attempts. Try again in ${lockoutSeconds}s`)
+      return
+    }
+
     setBusy(true)
 
     if (isSignUp) {
@@ -230,28 +278,72 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       }
     } else {
       let loginEmail = loginId.trim()
+      if (!supabase) { setError('Supabase not available'); setBusy(false); return }
 
+      // ── Server-side rate limit check ─────────────────────────────────────
+      const { data: rlData } = await supabase
+        .rpc('check_login_rate_limit', { p_identifier: loginEmail })
+      const rl = rlData as { blocked: boolean; failures: number; retry_after?: number } | null
+      if (rl?.blocked) {
+        const wait = rl.retry_after ?? 900
+        const until = Date.now() + wait * 1000
+        setLockoutUntil(until)
+        setError(`Too many failed attempts. Try again in ${wait}s`)
+        setBusy(false)
+        return
+      }
+
+      // ── Resolve username → email ──────────────────────────────────────────
       if (!loginEmail.includes('@')) {
-        if (!supabase) { setError('Supabase not available'); setBusy(false); return }
-        const { data: email, error: rpcErr } = await supabase
+        const { data: resolvedEmail, error: rpcErr } = await supabase
           .rpc('get_email_by_username', { p_username: loginEmail })
-        console.log('[auth] username lookup:', { loginEmail, email, rpcErr })
-        if (rpcErr || !email) {
+        if (rpcErr || !resolvedEmail) {
+          // Record failed attempt (wrong username)
+          await supabase.rpc('record_login_attempt', { p_identifier: loginEmail, p_success: false })
+          const stored = getStoredLockout(loginEmail)
+          const failures = stored.failures + 1
+          const delaySeconds = LOCKOUT_DELAYS[Math.min(failures, LOCKOUT_DELAYS.length - 1)]
+          if (delaySeconds > 0) {
+            const until = Date.now() + delaySeconds * 1000
+            setLockoutUntil(until)
+            setStoredLockout(loginEmail, until, failures)
+          } else {
+            setStoredLockout(loginEmail, 0, failures)
+          }
           setError(rpcErr ? rpcErr.message : 'User not found')
           setBusy(false)
           return
         }
-        loginEmail = email as string
+        loginEmail = resolvedEmail as string
       }
 
+      // ── Sign in ───────────────────────────────────────────────────────────
       const { error: err } = await signIn(loginEmail, password)
-      if (err) { setError(err.message); setBusy(false); return }
-
-      if (rememberMe) {
-        localStorage.setItem('grindly_remember_me', 'true')
-      } else {
-        localStorage.setItem('grindly_remember_me', 'false')
+      if (err) {
+        // Record failed attempt
+        await supabase.rpc('record_login_attempt', { p_identifier: loginEmail, p_success: false })
+        const stored = getStoredLockout(loginEmail)
+        const failures = stored.failures + 1
+        const delaySeconds = LOCKOUT_DELAYS[Math.min(failures, LOCKOUT_DELAYS.length - 1)]
+        if (delaySeconds > 0) {
+          const until = Date.now() + delaySeconds * 1000
+          setLockoutUntil(until)
+          setStoredLockout(loginEmail, until, failures)
+          setError(`${err.message} — wait ${delaySeconds}s before trying again`)
+        } else {
+          setStoredLockout(loginEmail, 0, failures)
+          setError(err.message)
+        }
+        setBusy(false)
+        return
       }
+
+      // Success — clear lockout
+      await supabase.rpc('record_login_attempt', { p_identifier: loginEmail, p_success: true })
+      clearStoredLockout(loginEmail)
+      clearStoredLockout(loginId.trim())
+
+      localStorage.setItem('grindly_remember_me', rememberMe ? 'true' : 'false')
     }
 
     setBusy(false)
@@ -270,7 +362,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-discord-darker p-4 overflow-y-auto">
+    <div className="flex h-full min-h-0 flex-col bg-surface-0 p-4 overflow-y-auto">
       <div className="flex min-h-full flex-col items-center justify-center py-6">
         <motion.div
           variants={containerVariants}
@@ -298,7 +390,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           variants={itemVariants}
           layout
           transition={{ layout: { duration: 0.35, ease: [0.16, 1, 0.3, 1] } }}
-          className="rounded-2xl bg-discord-card border border-white/10 p-6 overflow-hidden"
+          className="rounded-card bg-surface-2 border border-white/10 p-6 overflow-hidden"
         >
           <form onSubmit={handleAuth} className="space-y-3">
             <motion.div
@@ -324,10 +416,10 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                           type="button"
                           key={a}
                           onClick={() => setAvatar(a)}
-                          className={`w-9 h-9 rounded-lg text-lg flex items-center justify-center transition-all active:scale-90 ${
+                          className={`w-9 h-9 rounded text-lg flex items-center justify-center transition-all active:scale-90 ${
                             avatar === a
-                              ? 'bg-cyber-neon/20 border-2 border-cyber-neon shadow-glow-sm'
-                              : 'bg-discord-dark border border-white/10 hover:border-white/20'
+                              ? 'bg-accent/20 border-2 border-accent'
+                              : 'bg-surface-1 border border-white/10 hover:border-white/20'
                           }`}
                         >
                           {a}
@@ -343,15 +435,15 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                         placeholder="e.g. phil_dev"
                         value={username}
                         onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, '').slice(0, 20))}
-                        className="w-full rounded-lg bg-discord-darker border border-white/10 px-3 py-2.5 text-white placeholder-gray-500 text-sm focus:border-discord-accent outline-none transition-colors"
+                        className="w-full rounded bg-surface-0 border border-white/10 px-3 py-2.5 text-white placeholder-gray-500 text-sm focus:border-accent outline-none transition-colors"
                       />
                       {username.length >= 3 && usernameAvailable !== null && (
-                        <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs ${usernameAvailable ? 'text-cyber-neon' : 'text-discord-red'}`}>
+                        <span className={`absolute right-3 top-1/2 -translate-y-1/2 text-xs ${usernameAvailable ? 'text-accent' : 'text-red-500'}`}>
                           {usernameAvailable ? 'available' : 'taken'}
                         </span>
                       )}
                     </div>
-                    <p className="text-[10px] text-gray-500 mt-1 ml-0.5">Usernames are unique and visible to friends</p>
+                    <p className="text-micro text-gray-500 mt-1 ml-0.5">Usernames are unique and visible to friends</p>
                   </div>
                   <label className="text-xs text-gray-400 block -mb-2">Email</label>
                   <input
@@ -360,7 +452,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="w-full rounded-lg bg-discord-darker border border-white/10 px-3 py-2.5 text-white placeholder-gray-500 text-sm focus:border-discord-accent outline-none transition-colors"
+                    className="w-full rounded bg-surface-0 border border-white/10 px-3 py-2.5 text-white placeholder-gray-500 text-sm focus:border-accent outline-none transition-colors"
                   />
                 </motion.div>
               ) : (
@@ -377,7 +469,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                     value={loginId}
                     onChange={(e) => setLoginId(e.target.value)}
                     required
-                    className="w-full rounded-lg bg-discord-darker border border-white/10 px-3 py-2.5 text-white placeholder-gray-500 text-sm focus:border-discord-accent outline-none transition-colors"
+                    className="w-full rounded bg-surface-0 border border-white/10 px-3 py-2.5 text-white placeholder-gray-500 text-sm focus:border-accent outline-none transition-colors"
                   />
                 </motion.div>
               )}
@@ -397,13 +489,13 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 minLength={6}
-                className="w-full rounded-lg bg-discord-darker border border-white/10 px-3 py-2.5 text-white placeholder-gray-500 text-sm focus:border-discord-accent outline-none transition-colors"
+                className="w-full rounded bg-surface-0 border border-white/10 px-3 py-2.5 text-white placeholder-gray-500 text-sm focus:border-accent outline-none transition-colors"
               />
               {error && (
                 <motion.p
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
-                  className="text-discord-red text-xs"
+                  className="text-red-500 text-xs"
                 >
                   {error}
                 </motion.p>
@@ -415,7 +507,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                     id="remember-me"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    className="rounded border-white/10 bg-discord-darker accent-cyber-neon focus:ring-0 w-3.5 h-3.5"
+                    className="rounded border-white/10 bg-surface-0 accent-accent focus:ring-0 w-3.5 h-3.5"
                   />
                   <label htmlFor="remember-me" className="text-xs text-gray-400 cursor-pointer select-none">
                     Remember me
@@ -425,20 +517,20 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
               <motion.button
                 type="submit"
-                disabled={busy}
-                className="w-full py-3 rounded-xl bg-cyber-neon text-discord-darker font-bold text-sm hover:shadow-glow disabled:opacity-50 transition-all duration-200 active:scale-[0.98]"
-                whileHover={!busy ? { scale: 1.01 } : undefined}
-                whileTap={!busy ? { scale: 0.99 } : undefined}
+                disabled={busy || (!isSignUp && lockoutSeconds > 0)}
+                className="w-full py-3 rounded bg-accent text-surface-0 font-bold text-sm disabled:opacity-50 transition-all duration-200 active:scale-[0.98]"
+                whileHover={!busy && lockoutSeconds === 0 ? { scale: 1.01 } : undefined}
+                whileTap={!busy && lockoutSeconds === 0 ? { scale: 0.99 } : undefined}
               >
                 <AnimatePresence mode="wait">
                   <motion.span
-                    key={busy ? 'busy' : isSignUp ? 'btn-signup' : 'btn-signin'}
+                    key={busy ? 'busy' : lockoutSeconds > 0 ? 'locked' : isSignUp ? 'btn-signup' : 'btn-signin'}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.2 }}
                   >
-                    {busy ? '...' : isSignUp ? 'Create account' : 'Sign in'}
+                    {busy ? '...' : lockoutSeconds > 0 ? `Try again in ${lockoutSeconds}s` : isSignUp ? 'Create account' : 'Sign in'}
                   </motion.span>
                 </AnimatePresence>
               </motion.button>
@@ -447,9 +539,20 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
           <motion.button
             type="button"
             onClick={() => { setIsSignUp(!isSignUp); setError('') }}
-            className="mt-4 w-full text-center text-xs text-gray-500 hover:text-white transition-colors duration-200"
+            className="mt-4 w-full text-center text-xs text-white/60 hover:text-white transition-colors duration-200"
           >
-            {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.span
+                key={isSignUp ? 'to-signin' : 'to-signup'}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.18, ease: 'easeOut' }}
+                className="inline-block"
+              >
+                {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+              </motion.span>
+            </AnimatePresence>
           </motion.button>
         </motion.div>
         </motion.div>

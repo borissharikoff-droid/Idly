@@ -189,15 +189,15 @@ export function Leaderboard({ onSelectUser }: LeaderboardProps) {
     <motion.div
       initial={{ opacity: 0, y: 5 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-xl bg-discord-card/80 border border-white/10 p-4"
+      className="rounded-card bg-surface-2/80 border border-white/10 p-4"
     >
       <div className="flex items-center justify-between mb-3">
-        <p className="text-[10px] uppercase tracking-wider text-gray-500 font-mono">Leaderboard</p>
+        <p className="text-micro uppercase tracking-wider text-gray-500 font-mono">Leaderboard</p>
         <select
           value={sortBy}
           onChange={(e) => setSortBy(e.target.value as SortKey)}
           title={sortBy === 'item_power' ? 'Gear Score: gear IP + frame rarity + badges' : undefined}
-          className="text-[10px] font-mono bg-discord-darker/80 border border-white/10 rounded-md px-2 py-1 text-gray-300 focus:outline-none focus:ring-1 focus:ring-cyber-neon/50"
+          className="text-micro font-mono bg-surface-0/80 border border-white/10 rounded-md px-2 py-1 text-gray-300 focus:outline-none focus:ring-1 focus:ring-accent/50"
         >
           <option value="skill">Skill</option>
           <option value="streak">Streak</option>
@@ -216,8 +216,8 @@ export function Leaderboard({ onSelectUser }: LeaderboardProps) {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.05 }}
               onClick={() => { if (!isMe && onSelectUser) onSelectUser(r.id) }}
-              className={`flex items-center gap-2.5 py-2 px-3 rounded-xl transition-colors ${
-                isMe ? 'bg-cyber-neon/5 border border-cyber-neon/20' : 'hover:bg-white/[0.04] cursor-pointer'
+              className={`flex items-center gap-2.5 py-2 px-3 rounded transition-colors ${
+                isMe ? 'bg-accent/5 border border-accent/20' : 'hover:bg-white/[0.04] cursor-pointer'
               }`}
             >
               {/* Rank */}
@@ -241,39 +241,39 @@ export function Leaderboard({ onSelectUser }: LeaderboardProps) {
               {/* Name + badges */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <span className={`text-xs font-semibold truncate ${isMe ? 'text-cyber-neon' : 'text-white'}`}>
+                  <span className={`text-xs font-semibold truncate ${isMe ? 'text-accent' : 'text-white'}`}>
                     {r.username || 'Anonymous'}
                     {isMe && <span className="text-gray-500 ml-1">(you)</span>}
                   </span>
                   {r.guild_tag && (
-                    <span className="text-[10px] px-1 py-[1px] rounded font-bold border border-amber-500/40 bg-amber-500/10 text-amber-400 shrink-0" title={`Guild: ${r.guild_tag}`}>
+                    <span className="text-micro px-1 py-[1px] rounded font-bold border border-amber-500/40 bg-amber-500/10 text-amber-400 shrink-0" title={`Guild: ${r.guild_tag}`}>
                       [{r.guild_tag}]
                     </span>
                   )}
-                  <span className="text-[10px] text-gray-500 font-mono shrink-0" title="Total skill level">
+                  <span className="text-micro text-gray-500 font-mono shrink-0" title="Total skill level">
                     {r.total_skill_level}
                   </span>
                 </div>
                 {r.streak_count > 0 && (
-                  <span className="text-[10px] text-orange-400/70 font-mono">🔥 {r.streak_count}d streak</span>
+                  <span className="text-micro text-orange-400/70 font-mono">🔥 {r.streak_count}d streak</span>
                 )}
               </div>
 
               {/* Primary stat + Item Power */}
               <div className="shrink-0 text-right">
-                <p className="text-xs text-cyber-neon font-mono font-bold">
+                <p className="text-xs text-accent font-mono font-bold">
                   {sortBy === 'skill' && r.total_skill_level}
                   {sortBy === 'streak' && (r.streak_count > 0 ? `🔥 ${r.streak_count}` : '—')}
                   {sortBy === 'grind' && formatDuration(r.total_seconds)}
                   {sortBy === 'item_power' && computeFlexScore(r, getEffectiveEquippedLoot(r))}
                 </p>
                 {sortBy !== 'item_power' && (
-                  <p className="text-[10px] text-gray-600 font-mono" title="Gear Score (gear IP + frame + badges)">
+                  <p className="text-micro text-gray-600 font-mono" title="Gear Score (gear IP + frame + badges)">
                     ✨{computeFlexScore(r, getEffectiveEquippedLoot(r))}
                   </p>
                 )}
                 {sortBy === 'item_power' && (
-                  <p className="text-[10px] text-gray-600 font-mono">{formatDuration(r.total_seconds)}</p>
+                  <p className="text-micro text-gray-600 font-mono">{formatDuration(r.total_seconds)}</p>
                 )}
               </div>
             </motion.div>

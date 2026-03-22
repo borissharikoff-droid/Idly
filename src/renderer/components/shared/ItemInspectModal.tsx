@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ITEM_POWER_BY_RARITY, POTION_IDS, POTION_MAX, estimateLootDropRate, getItemPower, getItemPerks, getItemPerkDescription, LOOT_ITEMS, type LootItemDef } from '../../lib/loot'
+import { ITEM_POWER_BY_RARITY, POTION_IDS, POTION_MAX, estimateLootDropRate, getItemPower, getItemPerks, getItemPerkDescription, getSalvageOutput, LOOT_ITEMS, type LootItemDef } from '../../lib/loot'
 import { SLOT_LABEL, LootVisual, RARITY_THEME, normalizeRarity } from '../loot/LootUI'
 import { playClickSound } from '../../lib/sounds'
 import { useInventoryStore } from '../../stores/inventoryStore'
@@ -15,9 +15,11 @@ interface ItemInspectModalProps {
 export function ItemInspectModal({ item, locked = false, onClose }: ItemInspectModalProps) {
   const unequipSlot = useInventoryStore((s) => s.unequipSlot)
   const deleteItem = useInventoryStore((s) => s.deleteItem)
+  const salvageItem = useInventoryStore((s) => s.salvageItem)
   const permanentStats = useInventoryStore((s) => s.permanentStats)
   const equippedBySlot = useInventoryStore((s) => s.equippedBySlot)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [confirmSalvage, setConfirmSalvage] = useState(false)
 
   if (!item) return null
 
@@ -58,6 +60,9 @@ export function ItemInspectModal({ item, locked = false, onClose }: ItemInspectM
   })
 
   // Combat stat comparison (gear slots only, when not already equipped)
+  const salvageOutputs = getSalvageOutput(item)
+  const canSalvage = salvageOutputs !== null && !isEquipped
+
   const isGear = (['head', 'body', 'legs', 'ring', 'weapon'] as const).includes(item.slot as never)
   const currentEquippedId = equippedBySlot[item.slot]
   const showComparison = isGear && !isEquipped && perkDisplays.some((p) => ['ATK/s', 'HP', 'HP/s', 'DEF'].includes(p.unit))
@@ -90,7 +95,7 @@ export function ItemInspectModal({ item, locked = false, onClose }: ItemInspectM
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[85] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+        className="fixed inset-0 z-[201] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"
         onClick={onClose}
       >
         <motion.div
@@ -98,7 +103,7 @@ export function ItemInspectModal({ item, locked = false, onClose }: ItemInspectM
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.96, opacity: 0, y: 6 }}
           transition={{ type: 'spring', stiffness: 360, damping: 28 }}
-          className="w-full max-w-[370px] rounded-2xl border overflow-hidden relative flex"
+          className="w-full max-w-[370px] rounded-card border overflow-hidden relative flex"
           style={{
             borderColor: theme.border,
             background: 'rgba(8,8,16,0.98)',
@@ -131,12 +136,12 @@ export function ItemInspectModal({ item, locked = false, onClose }: ItemInspectM
                 scale={(item.renderScale ?? 1) * 1.3}
               />
             </div>
-            <div className="relative z-10 mt-3 px-2.5 py-0.5 rounded-full border text-[10px] font-mono font-bold uppercase tracking-widest"
+            <div className="relative z-10 mt-3 px-2.5 py-0.5 rounded-full border text-micro font-mono font-bold uppercase tracking-widest"
               style={{ color: theme.color, borderColor: `${theme.border}99`, background: `${theme.color}18` }}>
               {rarity}
             </div>
             {qty > 1 && (
-              <div className="relative z-10 mt-1.5 text-[10px] font-mono" style={{ color: `${theme.color}99` }}>
+              <div className="relative z-10 mt-1.5 text-micro font-mono" style={{ color: `${theme.color}99` }}>
                 x{qty}
               </div>
             )}
@@ -147,17 +152,17 @@ export function ItemInspectModal({ item, locked = false, onClose }: ItemInspectM
             <button
               type="button"
               onClick={onClose}
-              className="absolute top-2.5 right-2.5 w-6 h-6 flex items-center justify-center rounded-full text-gray-500 hover:text-white hover:bg-white/10 transition-colors text-[14px] leading-none z-20"
+              className="absolute top-2.5 right-2.5 w-6 h-6 flex items-center justify-center rounded-full text-gray-500 hover:text-white hover:bg-white/10 transition-colors text-sm leading-none z-20"
             >x</button>
 
             <div className="pr-6">
-              <p className="text-[14px] font-bold text-white leading-tight">{item.name}</p>
+              <p className="text-sm font-bold text-white leading-tight">{item.name}</p>
               <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                <span className="text-[10px] px-1.5 py-0.5 rounded border border-white/15 text-gray-400 font-mono uppercase tracking-wide">
+                <span className="text-micro px-1.5 py-0.5 rounded border border-white/15 text-gray-400 font-mono uppercase tracking-wide">
                   {SLOT_LABEL[item.slot]}
                 </span>
                 {isEquipped && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded border border-cyber-neon/50 text-cyber-neon font-mono tracking-wide"
+                  <span className="text-micro px-1.5 py-0.5 rounded border border-accent/50 text-accent font-mono tracking-wide"
                     style={{ background: 'rgba(0,255,200,0.07)' }}>
                     equipped
                   </span>
@@ -170,28 +175,28 @@ export function ItemInspectModal({ item, locked = false, onClose }: ItemInspectM
               {perkDisplays.length > 0 && (
                 <div className={`grid gap-1.5 ${perkDisplays.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
                   {perkDisplays.map((pd, i) => (
-                    <div key={i} className="rounded-lg px-2.5 py-2 border flex flex-col gap-0.5"
+                    <div key={i} className="rounded px-2.5 py-2 border flex flex-col gap-0.5"
                       style={{ borderColor: `${pd.color}35`, background: `${pd.color}0e` }}>
                       <div className="flex items-baseline gap-1.5">
                         <span className="font-bold font-mono tabular-nums leading-none"
                           style={{ fontSize: perkDisplays.length === 1 ? 22 : 18, color: pd.color, textShadow: `0 0 14px ${pd.color}55` }}>
                           {pd.value}
                         </span>
-                        <span className="text-[10px] font-mono font-semibold" style={{ color: `${pd.color}cc` }}>{pd.unit}</span>
+                        <span className="text-micro font-mono font-semibold" style={{ color: `${pd.color}cc` }}>{pd.unit}</span>
                       </div>
-                      <span className="text-[10px] text-gray-400 capitalize leading-none">{pd.desc}</span>
+                      <span className="text-micro text-gray-400 capitalize leading-none">{pd.desc}</span>
                     </div>
                   ))}
                 </div>
               )}
 
-              {isPlant && <p className="text-[10px] text-lime-400/80 font-mono">Farm harvest - sell on Marketplace</p>}
-              {isMaterial && <p className="text-[10px] text-gray-400 font-mono">{getItemPerkDescription(item)}</p>}
-              {item.perkType === 'cosmetic' && !isMaterial && <p className="text-[10px] text-gray-400">Visual cosmetic - no gameplay effect.</p>}
+              {isPlant && <p className="text-micro text-lime-400/80 font-mono">Farm harvest - sell on Marketplace</p>}
+              {isMaterial && <p className="text-micro text-gray-400 font-mono">{getItemPerkDescription(item)}</p>}
+              {item.perkType === 'cosmetic' && !isMaterial && <p className="text-micro text-gray-400">Visual cosmetic - no gameplay effect.</p>}
 
               {isPotion && (
                 <div>
-                  <div className="flex items-center justify-between text-[10px] font-mono mb-1">
+                  <div className="flex items-center justify-between text-micro font-mono mb-1">
                     <span className="text-gray-500">Consumed</span>
                     <span className={consumed >= POTION_MAX ? 'text-amber-400' : 'text-gray-400'}>
                       {consumed}/{POTION_MAX}{consumed >= POTION_MAX ? ' - MAXED' : ''}
@@ -205,9 +210,9 @@ export function ItemInspectModal({ item, locked = false, onClose }: ItemInspectM
 
               {comparisonDiffs.length > 0 && (
                 <div className="flex items-center gap-1.5 flex-wrap border-t border-white/[0.05] pt-1.5">
-                  <span className="text-[10px] text-gray-500 font-mono">vs equipped:</span>
+                  <span className="text-micro text-gray-500 font-mono">vs equipped:</span>
                   {comparisonDiffs.map((d) => (
-                    <span key={d.label} className="text-[10px] font-mono font-semibold"
+                    <span key={d.label} className="text-micro font-mono font-semibold"
                       style={{ color: d.delta > 0 ? '#4ade80' : '#f87171' }}>
                       {d.delta > 0 ? '+' : ''}{d.delta} {d.label}
                     </span>
@@ -216,7 +221,7 @@ export function ItemInspectModal({ item, locked = false, onClose }: ItemInspectM
               )}
 
               {(['head', 'body', 'legs', 'ring', 'weapon'] as const).includes(item.slot as never) && (
-                <div className="flex items-center gap-2 text-[10px] font-mono pt-0.5 border-t border-white/[0.05]">
+                <div className="flex items-center gap-2 text-micro font-mono pt-0.5 border-t border-white/[0.05]">
                   <span className="text-gray-500">IP</span>
                   <span style={{ color: theme.color }}>{ip}</span>
                   <span className="text-white/20">-</span>
@@ -231,49 +236,93 @@ export function ItemInspectModal({ item, locked = false, onClose }: ItemInspectM
             </div>
 
             {/* Action buttons */}
-            <div className="mt-3 flex gap-1.5">
-              {isEquipped && (
-                <button
-                  type="button"
-                  disabled={locked}
-                  onClick={() => { if (!locked) { playClickSound(); unequipSlot(item.slot); onClose() } }}
-                  className={`flex-1 text-[10px] py-1.5 rounded-lg border font-semibold transition-all active:scale-[0.97] ${
-                    locked ? 'border-white/[0.08] text-gray-600 cursor-not-allowed bg-transparent' : 'hover:brightness-110'
-                  }`}
-                  style={locked ? undefined : { color: theme.color, borderColor: theme.border, backgroundColor: `${theme.color}1e` }}
-                >
-                  {locked ? 'Locked' : 'Unequip'}
-                </button>
+            <div className="mt-3 flex flex-col gap-1.5">
+              {/* Salvage confirm */}
+              {confirmSalvage && canSalvage && salvageOutputs && (
+                <div className="rounded border border-amber-400/30 bg-amber-500/10 px-2.5 py-2">
+                  <p className="text-micro text-amber-300 font-mono mb-1.5">You'll receive:</p>
+                  <div className="flex gap-2 mb-2">
+                    {salvageOutputs.map((y) => (
+                      <span key={y.id} className="text-micro font-mono text-amber-200">
+                        {y.qty}× {y.id.replace(/_/g, ' ')}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => { playClickSound(); salvageItem(item.id, salvageOutputs); onClose() }}
+                      className="flex-1 text-micro py-1.5 rounded border border-amber-400/50 bg-amber-500/20 text-amber-200 hover:bg-amber-400/30 font-semibold transition-all active:scale-[0.97]"
+                    >
+                      Salvage
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { playClickSound(); setConfirmSalvage(false) }}
+                      className="flex-1 text-micro py-1.5 rounded border border-white/10 text-gray-400 hover:text-gray-300 font-semibold transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
               )}
-              {!locked && (
-                confirmDelete ? (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => { playClickSound(); if (isEquipped) unequipSlot(item.slot); deleteItem(item.id, 1); onClose() }}
-                      className="flex-1 text-[10px] py-1.5 rounded-lg border border-red-400/50 bg-red-500/15 text-red-200 hover:bg-red-400/25 font-semibold transition-all active:scale-[0.97]"
-                    >
-                      Delete!
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { playClickSound(); setConfirmDelete(false) }}
-                      className="flex-1 text-[10px] py-1.5 rounded-lg border border-white/10 text-gray-400 hover:text-gray-300 font-semibold transition-colors"
-                    >
-                      Keep
-                    </button>
-                  </>
-                ) : (
+
+              <div className="flex gap-1.5">
+                {isEquipped && (
                   <button
                     type="button"
-                    onClick={() => { playClickSound(); setConfirmDelete(true) }}
-                    className="w-8 h-full flex items-center justify-center rounded-lg border border-red-400/25 text-red-400/70 hover:text-red-300 hover:bg-red-400/10 transition-all active:scale-[0.97] text-[12px]"
-                    title="Delete"
+                    disabled={locked}
+                    onClick={() => { if (!locked) { playClickSound(); unequipSlot(item.slot); onClose() } }}
+                    className={`flex-1 text-micro py-1.5 rounded border font-semibold transition-all active:scale-[0.97] ${
+                      locked ? 'border-white/[0.08] text-gray-600 cursor-not-allowed bg-transparent' : 'hover:brightness-110'
+                    }`}
+                    style={locked ? undefined : { color: theme.color, borderColor: theme.border, backgroundColor: `${theme.color}1e` }}
                   >
-                    <span role="img" aria-label="delete">&#128465;</span>
+                    {locked ? 'Locked' : 'Unequip'}
                   </button>
-                )
-              )}
+                )}
+                {!locked && !confirmSalvage && (
+                  <>
+                    {canSalvage && (
+                      <button
+                        type="button"
+                        onClick={() => { playClickSound(); setConfirmDelete(false); setConfirmSalvage(true) }}
+                        className="flex-1 text-micro py-1.5 rounded border border-amber-400/30 text-amber-400/80 hover:text-amber-300 hover:bg-amber-400/10 font-semibold transition-all active:scale-[0.97]"
+                        title="Salvage for materials"
+                      >
+                        Salvage
+                      </button>
+                    )}
+                    {confirmDelete ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => { playClickSound(); if (isEquipped) unequipSlot(item.slot); deleteItem(item.id, 1); onClose() }}
+                          className="flex-1 text-micro py-1.5 rounded border border-red-400/50 bg-red-500/15 text-red-200 hover:bg-red-400/25 font-semibold transition-all active:scale-[0.97]"
+                        >
+                          Delete!
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { playClickSound(); setConfirmDelete(false) }}
+                          className="flex-1 text-micro py-1.5 rounded border border-white/10 text-gray-400 hover:text-gray-300 font-semibold transition-colors"
+                        >
+                          Keep
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => { playClickSound(); setConfirmDelete(true) }}
+                        className="w-8 h-full flex items-center justify-center rounded border border-red-400/25 text-red-400/70 hover:text-red-300 hover:bg-red-400/10 transition-all active:scale-[0.97] text-xs"
+                        title="Delete"
+                      >
+                        <span role="img" aria-label="delete">&#128465;</span>
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </motion.div>

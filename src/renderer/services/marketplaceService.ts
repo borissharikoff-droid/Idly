@@ -18,39 +18,17 @@ export async function createListing(
   if (quantity < 1) return { ok: false, error: 'Quantity must be at least 1' }
   if (MARKETPLACE_BLOCKED_ITEMS.includes(itemId)) return { ok: false, error: 'This item cannot be listed' }
 
-  const { error } = await supabase.from('marketplace_listings').insert({
-    seller_id: sellerId,
-    item_id: itemId,
-    quantity,
-    price_gold: priceGold,
-    status: 'active',
+  // RPC: atomic — validates price (1-10M), checks real inventory server-side,
+  // deducts and creates listing in one transaction. No race condition possible.
+  const { data, error } = await supabase.rpc('create_listing', {
+    p_item_id: itemId,
+    p_quantity: quantity,
+    p_price_gold: priceGold,
   })
 
   if (error) return { ok: false, error: error.message }
-
-  // Deduct from user_inventory in Supabase so the item doesn't return on next merge sync.
-  try {
-    const { data: invRow } = await supabase
-      .from('user_inventory')
-      .select('quantity')
-      .eq('user_id', sellerId)
-      .eq('item_id', itemId)
-      .maybeSingle()
-    const cloudQty = (invRow as { quantity: number } | null)?.quantity ?? 0
-    const newQty = cloudQty - quantity
-    if (newQty <= 0) {
-      await supabase.from('user_inventory').delete().eq('user_id', sellerId).eq('item_id', itemId)
-    } else {
-      await supabase
-        .from('user_inventory')
-        .update({ quantity: newQty, updated_at: new Date().toISOString() })
-        .eq('user_id', sellerId)
-        .eq('item_id', itemId)
-    }
-  } catch (err) {
-    // Non-fatal — client-side syncInventoryToSupabase handles the authoritative push.
-    console.warn('[createListing] cloud deduction failed, relying on client sync:', err)
-  }
+  const result = data as { ok: boolean; error?: string; listing_id?: string }
+  if (!result.ok) return { ok: false, error: result.error ?? 'Listing failed' }
 
   return { ok: true }
 }

@@ -68,19 +68,19 @@ export function OverviewAnalysis(props: OverviewAnalysisProps) {
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl bg-discord-card/85 border border-white/10 p-4"
+      className="rounded-card bg-surface-2/85 border border-white/10 p-4"
     >
       <div className="flex items-center gap-2 mb-3">
         <div className="w-5 h-5 rounded-full bg-white/10 border border-white/15 flex items-center justify-center">
-          <span className="text-[10px] text-gray-300">AI</span>
+          <span className="text-micro text-gray-300">AI</span>
         </div>
         <p className="text-xs uppercase tracking-widest text-gray-300 font-semibold">AI BEHAVIOR SUMMARY</p>
-        <span className="text-[10px] text-gray-500 ml-auto">{props.periodLabel}</span>
+        <span className="text-micro text-gray-500 ml-auto">{props.periodLabel}</span>
       </div>
 
       {error && (
-        <div className="rounded-lg bg-discord-red/10 border border-discord-red/20 p-3 mb-2">
-          <p className="text-discord-red text-sm">{error}</p>
+        <div className="rounded bg-red-500/10 border border-red-500/20 p-3 mb-2">
+          <p className="text-red-500 text-sm">{error}</p>
         </div>
       )}
 
@@ -101,14 +101,14 @@ export function OverviewAnalysis(props: OverviewAnalysisProps) {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: i * 0.1 }}
-              className="rounded-lg bg-discord-darker/80 border border-white/5 p-3"
+              className="rounded bg-surface-0/80 border border-white/5 p-3"
             >
               <div className="flex items-start gap-2.5">
                 <span className="text-base shrink-0 mt-0.5">
                   {BLOCK_ICONS[i % BLOCK_ICONS.length]}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] text-gray-500 mb-1 uppercase tracking-wider">
+                  <p className="text-micro text-gray-500 mb-1 uppercase tracking-wider">
                     {BLOCK_LABELS[i % BLOCK_LABELS.length]}
                   </p>
                   <p className="text-sm text-gray-300 leading-relaxed">{block}</p>
@@ -116,7 +116,7 @@ export function OverviewAnalysis(props: OverviewAnalysisProps) {
               </div>
             </motion.div>
           ))}
-          <button onClick={() => setText(null)} className="text-[10px] text-gray-600 hover:text-gray-400 transition-colors">
+          <button onClick={() => setText(null)} className="text-micro text-gray-600 hover:text-gray-400 transition-colors">
             Reset
           </button>
         </div>
@@ -130,7 +130,7 @@ export function OverviewAnalysis(props: OverviewAnalysisProps) {
             whileTap={{ scale: 0.98 }}
             onClick={runAnalysis}
             disabled={props.totalSessions === 0}
-            className="px-5 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white text-sm font-semibold hover:bg-white/15 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-5 py-2.5 rounded bg-white/10 border border-white/20 text-white text-sm font-semibold hover:bg-white/15 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             Generate AI Summary
           </motion.button>

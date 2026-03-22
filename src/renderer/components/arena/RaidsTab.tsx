@@ -106,13 +106,13 @@ function TributeModal({
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0 }}
-        className="w-[340px] bg-[#0d0d1a] rounded-2xl border shadow-2xl overflow-hidden"
+        className="w-[340px] bg-[#0d0d1a] rounded border shadow-2xl overflow-hidden"
         style={{ borderColor: `${cfg.color}40` }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-4 py-3 border-b" style={{ borderColor: `${cfg.color}20`, background: `${cfg.color}08` }}>
-          <p className="text-[12px] font-bold text-white">{cfg.icon} Tribute to Enter</p>
-          <p className="text-[10px] font-mono text-gray-500 mt-0.5">
+          <p className="text-xs font-bold text-white">{cfg.icon} Tribute to Enter</p>
+          <p className="text-micro font-mono text-gray-500 mt-0.5">
             Select {cfg.tribute_count} item{cfg.tribute_count > 1 ? 's' : ''} of {cfg.tribute_min_rarity}+ rarity to sacrifice permanently.
           </p>
         </div>
@@ -120,8 +120,8 @@ function TributeModal({
         <div className="p-4 space-y-3 max-h-[380px] overflow-y-auto">
           {eligible.length === 0 ? (
             <div className="text-center py-6">
-              <p className="text-[11px] text-gray-500">No eligible gear found.</p>
-              <p className="text-[10px] text-gray-600 mt-1 font-mono">Need {cfg.tribute_count}× {cfg.tribute_min_rarity}+ gear items.</p>
+              <p className="text-caption text-gray-500">No eligible gear found.</p>
+              <p className="text-micro text-gray-600 mt-1 font-mono">Need {cfg.tribute_count}× {cfg.tribute_min_rarity}+ gear items.</p>
             </div>
           ) : (
             <div className="space-y-1.5">
@@ -133,7 +133,7 @@ function TributeModal({
                     key={item.id}
                     type="button"
                     onClick={() => toggle(item.id)}
-                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl border transition-colors text-left"
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded border transition-colors text-left"
                     style={{
                       borderColor: isSelected ? `${color}60` : 'rgba(255,255,255,0.07)',
                       background: isSelected ? `${color}12` : 'rgba(255,255,255,0.025)',
@@ -141,18 +141,18 @@ function TributeModal({
                   >
                     <span className="text-xl shrink-0">{item.icon}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[11px] font-semibold truncate" style={{ color: isSelected ? color : '#e5e7eb' }}>{item.name}</p>
-                      <p className="text-[10px] font-mono" style={{ color: `${color}99` }}>
+                      <p className="text-caption font-semibold truncate" style={{ color: isSelected ? color : '#e5e7eb' }}>{item.name}</p>
+                      <p className="text-micro font-mono" style={{ color: `${color}99` }}>
                         {item.rarity} · IP {ITEM_POWER_BY_RARITY[item.rarity]}
                         {items[item.id] > 1 && <span className="text-gray-600"> · owned {items[item.id]}</span>}
                       </p>
                     </div>
                     {isSelected ? (
                       <div className="w-4 h-4 rounded-full flex items-center justify-center shrink-0" style={{ background: color }}>
-                        <span className="text-[10px] text-black font-bold">✓</span>
+                        <span className="text-micro text-black font-bold">✓</span>
                       </div>
                     ) : (
-                      <span className="text-[10px] text-red-500/50 font-mono shrink-0">burn</span>
+                      <span className="text-micro text-red-500/50 font-mono shrink-0">burn</span>
                     )}
                   </button>
                 )
@@ -162,8 +162,8 @@ function TributeModal({
 
           {/* Friends note */}
           {friends.length > 0 && (
-            <div className="rounded-xl border border-white/[0.06] px-3 py-2">
-              <p className="text-[10px] text-gray-600 font-mono">
+            <div className="rounded border border-white/[0.06] px-3 py-2">
+              <p className="text-micro text-gray-600 font-mono">
                 {friends.length} friend{friends.length !== 1 ? 's' : ''} can join after raid starts.
               </p>
             </div>
@@ -172,14 +172,14 @@ function TributeModal({
 
         <div className="px-4 pb-4 flex gap-2">
           <button type="button" onClick={onClose}
-            className="flex-1 py-2 rounded-xl border border-white/15 text-gray-400 text-[11px] hover:bg-white/5 transition-colors">
+            className="flex-1 py-2 rounded border border-white/15 text-gray-400 text-caption hover:bg-white/5 transition-colors">
             Cancel
           </button>
           <button
             type="button"
             onClick={handleConfirm}
             disabled={!ready}
-            className="flex-1 py-2.5 rounded-xl text-[11px] font-bold transition-colors disabled:opacity-40"
+            className="flex-1 py-2.5 rounded text-caption font-bold transition-colors disabled:opacity-40"
             style={{ background: ready ? `${cfg.color}20` : 'transparent', border: `1px solid ${cfg.color}40`, color: cfg.color }}
           >
             {ready ? `Sacrifice & Begin` : `${selected.length}/${cfg.tribute_count} selected`}
@@ -231,7 +231,7 @@ function TierCard({ tier, onStart }: { tier: RaidTierId; onStart: () => void }) 
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl border overflow-hidden"
+      className="rounded-card border overflow-hidden"
       style={{ borderColor: `${cfg.color}28`, background: `linear-gradient(160deg, ${cfg.color}08 0%, rgba(13,13,26,0.97) 60%)` }}
     >
       {/* Top section */}
@@ -246,18 +246,18 @@ function TierCard({ tier, onStart }: { tier: RaidTierId; onStart: () => void }) 
           </motion.div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <p className="text-[13px] font-bold text-white">{cfg.name}</p>
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full border"
+              <p className="text-body font-bold text-white">{cfg.name}</p>
+              <span className="text-micro font-mono px-1.5 py-0.5 rounded-full border"
                 style={{ borderColor: `${cfg.color}40`, color: cfg.color, background: `${cfg.color}12` }}>
                 {cfg.duration_days}d
               </span>
             </div>
-            <p className="text-[10px] text-gray-500 mt-0.5 leading-snug italic">{cfg.lore}</p>
+            <p className="text-micro text-gray-500 mt-0.5 leading-snug italic">{cfg.lore}</p>
           </div>
         </div>
 
         {/* Stats row */}
-        <div className="flex gap-3 mt-3 text-[10px] font-mono text-gray-500">
+        <div className="flex gap-3 mt-3 text-micro font-mono text-gray-500">
           <span>Boss HP <span className="text-white">{formatHp(cfg.boss_hp)}</span></span>
           <span>Per win <span style={{ color: cfg.color }}>+{formatHp(cfg.contribution_per_win)}</span></span>
           <span>Reward <span className="text-amber-400">{cfg.reward_chest.replace('_', ' ')}</span></span>
@@ -266,48 +266,48 @@ function TierCard({ tier, onStart }: { tier: RaidTierId; onStart: () => void }) 
 
       {/* Requirements */}
       <div className="px-4 pb-3 space-y-1.5 border-t" style={{ borderColor: `${cfg.color}12` }}>
-        <p className="text-[10px] uppercase tracking-wider font-mono text-gray-600 mt-2.5">Requirements</p>
+        <p className="text-micro uppercase tracking-wider font-mono text-gray-600 mt-2.5">Requirements</p>
 
         <div className="flex items-center gap-2">
-          <span className={`text-[10px] ${clearedZoneIds.length >= cfg.zones_required ? 'text-green-400' : 'text-red-400'}`}>
+          <span className={`text-micro ${clearedZoneIds.length >= cfg.zones_required ? 'text-green-400' : 'text-red-400'}`}>
             {clearedZoneIds.length >= cfg.zones_required ? '✓' : '✗'}
           </span>
-          <span className="text-[10px] text-gray-400">All {cfg.zones_required} zones cleared</span>
-          <span className="ml-auto text-[10px] font-mono text-gray-600">{clearedZoneIds.length}/{cfg.zones_required}</span>
+          <span className="text-micro text-gray-400">All {cfg.zones_required} zones cleared</span>
+          <span className="ml-auto text-micro font-mono text-gray-600">{clearedZoneIds.length}/{cfg.zones_required}</span>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className={`text-[10px] ${warriorLevel >= cfg.warrior_level_req ? 'text-green-400' : 'text-red-400'}`}>
+          <span className={`text-micro ${warriorLevel >= cfg.warrior_level_req ? 'text-green-400' : 'text-red-400'}`}>
             {warriorLevel >= cfg.warrior_level_req ? '✓' : '✗'}
           </span>
-          <span className="text-[10px] text-gray-400">Warrior level</span>
-          <span className="ml-auto text-[10px] font-mono text-gray-600">{warriorLevel}/{cfg.warrior_level_req}</span>
+          <span className="text-micro text-gray-400">Warrior level</span>
+          <span className="ml-auto text-micro font-mono text-gray-600">{warriorLevel}/{cfg.warrior_level_req}</span>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className={`text-[10px] ${qualifiedSkills >= 4 ? 'text-green-400' : 'text-red-400'}`}>
+          <span className={`text-micro ${qualifiedSkills >= 4 ? 'text-green-400' : 'text-red-400'}`}>
             {qualifiedSkills >= 4 ? '✓' : '✗'}
           </span>
-          <span className="text-[10px] text-gray-400">4+ skills at level {cfg.skill_level_req}</span>
-          <span className="ml-auto text-[10px] font-mono text-gray-600">{qualifiedSkills}/4</span>
+          <span className="text-micro text-gray-400">4+ skills at level {cfg.skill_level_req}</span>
+          <span className="ml-auto text-micro font-mono text-gray-600">{qualifiedSkills}/4</span>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className={`text-[10px] ${eligibleCount >= cfg.tribute_count ? 'text-green-400' : 'text-red-400'}`}>
+          <span className={`text-micro ${eligibleCount >= cfg.tribute_count ? 'text-green-400' : 'text-red-400'}`}>
             {eligibleCount >= cfg.tribute_count ? '✓' : '✗'}
           </span>
-          <span className="text-[10px] text-gray-400">
+          <span className="text-micro text-gray-400">
             {cfg.tribute_count}× <span style={{ color: RARITY_COLORS[cfg.tribute_min_rarity] }}>{cfg.tribute_min_rarity}+</span> gear to sacrifice
           </span>
-          <span className="ml-auto text-[10px] font-mono text-gray-600">{eligibleCount}/{cfg.tribute_count}</span>
+          <span className="ml-auto text-micro font-mono text-gray-600">{eligibleCount}/{cfg.tribute_count}</span>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className={`text-[10px] ${participantCount >= cfg.party_min ? 'text-green-400' : 'text-red-400'}`}>
+          <span className={`text-micro ${participantCount >= cfg.party_min ? 'text-green-400' : 'text-red-400'}`}>
             {participantCount >= cfg.party_min ? '✓' : '✗'}
           </span>
-          <span className="text-[10px] text-gray-400">Min {cfg.party_min} party members</span>
-          <span className="ml-auto text-[10px] font-mono text-gray-600">{participantCount}/{cfg.party_min}</span>
+          <span className="text-micro text-gray-400">Min {cfg.party_min} party members</span>
+          <span className="ml-auto text-micro font-mono text-gray-600">{participantCount}/{cfg.party_min}</span>
         </div>
       </div>
 
@@ -317,7 +317,7 @@ function TierCard({ tier, onStart }: { tier: RaidTierId; onStart: () => void }) 
           type="button"
           disabled={!canEnter}
           onClick={() => { playClickSound(); onStart() }}
-          className="w-full py-2.5 rounded-xl text-[12px] font-bold transition-all active:scale-[0.98] disabled:opacity-35"
+          className="w-full py-2.5 rounded text-xs font-bold transition-all active:scale-[0.98] disabled:opacity-35"
           style={{
             background: canEnter ? `linear-gradient(135deg, ${cfg.color}30, ${cfg.color}18)` : 'transparent',
             border: `1px solid ${cfg.color}${canEnter ? '60' : '25'}`,
@@ -391,20 +391,20 @@ function HealModal({
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0 }}
-        className="w-[340px] bg-[#0d0d1a] rounded-2xl border shadow-2xl overflow-hidden"
+        className="w-[340px] bg-[#0d0d1a] rounded border shadow-2xl overflow-hidden"
         style={{ borderColor: '#4ade8040' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-4 py-3 border-b border-green-500/10 bg-green-500/05">
-          <p className="text-[12px] font-bold text-white">💚 Heal the Party</p>
-          <p className="text-[10px] font-mono text-gray-500 mt-0.5">
+          <p className="text-xs font-bold text-white">💚 Heal the Party</p>
+          <p className="text-micro font-mono text-gray-500 mt-0.5">
             Select food & consumables to restore party HP. Items are consumed permanently.
           </p>
         </div>
 
         <div className="p-4 space-y-2 max-h-[320px] overflow-y-auto">
           {healItems.length === 0 ? (
-            <p className="text-center text-[11px] text-gray-500 py-4">No consumables in inventory.</p>
+            <p className="text-center text-caption text-gray-500 py-4">No consumables in inventory.</p>
           ) : healItems.map((item) => {
             const qty = selected[item.id] ?? 0
             const owned = items[item.id] ?? 0
@@ -414,7 +414,7 @@ function HealModal({
                 key={item.id}
                 type="button"
                 onClick={() => toggleItem(item.id)}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl border transition-colors text-left"
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded border transition-colors text-left"
                 style={{
                   borderColor: qty > 0 ? '#4ade8040' : 'rgba(255,255,255,0.07)',
                   background: qty > 0 ? '#4ade8010' : 'rgba(255,255,255,0.025)',
@@ -422,13 +422,13 @@ function HealModal({
               >
                 <span className="text-xl shrink-0">{item.icon}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-semibold text-white truncate">{item.name}</p>
-                  <p className="text-[10px] font-mono text-gray-500">
+                  <p className="text-caption font-semibold text-white truncate">{item.name}</p>
+                  <p className="text-micro font-mono text-gray-500">
                     +{perItem} HP each · owned {owned}
                   </p>
                 </div>
                 {qty > 0 && (
-                  <span className="text-[10px] font-mono text-green-400 shrink-0">×{qty}</span>
+                  <span className="text-micro font-mono text-green-400 shrink-0">×{qty}</span>
                 )}
               </button>
             )
@@ -437,20 +437,20 @@ function HealModal({
 
         <div className="px-4 pb-4 space-y-2">
           {totalHeal > 0 && (
-            <p className="text-center text-[10px] font-mono text-green-400">
+            <p className="text-center text-micro font-mono text-green-400">
               +{totalHeal} party HP restored · cap {partyHpMax}
             </p>
           )}
           <div className="flex gap-2">
             <button type="button" onClick={onClose}
-              className="flex-1 py-2 rounded-xl border border-white/15 text-gray-400 text-[11px] hover:bg-white/5 transition-colors">
+              className="flex-1 py-2 rounded border border-white/15 text-gray-400 text-caption hover:bg-white/5 transition-colors">
               Cancel
             </button>
             <button
               type="button"
               onClick={handleConfirm}
               disabled={totalHeal <= 0}
-              className="flex-1 py-2.5 rounded-xl text-[11px] font-bold transition-colors disabled:opacity-40 border border-green-500/40 text-green-400 bg-green-500/10"
+              className="flex-1 py-2.5 rounded text-caption font-bold transition-colors disabled:opacity-40 border border-green-500/40 text-green-400 bg-green-500/10"
             >
               {totalHeal > 0 ? `Heal +${totalHeal} HP` : 'Select items'}
             </button>
@@ -524,7 +524,7 @@ function ActiveRaidPanel({ onAttack }: { onAttack: () => void }) {
     <motion.div
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-2xl border overflow-hidden"
+      className="rounded-card border overflow-hidden"
       style={{ borderColor: `${cfg.color}40`, background: `linear-gradient(160deg, ${cfg.color}0c 0%, rgba(13,13,26,0.97) 70%)` }}
     >
       {/* Header */}
@@ -539,15 +539,15 @@ function ActiveRaidPanel({ onAttack }: { onAttack: () => void }) {
           </motion.span>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <p className="text-[13px] font-bold text-white">{cfg.name}</p>
+              <p className="text-body font-bold text-white">{cfg.name}</p>
               {activeRaid.status === 'won' && (
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-green-500/20 border border-green-500/40 text-green-400">CLEARED</span>
+                <span className="text-micro font-mono px-1.5 py-0.5 rounded-full bg-green-500/20 border border-green-500/40 text-green-400">CLEARED</span>
               )}
               {(activeRaid.status === 'failed' || isExpired) && (
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-red-500/20 border border-red-500/40 text-red-400">FAILED</span>
+                <span className="text-micro font-mono px-1.5 py-0.5 rounded-full bg-red-500/20 border border-red-500/40 text-red-400">FAILED</span>
               )}
               {activeRaid.status === 'active' && !isExpired && (
-                <span className="text-[10px] font-mono text-gray-500">{countdown(activeRaid.ends_at)}</span>
+                <span className="text-micro font-mono text-gray-500">{countdown(activeRaid.ends_at)}</span>
               )}
             </div>
           </div>
@@ -555,7 +555,7 @@ function ActiveRaidPanel({ onAttack }: { onAttack: () => void }) {
 
         {/* Boss HP bar */}
         <div className="mt-3 space-y-1">
-          <div className="flex justify-between text-[10px] font-mono text-gray-500">
+          <div className="flex justify-between text-micro font-mono text-gray-500">
             <span>Boss HP</span>
             <span>{formatHp(activeRaid.boss_hp_remaining)} / {formatHp(activeRaid.boss_hp_max)}</span>
           </div>
@@ -571,7 +571,7 @@ function ActiveRaidPanel({ onAttack }: { onAttack: () => void }) {
 
         {/* Party HP bar */}
         <div className="mt-2 space-y-1">
-          <div className="flex justify-between text-[10px] font-mono text-gray-500">
+          <div className="flex justify-between text-micro font-mono text-gray-500">
             <span>Party HP</span>
             <span className={partyHpPct < 30 ? 'text-red-400' : partyHpPct < 60 ? 'text-amber-400' : 'text-green-400'}>
               {partyHp} / {partyHpMax}
@@ -593,14 +593,14 @@ function ActiveRaidPanel({ onAttack }: { onAttack: () => void }) {
             />
           </div>
           {partyHpPct < 40 && !isOver && (
-            <p className="text-[10px] font-mono text-red-400 text-right">⚠ Healer needed!</p>
+            <p className="text-micro font-mono text-red-400 text-right">⚠ Healer needed!</p>
           )}
         </div>
       </div>
 
       {/* Party members with roles */}
       <div className="px-4 pb-3 border-t" style={{ borderColor: `${cfg.color}15` }}>
-        <p className="text-[10px] uppercase tracking-wider font-mono text-gray-600 mt-2.5 mb-2">
+        <p className="text-micro uppercase tracking-wider font-mono text-gray-600 mt-2.5 mb-2">
           Party ({participants.length})
         </p>
         <div className="space-y-2.5">
@@ -626,7 +626,7 @@ function ActiveRaidPanel({ onAttack }: { onAttack: () => void }) {
             return (
               <div
                 key={p.user_id}
-                className="rounded-xl border overflow-hidden"
+                className="rounded-card border overflow-hidden"
                 style={{
                   borderColor: doneToday ? `${roleColor}30` : 'rgba(255,255,255,0.06)',
                   background: lostFightToday ? 'rgba(239,68,68,0.04)' : doneToday ? `${roleColor}06` : 'rgba(255,255,255,0.02)',
@@ -636,7 +636,7 @@ function ActiveRaidPanel({ onAttack }: { onAttack: () => void }) {
                 <div className="flex items-center gap-2 px-2.5 pt-2 pb-1.5">
                   {/* Avatar */}
                   <div
-                    className="w-7 h-7 rounded-lg overflow-hidden shrink-0 flex items-center justify-center text-sm"
+                    className="w-7 h-7 rounded overflow-hidden shrink-0 flex items-center justify-center text-sm"
                     style={{ background: 'rgba(255,255,255,0.06)', border: `1px solid ${roleColor}25` }}
                   >
                     {avatar
@@ -648,9 +648,9 @@ function ActiveRaidPanel({ onAttack }: { onAttack: () => void }) {
                   {/* Name + role badge */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[11px] font-semibold text-white truncate">{displayName}</span>
+                      <span className="text-caption font-semibold text-white truncate">{displayName}</span>
                       <span
-                        className="text-[10px] font-mono px-1.5 py-0.5 rounded shrink-0"
+                        className="text-micro font-mono px-1.5 py-0.5 rounded shrink-0"
                         style={{ background: `${roleColor}18`, color: roleColor, border: `1px solid ${roleColor}25` }}
                       >
                         {roleIcon} {ROLE_LABELS[role as keyof typeof ROLE_LABELS]}
@@ -661,11 +661,11 @@ function ActiveRaidPanel({ onAttack }: { onAttack: () => void }) {
                   {/* Today's status badge */}
                   <div className="shrink-0">
                     {lostFightToday ? (
-                      <span className="text-[10px] font-mono text-red-400 px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/20">✗ fell</span>
+                      <span className="text-micro font-mono text-red-400 px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/20">✗ fell</span>
                     ) : doneToday ? (
-                      <span className="text-[10px] font-mono text-green-400 px-1.5 py-0.5 rounded bg-green-500/10 border border-green-500/20">✓ done</span>
+                      <span className="text-micro font-mono text-green-400 px-1.5 py-0.5 rounded bg-green-500/10 border border-green-500/20">✓ done</span>
                     ) : (
-                      <span className="text-[10px] font-mono text-gray-600 px-1.5 py-0.5 rounded bg-white/5 border border-white/10">○ idle</span>
+                      <span className="text-micro font-mono text-gray-600 px-1.5 py-0.5 rounded bg-white/5 border border-white/10">○ idle</span>
                     )}
                   </div>
                 </div>
@@ -673,7 +673,7 @@ function ActiveRaidPanel({ onAttack }: { onAttack: () => void }) {
                 {/* Stats row */}
                 {snap && (
                   <div className="px-2.5 pb-1.5">
-                    <div className="flex items-center gap-3 text-[10px] font-mono">
+                    <div className="flex items-center gap-3 text-micro font-mono">
                       <span className="text-orange-400">⚔ {snap.atk}</span>
                       <span className="text-green-400">♥ {snap.hp}</span>
                       <span className="text-cyan-400">❄ {snap.hp_regen}/s</span>
@@ -695,7 +695,7 @@ function ActiveRaidPanel({ onAttack }: { onAttack: () => void }) {
                           return (
                             <div
                               key={item.slot}
-                              className="w-6 h-6 rounded flex items-center justify-center text-[11px]"
+                              className="w-6 h-6 rounded flex items-center justify-center text-caption"
                               style={{ background: `${color}12`, border: `1px solid ${color}35` }}
                               title={`${item.name} (${item.slot})`}
                             >
@@ -723,7 +723,7 @@ function ActiveRaidPanel({ onAttack }: { onAttack: () => void }) {
                 {/* No snapshot yet */}
                 {!snap && (
                   <div className="px-2.5 pb-1.5">
-                    <p className="text-[10px] font-mono text-gray-700">Waiting for character data…</p>
+                    <p className="text-micro font-mono text-gray-700">Waiting for character data…</p>
                   </div>
                 )}
               </div>
@@ -738,7 +738,7 @@ function ActiveRaidPanel({ onAttack }: { onAttack: () => void }) {
           <button
             type="button"
             onClick={() => { playClickSound(); dismissRaid(activeRaid.id) }}
-            className="w-full py-2.5 rounded-xl text-[11px] font-bold transition-all active:scale-[0.98] border border-white/10 text-gray-500 hover:text-gray-300 hover:border-white/20"
+            className="w-full py-2.5 rounded text-caption font-bold transition-all active:scale-[0.98] border border-white/10 text-gray-500 hover:text-gray-300 hover:border-white/20"
           >
             Dismiss
           </button>
@@ -747,7 +747,7 @@ function ActiveRaidPanel({ onAttack }: { onAttack: () => void }) {
             type="button"
             disabled={healedToday}
             onClick={() => { playClickSound(); setShowHealModal(true) }}
-            className="w-full py-3 rounded-xl text-[12px] font-bold transition-all active:scale-[0.98] disabled:opacity-40"
+            className="w-full py-3 rounded text-xs font-bold transition-all active:scale-[0.98] disabled:opacity-40"
             style={{
               background: healedToday ? 'transparent' : 'linear-gradient(135deg, #4ade8035, #4ade8018)',
               border: `1px solid ${healedToday ? '#4ade8025' : '#4ade8055'}`,
@@ -762,7 +762,7 @@ function ActiveRaidPanel({ onAttack }: { onAttack: () => void }) {
             type="button"
             disabled={defendedToday || isDefending}
             onClick={handleDefend}
-            className="w-full py-3 rounded-xl text-[12px] font-bold transition-all active:scale-[0.98] disabled:opacity-40"
+            className="w-full py-3 rounded text-xs font-bold transition-all active:scale-[0.98] disabled:opacity-40"
             style={{
               background: defendedToday ? 'transparent' : 'linear-gradient(135deg, #60a5fa35, #60a5fa18)',
               border: `1px solid ${defendedToday ? '#60a5fa25' : '#60a5fa55'}`,
@@ -777,7 +777,7 @@ function ActiveRaidPanel({ onAttack }: { onAttack: () => void }) {
             type="button"
             disabled={attackedToday}
             onClick={() => { playClickSound(); onAttack() }}
-            className="w-full py-3 rounded-xl text-[12px] font-bold transition-all active:scale-[0.98] disabled:opacity-40"
+            className="w-full py-3 rounded text-xs font-bold transition-all active:scale-[0.98] disabled:opacity-40"
             style={{
               background: attackedToday ? 'transparent' : `linear-gradient(135deg, ${cfg.color}35 0%, ${cfg.color}20 100%)`,
               border: `1px solid ${cfg.color}${attackedToday ? '25' : '55'}`,
@@ -858,7 +858,7 @@ export function RaidsTab() {
   if (!user) {
     return (
       <div className="py-12 text-center">
-        <p className="text-[11px] text-gray-500">Log in to access raids</p>
+        <p className="text-caption text-gray-500">Log in to access raids</p>
       </div>
     )
   }
@@ -868,20 +868,20 @@ export function RaidsTab() {
       {/* Pending invites */}
       {!activeRaid && pendingInvites.length > 0 && (
         <div className="space-y-2">
-          <p className="text-[10px] uppercase tracking-wider font-mono text-gray-600">Raid Invites</p>
+          <p className="text-micro uppercase tracking-wider font-mono text-gray-600">Raid Invites</p>
           {pendingInvites.map((invite) => {
             const invCfg = RAID_TIER_CONFIGS[invite.tier]
             return (
-              <div key={invite.id} className="flex items-center gap-2.5 px-3 py-2 rounded-xl border" style={{ borderColor: `${invCfg.color}30`, background: `${invCfg.color}08` }}>
+              <div key={invite.id} className="flex items-center gap-2.5 px-3 py-2 rounded border" style={{ borderColor: `${invCfg.color}30`, background: `${invCfg.color}08` }}>
                 <span className="text-base shrink-0">{invCfg.icon}</span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] text-white truncate">{invite.from_username ?? 'Unknown'} invited you</p>
-                  <p className="text-[10px] font-mono text-gray-500">{invCfg.name}</p>
+                  <p className="text-caption text-white truncate">{invite.from_username ?? 'Unknown'} invited you</p>
+                  <p className="text-micro font-mono text-gray-500">{invCfg.name}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => acceptInvite(invite.id)}
-                  className="text-[10px] font-mono px-2 py-1 rounded-lg border transition-colors"
+                  className="text-micro font-mono px-2 py-1 rounded border transition-colors"
                   style={{ borderColor: `${invCfg.color}40`, color: invCfg.color, background: `${invCfg.color}10` }}
                 >
                   Accept
@@ -889,7 +889,7 @@ export function RaidsTab() {
                 <button
                   type="button"
                   onClick={() => declineInvite(invite.id)}
-                  className="text-[10px] font-mono px-2 py-1 rounded-lg border border-white/10 text-gray-500 hover:text-gray-300 transition-colors"
+                  className="text-micro font-mono px-2 py-1 rounded border border-white/10 text-gray-500 hover:text-gray-300 transition-colors"
                 >
                   Decline
                 </button>
@@ -902,7 +902,7 @@ export function RaidsTab() {
       {/* Intro text */}
       {!activeRaid && (
         <div className="text-center px-2 py-2">
-          <p className="text-[10px] text-gray-600 font-mono leading-relaxed">
+          <p className="text-micro text-gray-600 font-mono leading-relaxed">
             Sacrifice rare gear to awaken ancient bosses. Assemble your party.<br />
             Attack daily. The strongest loot in the game awaits.
           </p>
@@ -911,7 +911,7 @@ export function RaidsTab() {
 
       {isLoading && !activeRaid && (
         <div className="py-8 text-center">
-          <p className="text-[10px] text-gray-600 font-mono animate-pulse">Loading raid status...</p>
+          <p className="text-micro text-gray-600 font-mono animate-pulse">Loading raid status...</p>
         </div>
       )}
 

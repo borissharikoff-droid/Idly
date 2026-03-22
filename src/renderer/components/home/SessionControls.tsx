@@ -101,7 +101,7 @@ export function SessionControls({ glowPulse }: SessionControlsProps) {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.985 }}
               transition={{ duration: MOTION.duration.base, ease: MOTION.easingSoft }}
-              className="w-full max-w-[320px] rounded-2xl p-3.5 border border-white/10 bg-discord-card/90 shadow-lg"
+              className="w-full max-w-[320px] rounded-card p-3.5 border border-white/10 bg-surface-2/90 shadow-lg"
             >
               <div className="text-center mb-2">
                 <span className="text-2xl">{confirmState === 'discard' ? '🗑️' : '🛑'}</span>
@@ -117,13 +117,13 @@ export function SessionControls({ glowPulse }: SessionControlsProps) {
               <div className="flex gap-2">
                 <button
                   onClick={handleCancel}
-                  className="flex-1 py-2.5 rounded-xl border border-white/15 bg-white/5 text-sm text-white font-medium hover:bg-white/10 transition-colors"
+                  className="flex-1 py-2.5 rounded border border-white/15 bg-white/5 text-sm text-white font-medium hover:bg-white/10 transition-colors"
                 >
                   Continue
                 </button>
                 <button
                   onClick={handleConfirmStop}
-                  className="flex-1 py-2.5 rounded-xl bg-discord-red text-white text-sm font-semibold hover:bg-red-500 transition-colors"
+                  className="flex-1 py-2.5 rounded bg-red-500 text-white text-sm font-semibold hover:bg-red-500 transition-colors"
                 >
                   {confirmState === 'discard' ? 'Discard' : 'Stop'}
                 </button>
@@ -150,7 +150,7 @@ export function SessionControls({ glowPulse }: SessionControlsProps) {
                           animate={{ opacity: 0, scale: 1.22 }}
                           exit={{ opacity: 0 }}
                           transition={{ duration: 0.9, ease: MOTION.easingSoft }}
-                          className="absolute -inset-2.5 rounded-2xl border border-cyber-neon/40 pointer-events-none"
+                          className="absolute -inset-2.5 rounded border border-accent/40 pointer-events-none"
                         />
                         <motion.div
                           key="start-fx-ring-2"
@@ -158,13 +158,13 @@ export function SessionControls({ glowPulse }: SessionControlsProps) {
                           animate={{ opacity: 0, scale: 1.34 }}
                           exit={{ opacity: 0 }}
                           transition={{ duration: 1.05, ease: MOTION.easingSoft, delay: 0.08 }}
-                          className="absolute -inset-3.5 rounded-2xl border border-cyber-neon/25 pointer-events-none"
+                          className="absolute -inset-3.5 rounded border border-accent/25 pointer-events-none"
                         />
                       </>
                     )}
                   </AnimatePresence>
                   {glowPulse && (
-                    <div className="absolute -inset-2 rounded-2xl animate-glow-pulse pointer-events-none" />
+                    <div className="absolute -inset-2 rounded animate-glow-pulse pointer-events-none" />
                   )}
                   <motion.button
                     onClick={handleStartStop}
@@ -173,10 +173,10 @@ export function SessionControls({ glowPulse }: SessionControlsProps) {
                     whileTap={!starting ? MOTION.interactive.tap : undefined}
                     animate={starting ? { scale: 1.015 } : { scale: 1 }}
                     transition={{ duration: MOTION.duration.base, ease: MOTION.easingSoft }}
-                    className={`relative min-w-[200px] px-12 py-4 rounded-2xl font-bold text-base tracking-widest transition-colors duration-200 ${
+                    className={`relative min-w-[200px] px-12 py-4 rounded font-bold text-base tracking-widest transition-colors duration-200 ${
                       starting
-                        ? 'bg-cyber-neon/60 text-discord-darker cursor-wait'
-                        : 'bg-cyber-neon text-discord-darker shadow-glow hover:shadow-[0_0_30px_rgba(0,255,136,0.5)]'
+                        ? 'bg-accent/60 text-white cursor-wait'
+                        : 'bg-accent text-white hover:shadow-[0_0_30px_rgba(88,101,242,0.5)]'
                     }`}
                   >
                     <AnimatePresence mode="wait" initial={false}>
@@ -209,9 +209,9 @@ export function SessionControls({ glowPulse }: SessionControlsProps) {
                     onClick={handlePauseResume}
                     whileHover={MOTION.interactive.hover}
                     whileTap={MOTION.interactive.tap}
-                    className={`px-8 py-3.5 rounded-2xl font-semibold text-sm tracking-wide transition-all duration-150 ${
+                    className={`px-8 py-3.5 rounded-xl font-semibold text-sm tracking-wide transition-all duration-150 ${
                       isPaused
-                        ? 'bg-cyber-neon/15 border border-cyber-neon/40 text-cyber-neon hover:bg-cyber-neon/25'
+                        ? 'bg-accent/15 border border-accent/40 text-accent hover:bg-accent/25'
                         : 'bg-white/6 border border-white/12 text-gray-300 hover:bg-white/10 hover:border-white/20'
                     }`}
                   >
@@ -223,7 +223,7 @@ export function SessionControls({ glowPulse }: SessionControlsProps) {
                     onClick={handleStartStop}
                     whileHover={MOTION.interactive.hover}
                     whileTap={MOTION.interactive.tap}
-                    className="px-8 py-3.5 rounded-2xl font-semibold text-sm tracking-wide bg-red-500/12 border border-red-500/30 text-red-400 hover:bg-red-500/22 hover:border-red-500/50 transition-all duration-150"
+                    className="px-8 py-3.5 rounded-xl font-semibold text-sm tracking-wide bg-red-500/12 border border-red-500/30 text-red-400 hover:bg-red-500/22 hover:border-red-500/50 transition-all duration-150"
                   >
                     STOP
                   </motion.button>

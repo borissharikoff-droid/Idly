@@ -82,42 +82,42 @@ export function SkillLevelUpModal() {
           animate={{ scale: 1, y: 0, opacity: 1 }}
           exit={{ scale: 0.92, y: 10, opacity: 0 }}
           transition={MOTION.spring.pop}
-          className="w-[320px] rounded-2xl border border-cyber-neon/30 bg-discord-card overflow-hidden"
+          className="w-[320px] rounded-card border border-accent/30 bg-surface-2 overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="p-5 text-center">
             <div
-              className="w-20 h-20 mx-auto rounded-xl border bg-discord-darker/60 flex items-center justify-center text-4xl"
+              className="w-20 h-20 mx-auto rounded border bg-surface-0/60 flex items-center justify-center text-4xl"
               style={{ borderColor: `${skill.color}50`, boxShadow: `0 0 12px ${skill.color}30` }}
             >
               {skill.icon}
             </div>
-            <p className="text-[10px] text-cyber-neon font-mono uppercase tracking-wider mt-3">Loot drop</p>
+            <p className="text-micro text-accent font-mono uppercase tracking-wider mt-3">Loot drop</p>
             <p className="text-white font-semibold text-lg mt-1">{skill.name} LVL {level}</p>
-            <p className="text-[11px] text-gray-400 mt-1">
+            <p className="text-caption text-gray-400 mt-1">
               {milestoneLoot ? `Unlocked: ${milestoneLoot}` : `You leveled up!`}
             </p>
             {quote && (
-              <p className="text-[10px] text-gray-500 italic mt-2">&ldquo;{quote}&rdquo;</p>
+              <p className="text-micro text-gray-500 italic mt-2">&ldquo;{quote}&rdquo;</p>
             )}
             {appName && appName !== 'Grindly' && (
-              <p className="text-[10px] text-gray-600 font-mono mt-1">via {appName}</p>
+              <p className="text-micro text-gray-600 font-mono mt-1">via {appName}</p>
             )}
             {reason && skillId && reason.skillXpDelta[skillId] && (
-              <p className="text-[10px] text-gray-500 font-mono mt-2">+{Math.round(reason.skillXpDelta[skillId])} XP earned</p>
+              <p className="text-micro text-gray-500 font-mono mt-2">+{Math.round(reason.skillXpDelta[skillId])} XP earned</p>
             )}
             <div className="mt-4">
               <button
                 type="button"
                 onClick={handleContinue}
-                className="w-full py-2 rounded-lg border border-cyber-neon/35 bg-cyber-neon/15 text-cyber-neon text-sm font-semibold hover:bg-cyber-neon/25 transition-colors"
+                className="w-full py-2 rounded border border-accent/35 bg-accent/15 text-accent text-sm font-semibold hover:bg-accent/25 transition-colors"
               >
                 Continue
               </button>
             </div>
           </div>
-          <div className="h-1 bg-discord-darker/60">
-            <div className="h-full bg-cyber-neon/70 transition-[width] duration-100" style={{ width: `${progress}%` }} />
+          <div className="h-1 bg-surface-0/60">
+            <div className="h-full bg-accent/70 transition-[width] duration-100" style={{ width: `${progress}%` }} />
           </div>
         </motion.div>
       </motion.div>

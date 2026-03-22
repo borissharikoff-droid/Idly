@@ -53,7 +53,7 @@ function HSlot({
         <p className="text-[7px] font-mono uppercase tracking-widest leading-none" style={{ color: 'rgba(156,163,175,0.38)' }}>
           {meta.label}
         </p>
-        <p className="text-[10px] font-semibold truncate leading-tight mt-[3px]"
+        <p className="text-micro font-semibold truncate leading-tight mt-[3px]"
           style={{ color: item ? 'rgba(255,255,255,0.88)' : 'rgba(255,255,255,0.18)' }}>
           {item ? item.name : 'Empty'}
         </p>
@@ -66,7 +66,7 @@ function HSlot({
   return (
     <BuffTooltip item={item} placement="top" stretch>
       <div
-        className={`h-full rounded-lg overflow-hidden${clickable ? ' cursor-pointer hover:brightness-110 active:scale-[0.99] transition-all' : ''}`}
+        className={`h-full rounded overflow-hidden${clickable ? ' cursor-pointer hover:brightness-110 active:scale-[0.99] transition-all' : ''}`}
         style={{ border: `1px solid ${theme ? theme.border : 'rgba(255,255,255,0.07)'}` }}
         role={clickable ? 'button' : undefined}
         onClick={clickable ? () => { playClickSound(); onSlotClick!(slot, item!.id) } : undefined}
@@ -110,7 +110,7 @@ function VSlot({
         {meta.label}
       </p>
       <div
-        className="w-14 h-14 rounded-lg flex items-center justify-center overflow-hidden"
+        className="w-14 h-14 rounded flex items-center justify-center overflow-hidden"
         style={theme
           ? { background: `radial-gradient(circle at 50% 40%, ${theme.glow}55 0%, rgba(5,5,10,0.95) 70%)`, border: `1px solid ${theme.border}55` }
           : { background: 'rgba(0,0,0,0.45)', border: '1px solid rgba(255,255,255,0.08)' }}
@@ -119,7 +119,7 @@ function VSlot({
           ? <LootVisual icon={item.icon} image={item.image} className="w-10 h-10 object-contain" scale={item.renderScale ?? 1} />
           : <span className="text-2xl leading-none" style={{ opacity: 0.12 }}>{meta.icon}</span>}
       </div>
-      <p className="text-[10px] font-mono leading-none text-center w-full truncate px-1"
+      <p className="text-micro font-mono leading-none text-center w-full truncate px-1"
         style={{ color: item ? 'rgba(255,255,255,0.65)' : 'rgba(156,163,175,0.25)' }}>
         {item ? item.name : '—'}
       </p>
@@ -134,7 +134,7 @@ function VSlot({
   return (
     <BuffTooltip item={item} placement="top" stretch>
       <div
-        className={`h-full rounded-lg overflow-hidden${clickable ? ' cursor-pointer hover:brightness-110 transition-all' : ''}`}
+        className={`h-full rounded overflow-hidden${clickable ? ' cursor-pointer hover:brightness-110 transition-all' : ''}`}
         style={{ border: `1px solid ${theme ? theme.border : 'rgba(255,255,255,0.08)'}` }}
         role={clickable ? 'button' : undefined}
         onClick={clickable ? () => { playClickSound(); onSlotClick!(slot, item!.id) } : undefined}
@@ -206,16 +206,16 @@ export function CharacterPanel({
           return (
             <div
               key={label}
-              className="flex items-center gap-1.5 px-2 py-2 rounded-lg"
+              className="flex items-center gap-1.5 px-2 py-2 rounded"
               style={{
                 background: `linear-gradient(135deg, ${c}12 0%, rgba(7,7,14,0.90) 60%)`,
                 border: `1px solid ${c}28`,
                 boxShadow: `inset 0 0 8px rgba(0,0,0,0.4)`,
               }}
             >
-              <span className="text-[11px] leading-none flex-shrink-0" style={{ color: c, textShadow: `0 0 8px ${c}88` }}>{icon}</span>
+              <span className="text-caption leading-none flex-shrink-0" style={{ color: c, textShadow: `0 0 8px ${c}88` }}>{icon}</span>
               <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-mono font-bold tabular-nums leading-none" style={{ color: c }}>{value}</p>
+                <p className="text-body font-mono font-bold tabular-nums leading-none" style={{ color: c }}>{value}</p>
                 <p className="text-[7px] font-mono uppercase tracking-wide leading-none mt-[3px]" style={{ color: `${c}66` }}>{label}{unit}</p>
               </div>
             </div>

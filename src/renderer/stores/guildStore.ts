@@ -57,6 +57,8 @@ interface GuildState {
   completeHallUpgrade: () => Promise<{ ok: boolean; error?: string }>
   /** Refresh just hall data (contributions). */
   fetchHallData: () => Promise<void>
+  /** Refresh just pending invites (for polling). */
+  refreshPendingInvites: () => Promise<void>
 }
 
 export const useGuildStore = create<GuildState>()((set, get) => ({
@@ -285,6 +287,13 @@ export const useGuildStore = create<GuildState>()((set, get) => ({
     if (!myGuild) return
     const contributions = await fetchHallContributions(myGuild.id)
     set({ hallContributions: contributions })
+  },
+
+  async refreshPendingInvites() {
+    const user = useAuthStore.getState().user
+    if (!user) return
+    const pendingInvites = await fetchPendingInvites(user.id)
+    set({ pendingInvites })
   },
 
   async donateToHall(items) {

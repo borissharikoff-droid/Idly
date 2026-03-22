@@ -130,10 +130,20 @@ export function playSessionCompleteSound() {
 export function playAchievementSound() {
   loadSettings()
   if (cachedMuted) return
-  const notes = [880, 1109, 1319, 1568, 1760]
-  notes.forEach((freq, i) => {
-    setTimeout(() => playTone(freq, 0.25, 'triangle', cachedVolume), i * 80)
-  })
+  // RPG fanfare: low root → fifth → octave chord stab → shimmer tail
+  const vol = cachedVolume
+  // chord stab at 0ms
+  playTone(261, 0.18, 'sine', vol * 0.7)       // C4 root
+  playTone(392, 0.18, 'sine', vol * 0.6)       // G4 fifth
+  setTimeout(() => {
+    playTone(523, 0.22, 'sine', vol * 0.8)     // C5 octave
+    playTone(659, 0.18, 'sine', vol * 0.55)    // E5 third
+  }, 90)
+  setTimeout(() => {
+    playTone(784, 0.28, 'sine', vol * 0.7)     // G5 peak
+    playTone(1047, 0.14, 'triangle', vol * 0.35) // C6 shimmer
+  }, 200)
+  setTimeout(() => playTone(1047, 0.12, 'triangle', vol * 0.25), 340) // tail
 }
 
 export function playLootRaritySound(rarity: string) {

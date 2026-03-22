@@ -45,6 +45,8 @@ import { useEscapeHandler } from './hooks/useEscapeHandler'
 import { useWhatsNew, WhatsNewModal } from './components/WhatsNewModal'
 import { useRemotePatchNotes } from './hooks/useRemotePatchNotes'
 import { PartyHUD } from './components/party/PartyHUD'
+import { OnboardingWizard } from './components/onboarding/OnboardingWizard'
+import { OnboardingTour, getTourHighlightTab } from './components/onboarding/OnboardingTour'
 
 // Apply cached admin overrides before first render (populated after first Supabase sync)
 applyAdminConfig(LOOT_ITEMS, BOSSES, ZONES, CRAFT_RECIPES)
@@ -68,11 +70,11 @@ class PageErrorBoundary extends Component<
           <span className="text-3xl">💥</span>
           <p className="text-sm text-gray-300 font-semibold">Page crashed</p>
           {this.state.errorMsg && (
-            <p className="text-[10px] text-gray-500 font-mono max-w-[280px] break-all">{this.state.errorMsg}</p>
+            <p className="text-micro text-gray-500 font-mono max-w-[280px] break-all">{this.state.errorMsg}</p>
           )}
           <button
             onClick={() => { this.setState({ crashed: false, errorMsg: '' }); this.props.onReset() }}
-            className="px-4 py-2 rounded-lg border border-cyber-neon/30 text-cyber-neon text-xs hover:bg-cyber-neon/10 transition-colors"
+            className="px-4 py-2 rounded border border-accent/30 text-accent text-xs hover:bg-accent/10 transition-colors"
           >
             Reload page
           </button>
@@ -87,7 +89,6 @@ const InventoryPage = lazy(() => import('./components/inventory/InventoryPage').
 const SkillsPage = lazy(() => import('./components/skills/SkillsPage').then((m) => ({ default: m.SkillsPage })))
 const ProfilePage = lazy(() => import('./components/profile/ProfilePage').then((m) => ({ default: m.ProfilePage })))
 const SettingsPage = lazy(() => import('./components/settings/SettingsPage').then((m) => ({ default: m.SettingsPage })))
-const StatsPage = lazy(() => import('./components/stats/StatsPage').then((m) => ({ default: m.StatsPage })))
 const FriendsPage = lazy(() => import('./components/friends/FriendsPage').then((m) => ({ default: m.FriendsPage })))
 const MarketplacePage = lazy(() => import('./components/marketplace/MarketplacePage').then((m) => ({ default: m.MarketplacePage })))
 const ArenaPage = lazy(() => import('./components/arena/ArenaPage').then((m) => ({ default: m.ArenaPage })))
@@ -133,9 +134,19 @@ function migrateLegacyLocalStorage(): void {
 }
 
 export default function App() {
+  const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('grindly_onboarding_done'))
+  const [showTour, setShowTour] = useState(false)
+  const [tourStep, setTourStep] = useState(0)
   const [activeTab, setActiveTab] = useState<TabId>('home')
+  const [skillsInitialTab, setSkillsInitialTab] = useState<'overview' | 'history'>('overview')
   const navigateTo = useCallback((tab: TabId) => {
-    setActiveTab(tab)
+    if (tab === 'stats') {
+      setSkillsInitialTab('history')
+      setActiveTab('skills')
+    } else {
+      if (tab === 'skills') setSkillsInitialTab('overview')
+      setActiveTab(tab)
+    }
   }, [])
   useEffect(() => { useNavigationStore.getState().setNavigateTo(navigateTo) }, [navigateTo])
   useEffect(() => { useNavigationStore.getState().setCurrentTab(activeTab) }, [activeTab])
@@ -166,7 +177,7 @@ export default function App() {
   usePresenceSync(presenceLabel, status === 'running', currentActivity?.appName ?? null, sessionStartTime, isSystemIdle)
 
   useProfileSync()
-  useKeyboardShortcuts({ onEscapeToHome: handleEscapeToHome })
+  useKeyboardShortcuts({ onEscapeToHome: handleEscapeToHome, onTabChange: setActiveTab })
   const friendsModel = useFriends() // single orchestrator for friends/presence/notifications
   useMessageNotifier() // sound, taskbar badge, toasts on new messages
   useAnnouncements()   // fetch missed + realtime announcements → notification bell
@@ -383,10 +394,10 @@ export default function App() {
   return (
     <AuthGate>
       <MotionConfig reducedMotion="user" transition={{ duration: MOTION.duration.base, ease: MOTION.easing }}>
-        <div className="flex flex-col h-full bg-discord-darker overflow-x-hidden">
+        <div className="flex flex-col h-full bg-surface-0 overflow-x-hidden">
           <UpdateBanner />
           {healthIssues.length > 0 && !healthDismissed && (
-            <div className="px-3 py-2 bg-amber-500/8 border-b border-amber-500/20 text-[11px] text-amber-200/80 flex items-center justify-between gap-3">
+            <div className="px-3 py-2 bg-amber-500/8 border-b border-amber-500/20 text-caption text-amber-200/80 flex items-center justify-between gap-3">
               <span className="truncate">⚠ {healthIssues[0]}</span>
               <div className="flex items-center gap-2 shrink-0">
                 <button
@@ -405,7 +416,7 @@ export default function App() {
             </div>
           )}
           <PartyHUD />
-          <main className="flex-1 overflow-y-auto overflow-x-hidden">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden isolate">
             <>
               {activeTab === 'home' && (
                 <motion.div key="home" className="h-full" variants={PAGE_SLIDE} initial="initial" animate="animate">
@@ -425,16 +436,11 @@ export default function App() {
               )}
               {activeTab === 'skills' && (
                 <motion.div key="skills" variants={PAGE_SLIDE} initial="initial" animate="animate">
-                  <Suspense fallback={<PageFallback />}>
-                    <SkillsPage />
-                  </Suspense>
-                </motion.div>
-              )}
-              {activeTab === 'stats' && (
-                <motion.div key="stats" variants={PAGE_SLIDE} initial="initial" animate="animate">
-                  <Suspense fallback={<PageFallback />}>
-                    <StatsPage />
-                  </Suspense>
+                  <PageErrorBoundary onReset={() => navigateTo('home')}>
+                    <Suspense fallback={<PageFallback />}>
+                      <SkillsPage initialTab={skillsInitialTab} />
+                    </Suspense>
+                  </PageErrorBoundary>
                 </motion.div>
               )}
               {activeTab === 'profile' && (
@@ -499,7 +505,7 @@ export default function App() {
               )}
             </>
           </main>
-          <BottomNav activeTab={activeTab} onTabChange={navigateTo} />
+          <BottomNav activeTab={activeTab} onTabChange={navigateTo} tourHighlightTab={getTourHighlightTab(showTour, tourStep)} />
           <AnimatePresence>
             {showStreak && streakCount >= 2 && (
               <StreakOverlay streak={streakCount} onClose={() => setShowStreak(false)} />
@@ -522,6 +528,30 @@ export default function App() {
           <WhatsNewModal patch={whatsNew.patch} open={whatsNew.showModal} onClose={whatsNew.closeModal} />
           </div>
       </MotionConfig>
+      <AnimatePresence>
+        {showOnboarding && (
+          <OnboardingWizard onDone={() => {
+            setShowOnboarding(false)
+            if (!localStorage.getItem('grindly_tour_done')) {
+              navigateTo('home')
+              setTourStep(0)
+              setShowTour(true)
+            }
+          }} />
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {showTour && (
+          <OnboardingTour
+            onNavigate={(tab) => { navigateTo(tab) }}
+            onStepChange={(s) => setTourStep(s)}
+            onDone={() => {
+              setShowTour(false)
+              localStorage.setItem('grindly_tour_done', '1')
+            }}
+          />
+        )}
+      </AnimatePresence>
     </AuthGate>
   )
 }

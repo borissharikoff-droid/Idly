@@ -2,38 +2,145 @@ import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useSessionStore } from '../../stores/sessionStore'
 
+// ─── Key insight ─────────────────────────────────────────────────────────────
+//
+// Glow  = inset-0 radial-gradient at high opacity → looks like light source
+// Сгусток = sized div + border-radius:50% + filter:blur → looks like physical mass
+//
+// The blur rounds the edges without washing out the color.
+// Moderate opacity (0.38–0.52) keeps it dense, not transparent.
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+type Variant = 'expand' | 'pulse' | 'drift' | 'breathe'
+
 interface OrbState {
-  id: number
-  type: 'green' | 'red'
-  cx: number    // 25–75% horizontal
-  cy: number    // 25–75% vertical
-  scale: number // 0.8 – 1.35
-  dur: number   // 2.2 – 3.4s
-  skew: number  // ellipse aspect 0.7–1.0
+  id:      number
+  color:   string   // solid color
+  color2:  string   // radial center (slightly lighter)
+  variant: Variant
+  x:       number   // px from center (randomized)
+  y:       number   // px from center (randomized)
+  size:    number   // px diameter
+  blur:    number   // px blur radius
+  peak:    number   // max opacity 0.35–0.52
+  dur:     number   // total duration (s)
+  // for drift variant
+  dx:      number   // drift x px
+  dy:      number   // drift y px
+  // border-radius for organic shape
+  br:      string
 }
 
-const COLORS = {
-  green: {
-    flash:  'rgba(80,255,160,0.72)',
-    core:   'rgba(0,255,120,0.55)',
-    mid:    'rgba(0,220,100,0.28)',
-    outer:  'rgba(0,180,80,0.13)',
-    bloom:  'rgba(0,150,70,0.07)',
-  },
-  red: {
-    flash:  'rgba(255,100,80,0.68)',
-    core:   'rgba(255,55,55,0.52)',
-    mid:    'rgba(230,40,40,0.26)',
-    outer:  'rgba(200,30,30,0.12)',
-    bloom:  'rgba(160,20,20,0.06)',
-  },
+// ─── Color palette ───────────────────────────────────────────────────────────
+
+const COLORS_START = [
+  { base: '#16a34a', light: '#4ade80' },   // forest green
+  { base: '#2563eb', light: '#60a5fa' },   // royal blue
+  { base: '#7c3aed', light: '#a78bfa' },   // violet
+  { base: '#0891b2', light: '#22d3ee' },   // cyan
+  { base: '#b45309', light: '#fbbf24' },   // amber
+  { base: '#be185d', light: '#f472b6' },   // rose
+  { base: '#0f766e', light: '#2dd4bf' },   // teal
+  { base: '#c2410c', light: '#fb923c' },   // orange
+]
+
+const COLORS_STOP = [
+  { base: '#b91c1c', light: '#f87171' },   // red
+  { base: '#c2410c', light: '#fb923c' },   // orange-red
+  { base: '#991b1b', light: '#ef4444' },   // deep crimson
+]
+
+const VARIANTS: Variant[] = ['expand', 'pulse', 'drift', 'breathe']
+
+// Organic border-radius shapes — look like a blob, not a perfect circle
+const SHAPES = [
+  '60% 40% 55% 45% / 45% 60% 40% 55%',
+  '50% 65% 45% 60% / 60% 45% 55% 40%',
+  '70% 35% 60% 40% / 40% 65% 35% 65%',
+  '45% 55% 65% 35% / 55% 45% 55% 45%',
+  '55% 45% 50% 50% / 50% 55% 45% 55%',
+]
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+let seq = 0
+const rnd  = (lo: number, hi: number) => lo + Math.random() * (hi - lo)
+const rndI = (lo: number, hi: number) => Math.round(rnd(lo, hi))
+const pick = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)]
+const sign = () => (Math.random() > 0.5 ? 1 : -1)
+
+function buildOrb(isStart: boolean): OrbState {
+  const { base, light } = pick(isStart ? COLORS_START : COLORS_STOP)
+  return {
+    id:      ++seq,
+    color:   base,
+    color2:  light,
+    variant: pick(VARIANTS),
+    x:       rnd(-60, 60),
+    y:       rnd(-80, 130),
+    size:    rndI(320, 500),
+    blur:    rndI(70, 110),
+    peak:    rnd(0.36, 0.52),
+    dur:     rnd(2.6, 4.2),
+    dx:      sign() * rnd(20, 55),
+    dy:      sign() * rnd(15, 45),
+    br:      pick(SHAPES),
+  }
 }
 
-let idSeq = 0
-const rnd = (min: number, max: number) => min + Math.random() * (max - min)
+// ─── Variant animation configs ────────────────────────────────────────────────
+//
+//   expand  — springs in from tiny, holds, eases out. Clean and punchy.
+//   pulse   — springs in, contracts slightly, re-expands, then fades. Heartbeat.
+//   drift   — springs in while drifting sideways, fades while continuing drift.
+//   breathe — slow swell, long hold, gentle dissolve. Meditative.
+
+function getMotion(v: Variant, _dur: number, peak: number, dx: number, dy: number) {
+  switch (v) {
+    case 'expand':
+      return {
+        opacity: [0, peak, peak * 0.85, 0],
+        scale:   [0.15, 1.0, 1.05, 0.88],
+        x:       [0, 0, 0, 0],
+        y:       [0, 0, 0, 0],
+        times:   [0, 0.18, 0.50, 1],
+        ease:    ['easeOut', 'easeInOut', 'easeIn'] as const,
+      }
+    case 'pulse':
+      return {
+        opacity: [0, peak, peak * 0.7, peak * 0.9, 0],
+        scale:   [0.1, 1.0, 0.82, 1.04, 0.90],
+        x:       [0, 0, 0, 0, 0],
+        y:       [0, 0, 0, 0, 0],
+        times:   [0, 0.15, 0.38, 0.58, 1],
+        ease:    ['easeOut', 'easeInOut', 'easeOut', 'easeIn'] as const,
+      }
+    case 'drift':
+      return {
+        opacity: [0, peak, peak * 0.75, 0],
+        scale:   [0.2, 1.0, 1.02, 0.85],
+        x:       [0, dx * 0.3, dx * 0.7, dx],
+        y:       [0, dy * 0.3, dy * 0.7, dy],
+        times:   [0, 0.20, 0.55, 1],
+        ease:    ['easeOut', 'easeInOut', 'easeIn'] as const,
+      }
+    case 'breathe':
+      return {
+        opacity: [0, peak * 0.6, peak, peak * 0.85, peak * 0.4, 0],
+        scale:   [0.3, 0.85, 1.0,  1.06, 1.0,       0.88],
+        x:       [0, 0, 0, 0, 0, 0],
+        y:       [0, 0, 0, 0, 0, 0],
+        times:   [0, 0.12, 0.32, 0.55, 0.78, 1],
+        ease:    ['easeOut', 'easeOut', 'easeInOut', 'easeInOut', 'easeIn'] as const,
+      }
+  }
+}
+
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export function OrbBlast() {
-  const status = useSessionStore((s) => s.status)
+  const status  = useSessionStore((s) => s.status)
   const prevRef = useRef(status)
   const [orb, setOrb] = useState<OrbState | null>(null)
 
@@ -41,101 +148,55 @@ export function OrbBlast() {
     const prev = prevRef.current
     prevRef.current = status
 
-    let type: 'green' | 'red' | null = null
-    if (prev === 'idle' && status === 'running') type = 'green'
-    else if ((prev === 'running' || prev === 'paused') && status === 'idle') type = 'red'
-    if (!type) return
+    let isStart: boolean | null = null
+    if ((prev === 'idle' || prev === 'paused') && status === 'running')         isStart = true
+    else if ((prev === 'running' || prev === 'paused') && status === 'idle')    isStart = false
+    else if (prev === 'running' && status === 'paused')                         isStart = false
+    if (isStart === null) return
 
-    setOrb({
-      id: ++idSeq,
-      type,
-      cx: rnd(28, 72),
-      cy: rnd(28, 68),
-      scale: rnd(0.85, 1.30),
-      dur: rnd(2.2, 3.4),
-      skew: rnd(0.75, 1.0),
-    })
+    setOrb(buildOrb(isStart))
   }, [status])
-
-  if (!orb) return null
-
-  const c = COLORS[orb.type]
-  const { cx, cy, scale, dur, skew } = orb
-  const pos = `${cx}% ${cy}%`
-
-  // Layer sizes
-  const sf = scale
-  const wFlash = 28 * sf,  hFlash = 28 * sf * skew
-  const wCore  = 52 * sf,  hCore  = 52 * sf * skew
-  const wMid   = 80 * sf,  hMid   = 80 * sf * skew
-  const wOut   = 115 * sf, hOut   = 115 * sf * skew
-  const wBloom = 150 * sf, hBloom = 150 * sf * skew
 
   return (
     <AnimatePresence>
-      <div
-        key={orb.id}
-        className="absolute inset-0 pointer-events-none overflow-hidden"
-        style={{ zIndex: -1 }}
-      >
-        {/* 1 — Instant bright flash (very short) */}
-        <motion.div
-          className="absolute inset-0"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 0.95, 0] }}
-          transition={{ duration: dur * 0.22, times: [0, 0.18, 1], ease: 'easeOut' }}
-          style={{
-            background: `radial-gradient(ellipse ${wFlash}% ${hFlash}% at ${pos}, ${c.flash} 0%, transparent 70%)`,
-          }}
-        />
-
-        {/* 2 — Core glow: expands slightly then fades */}
-        <motion.div
-          className="absolute inset-0"
-          initial={{ opacity: 0, scale: 0.88 }}
-          animate={{ opacity: [0, 1, 0.7, 0], scale: [0.88, 1.06, 1.0, 0.94] }}
-          transition={{ duration: dur, times: [0, 0.12, 0.45, 1], ease: 'easeOut' }}
-          onAnimationComplete={() => setOrb(null)}
-          style={{
-            background: `radial-gradient(ellipse ${wCore}% ${hCore}% at ${pos}, ${c.core} 0%, ${c.mid} 50%, transparent 75%)`,
-            transformOrigin: `${cx}% ${cy}%`,
-          }}
-        />
-
-        {/* 3 — Mid ring: expands outward */}
-        <motion.div
-          className="absolute inset-0"
-          initial={{ opacity: 0, scale: 0.7 }}
-          animate={{ opacity: [0, 0.8, 0], scale: [0.7, 1.15, 1.05] }}
-          transition={{ duration: dur * 0.85, times: [0, 0.16, 1], ease: [0.16, 0.9, 0.3, 1] }}
-          style={{
-            background: `radial-gradient(ellipse ${wMid}% ${hMid}% at ${pos}, transparent 42%, ${c.mid} 55%, transparent 72%)`,
-            transformOrigin: `${cx}% ${cy}%`,
-          }}
-        />
-
-        {/* 4 — Outer diffuse bloom */}
-        <motion.div
-          className="absolute inset-0"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 0.75, 0] }}
-          transition={{ duration: dur * 1.1, times: [0, 0.2, 1], ease: 'easeOut' }}
-          style={{
-            background: `radial-gradient(ellipse ${wOut}% ${hOut}% at ${pos}, ${c.outer} 0%, transparent 65%)`,
-          }}
-        />
-
-        {/* 5 — Wide atmospheric haze */}
-        <motion.div
-          className="absolute inset-0"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: [0, 0.55, 0] }}
-          transition={{ duration: dur * 1.35, times: [0, 0.25, 1], ease: 'easeOut' }}
-          style={{
-            background: `radial-gradient(ellipse ${wBloom}% ${hBloom}% at ${pos}, ${c.bloom} 0%, transparent 60%)`,
-          }}
-        />
-      </div>
+      {orb && (() => {
+        const m = getMotion(orb.variant, orb.dur, orb.peak, orb.dx, orb.dy)
+        return (
+          <motion.div
+            key={orb.id}
+            className="fixed pointer-events-none"
+            style={{
+              // Center the blob at (50% + random offset)
+              left:            `calc(50% + ${orb.x}px)`,
+              top:             `calc(50% + ${orb.y}px)`,
+              width:           orb.size,
+              height:          orb.size,
+              transform:       'translate(-50%, -50%)',
+              borderRadius:    orb.br,
+              background:      `radial-gradient(ellipse 60% 60% at 50% 50%, ${orb.color2} 0%, ${orb.color} 45%, ${orb.color}88 75%, transparent 100%)`,
+              filter:          `blur(${orb.blur}px)`,
+              willChange:      'transform, opacity',
+              zIndex:          -1,
+              // Disable transform so Framer can own it
+              translateX:      0,
+              translateY:      0,
+            }}
+            initial={{ opacity: 0, scale: 0.15, x: 0, y: 0 }}
+            animate={{
+              opacity: m.opacity,
+              scale:   m.scale,
+              x:       m.x,
+              y:       m.y,
+            }}
+            transition={{
+              duration: orb.dur,
+              times:    m.times,
+              ease:     m.ease,
+            }}
+            onAnimationComplete={() => setOrb(null)}
+          />
+        )
+      })()}
     </AnimatePresence>
   )
 }

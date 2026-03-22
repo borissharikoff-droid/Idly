@@ -90,25 +90,25 @@ export function PartyPanel({ friends, onClose, onViewProfile, onMessageFriend }:
               initial={{ opacity: 0, y: -4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-cyber-neon/20 bg-cyber-neon/05"
+              className="flex items-center gap-2.5 px-3 py-2.5 rounded border border-accent/20 bg-accent/5"
             >
               <span className="text-base shrink-0">👥</span>
               <div className="flex-1 min-w-0">
-                <p className="text-[11px] text-white truncate">
+                <p className="text-caption text-white truncate">
                   {inv.from_username ?? 'Someone'} invited you to a party
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => acceptInvite(inv.id, inv.party_id)}
-                className="text-[10px] font-mono px-2 py-1 rounded-lg border border-cyber-neon/40 text-cyber-neon bg-cyber-neon/10 hover:bg-cyber-neon/20 transition-colors"
+                className="text-micro font-mono px-2 py-1 rounded border border-accent/40 text-accent bg-accent/10 hover:bg-accent/20 transition-colors"
               >
                 Join
               </button>
               <button
                 type="button"
                 onClick={() => declineInvite(inv.id)}
-                className="text-[10px] font-mono px-2 py-1 rounded-lg border border-white/10 text-gray-500 hover:text-gray-300 transition-colors"
+                className="text-micro font-mono px-2 py-1 rounded border border-white/10 text-gray-500 hover:text-gray-300 transition-colors"
               >
                 Decline
               </button>
@@ -117,9 +117,9 @@ export function PartyPanel({ friends, onClose, onViewProfile, onMessageFriend }:
         </AnimatePresence>
 
         {/* Benefits + create */}
-        <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+        <div className="rounded-card border border-white/[0.06] bg-white/[0.02] overflow-hidden">
           <div className="px-4 pt-4 pb-3 border-b border-white/[0.05]">
-            <p className="text-[11px] font-bold text-white mb-3">Party Perks</p>
+            <p className="text-caption font-bold text-white mb-3">Party Perks</p>
             <div className="space-y-2">
               {([
                 ['⚔', '+5% XP', 'Bonus XP for all skills while in a party with 2+ members'],
@@ -129,8 +129,8 @@ export function PartyPanel({ friends, onClose, onViewProfile, onMessageFriend }:
                 <div key={label} className="flex items-start gap-2.5">
                   <span className="text-base leading-none mt-0.5">{icon}</span>
                   <div>
-                    <p className="text-[10px] font-semibold text-white leading-none mb-0.5">{label}</p>
-                    <p className="text-[10px] text-gray-500 leading-relaxed">{desc}</p>
+                    <p className="text-micro font-semibold text-white leading-none mb-0.5">{label}</p>
+                    <p className="text-micro text-gray-500 leading-relaxed">{desc}</p>
                   </div>
                 </div>
               ))}
@@ -141,7 +141,7 @@ export function PartyPanel({ friends, onClose, onViewProfile, onMessageFriend }:
               type="button"
               onClick={handleCreate}
               disabled={isCreating}
-              className="w-full py-2 rounded-xl border border-cyber-neon/40 text-cyber-neon text-[11px] font-bold bg-cyber-neon/10 hover:bg-cyber-neon/20 transition-colors disabled:opacity-40"
+              className="w-full py-2 rounded border border-accent/40 text-accent text-caption font-bold bg-accent/10 hover:bg-accent/20 transition-colors disabled:opacity-40"
             >
               {isCreating ? 'Creating...' : '+ Create Party'}
             </button>
@@ -156,9 +156,9 @@ export function PartyPanel({ friends, onClose, onViewProfile, onMessageFriend }:
     <div className="space-y-3">
       {/* Raid lock banner */}
       {inActiveRaid && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl border border-amber-500/20 bg-amber-500/05 text-amber-400">
+        <div className="flex items-center gap-2 px-3 py-2 rounded border border-amber-500/20 bg-amber-500/05 text-amber-400">
           <span className="text-base shrink-0">⚔️</span>
-          <p className="text-[10px] font-mono leading-relaxed">
+          <p className="text-micro font-mono leading-relaxed">
             Raid in progress — party locked.<br />
             <span className="text-gray-500">Can't leave, kick, or change roles until raid ends.</span>
           </p>
@@ -167,22 +167,22 @@ export function PartyPanel({ friends, onClose, onViewProfile, onMessageFriend }:
       {/* Header */}
       <div className="flex items-center justify-between px-1">
         <div>
-          <p className="text-[12px] font-bold text-white">Your Party</p>
-          <p className="text-[10px] font-mono text-gray-500">{members.length}/5 members · +5% XP active</p>
+          <p className="text-xs font-bold text-white">Your Party</p>
+          <p className="text-micro font-mono text-gray-500">{members.length}/5 members · +5% XP active</p>
         </div>
         <button
           type="button"
           onClick={inActiveRaid ? undefined : handleLeaveOrDisband}
           disabled={inActiveRaid}
           title={inActiveRaid ? 'Cannot leave party during an active raid' : undefined}
-          className="text-[10px] font-mono px-2 py-1 rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+          className="text-micro font-mono px-2 py-1 rounded border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
         >
           {isLeader ? 'Disband' : 'Leave'}
         </button>
       </div>
 
       {/* Member list */}
-      <div className="rounded-xl border border-white/[0.06] overflow-hidden">
+      <div className="rounded-card border border-white/[0.06] overflow-hidden">
         {members.map((m, idx) => {
           const isMe = m.user_id === user?.id
           const roleColor = ROLE_COLORS[m.role]
@@ -206,7 +206,7 @@ export function PartyPanel({ friends, onClose, onViewProfile, onMessageFriend }:
                 type="button"
                 disabled={isMe || !friendEntry || !onViewProfile}
                 onClick={() => friendEntry && onViewProfile?.(friendEntry)}
-                className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-mono shrink-0 transition-opacity disabled:cursor-default"
+                className="w-7 h-7 rounded-full flex items-center justify-center text-caption font-mono shrink-0 transition-opacity disabled:cursor-default"
                 style={{ background: `${roleColor}18`, color: roleColor, border: `1px solid ${roleColor}30` }}
                 title={isMe ? undefined : (m.username ?? undefined)}
               >
@@ -216,7 +216,7 @@ export function PartyPanel({ friends, onClose, onViewProfile, onMessageFriend }:
               {/* Name + leader badge */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">
-                  <p className="text-[11px] text-white truncate">
+                  <p className="text-caption text-white truncate">
                     {isMe ? 'You' : (m.username ?? 'Unknown')}
                   </p>
                   {m.user_id === party.leader_id && (
@@ -236,7 +236,7 @@ export function PartyPanel({ friends, onClose, onViewProfile, onMessageFriend }:
                       type="button"
                       onClick={inActiveRaid ? undefined : () => { playClickSound(); setMyRole(r) }}
                       disabled={inActiveRaid}
-                      className="w-6 h-6 rounded-lg flex items-center justify-center text-[11px] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="w-6 h-6 rounded flex items-center justify-center text-caption transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                       style={{
                         background: m.role === r ? `${ROLE_COLORS[r]}25` : 'rgba(255,255,255,0.04)',
                         border: `1px solid ${m.role === r ? `${ROLE_COLORS[r]}50` : 'rgba(255,255,255,0.08)'}`,
@@ -252,8 +252,8 @@ export function PartyPanel({ friends, onClose, onViewProfile, onMessageFriend }:
                   className="flex items-center gap-1 px-1.5 py-0.5 rounded-md border shrink-0"
                   style={{ borderColor: `${roleColor}30`, background: `${roleColor}10` }}
                 >
-                  <span className="text-[10px]">{ROLE_ICONS[m.role]}</span>
-                  <span className="text-[10px] font-mono" style={{ color: roleColor }}>{ROLE_LABELS[m.role]}</span>
+                  <span className="text-micro">{ROLE_ICONS[m.role]}</span>
+                  <span className="text-micro font-mono" style={{ color: roleColor }}>{ROLE_LABELS[m.role]}</span>
                 </div>
               )}
             </div>
@@ -265,17 +265,17 @@ export function PartyPanel({ friends, onClose, onViewProfile, onMessageFriend }:
       <div className="flex gap-2 px-1 flex-wrap">
         {ROLES.map((r) => (
           <div key={r} className="flex items-center gap-1">
-            <span className="text-[10px]">{ROLE_ICONS[r]}</span>
-            <span className="text-[10px] font-mono text-gray-600">{ROLE_LABELS[r]}</span>
+            <span className="text-micro">{ROLE_ICONS[r]}</span>
+            <span className="text-micro font-mono text-gray-600">{ROLE_LABELS[r]}</span>
           </div>
         ))}
-        <span className="text-[10px] font-mono text-gray-700 ml-auto">determines raid actions</span>
+        <span className="text-micro font-mono text-gray-700 ml-auto">determines raid actions</span>
       </div>
 
       {/* Invite friends */}
       {members.length < 5 && friends.length > 0 && (
         <div className="space-y-1.5">
-          <p className="text-[10px] uppercase tracking-wider font-mono text-gray-600 px-1">Invite Friends</p>
+          <p className="text-micro uppercase tracking-wider font-mono text-gray-600 px-1">Invite Friends</p>
           {friends
             .filter((f) => !memberIds.has(f.id) && f.id !== user?.id)
             .map((f) => {
@@ -283,7 +283,7 @@ export function PartyPanel({ friends, onClose, onViewProfile, onMessageFriend }:
               const hasSyncedSkills = f.skills_sync_status === 'synced'
               const skillDisplay = hasSyncedSkills ? `${f.total_skill_level ?? 0}/${MAX_TOTAL_SKILL_LEVEL}` : '--/--'
               return (
-                <div key={f.id} className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white/[0.025] border border-white/[0.05] hover:border-white/10 transition-colors">
+                <div key={f.id} className="flex items-center gap-2.5 px-3 py-2 rounded bg-white/[0.025] border border-white/[0.05] hover:border-white/10 transition-colors">
                   {/* Avatar with frame + online dot */}
                   <button
                     type="button"
@@ -299,29 +299,29 @@ export function PartyPanel({ friends, onClose, onViewProfile, onMessageFriend }:
                       roundedClass="rounded-full"
                       ringInsetClass="-inset-0.5"
                     />
-                    <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0d1117] ${f.is_online ? 'bg-cyber-neon' : 'bg-gray-600'}`} />
+                    <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-surface-0 ${f.is_online ? 'bg-accent' : 'bg-gray-600'}`} />
                   </button>
 
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[11px] font-semibold text-white truncate">{f.username ?? 'Unknown'}</span>
+                      <span className="text-caption font-semibold text-white truncate">{f.username ?? 'Unknown'}</span>
                       {f.guild_tag && (
-                        <span className="text-[10px] px-1 py-[1px] rounded font-bold border border-amber-500/40 bg-amber-500/10 text-amber-400 shrink-0">[{f.guild_tag}]</span>
+                        <span className="text-micro px-1 py-[1px] rounded font-bold border border-amber-500/40 bg-amber-500/10 text-amber-400 shrink-0">[{f.guild_tag}]</span>
                       )}
-                      <span className="text-[10px] text-cyber-neon font-mono shrink-0">{skillDisplay}</span>
+                      <span className="text-micro text-accent font-mono shrink-0">{skillDisplay}</span>
                     </div>
-                    <p className="text-[10px] text-gray-500 font-mono">{f.is_online ? 'Online' : 'Offline'}</p>
+                    <p className="text-micro text-gray-500 font-mono">{f.is_online ? 'Online' : 'Offline'}</p>
                   </div>
 
                   {alreadyInvited ? (
-                    <span className="text-[10px] font-mono text-gray-500 shrink-0">Invited</span>
+                    <span className="text-micro font-mono text-gray-500 shrink-0">Invited</span>
                   ) : (
                     <button
                       type="button"
                       disabled={inviting === f.id}
                       onClick={() => handleInvite(f.id)}
-                      className="text-[10px] font-mono px-2.5 py-1 rounded-lg border border-cyber-neon/30 text-cyber-neon bg-cyber-neon/08 hover:bg-cyber-neon/15 transition-colors disabled:opacity-40 shrink-0"
+                      className="text-micro font-mono px-2.5 py-1 rounded border border-accent/30 text-accent bg-accent/8 hover:bg-accent/15 transition-colors disabled:opacity-40 shrink-0"
                     >
                       {inviting === f.id ? '...' : 'Invite'}
                     </button>

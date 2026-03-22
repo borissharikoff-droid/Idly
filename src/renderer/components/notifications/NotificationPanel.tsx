@@ -75,7 +75,7 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
     const result = openChestAndGrantItem(chestType as ChestType, { source: 'session_complete' })
     useFarmStore.getState().rollSeedDrop(chestType as ChestType)
     dismiss(notifId)
-    if (result && result.itemId) setOpenedChest({ chestType: chestType as ChestType, itemId: result.itemId, goldDropped: result.goldDropped, bonusMaterials: result.bonusMaterials })
+    if (result) setOpenedChest({ chestType: chestType as ChestType, itemId: result.itemId ?? '', goldDropped: result.goldDropped, bonusMaterials: result.bonusMaterials })
   }
 
   useEffect(() => {
@@ -110,16 +110,16 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
       {open && (
         <motion.div
           ref={panelRef}
-          initial={{ opacity: 0, y: -6, scale: 0.94, transformOrigin: 'top right' }}
-          animate={{ opacity: 1, y: 0, scale: 1, transformOrigin: 'top right' }}
-          exit={{ opacity: 0, y: -8, scale: 0.95, transformOrigin: 'top right' }}
-          transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-          className="absolute top-full right-0 mt-1.5 w-[260px] max-h-[360px] rounded-xl bg-discord-card border border-white/10 shadow-xl z-50 overflow-hidden flex flex-col"
+          initial={{ opacity: 0, y: -6 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -4 }}
+          transition={{ duration: 0.15, ease: [0.22, 1, 0.36, 1] }}
+          className="absolute top-full right-0 mt-1.5 w-[260px] max-h-[360px] rounded-card bg-surface-2 border border-white/10 shadow-xl z-50 overflow-hidden flex flex-col"
         >
           <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.06]">
             <span className="text-xs font-semibold text-white">Notifications</span>
             {items.length > 0 && (
-              <button onClick={clear} className="text-[10px] text-gray-500 hover:text-gray-300">Clear all</button>
+              <button onClick={clear} className="text-micro text-gray-500 hover:text-gray-300">Clear all</button>
             )}
           </div>
           <div className="px-3 py-1.5 border-b border-white/[0.06] flex items-center gap-1.5 flex-wrap">
@@ -127,9 +127,9 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
               <button
                 key={t}
                 onClick={() => setFilter(t)}
-                className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${
+                className={`text-micro px-2 py-0.5 rounded border transition-colors ${
                   filter === t
-                    ? 'border-cyber-neon/40 text-cyber-neon bg-cyber-neon/10'
+                    ? 'border-accent/40 text-accent bg-accent/10'
                     : 'border-white/10 text-gray-500 hover:text-gray-300'
                 }`}
               >
@@ -144,7 +144,7 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                 {items.length > 0 && (
                   <button
                     onClick={() => setFilter('all')}
-                    className="mt-2 text-[10px] px-2.5 py-1 rounded border border-white/15 text-gray-300 hover:bg-white/5 transition-colors"
+                    className="mt-2 text-micro px-2.5 py-1 rounded border border-white/15 text-gray-300 hover:bg-white/5 transition-colors"
                   >
                     Show all
                   </button>
@@ -161,12 +161,12 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                   return (
                     <div key={item.id} className="px-2.5 py-1.5 border-b border-white/[0.03] last:border-0">
                       <div
-                        className="rounded-xl px-3 py-2 cursor-pointer"
+                        className="rounded px-3 py-2 cursor-pointer"
                         style={{ border: `1px solid ${accentBorder}`, background: accentBg }}
                         onClick={() => { if (globalNavigate) { playClickSound(); globalNavigate('arena'); onClose() } }}
                       >
                         <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: iconBg, border: `1px solid ${accentBorder}` }}>
+                          <div className="w-8 h-8 rounded flex items-center justify-center shrink-0" style={{ background: iconBg, border: `1px solid ${accentBorder}` }}>
                             {ar.chest?.image ? (
                               <img src={ar.chest.image} alt="" className="w-6 h-6 object-contain" style={{ imageRendering: 'pixelated' }} draggable={false} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
                             ) : (
@@ -175,10 +175,10 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-baseline justify-between gap-1">
-                              <p className="text-[11px] font-semibold text-white truncate">{item.title}</p>
-                              <span className="text-[10px] text-gray-500 font-mono shrink-0">{timeAgo(item.timestamp)}</span>
+                              <p className="text-caption font-semibold text-white truncate">{item.title}</p>
+                              <span className="text-micro text-gray-500 font-mono shrink-0">{timeAgo(item.timestamp)}</span>
                             </div>
-                            <p className="text-[10px] leading-snug mt-0.5 truncate" style={{ color: accent }}>{item.body}</p>
+                            <p className="text-micro leading-snug mt-0.5 truncate" style={{ color: accent }}>{item.body}</p>
                           </div>
                           {ar.victory && (
                             <button
@@ -198,7 +198,7 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                                 dismiss(item.id)
                                 onClose()
                               }}
-                              className="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors"
+                              className="shrink-0 px-2.5 py-1 rounded text-caption font-semibold transition-colors"
                               style={{ color: accent, background: `${accent}20`, border: `1px solid ${accentBorder}` }}
                             >
                               Claim
@@ -211,17 +211,17 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                 })()
                 : item.recovery ? (
                   <div key={item.id} className="px-2.5 py-1.5 border-b border-white/[0.03] last:border-0">
-                    <div className="rounded-xl border border-cyber-neon/20 bg-cyber-neon/[0.06] px-3 py-2">
+                    <div className="rounded border border-accent/20 bg-accent/[0.06] px-3 py-2">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-cyber-neon/12 border border-cyber-neon/25">
+                        <div className="w-8 h-8 rounded flex items-center justify-center shrink-0 bg-accent/12 border border-accent/25">
                           <span className="text-sm leading-none">{item.icon}</span>
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-baseline justify-between gap-1">
-                            <p className="text-[11px] font-semibold text-white truncate">{item.title}</p>
-                            <span className="text-[10px] text-gray-500 font-mono shrink-0">{timeAgo(item.timestamp)}</span>
+                            <p className="text-caption font-semibold text-white truncate">{item.title}</p>
+                            <span className="text-micro text-gray-500 font-mono shrink-0">{timeAgo(item.timestamp)}</span>
                           </div>
-                          <p className="text-[10px] text-gray-400 truncate mt-0.5">{item.body}</p>
+                          <p className="text-micro text-gray-400 truncate mt-0.5">{item.body}</p>
                         </div>
                         <button
                           type="button"
@@ -236,7 +236,7 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                             window.electronAPI?.db?.clearCheckpoint?.().catch(() => {})
                             dismiss(item.id)
                           }}
-                          className="shrink-0 px-2.5 py-1 rounded-lg bg-cyber-neon/15 border border-cyber-neon/35 text-cyber-neon text-[11px] font-semibold hover:bg-cyber-neon/25 transition-colors"
+                          className="shrink-0 px-2.5 py-1 rounded bg-accent/15 border border-accent/35 text-accent text-caption font-semibold hover:bg-accent/25 transition-colors"
                         >
                           Claim
                         </button>
@@ -249,12 +249,12 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                   return (
                     <div key={item.id} className="px-2.5 py-1.5 border-b border-white/[0.03] last:border-0">
                       <div
-                        className="rounded-xl px-3 py-2"
+                        className="rounded px-3 py-2"
                         style={{ border: `1px solid ${rTheme.border}`, background: `${rTheme.color}0a` }}
                       >
                         <div className="flex items-center gap-2.5">
                           <div
-                            className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                            className="w-8 h-8 rounded flex items-center justify-center shrink-0"
                             style={{ background: `${rTheme.color}15`, border: `1px solid ${rTheme.border}` }}
                           >
                             {cr.chestImage ? (
@@ -272,15 +272,15 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-baseline justify-between gap-1">
-                              <p className="text-[11px] font-semibold text-white truncate">{item.title}</p>
-                              <span className="text-[10px] text-gray-500 font-mono shrink-0">{timeAgo(item.timestamp)}</span>
+                              <p className="text-caption font-semibold text-white truncate">{item.title}</p>
+                              <span className="text-micro text-gray-500 font-mono shrink-0">{timeAgo(item.timestamp)}</span>
                             </div>
-                            <p className="text-[10px] mt-0.5 truncate" style={{ color: rTheme.color }}>{cr.chestRarity ? `${cr.chestRarity.charAt(0).toUpperCase() + cr.chestRarity.slice(1)} bag` : item.body}</p>
+                            <p className="text-micro mt-0.5 truncate" style={{ color: rTheme.color }}>{cr.chestRarity ? `${cr.chestRarity.charAt(0).toUpperCase() + cr.chestRarity.slice(1)} bag` : item.body}</p>
                           </div>
                           <button
                             type="button"
                             onClick={() => handleOpenChest(item.id, cr.rewardId, cr.chestType)}
-                            className="shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors"
+                            className="shrink-0 px-2.5 py-1 rounded text-caption font-semibold transition-colors"
                             style={{ color: rTheme.color, background: `${rTheme.color}20`, border: `1px solid ${rTheme.border}` }}
                           >
                             Open
@@ -292,21 +292,21 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                 })()
                 : item.poll ? (
                   <div key={item.id} className="px-2.5 py-1.5 border-b border-white/[0.03] last:border-0">
-                    <div className="rounded-xl border border-purple-400/20 bg-purple-400/[0.06] px-3 py-2">
+                    <div className="rounded border border-purple-400/20 bg-purple-400/[0.06] px-3 py-2">
                       <div className="flex items-center gap-2.5 mb-2">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-purple-400/12 border border-purple-400/25">
+                        <div className="w-8 h-8 rounded flex items-center justify-center shrink-0 bg-purple-400/12 border border-purple-400/25">
                           <span className="text-sm leading-none">{item.icon}</span>
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-baseline justify-between gap-1">
-                            <p className="text-[11px] font-semibold text-white truncate">{item.title}</p>
-                            <span className="text-[10px] text-gray-500 font-mono shrink-0">{timeAgo(item.timestamp)}</span>
+                            <p className="text-caption font-semibold text-white truncate">{item.title}</p>
+                            <span className="text-micro text-gray-500 font-mono shrink-0">{timeAgo(item.timestamp)}</span>
                           </div>
-                          {item.body && <p className="text-[10px] text-gray-400 truncate mt-0.5">{item.body}</p>}
+                          {item.body && <p className="text-micro text-gray-400 truncate mt-0.5">{item.body}</p>}
                         </div>
                       </div>
                       {votedPolls.has(item.poll.pollId) ? (
-                        <p className="text-[10px] text-green-400 font-semibold text-center py-1">Voted!</p>
+                        <p className="text-micro text-green-400 font-semibold text-center py-1">Voted!</p>
                       ) : (
                         <div className="flex flex-col gap-1">
                           {item.poll.options.map((opt) => (
@@ -327,7 +327,7 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                                   setVotedPolls((prev) => new Set(prev).add(item.poll!.pollId))
                                 }
                               }}
-                              className="w-full text-left px-2.5 py-1.5 rounded-lg border border-white/10 bg-white/[0.03] text-[11px] text-gray-300 hover:border-purple-400/40 hover:bg-purple-400/10 transition-all"
+                              className="w-full text-left px-2.5 py-1.5 rounded border border-white/10 bg-white/[0.03] text-caption text-gray-300 hover:border-purple-400/40 hover:bg-purple-400/10 transition-all"
                             >
                               {opt.label}
                             </button>
@@ -338,22 +338,22 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                   </div>
                 ) : (item.patchVersion || item.type === 'update') ? (
                   <div key={item.id} className="px-2.5 py-1.5 border-b border-white/[0.03] last:border-0">
-                    <div className="rounded-xl border border-green-400/20 bg-green-400/[0.06] px-3 py-2">
+                    <div className="rounded border border-green-400/20 bg-green-400/[0.06] px-3 py-2">
                       <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-green-400/12 border border-green-400/25">
+                        <div className="w-8 h-8 rounded flex items-center justify-center shrink-0 bg-green-400/12 border border-green-400/25">
                           <span className="text-sm leading-none">{item.icon}</span>
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-baseline justify-between gap-1">
-                            <p className="text-[11px] font-semibold text-white truncate">{item.title}</p>
-                            <span className="text-[10px] text-gray-500 font-mono shrink-0">{timeAgo(item.timestamp)}</span>
+                            <p className="text-caption font-semibold text-white truncate">{item.title}</p>
+                            <span className="text-micro text-gray-500 font-mono shrink-0">{timeAgo(item.timestamp)}</span>
                           </div>
-                          <p className="text-[10px] text-gray-400 truncate mt-0.5">{item.body}</p>
+                          <p className="text-micro text-gray-400 truncate mt-0.5">{item.body}</p>
                         </div>
                         <button
                           type="button"
                           onClick={() => { playClickSound(); setPatchModalOpen(true) }}
-                          className="shrink-0 px-2.5 py-1 rounded-lg bg-green-400/15 border border-green-400/35 text-green-400 text-[11px] font-semibold hover:bg-green-400/25 transition-colors"
+                          className="shrink-0 px-2.5 py-1 rounded bg-green-400/15 border border-green-400/35 text-green-400 text-caption font-semibold hover:bg-green-400/25 transition-colors"
                         >
                           View
                         </button>
@@ -369,15 +369,15 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                       if (tab && globalNavigate) { playClickSound(); globalNavigate(tab); onClose() }
                     }}
                   >
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-white/[0.05] border border-white/[0.08]">
+                    <div className="w-8 h-8 rounded flex items-center justify-center shrink-0 bg-white/[0.05] border border-white/[0.08]">
                       <span className="text-sm leading-none">{item.icon}</span>
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline justify-between gap-1">
-                        <p className="text-[11px] font-semibold text-white truncate">{item.title}</p>
-                        <span className="text-[10px] text-gray-600 font-mono shrink-0">{timeAgo(item.timestamp)}</span>
+                        <p className="text-caption font-semibold text-white truncate">{item.title}</p>
+                        <span className="text-micro text-gray-600 font-mono shrink-0">{timeAgo(item.timestamp)}</span>
                       </div>
-                      {item.body && <p className="text-[10px] text-gray-500 truncate mt-0.5">{item.body}</p>}
+                      {item.body && <p className="text-micro text-gray-500 truncate mt-0.5">{item.body}</p>}
                     </div>
                   </div>
                 )

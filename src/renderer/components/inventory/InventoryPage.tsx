@@ -112,6 +112,14 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
   const setViewMode = (v: typeof viewMode) => { setViewModeRaw(v); try { localStorage.setItem('inv_viewMode', v) } catch {} }
   const setFilterBy = (v: FilterById) => { setFilterByRaw(v); try { localStorage.setItem('inv_filterBy', v) } catch {} }
   const [searchQuery, setSearchQuery] = useState('')
+  const [showCharacterCard, setShowCharacterCard] = useState(() => {
+    try { return localStorage.getItem('inv_showCharCard') !== '0' } catch { return true }
+  })
+  const toggleCharacterCard = () => setShowCharacterCard((v) => {
+    const next = !v
+    try { localStorage.setItem('inv_showCharCard', next ? '1' : '0') } catch {}
+    return next
+  })
   const [inspectSlotId, setInspectSlotId] = useState<string | null>(null)
   const [listForSaleTarget, setListForSaleTarget] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; slotId: string } | null>(null)
@@ -471,15 +479,28 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
     >
       <PageHeader title="Inventory" icon={<Package className="w-4 h-4 text-gray-400" />} onBack={onBack} />
 
-      <CharacterCard
-        locked={inBattle}
-        onSlotInspect={(itemId) => setInspectSlotId(`item:${itemId}`)}
-      />
+      {/* Character Card — collapsible */}
+      <div>
+        <button
+          type="button"
+          onClick={toggleCharacterCard}
+          className="w-full flex items-center justify-between px-1 mb-1 text-micro font-mono uppercase tracking-widest text-gray-600 hover:text-gray-400 transition-colors group"
+        >
+          <span>Character</span>
+          <span className="text-gray-700 group-hover:text-gray-500 transition-colors">{showCharacterCard ? '▲ hide' : '▼ show'}</span>
+        </button>
+        {showCharacterCard && (
+          <CharacterCard
+            locked={inBattle}
+            onSlotInspect={(itemId) => setInspectSlotId(`item:${itemId}`)}
+          />
+        )}
+      </div>
 
-      <div className="rounded-xl border border-white/[0.08] bg-discord-card/80 p-3 space-y-2.5">
+      <div className="rounded-card border border-white/[0.08] bg-surface-2/80 p-3 space-y-2.5">
         {/* Header */}
         <div className="flex items-center justify-between gap-2">
-          <p className="text-[11px] uppercase tracking-widest text-gray-400 font-mono font-semibold shrink-0">
+          <p className="text-caption uppercase tracking-widest text-gray-400 font-mono font-semibold shrink-0">
             Inventory
             <span className="ml-1.5 text-gray-500 normal-case tracking-normal font-normal">
               {sortedSlots.length}{sortedSlots.length !== slots.length ? `\u00a0/\u00a0${slots.length}` : ''}
@@ -496,8 +517,8 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                     key={mode}
                     type="button"
                     onClick={() => setViewMode(mode)}
-                    className={`text-[10px] font-mono px-1.5 py-0.5 transition-colors ${i > 0 ? 'border-l border-white/[0.07]' : ''} ${
-                      active ? 'text-cyber-neon bg-cyber-neon/10' : 'text-gray-500 hover:text-gray-300'
+                    className={`text-micro font-mono px-1.5 py-0.5 transition-colors ${i > 0 ? 'border-l border-white/[0.07]' : ''} ${
+                      active ? 'text-accent bg-accent/10' : 'text-gray-500 hover:text-gray-300'
                     }`}
                   >
                     {labels[i]}
@@ -509,7 +530,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
             <button
               type="button"
               onClick={() => setSortBy(sortBy === 'rarity' ? 'name' : sortBy === 'name' ? 'slot' : 'rarity')}
-              className="text-[10px] font-mono px-2 py-0.5 rounded border border-white/[0.07] text-gray-500 hover:text-gray-300 hover:border-white/15 transition-colors"
+              className="text-micro font-mono px-2 py-0.5 rounded border border-white/[0.07] text-gray-500 hover:text-gray-300 hover:border-white/15 transition-colors"
             >
               {sortBy === 'rarity' ? '▼ Rarity' : sortBy === 'name' ? '▼ A–Z' : '▼ Slot'}
             </button>
@@ -523,20 +544,20 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search items..."
-            className="w-full text-[10px] font-mono px-2.5 py-1.5 pl-7 rounded-lg border border-white/[0.08] bg-discord-darker/40 text-gray-200 placeholder-gray-500 outline-none focus:border-cyber-neon/40 focus:bg-discord-darker/60 transition-colors"
+            className="w-full text-micro font-mono px-2.5 py-1.5 pl-7 rounded border border-white/[0.08] bg-surface-0/40 text-gray-200 placeholder-gray-500 outline-none focus:border-accent/40 focus:bg-surface-0/60 transition-colors"
           />
-          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 pointer-events-none">🔍</span>
+          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-micro text-gray-500 pointer-events-none">🔍</span>
           {searchQuery && (
             <button
               type="button"
               onClick={() => setSearchQuery('')}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-500 hover:text-gray-300 px-1"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 text-micro text-gray-500 hover:text-gray-300 px-1"
             ><X className="w-3 h-3" /></button>
           )}
         </div>
 
-        {/* Filter pills — two-row wrap */}
-        <div className="flex flex-wrap gap-1">
+        {/* Filter pills — horizontal scroll */}
+        <div className="flex gap-1 overflow-x-auto no-scrollbar pb-0.5">
           {FILTERS.map((f) => {
             const active = filterBy === f.id
             const count = filterCounts[f.id] ?? 0
@@ -545,16 +566,16 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                 key={f.id}
                 type="button"
                 onClick={() => { playClickSound(); setFilterBy(f.id) }}
-                className={`flex items-center gap-1 px-2 py-0.5 rounded-md border text-[10px] font-medium transition-all ${
+                className={`shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-md border text-micro font-medium transition-all ${
                   active
-                    ? 'border-cyber-neon/40 bg-cyber-neon/10 text-cyber-neon'
-                    : 'border-white/[0.08] bg-discord-darker/30 text-gray-400 hover:text-gray-200 hover:border-white/20'
+                    ? 'border-accent/50 bg-accent/20 text-accent'
+                    : 'border-white/[0.08] bg-surface-0/30 text-gray-400 hover:text-gray-200 hover:border-white/20'
                 }`}
               >
-                <span className="text-[10px] leading-none">{f.icon}</span>
+                <span className="text-micro leading-none">{f.icon}</span>
                 <span>{f.label}</span>
                 {!active && count > 0 && (
-                  <span className="ml-0.5 text-[10px] font-mono opacity-50">{count}</span>
+                  <span className="ml-0.5 text-micro font-mono opacity-50">{count}</span>
                 )}
               </button>
             )
@@ -567,9 +588,9 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
         {/* Items */}
         <div>
         {slots.length === 0 ? (
-          <p className="text-[11px] text-gray-500 py-2">No loot yet.</p>
+          <p className="text-caption text-gray-500 py-2">No loot yet.</p>
         ) : sortedSlots.length === 0 ? (
-          <p className="text-[11px] text-gray-500 py-2">Nothing here.</p>
+          <p className="text-caption text-gray-500 py-2">Nothing here.</p>
         ) : (() => {
           const renderCard = (slot: SlotEntry) => {
             const slotRarity = getSlotRarity(slot)
@@ -602,9 +623,9 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                   type="button"
                   onClick={onClickCard}
                   onContextMenu={onRightClick}
-                  className="relative w-full flex items-center gap-2 px-2 py-1.5 rounded-lg border border-white/[0.06] bg-discord-darker/50 hover:bg-discord-darker/80 active:scale-[0.99] transition-all text-left"
+                  className="relative w-full flex items-center gap-2 px-2 py-1.5 rounded border border-white/[0.06] bg-surface-0/50 hover:bg-surface-0/80 active:scale-[0.99] transition-all text-left"
                 >
-                  {isPending && <span className="absolute inset-0 rounded-lg pointer-events-none animate-pulse border border-amber-400/30" />}
+                  {isPending && <span className="absolute inset-0 rounded pointer-events-none animate-pulse border border-amber-400/30" />}
                   {/* Left rarity accent */}
                   <div className="w-[3px] self-stretch rounded-full flex-shrink-0" style={{ background: slotTheme.color }} />
                   {/* Icon */}
@@ -614,15 +635,15 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                   </div>
                   {/* Text */}
                   <div className="flex-1 min-w-0">
-                    <p className="text-[11px] font-semibold text-gray-100 truncate">{slot.title}</p>
+                    <p className="text-caption font-semibold text-gray-100 truncate">{slot.title}</p>
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-[10px] font-mono uppercase" style={{ color: slotTheme.color }}>{rarityNorm}</span>
-                      {perkChip && <span className="text-[10px] text-gray-500 truncate">· {perkChip}</span>}
+                      <span className="text-micro font-mono uppercase" style={{ color: slotTheme.color }}>{rarityNorm}</span>
+                      {perkChip && <span className="text-micro text-gray-500 truncate">· {perkChip}</span>}
                     </div>
                   </div>
                   {/* Right */}
                   <div className="flex items-center gap-1 flex-shrink-0">
-                    {slot.quantity > 1 && <span className="text-[10px] font-mono font-semibold" style={{ color: slotTheme.color }}>×{slot.quantity}</span>}
+                    {slot.quantity > 1 && <span className="text-micro font-mono font-semibold" style={{ color: slotTheme.color }}>×{slot.quantity}</span>}
                   </div>
                 </button>
               )
@@ -635,11 +656,11 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                   type="button"
                   onClick={onClickCard}
                   onContextMenu={onRightClick}
-                  className="relative flex flex-col items-center p-1 rounded-lg border border-white/[0.06] bg-discord-darker/50 hover:bg-discord-darker/80 active:scale-[0.97] transition-all overflow-hidden"
+                  className="relative flex flex-col items-center p-1 rounded border border-white/[0.06] bg-surface-0/50 hover:bg-surface-0/80 active:scale-[0.97] transition-all overflow-hidden"
                 >
-                  {isPending && <span className="absolute inset-0 rounded-lg pointer-events-none animate-pulse border border-amber-400/30" />}
+                  {isPending && <span className="absolute inset-0 rounded pointer-events-none animate-pulse border border-amber-400/30" />}
                   {slot.quantity > 1 && (
-                    <span className="absolute top-0.5 right-1 text-[10px] font-bold font-mono leading-none z-10" style={{ color: slotTheme.color }}>
+                    <span className="absolute top-0.5 right-1 text-micro font-bold font-mono leading-none z-10" style={{ color: slotTheme.color }}>
                       {slot.quantity}
                     </span>
                   )}
@@ -647,7 +668,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                     <LootVisual icon={slot.icon} image={slotImage} className="w-6 h-6 object-contain" scale={lootItem?.renderScale ?? 1} />
                     {isEquipped && <span className="absolute bottom-0 right-0 text-[5px] font-bold font-mono px-0.5 rounded-tl leading-tight" style={{ background: slotTheme.color, color: '#000' }}>EQ</span>}
                   </div>
-                  <p className="text-[10px] font-medium text-gray-200 leading-tight w-full truncate text-center mt-1 mb-0.5">{slot.title}</p>
+                  <p className="text-micro font-medium text-gray-200 leading-tight w-full truncate text-center mt-1 mb-0.5">{slot.title}</p>
                   {/* Bottom rarity bar */}
                   <div className="absolute bottom-0 left-0 right-0 h-[2px]" style={{ background: slotTheme.color, opacity: rarityNorm === 'common' ? 0.4 : 0.8 }} />
                 </button>
@@ -661,14 +682,14 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                 type="button"
                 onClick={onClickCard}
                 onContextMenu={onRightClick}
-                className="relative flex items-center gap-2 p-2 rounded-lg border border-white/[0.06] bg-discord-darker/50 hover:bg-discord-darker/80 active:scale-[0.98] transition-all text-left overflow-hidden"
+                className="relative flex items-center gap-2 p-2 rounded border border-white/[0.06] bg-surface-0/50 hover:bg-surface-0/80 active:scale-[0.98] transition-all text-left overflow-hidden"
               >
                 {isPending && (
-                  <span className="absolute inset-0 rounded-lg pointer-events-none animate-pulse border border-amber-400/30" />
+                  <span className="absolute inset-0 rounded pointer-events-none animate-pulse border border-amber-400/30" />
                 )}
                 {/* Icon box */}
                 <div
-                  className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 overflow-hidden relative"
+                  className="w-10 h-10 rounded flex items-center justify-center flex-shrink-0 overflow-hidden relative"
                   style={{ background: '#0a0a14', border: `1px solid ${slotTheme.color}30` }}
                 >
                   <LootVisual icon={slot.icon} image={slotImage} className="w-6 h-6 object-contain" scale={lootItem?.renderScale ?? 1} />
@@ -678,19 +699,19 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                 </div>
                 {/* Info */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-semibold text-gray-100 leading-tight truncate">{slot.title}</p>
+                  <p className="text-micro font-semibold text-gray-100 leading-tight truncate">{slot.title}</p>
                   <div className="flex items-center gap-1 mt-0.5">
-                    <span className="text-[10px] font-mono uppercase" style={{ color: slotTheme.color }}>{rarityNorm}</span>
+                    <span className="text-micro font-mono uppercase" style={{ color: slotTheme.color }}>{rarityNorm}</span>
                     {typeLabel && <span className="text-[7px] text-gray-600">·</span>}
                     {typeLabel && <span className="text-[7px] font-mono text-gray-500 uppercase">{typeLabel}</span>}
                   </div>
                   {perkChip && (
-                    <p className="text-[10px] text-gray-500 truncate mt-0.5">{perkChip}</p>
+                    <p className="text-micro text-gray-500 truncate mt-0.5">{perkChip}</p>
                   )}
                 </div>
                 {/* Qty */}
                 {slot.quantity > 1 && (
-                  <span className="text-[10px] font-mono font-bold flex-shrink-0" style={{ color: slotTheme.color }}>×{slot.quantity}</span>
+                  <span className="text-micro font-mono font-bold flex-shrink-0" style={{ color: slotTheme.color }}>×{slot.quantity}</span>
                 )}
                 {/* Left rarity accent */}
                 <div className="absolute left-0 top-1 bottom-1 w-[2px] rounded-full" style={{ background: slotTheme.color, opacity: rarityNorm === 'common' ? 0.3 : 0.7 }} />
@@ -699,7 +720,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
           }
 
           const gridClass = viewMode === 'list' ? 'flex flex-col gap-0.5' : viewMode === 'compact' ? 'grid grid-cols-5 gap-1' : 'grid grid-cols-3 gap-1'
-          const sectionHdrClass = `${viewMode !== 'list' ? 'col-span-full' : ''} text-[10px] font-mono uppercase tracking-widest text-gray-500 pt-1 pb-0.5 flex items-center gap-2`
+          const sectionHdrClass = `${viewMode !== 'list' ? 'col-span-full' : ''} text-micro font-mono uppercase tracking-widest text-gray-500 pt-1 pb-0.5 flex items-center gap-2`
 
           if (groupedSlots) {
             return (
@@ -734,15 +755,15 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[85] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
-              onClick={() => setInspectSlotId(null)}
+              className="fixed inset-0 z-[201] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4"
+              onClick={() => { setInspectSlotId(null) }}
             >
             <motion.div
               initial={{ scale: 0.94, opacity: 0, y: 10 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.96, opacity: 0, y: 6 }}
               transition={{ type: 'spring', stiffness: 360, damping: 28 }}
-              className="w-full max-w-[480px] rounded-2xl border overflow-hidden relative flex"
+              className="w-full max-w-[480px] rounded border overflow-hidden relative flex"
               style={{
                 borderColor: inspectTheme.border,
                 background: 'rgba(8,8,16,0.98)',
@@ -778,13 +799,13 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                   />
                 </div>
                 {/* Rarity label */}
-                <div className="relative z-10 mt-3 px-2.5 py-0.5 rounded-full border text-[10px] font-mono font-bold uppercase tracking-widest"
+                <div className="relative z-10 mt-3 px-2.5 py-0.5 rounded-full border text-micro font-mono font-bold uppercase tracking-widest"
                   style={{ color: inspectTheme.color, borderColor: `${inspectTheme.border}99`, background: `${inspectTheme.color}18` }}>
                   {inspectRarity}
                 </div>
                 {/* Qty badge */}
                 {inspectSlot.quantity > 1 && (
-                  <div className="relative z-10 mt-1.5 text-[10px] font-mono" style={{ color: `${inspectTheme.color}99` }}>
+                  <div className="relative z-10 mt-1.5 text-micro font-mono" style={{ color: `${inspectTheme.color}99` }}>
                     ×{inspectSlot.quantity}
                   </div>
                 )}
@@ -796,26 +817,26 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                 <button
                   type="button"
                   onClick={() => setInspectSlotId(null)}
-                  className="absolute top-2.5 right-2.5 w-6 h-6 flex items-center justify-center rounded-full text-gray-500 hover:text-white hover:bg-white/10 transition-colors text-[14px] leading-none z-20"
+                  className="absolute top-2.5 right-2.5 w-6 h-6 flex items-center justify-center rounded-full text-gray-500 hover:text-white hover:bg-white/10 transition-colors text-sm leading-none z-20"
                 >×</button>
 
                 {/* Name + slot pill */}
                 <div className="pr-6">
-                  <p className="text-[14px] font-bold text-white leading-tight">{inspectSlot.title}</p>
+                  <p className="text-sm font-bold text-white leading-tight">{inspectSlot.title}</p>
                   <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                     {inspectItem && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded border border-white/15 text-gray-400 font-mono uppercase tracking-wide">
+                      <span className="text-micro px-1.5 py-0.5 rounded border border-white/15 text-gray-400 font-mono uppercase tracking-wide">
                         {SLOT_LABEL[inspectItem.slot]}
                       </span>
                     )}
                     {(inspectSlot.kind === 'chest' || inspectSlot.kind === 'pending') && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded border border-white/15 text-gray-400 font-mono uppercase tracking-wide">
+                      <span className="text-micro px-1.5 py-0.5 rounded border border-white/15 text-gray-400 font-mono uppercase tracking-wide">
                         {inspectSlot.kind === 'pending' ? 'Inbox' : 'Bag'}
                       </span>
                     )}
                     {inspectSlot.kind === 'item' && inspectSlot.equipped && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded border border-cyber-neon/50 text-cyber-neon font-mono tracking-wide"
-                        style={{ background: 'rgba(0,255,200,0.07)' }}>
+                      <span className="text-micro px-1.5 py-0.5 rounded border border-accent/50 text-accent font-mono tracking-wide"
+                        style={{ background: 'rgba(88,101,242,0.07)' }}>
                         equipped
                       </span>
                     )}
@@ -824,7 +845,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
 
                 {/* Flavor description */}
                 {inspectItem?.description && (
-                  <p className="text-[10px] text-gray-400 italic mt-1.5 leading-snug">{inspectItem.description}</p>
+                  <p className="text-micro text-gray-400 italic mt-1.5 leading-snug">{inspectItem.description}</p>
                 )}
 
                 {/* Perk stats — prominent */}
@@ -865,22 +886,22 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                       {perkDisplays.length > 0 && (
                         <div className={`grid gap-1.5 ${perkDisplays.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
                           {perkDisplays.map((pd, i) => (
-                            <div key={i} className="rounded-lg px-2.5 py-2 border flex flex-col gap-0.5"
+                            <div key={i} className="rounded px-2.5 py-2 border flex flex-col gap-0.5"
                               style={{ borderColor: `${pd.color}35`, background: `${pd.color}0e` }}>
                               <div className="flex items-baseline gap-1.5">
                                 <span className="font-bold font-mono tabular-nums leading-none"
                                   style={{ fontSize: perkDisplays.length === 1 ? 22 : 18, color: pd.color, textShadow: `0 0 14px ${pd.color}55` }}>
                                   {pd.value}
                                 </span>
-                                <span className="text-[10px] font-mono font-semibold" style={{ color: `${pd.color}cc` }}>{pd.unit}</span>
+                                <span className="text-micro font-mono font-semibold" style={{ color: `${pd.color}cc` }}>{pd.unit}</span>
                               </div>
-                              <span className="text-[10px] text-gray-400 capitalize leading-none">{pd.desc}</span>
+                              <span className="text-micro text-gray-400 capitalize leading-none">{pd.desc}</span>
                             </div>
                           ))}
                         </div>
                       )}
 
-                      {isPlant && <p className="text-[10px] text-lime-400/80 font-mono">🌾 Farm harvest · sell on Marketplace</p>}
+                      {isPlant && <p className="text-micro text-lime-400/80 font-mono">🌾 Farm harvest · sell on Marketplace</p>}
                       {inspectItem.slot === 'food' && (() => {
                         const foodDef = getFoodItemById(inspectItem.id)
                         if (!foodDef) return null
@@ -894,23 +915,23 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                         return (
                           <div className={`grid gap-1.5 ${stats.length <= 2 ? 'grid-cols-2' : 'grid-cols-3'}`}>
                             {stats.map((s, i) => (
-                              <div key={i} className="rounded-lg px-2.5 py-2 border flex flex-col gap-0.5"
+                              <div key={i} className="rounded px-2.5 py-2 border flex flex-col gap-0.5"
                                 style={{ borderColor: `${s.color}35`, background: `${s.color}0e` }}>
                                 <div className="flex items-baseline gap-1">
                                   <span className="font-bold font-mono tabular-nums leading-none" style={{ fontSize: stats.length <= 2 ? 18 : 14, color: s.color, textShadow: `0 0 14px ${s.color}55` }}>{s.value}</span>
-                                  {s.unit && <span className="text-[10px] font-mono font-semibold" style={{ color: `${s.color}cc` }}>{s.unit}</span>}
+                                  {s.unit && <span className="text-micro font-mono font-semibold" style={{ color: `${s.color}cc` }}>{s.unit}</span>}
                                 </div>
-                                <span className="text-[10px] text-gray-400 capitalize leading-none">{s.desc}</span>
+                                <span className="text-micro text-gray-400 capitalize leading-none">{s.desc}</span>
                               </div>
                             ))}
                           </div>
                         )
                       })()}
-                      {inspectItem.perkType === 'cosmetic' && inspectItem.slot !== 'food' && <p className="text-[10px] text-gray-400">Visual cosmetic — no gameplay effect.</p>}
+                      {inspectItem.perkType === 'cosmetic' && inspectItem.slot !== 'food' && <p className="text-micro text-gray-400">Visual cosmetic — no gameplay effect.</p>}
 
                       {isPotion && (
                         <div>
-                          <div className="flex items-center justify-between text-[10px] font-mono mb-1">
+                          <div className="flex items-center justify-between text-micro font-mono mb-1">
                             <span className="text-gray-500">Consumed</span>
                             <span className={consumed >= POTION_MAX ? 'text-amber-400' : 'text-gray-400'}>
                               {consumed}/{POTION_MAX}{consumed >= POTION_MAX ? ' · MAXED' : ''}
@@ -923,7 +944,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                       )}
 
                       {(['head', 'body', 'legs', 'ring', 'weapon'] as const).includes(inspectItem.slot as never) && (
-                        <div className="flex items-center gap-2 text-[10px] font-mono pt-0.5 border-t border-white/[0.05]">
+                        <div className="flex items-center gap-2 text-micro font-mono pt-0.5 border-t border-white/[0.05]">
                           <span className="text-gray-500">IP</span>
                           <span style={{ color: inspectTheme.color }}>{ip}</span>
                           <span className="text-white/20">·</span>
@@ -943,13 +964,13 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                 {inspectSeed && (
                   <div className="mt-2.5 space-y-1.5">
                     <div className="grid grid-cols-2 gap-1.5">
-                      <div className="rounded-lg px-2.5 py-2 border flex flex-col gap-0.5" style={{ borderColor: `${inspectTheme.color}35`, background: `${inspectTheme.color}0e` }}>
-                        <span className="text-[11px] font-mono font-bold" style={{ color: inspectTheme.color }}>{formatGrowTime(inspectSeed.growTimeSeconds)}</span>
-                        <span className="text-[10px] text-gray-400">Grow time</span>
+                      <div className="rounded px-2.5 py-2 border flex flex-col gap-0.5" style={{ borderColor: `${inspectTheme.color}35`, background: `${inspectTheme.color}0e` }}>
+                        <span className="text-caption font-mono font-bold" style={{ color: inspectTheme.color }}>{formatGrowTime(inspectSeed.growTimeSeconds)}</span>
+                        <span className="text-micro text-gray-400">Grow time</span>
                       </div>
-                      <div className="rounded-lg px-2.5 py-2 border flex flex-col gap-0.5" style={{ borderColor: `${inspectTheme.color}35`, background: `${inspectTheme.color}0e` }}>
-                        <span className="text-[11px] font-mono font-bold" style={{ color: inspectTheme.color }}>{inspectSeed.yieldMin}–{inspectSeed.yieldMax}</span>
-                        <span className="text-[10px] text-gray-400">Yield</span>
+                      <div className="rounded px-2.5 py-2 border flex flex-col gap-0.5" style={{ borderColor: `${inspectTheme.color}35`, background: `${inspectTheme.color}0e` }}>
+                        <span className="text-caption font-mono font-bold" style={{ color: inspectTheme.color }}>{inspectSeed.yieldMin}–{inspectSeed.yieldMax}</span>
+                        <span className="text-micro text-gray-400">Yield</span>
                       </div>
                     </div>
                   </div>
@@ -958,10 +979,10 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                 {/* Chest / pending description */}
                 <div className="mt-2 flex-1">
                   {inspectSlot.kind === 'chest' && (
-                    <p className="text-[10px] text-gray-400">Open to roll a random item from this bag's loot pool.</p>
+                    <p className="text-micro text-gray-400">Open to roll a random item from this bag's loot pool.</p>
                   )}
                   {inspectSlot.kind === 'pending' && (
-                    <p className="text-[10px] text-gray-400">Activity drop waiting in inbox. Claim to open.</p>
+                    <p className="text-micro text-gray-400">Activity drop waiting in inbox. Claim to open.</p>
                   )}
                 </div>
 
@@ -971,7 +992,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                     <button
                       type="button"
                       onClick={() => { playClickSound(); setInspectSlotId(null); onNavigateFarm?.() }}
-                      className="flex-1 text-[10px] py-1.5 rounded-lg border font-semibold transition-all active:scale-[0.97] hover:brightness-110"
+                      className="flex-1 text-micro py-1.5 rounded border font-semibold transition-all active:scale-[0.97] hover:brightness-110"
                       style={{ color: inspectTheme.color, borderColor: inspectTheme.border, backgroundColor: `${inspectTheme.color}1e` }}
                     >
                       Plant
@@ -993,7 +1014,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                             type="button"
                             disabled={disabled}
                             onClick={() => { playClickSound(); runPrimaryAction(inspectSlot) }}
-                            className={`flex-1 text-[10px] py-1.5 rounded-lg border font-semibold transition-all active:scale-[0.97] ${
+                            className={`flex-1 text-micro py-1.5 rounded border font-semibold transition-all active:scale-[0.97] ${
                               disabled || isGearLocked ? 'border-white/[0.08] text-gray-600 cursor-not-allowed bg-transparent' : 'hover:brightness-110'
                             }`}
                             style={disabled || isGearLocked ? undefined : { color: inspectTheme.color, borderColor: inspectTheme.border, backgroundColor: `${inspectTheme.color}1e` }}
@@ -1006,7 +1027,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                         <button
                           type="button"
                           onClick={() => { playClickSound(); setListForSaleTarget(inspectSlot.itemId); setInspectSlotId(null) }}
-                          className="flex-1 text-[10px] py-1.5 rounded-lg border border-amber-500/35 text-amber-300 hover:bg-amber-500/12 font-semibold transition-all active:scale-[0.97]"
+                          className="flex-1 text-micro py-1.5 rounded border border-amber-500/35 text-amber-300 hover:bg-amber-500/12 font-semibold transition-all active:scale-[0.97]"
                         >
                           Sell{inspectSlot.equipped ? ` (${inspectSlot.quantity - 1})` : ''}
                         </button>
@@ -1014,7 +1035,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                       <button
                         type="button"
                         onClick={() => { playClickSound(); runDeleteAction(inspectSlot) }}
-                        className="w-8 h-full flex items-center justify-center rounded-lg border border-red-400/25 text-red-400/70 hover:text-red-300 hover:bg-red-400/10 transition-all active:scale-[0.97] text-[12px]"
+                        className="w-8 h-full flex items-center justify-center rounded border border-red-400/25 text-red-400/70 hover:text-red-300 hover:bg-red-400/10 transition-all active:scale-[0.97] text-xs"
                         title="Delete"
                       >🗑</button>
                     </>
@@ -1031,93 +1052,107 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
         {contextMenu && (() => {
           const slot = slots.find((x) => x.id === contextMenu.slotId)
           if (!slot) return null
+          const ctxRarity = getSlotRarity(slot)
+          const ctxTheme = RARITY_THEME[normalizeRarity(ctxRarity)]
+          const ctxLootItem = slot.kind === 'item' ? LOOT_ITEMS.find((x) => x.id === slot.itemId) : null
+          const ctxItemSlot = ctxLootItem?.slot
+          const isPlant = ctxItemSlot === 'plant'
+          const isFood = ctxItemSlot === 'food'
+          const isMaterial = ctxItemSlot === 'material'
+          const isConsumable = ctxItemSlot === 'consumable'
+          const isMaxed = isConsumable && isPotionMaxed(slot.kind === 'item' ? slot.itemId : '')
+          const isGearLocked = inBattle && slot.kind === 'item' && !isConsumable
+          const isSeed = slot.kind === 'seed'
+          const isChest = slot.kind === 'chest' || slot.kind === 'pending'
+          const canSell = slot.kind === 'item' && !MARKETPLACE_BLOCKED_ITEMS.includes(slot.itemId) && (!slot.equipped || slot.quantity > 1)
+          const chestTotal = isChest
+            ? pendingRewards.filter((r) => !r.claimed && r.chestType === slot.chestType).length + (chests[slot.chestType] ?? 0)
+            : 0
+
+          const primaryLabel = getPrimaryActionLabel(slot)
+          const showPrimary = !isPlant && !isFood && !isMaterial
+
           return (
-            <div
-              className="fixed z-[90] w-[156px] rounded-lg border border-white/15 bg-discord-card shadow-xl px-1.5 py-1.5"
-              style={{ left: contextMenu.x, top: contextMenu.y }}
+            <motion.div
+              key={contextMenu.slotId}
+              initial={{ opacity: 0, scale: 0.92, y: -4 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.12, ease: 'easeOut' }}
+              className="fixed z-[205] w-[200px] rounded-xl overflow-hidden"
+              style={{
+                left: Math.min(contextMenu.x, window.innerWidth - 216),
+                top: Math.min(contextMenu.y, window.innerHeight - 200),
+                background: 'linear-gradient(160deg, #0d0d1c 0%, #10101e 100%)',
+                border: `1px solid ${ctxTheme.color}30`,
+                boxShadow: `0 0 28px ${ctxTheme.color}14, 0 12px 40px rgba(0,0,0,0.75)`,
+              }}
               onClick={(e) => e.stopPropagation()}
             >
-              {slot.kind === 'seed' ? (
-                <button
-                  type="button"
-                  onClick={() => { playClickSound(); setContextMenu(null); onNavigateFarm?.() }}
-                  className="block w-full text-left text-[11px] px-2 py-1 rounded text-cyber-neon hover:bg-cyber-neon/15"
-                >Plant</button>
-              ) : (
-                <>
-                  {(() => {
-                    const _itemSlot2 = slot.kind === 'item' ? LOOT_ITEMS.find((x) => x.id === slot.itemId)?.slot : undefined
-                    const isPlant2 = _itemSlot2 === 'plant'
-                    const isFood2 = _itemSlot2 === 'food'
-                    const isMaterial2 = _itemSlot2 === 'material'
-                    const isConsumable = _itemSlot2 === 'consumable'
-                    const isMaxed = isConsumable && isPotionMaxed(slot.kind === 'item' ? slot.itemId : '')
-                    const isGearLocked = inBattle && slot.kind === 'item' && !isConsumable
-                    if (isPlant2 || isFood2 || isMaterial2) return null
-                    const disabled = isMaxed
-                    return (
-                      <button
-                        type="button"
-                        disabled={disabled}
-                        onClick={() => {
-                          playClickSound()
-                          runPrimaryAction(slot)
-                          if (!isGearLocked) setContextMenu(null)
-                        }}
-                        className={`block w-full text-left text-[11px] px-2 py-1 rounded ${
-                          disabled || isGearLocked ? 'text-gray-600 cursor-not-allowed' : 'text-cyber-neon hover:bg-cyber-neon/15'
-                        }`}
-                      >
-                        {getPrimaryActionLabel(slot)}
-                      </button>
-                    )
-                  })()}
-                  {(slot.kind === 'chest' || slot.kind === 'pending') && (() => {
-                    const pCount = pendingRewards.filter((r) => !r.claimed && r.chestType === slot.chestType).length
-                    const cCount = chests[slot.chestType] ?? 0
-                    const total = pCount + cCount
-                    if (total < 2) return null
-                    return (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          playClickSound()
-                          setContextMenu(null)
-                          openAllChests(slot.chestType)
-                        }}
-                        className="block w-full text-left text-[11px] px-2 py-1 rounded text-purple-300 hover:bg-purple-400/15"
-                      >
-                        Open All ({total})
-                      </button>
-                    )
-                  })()}
-                  {slot.kind === 'item' && !MARKETPLACE_BLOCKED_ITEMS.includes(slot.itemId) && (!slot.equipped || slot.quantity > 1) && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        playClickSound()
-                        setListForSaleTarget(slot.itemId)
-                        setContextMenu(null)
-                      }}
-                      className="block w-full text-left text-[11px] px-2 py-1 rounded text-amber-300 hover:bg-amber-500/15"
-                    >
-                      List for sale{slot.equipped ? ` (${slot.quantity - 1})` : ''}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      playClickSound()
-                      runDeleteAction(slot)
-                      setContextMenu(null)
-                    }}
-                    className="block w-full text-left text-[11px] px-2 py-1 rounded text-red-300 hover:bg-red-400/10"
-                  >
-                    Delete
+              {/* Item header */}
+              <div className="flex items-center gap-2.5 px-3 py-2.5" style={{ borderBottom: `1px solid ${ctxTheme.color}18` }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 overflow-hidden"
+                  style={{ background: '#0a0a14', border: `1px solid ${ctxTheme.color}35` }}>
+                  <LootVisual icon={slot.icon} image={slot.image} className="w-5 h-5 object-contain" scale={ctxLootItem?.renderScale ?? 1} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-caption font-semibold text-white leading-tight truncate">{slot.title}</p>
+                  <p className="text-micro font-mono uppercase tracking-wide" style={{ color: `${ctxTheme.color}cc` }}>
+                    {normalizeRarity(ctxRarity)}{ctxLootItem ? ` · ${SLOT_LABEL[ctxLootItem.slot] ?? ctxLootItem.slot}` : ''}
+                    {slot.quantity > 1 ? ` · ×${slot.quantity}` : ''}
+                  </p>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="py-1">
+                {isSeed && (
+                  <button type="button"
+                    onClick={() => { playClickSound(); setContextMenu(null); onNavigateFarm?.() }}
+                    className="flex items-center gap-2.5 w-full text-left px-3 py-2 text-caption font-medium text-accent hover:bg-accent/10 transition-colors">
+                    <span className="text-sm w-4 text-center">🌱</span> Plant seed
                   </button>
-                </>
-              )}
-            </div>
+                )}
+                {showPrimary && (
+                  <button type="button"
+                    disabled={isMaxed || isGearLocked}
+                    onClick={() => { playClickSound(); runPrimaryAction(slot); if (!isGearLocked) setContextMenu(null) }}
+                    className={`flex items-center gap-2.5 w-full text-left px-3 py-2 text-caption font-medium transition-colors ${
+                      isMaxed || isGearLocked ? 'text-gray-600 cursor-not-allowed' : 'text-accent hover:bg-accent/10'
+                    }`}>
+                    <span className="text-sm w-4 text-center">
+                      {isChest ? '🎁' : isConsumable ? '⚗️' : (slot.kind === 'item' && slot.equipped) ? '↩' : '⚔'}
+                    </span>
+                    {primaryLabel}
+                  </button>
+                )}
+                {isChest && chestTotal >= 2 && (
+                  <button type="button"
+                    onClick={() => { playClickSound(); setContextMenu(null); openAllChests(slot.chestType) }}
+                    className="flex items-center gap-2.5 w-full text-left px-3 py-2 text-caption font-medium text-purple-300 hover:bg-purple-400/10 transition-colors">
+                    <span className="text-sm w-4 text-center">📦</span>
+                    Open all ({chestTotal})
+                  </button>
+                )}
+                {canSell && (
+                  <button type="button"
+                    onClick={() => { playClickSound(); setListForSaleTarget(slot.itemId); setContextMenu(null) }}
+                    className="flex items-center gap-2.5 w-full text-left px-3 py-2 text-caption font-medium text-amber-300 hover:bg-amber-500/10 transition-colors">
+                    <span className="text-sm w-4 text-center">🏷</span>
+                    List for sale{slot.equipped ? ` (${slot.quantity - 1})` : ''}
+                  </button>
+                )}
+              </div>
+
+              {/* Delete — separated */}
+              <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }} className="py-1">
+                <button type="button"
+                  onClick={() => { playClickSound(); runDeleteAction(slot); setContextMenu(null) }}
+                  className="flex items-center gap-2.5 w-full text-left px-3 py-2 text-caption font-medium text-red-400/70 hover:text-red-300 hover:bg-red-400/8 transition-colors">
+                  <span className="text-sm w-4 text-center">🗑</span> Delete
+                </button>
+              </div>
+            </motion.div>
           )
         })()}
       </AnimatePresence>

@@ -58,6 +58,8 @@ interface InventoryState {
   deleteChest: (chestType: ChestType, amount?: number) => void
   equipItem: (itemId: string) => void
   deleteItem: (itemId: string, amount?: number) => void
+  /** Salvage one copy of a gear item into materials. Returns the yields, or null if not possible. */
+  salvageItem: (itemId: string, yields: Array<{ id: string; qty: number }>) => Array<{ id: string; qty: number }> | null
   unequipSlot: (slot: LootSlot) => void
   addItem: (itemId: string, qty?: number) => void
   /** Permanently consume a potion, boosting the corresponding stat by 1. Returns false if maxed or not owned. */
@@ -75,7 +77,7 @@ const SKILL_DROP_COOLDOWN_MS = 3_600_000
 const BASE_DROP_PER_MINUTE = 0.0005
 
 
-const initialState: Omit<InventoryState, 'hydrate' | 'addItem' | 'addChest' | 'claimPendingReward' | 'claimAllPendingRewards' | 'rollSkillGrindDrop' | 'rollSessionChestDrop' | 'openChestAndGrantItem' | 'grantAndOpenChest' | 'equipItem' | 'unequipSlot' | 'mergeFromCloud' | 'consumePotion' | 'deletePendingReward' | 'deleteChest' | 'deleteItem'> = {
+const initialState: Omit<InventoryState, 'hydrate' | 'addItem' | 'addChest' | 'claimPendingReward' | 'claimAllPendingRewards' | 'rollSkillGrindDrop' | 'rollSessionChestDrop' | 'openChestAndGrantItem' | 'grantAndOpenChest' | 'equipItem' | 'unequipSlot' | 'mergeFromCloud' | 'consumePotion' | 'deletePendingReward' | 'deleteChest' | 'deleteItem' | 'salvageItem'> = {
   items: {},
   chests: {
     common_chest: 0,
@@ -448,6 +450,27 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
     })
   },
 
+  salvageItem(itemId, yields) {
+    const state = get()
+    if ((state.items[itemId] ?? 0) < 1) return null
+    // Cannot salvage the currently equipped copy
+    const allSlots = Object.values(state.equippedBySlot)
+    if (allSlots.includes(itemId)) return null
+    set((s) => {
+      const newItems = { ...s.items }
+      // Consume 1 of the item (keep 0-key for sync integrity)
+      newItems[itemId] = Math.max(0, (newItems[itemId] ?? 0) - 1)
+      // Grant materials
+      for (const { id, qty } of yields) {
+        newItems[id] = (newItems[id] ?? 0) + qty
+      }
+      const next: InventoryState = { ...s, items: newItems }
+      saveSnapshot(next)
+      return next
+    })
+    return yields
+  },
+
   mergeFromCloud(items, chests) {
     set((state) => {
       const nextItems = { ...state.items }
@@ -458,11 +481,13 @@ export const useInventoryStore = create<InventoryState>((set, get) => ({
           nextItems[itemId] = cloudQty
         }
       }
+      // Local is authoritative for chests — use cloud value only if it's strictly greater
+      // AND local is currently 0 (handles admin grants without restoring opened chests).
       const nextChests: ChestCounts = {
-        common_chest: Math.max(state.chests.common_chest ?? 0, chests.common_chest ?? 0),
-        rare_chest: Math.max(state.chests.rare_chest ?? 0, chests.rare_chest ?? 0),
-        epic_chest: Math.max(state.chests.epic_chest ?? 0, chests.epic_chest ?? 0),
-        legendary_chest: Math.max(state.chests.legendary_chest ?? 0, chests.legendary_chest ?? 0),
+        common_chest: state.chests.common_chest === 0 && (chests.common_chest ?? 0) > 0 ? chests.common_chest : state.chests.common_chest ?? 0,
+        rare_chest: state.chests.rare_chest === 0 && (chests.rare_chest ?? 0) > 0 ? chests.rare_chest : state.chests.rare_chest ?? 0,
+        epic_chest: state.chests.epic_chest === 0 && (chests.epic_chest ?? 0) > 0 ? chests.epic_chest : state.chests.epic_chest ?? 0,
+        legendary_chest: state.chests.legendary_chest === 0 && (chests.legendary_chest ?? 0) > 0 ? chests.legendary_chest : state.chests.legendary_chest ?? 0,
       }
       const next: InventoryState = { ...state, items: nextItems, chests: nextChests }
       saveSnapshot(next)

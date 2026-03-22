@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
+import { fmt } from '../../lib/format'
 import { motion } from 'framer-motion'
 import { useSessionStore, type SkillXPGain } from '../../stores/sessionStore'
 import { getDailyActivities } from '../../services/dailyActivityService'
@@ -66,10 +67,10 @@ function SkillXPCard({ gain, index }: { gain: SkillXPGain; index: number }) {
       initial={{ opacity: 0, x: -14 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: delayMs / 1000, duration: 0.32, ease: MOTION.easing }}
-      className={`relative overflow-hidden rounded-xl border px-3 py-2.5 ${
+      className={`relative overflow-hidden rounded border px-3 py-2.5 ${
         leveledUp
-          ? 'border-cyber-neon/50 bg-cyber-neon/[0.05] shadow-[0_0_18px_rgba(0,255,136,0.10)]'
-          : 'border-white/[0.07] bg-discord-dark/60'
+          ? 'border-accent/50 bg-accent/[0.05] shadow-[0_0_18px_rgba(88,101,242,0.10)]'
+          : 'border-white/[0.07] bg-surface-1/60'
       }`}
     >
       {/* level-up radial flash */}
@@ -104,19 +105,19 @@ function SkillXPCard({ gain, index }: { gain: SkillXPGain; index: number }) {
                   initial={{ scale: 0, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ delay: (delayMs + 380) / 1000, ...MOTION.spring.pop }}
-                  className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full border border-cyber-neon/50 text-cyber-neon bg-cyber-neon/15 leading-tight"
+                  className="shrink-0 text-micro font-bold px-1.5 py-0.5 rounded-full border border-accent/50 text-accent bg-accent/15 leading-tight"
                 >
                   LVL UP
                 </motion.span>
               )}
             </div>
-            <span className="text-xs font-mono font-bold text-cyber-neon tabular-nums shrink-0">
-              +{xpDisplayed.toLocaleString()}
+            <span className="text-xs font-mono font-bold text-accent tabular-nums shrink-0">
+              +{fmt(xpDisplayed)}
             </span>
           </div>
 
           {/* XP bar */}
-          <div className="h-1.5 rounded-full bg-discord-darker/80 overflow-hidden">
+          <div className="h-1.5 rounded-full bg-surface-0/80 overflow-hidden">
             <motion.div
               className="h-full rounded-full"
               style={{ backgroundColor: skill.color }}
@@ -128,10 +129,10 @@ function SkillXPCard({ gain, index }: { gain: SkillXPGain; index: number }) {
 
           {/* Level / percent */}
           <div className="flex justify-between items-center mt-1">
-            <span className="text-[10px] font-mono text-gray-600">
+            <span className="text-micro font-mono text-gray-600">
               {leveledUp ? `Lvl.${gain.levelBefore} → Lvl.${gain.levelAfter}` : `Lvl.${gain.levelAfter}`}
             </span>
-            <span className="text-[10px] font-mono text-gray-600">{Math.round(widthAfter)}%</span>
+            <span className="text-micro font-mono text-gray-600">{Math.round(widthAfter)}%</span>
           </div>
         </div>
       </div>
@@ -217,7 +218,7 @@ export function SessionComplete({ onNavigateFriends }: SessionCompleteProps = {}
           exit={{ scale: 0.95, opacity: 0 }}
           transition={MOTION.spring.soft}
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-[320px] max-h-[86vh] rounded-2xl bg-discord-card border border-cyber-neon/25 shadow-[0_0_48px_rgba(0,255,136,0.10)] overflow-hidden flex flex-col"
+          className="w-full max-w-[320px] max-h-[86vh] rounded-card bg-surface-2 border border-accent/25 shadow-[0_0_48px_rgba(88,101,242,0.10)] overflow-hidden flex flex-col"
         >
           <div className="overflow-y-auto overflow-x-hidden px-5 pt-5 pb-3 space-y-3 min-h-0">
             {/* Header */}
@@ -230,7 +231,7 @@ export function SessionComplete({ onNavigateFriends }: SessionCompleteProps = {}
               >
                 🎉
               </motion.div>
-              <h3 className="text-base font-bold text-cyber-neon">GG, grind complete!</h3>
+              <h3 className="text-base font-bold text-accent">GG, grind complete!</h3>
               {lastSessionSummary && (
                 <motion.p
                   initial={{ opacity: 0, y: 4 }}
@@ -248,18 +249,18 @@ export function SessionComplete({ onNavigateFriends }: SessionCompleteProps = {}
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ delay: 0.18, ...MOTION.spring.soft }}
-                  className="inline-flex items-center gap-2 mt-2.5 px-3.5 py-1.5 rounded-full bg-cyber-neon/10 border border-cyber-neon/25"
+                  className="inline-flex items-center gap-2 mt-2.5 px-3.5 py-1.5 rounded-full bg-accent/10 border border-accent/25"
                 >
-                  <span className="text-[11px] text-gray-400 font-medium">Total earned</span>
-                  <span className="text-sm font-mono font-bold text-cyber-neon tabular-nums">
-                    +{animatedTotal.toLocaleString()} XP
+                  <span className="text-caption text-gray-400 font-medium">Total earned</span>
+                  <span className="text-sm font-mono font-bold text-accent tabular-nums">
+                    +{fmt(animatedTotal)} XP
                   </span>
                   {streakMultiplier > 1 && (
                     <motion.span
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       transition={{ delay: 0.4, ...MOTION.spring.pop }}
-                      className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30"
+                      className="text-micro font-bold px-1.5 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30"
                     >
                       🔥 ×{streakMultiplier}
                     </motion.span>
@@ -285,7 +286,7 @@ export function SessionComplete({ onNavigateFriends }: SessionCompleteProps = {}
                 transition={{ delay: 0.7 }}
                 className="space-y-1.5"
               >
-                <p className="text-[10px] font-mono text-amber-400/60 uppercase tracking-widest text-center">
+                <p className="text-micro font-mono text-amber-400/60 uppercase tracking-widest text-center">
                   Achievement{newAchievements.length > 1 ? 's' : ''} unlocked
                 </p>
                 {newAchievements.map((ach, i) => (
@@ -294,15 +295,15 @@ export function SessionComplete({ onNavigateFriends }: SessionCompleteProps = {}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.75 + i * 0.1, duration: 0.28 }}
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl border border-amber-400/20 bg-amber-400/[0.05]"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded border border-amber-400/20 bg-amber-400/[0.05]"
                   >
                     <span className="text-base shrink-0">🏆</span>
                     <div className="flex-1 min-w-0">
-                      <div className="text-[11px] font-semibold text-amber-300 truncate">{ach.name}</div>
-                      <div className="text-[10px] text-gray-500 truncate">{ach.description}</div>
+                      <div className="text-caption font-semibold text-amber-300 truncate">{ach.name}</div>
+                      <div className="text-micro text-gray-500 truncate">{ach.description}</div>
                     </div>
                     {ach.xpReward > 0 && (
-                      <span className="text-[10px] font-mono text-cyber-neon shrink-0">+{ach.xpReward}</span>
+                      <span className="text-micro font-mono text-accent shrink-0">+{ach.xpReward}</span>
                     )}
                   </motion.div>
                 ))}
@@ -320,7 +321,7 @@ export function SessionComplete({ onNavigateFriends }: SessionCompleteProps = {}
                 {sessionRewards.map((reward, i) => (
                   <span
                     key={i}
-                    className="text-[10px] px-1.5 py-0.5 rounded-md bg-cyber-neon/10 border border-cyber-neon/20 text-cyber-neon"
+                    className="text-micro px-1.5 py-0.5 rounded bg-accent/10 border border-accent/20 text-accent"
                   >
                     {reward.avatar && reward.avatar} {reward.title && `"${reward.title}"`}
                   </span>
@@ -340,8 +341,8 @@ export function SessionComplete({ onNavigateFriends }: SessionCompleteProps = {}
                   transition={{ delay: 1.2 }}
                   className="text-center"
                 >
-                  <span className="text-[10px] font-mono text-gray-600">
-                    {skill.icon} {skill.name} Lv.{coachingTip.level} — {coachingTip.xpNeeded.toLocaleString()} XP away (≈{mins}m)
+                  <span className="text-micro font-mono text-gray-600">
+                    {skill.icon} {skill.name} Lv.{coachingTip.level} — {fmt(coachingTip.xpNeeded)} XP away (≈{mins}m)
                   </span>
                 </motion.div>
               )
@@ -355,7 +356,7 @@ export function SessionComplete({ onNavigateFriends }: SessionCompleteProps = {}
                 transition={{ delay: 1.4 }}
                 className="text-center"
               >
-                <span className="text-[10px] font-mono text-gray-600">
+                <span className="text-micro font-mono text-gray-600">
                   {dailyDone === dailyTotal
                     ? `✓ All ${dailyTotal} daily quests done`
                     : `${dailyDone}/${dailyTotal} daily quests · ${dailyTotal - dailyDone} left`}
@@ -373,7 +374,7 @@ export function SessionComplete({ onNavigateFriends }: SessionCompleteProps = {}
               >
                 <button
                   onClick={() => handleCTAClick(onNavigateFriends)}
-                  className="px-3 py-1.5 rounded-lg bg-cyber-neon/10 border border-cyber-neon/25 text-cyber-neon text-[11px] font-medium hover:bg-cyber-neon/20 transition-colors"
+                  className="px-3 py-1.5 rounded bg-accent/10 border border-accent/25 text-accent text-caption font-medium hover:bg-accent/20 transition-colors"
                 >
                   👥 Add a friend
                 </button>
@@ -390,14 +391,14 @@ export function SessionComplete({ onNavigateFriends }: SessionCompleteProps = {}
               transition={{ delay: 0.5 }}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
-              className="w-full py-2 rounded-xl bg-cyber-neon/12 border border-cyber-neon/30 text-cyber-neon text-xs font-bold hover:bg-cyber-neon/20 transition-colors"
+              className="w-full py-2 rounded bg-accent/12 border border-accent/30 text-accent text-xs font-bold hover:bg-accent/20 transition-colors"
             >
               ✓ nice
             </motion.button>
           </div>
-          <div className="h-0.5 bg-discord-darker/50 shrink-0">
+          <div className="h-0.5 bg-surface-0/50 shrink-0">
             <div
-              className="h-full bg-cyber-neon/50 transition-[width] duration-100"
+              className="h-full bg-accent/50 transition-[width] duration-100"
               style={{ width: `${progress}%` }}
             />
           </div>

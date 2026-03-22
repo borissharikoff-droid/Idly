@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ProfileBar } from './ProfileBar'
 import { Timer } from './Timer'
@@ -93,7 +93,6 @@ export function HomePage({ onNavigateProfile, onNavigateInventory, onNavigateFri
   const weeklyTotal = weeklyBounties.length
   const questStreak = getQuestStreak()
 
-  const showStreakWarning = questStreak > 0 && new Date().getHours() >= 18 && dailyDone < dailyTotal
 
   const handleOpenQuests = () => {
     setProfileInitialTab('quests')
@@ -168,15 +167,24 @@ export function HomePage({ onNavigateProfile, onNavigateInventory, onNavigateFri
 
       {/* Active raid ambient bar */}
       {activeRaid && raidCfg && activeRaid.status === 'active' && (
-        <div className="mx-4 mt-2 mb-0 rounded-xl border px-3 py-2 flex items-center gap-2" style={{ borderColor: `${raidCfg.color}30`, background: `${raidCfg.color}08` }}>
-          <span className="text-base">{raidCfg.icon}</span>
+        <div
+          className="mx-4 mt-2 mb-0 rounded border border-white/[0.08] bg-white/[0.03] px-3 py-2 flex items-center gap-2"
+        >
+          <span className="text-base shrink-0">{raidCfg.icon}</span>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold text-white truncate">{raidCfg.name}</p>
-            <p className="text-[10px] font-mono text-gray-500">{raidCountdownStr} — Phase {raidPhase}</p>
+            <p className="text-xs font-semibold text-white/90 truncate">{raidCfg.name}</p>
+            <p className="text-micro font-mono text-gray-500 mt-0.5">{raidCountdownStr} — Phase {raidPhase}</p>
           </div>
-          <span className="text-[10px] font-mono shrink-0" style={{ color: raidCfg.color }}>
+          <span className="text-micro font-mono text-gray-400 shrink-0 tabular-nums">
             {raidHpPct.toFixed(0)}% HP
           </span>
+          <button
+            type="button"
+            onClick={() => navigateTo?.('arena')}
+            className="shrink-0 text-micro font-mono px-2 py-1 rounded border border-white/12 bg-white/[0.04] text-gray-300 hover:text-white hover:bg-white/[0.08] transition-colors"
+          >
+            →
+          </button>
         </div>
       )}
 
@@ -220,59 +228,77 @@ export function HomePage({ onNavigateProfile, onNavigateInventory, onNavigateFri
           </div>
         </div>
 
-        {/* Ambient activity bar — farm/craft/cook status */}
-        {showAmbientBar && (
-          <div className="flex justify-center gap-1.5 pb-2">
-            {farmReady > 0 && (
-              <button type="button" onClick={() => navigateTo?.('farm')} className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-mono border border-lime-500/40 bg-lime-500/[0.07] text-lime-400 hover:bg-lime-500/15 transition-colors">
-                🌾 {farmReady} ready
-              </button>
-            )}
-            {craftJob && (
-              <button type="button" onClick={() => navigateTo?.('craft')} className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-mono border transition-colors ${craftRemaining === 0 ? 'border-cyber-neon/50 bg-cyber-neon/[0.07] text-cyber-neon hover:bg-cyber-neon/15' : 'border-white/20 bg-white/[0.04] text-gray-400 hover:bg-white/[0.07]'}`}>
-                ⚒ {craftRemaining === 0 ? 'done' : `${craftRemaining} left`}
-              </button>
-            )}
-            {cookJob && (
-              <button type="button" onClick={() => navigateTo?.('cooking')} className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-mono border transition-colors ${cookRemaining === 0 ? 'border-cyber-neon/50 bg-cyber-neon/[0.07] text-cyber-neon hover:bg-cyber-neon/15' : 'border-white/20 bg-white/[0.04] text-gray-400 hover:bg-white/[0.07]'}`}>
-                🍳 {cookRemaining === 0 ? 'done' : `${cookRemaining} left`}
-              </button>
-            )}
-          </div>
-        )}
-
         {/* Bottom zone — pinned just above nav bar */}
         <div className="pb-4 w-full max-w-sm mx-auto space-y-2">
-          {showStreakWarning && (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-amber-500/[0.07] border border-amber-500/20">
-              <span className="shrink-0">🔥</span>
-              <span className="text-xs font-mono text-amber-500/80 leading-snug">
-                Maintain your streak — {dailyTotal - dailyDone} quest{dailyTotal - dailyDone !== 1 ? 's' : ''} left, resets at midnight
-              </span>
+
+          {/* Ambient activity bar — farm/craft/cook status */}
+          {showAmbientBar && (
+            <div className="flex gap-1.5 flex-wrap">
+              {farmReady > 0 && (
+                <button
+                  type="button"
+                  onClick={() => navigateTo?.('farm')}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full text-micro font-mono border border-lime-500/35 bg-lime-500/[0.07] text-lime-400 hover:bg-lime-500/12 transition-colors"
+                >
+                  🌾 {farmReady} ready
+                </button>
+              )}
+              {craftJob && (
+                <button
+                  type="button"
+                  onClick={() => navigateTo?.('craft')}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-micro font-mono border transition-colors ${
+                    craftRemaining === 0
+                      ? 'border-accent/40 bg-accent/[0.07] text-accent hover:bg-accent/12'
+                      : 'border-white/12 bg-white/[0.04] text-gray-400 hover:bg-white/[0.07]'
+                  }`}
+                >
+                  ⚒ {craftRemaining === 0 ? 'done' : `${craftRemaining} left`}
+                </button>
+              )}
+              {cookJob && (
+                <button
+                  type="button"
+                  onClick={() => navigateTo?.('cooking')}
+                  className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-micro font-mono border transition-colors ${
+                    cookRemaining === 0
+                      ? 'border-accent/40 bg-accent/[0.07] text-accent hover:bg-accent/12'
+                      : 'border-white/12 bg-white/[0.04] text-gray-400 hover:bg-white/[0.07]'
+                  }`}
+                >
+                  🍳 {cookRemaining === 0 ? 'done' : `${cookRemaining} left`}
+                </button>
+              )}
             </div>
           )}
+
+
           {(dailyTotal > 0 || weeklyTotal > 0) && (
-            <button type="button" onClick={handleOpenQuests} className="w-full space-y-1 group">
+            <button type="button" onClick={handleOpenQuests} className="w-full group rounded border border-transparent hover:border-white/[0.07] px-3 py-2 hover:bg-white/[0.03] transition-colors">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-micro font-mono text-gray-400 uppercase tracking-widest">Quests</span>
+                <span className="text-micro text-gray-500 group-hover:text-gray-300 transition-colors">→</span>
+              </div>
               {dailyTotal > 0 && (
-                <div className="flex items-center gap-2 px-0.5">
-                  <span className="text-xs font-mono text-gray-600 group-hover:text-gray-400 transition-colors shrink-0 w-12">Daily</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono text-gray-500 group-hover:text-gray-300 transition-colors shrink-0 w-12">Daily</span>
                   <div className="flex gap-0.5 flex-1">
                     {Array.from({ length: dailyTotal }).map((_, i) => (
-                      <div key={i} className={`h-1 flex-1 rounded-full transition-colors duration-300 ${i < dailyDone ? 'bg-cyber-neon' : 'bg-white/[0.08]'}`} />
+                      <div key={i} className={`h-1 flex-1 rounded-full transition-colors duration-300 ${i < dailyDone ? 'bg-accent' : 'bg-white/[0.08]'}`} />
                     ))}
                   </div>
-                  <span className={`text-xs font-mono shrink-0 tabular-nums ${dailyDone === dailyTotal ? 'text-cyber-neon' : 'text-gray-600'}`}>{dailyDone}/{dailyTotal}</span>
+                  <span className={`text-xs font-mono shrink-0 tabular-nums ${dailyDone === dailyTotal ? 'text-accent' : 'text-gray-400'}`}>{dailyDone}/{dailyTotal}</span>
                 </div>
               )}
               {weeklyTotal > 0 && (
-                <div className="flex items-center gap-2 px-0.5">
-                  <span className="text-xs font-mono text-gray-600 group-hover:text-gray-400 transition-colors shrink-0 w-12">Weekly</span>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className="text-xs font-mono text-gray-500 group-hover:text-gray-300 transition-colors shrink-0 w-12">Weekly</span>
                   <div className="flex gap-0.5 flex-1">
                     {Array.from({ length: weeklyTotal }).map((_, i) => (
-                      <div key={i} className={`h-1 flex-1 rounded-full transition-colors duration-300 ${i < weeklyDone ? 'bg-discord-purple' : 'bg-white/[0.08]'}`} />
+                      <div key={i} className={`h-1 flex-1 rounded-full transition-colors duration-300 ${i < weeklyDone ? 'bg-violet-500' : 'bg-white/[0.08]'}`} />
                     ))}
                   </div>
-                  <span className={`text-xs font-mono shrink-0 tabular-nums ${weeklyDone === weeklyTotal ? 'text-discord-purple' : 'text-gray-600'}`}>{weeklyDone}/{weeklyTotal}</span>
+                  <span className={`text-xs font-mono shrink-0 tabular-nums ${weeklyDone === weeklyTotal ? 'text-violet-500' : 'text-gray-400'}`}>{weeklyDone}/{weeklyTotal}</span>
                 </div>
               )}
             </button>

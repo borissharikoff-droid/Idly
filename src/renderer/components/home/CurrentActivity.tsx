@@ -55,7 +55,7 @@ export function CurrentActivity() {
 
   if (isPreloadError && api) {
     return (
-      <div className="w-full max-w-sm rounded-xl px-4 py-3 border border-amber-500/30 bg-amber-950/30">
+      <div className="w-full max-w-sm rounded-card px-4 py-3 border border-amber-500/30 bg-amber-950/30">
         <p className="text-amber-400 text-sm font-medium">Loading error</p>
         <p className="text-gray-400 text-xs mt-1 break-words">{(api as { _message?: string })._message || 'Preload failed'}</p>
       </div>
@@ -64,7 +64,7 @@ export function CurrentActivity() {
 
   if (isBrowser) {
     return (
-      <div className="w-full max-w-sm rounded-xl px-4 py-3 border border-sky-400/25 bg-gradient-to-r from-sky-950/40 to-sky-900/20 shadow-[0_0_20px_rgba(56,189,248,0.08)]">
+      <div className="w-full max-w-sm rounded-card px-4 py-3 border border-sky-400/25 bg-gradient-to-r from-sky-950/40 to-sky-900/20 shadow-[0_0_20px_rgba(56,189,248,0.08)]">
         <div className="flex items-center gap-2.5">
           <span className="text-xl">🌐</span>
           <div className="flex-1 min-w-0">
@@ -86,13 +86,13 @@ export function CurrentActivity() {
         initial={{ opacity: 0, y: 10, scale: 0.99, filter: 'blur(4px)' }}
         animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
         transition={{ duration: MOTION.duration.slow, ease: MOTION.easingSoft }}
-        className="w-full max-w-sm rounded-xl bg-amber-950/30 border border-amber-500/30 px-4 py-3"
+        className="w-full max-w-sm rounded-card bg-amber-950/30 border border-amber-500/30 px-4 py-3"
       >
         <p className="text-amber-400 text-sm font-medium">Window detector error</p>
         <p className="text-gray-400 text-xs mt-1 break-words">{displayActivity.windowTitle}</p>
-        <p className="text-gray-500 text-[11px] mt-2">Check the logs folder or try running the app as administrator.</p>
-        {logsPath && <p className="text-gray-500 text-[11px] mt-1.5 font-mono truncate" title={logsPath}>{logsPath}</p>}
-        {api?.data?.openLogsFolder && <button type="button" onClick={openLogs} className="mt-2 text-xs text-cyber-neon hover:underline">Open logs folder</button>}
+        <p className="text-gray-500 text-caption mt-2">Check the logs folder or try running the app as administrator.</p>
+        {logsPath && <p className="text-gray-500 text-caption mt-1.5 font-mono truncate" title={logsPath}>{logsPath}</p>}
+        {api?.data?.openLogsFolder && <button type="button" onClick={openLogs} className="mt-2 text-xs text-accent hover:underline">Open logs folder</button>}
       </motion.div>
     )
   }
@@ -103,7 +103,7 @@ export function CurrentActivity() {
         initial={{ opacity: 0, y: 8, filter: 'blur(3px)' }}
         animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
         transition={{ duration: MOTION.duration.slow, ease: MOTION.easingSoft }}
-        className="w-full max-w-sm rounded-xl bg-discord-card/60 border border-white/5 px-4 py-3 text-center"
+        className="w-full max-w-sm rounded-card bg-surface-2/60 border border-white/5 px-4 py-3 text-center"
       >
         <p className="text-gray-500 text-xs font-mono">Detecting active window...</p>
       </motion.div>
@@ -126,7 +126,7 @@ export function CurrentActivity() {
       initial={{ opacity: 0, y: 12, scale: 0.99, filter: 'blur(5px)' }}
       animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
       transition={{ duration: MOTION.duration.verySlow, ease: MOTION.easingSoft }}
-      className="w-full max-w-sm rounded-xl bg-discord-card/90 border border-cyber-neon/20 px-4 py-3 shadow-[0_0_16px_rgba(0,255,136,0.06)]"
+      className="w-full max-w-sm rounded-card bg-surface-2/90 border border-accent/20 px-4 py-3 shadow-[0_0_16px_rgba(88,101,242,0.06)]"
     >
       <div className="flex items-center gap-2.5">
         <motion.span
@@ -141,7 +141,7 @@ export function CurrentActivity() {
             <motion.p
               layout="position"
               transition={{ duration: MOTION.duration.base, ease: MOTION.easingSoft }}
-              className="text-cyber-neon/95 text-sm font-medium truncate"
+              className="text-accent text-sm font-medium truncate"
             >
               {activityTitle}
             </motion.p>
@@ -152,7 +152,7 @@ export function CurrentActivity() {
                 initial={{ opacity: 0, y: 3 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: MOTION.duration.base, ease: MOTION.easingSoft }}
-                className="text-[11px] font-mono text-gray-400"
+                className="text-caption font-mono text-gray-400"
               >
                 +{xpThisSession} XP
               </motion.span>
@@ -165,7 +165,7 @@ export function CurrentActivity() {
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.96 }}
                   transition={{ duration: MOTION.duration.base, ease: MOTION.easingSoft }}
-                  className="text-[10px] px-1.5 py-0.5 rounded-full border border-white/10 text-gray-400 bg-white/[0.03]"
+                  className="text-micro px-1.5 py-0.5 rounded-full border border-white/10 text-gray-400 bg-white/[0.03]"
                 >
                   updating...
                 </motion.span>

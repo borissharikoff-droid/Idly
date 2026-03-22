@@ -285,7 +285,7 @@ export function GoalWidget({ trailingAction }: { trailingAction?: React.ReactNod
           {tasks.some(t => t.done) && (
             <button
               onClick={handleClearDone}
-              className="text-[10px] text-gray-600 hover:text-gray-400 transition-colors font-mono ml-1"
+              className="text-micro text-gray-600 hover:text-gray-400 transition-colors font-mono ml-1"
             >
               clear done
             </button>
@@ -369,27 +369,27 @@ export function GoalWidget({ trailingAction }: { trailingAction?: React.ReactNod
 
 function GoalTypePicker({ onPickTime, onPickTask, onCancel }: { onPickTime: () => void; onPickTask: () => void; onCancel: () => void }) {
   return (
-    <div className="rounded-xl bg-discord-card/70 border border-white/10 p-3 space-y-2">
+    <div className="rounded-card bg-surface-2/70 border border-white/10 p-3 space-y-2">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-mono text-gray-500 uppercase tracking-wider">New goal</span>
+        <span className="text-micro font-mono text-gray-500 uppercase tracking-wider">New goal</span>
         <button onClick={onCancel} className="text-gray-600 hover:text-gray-400 transition-colors"><X className="w-3.5 h-3.5" /></button>
       </div>
       <div className="flex gap-2">
         <button
           onClick={onPickTime}
-          className="flex-1 flex flex-col items-center gap-1.5 py-3 rounded-lg bg-discord-darker border border-white/5 hover:border-cyber-neon/30 hover:bg-cyber-neon/5 transition-all active:scale-[0.97]"
+          className="flex-1 flex flex-col items-center gap-1.5 py-3 rounded bg-surface-0 border border-white/5 hover:border-accent/30 hover:bg-accent/5 transition-all active:scale-[0.97]"
         >
           <span className="text-lg">⏱</span>
-          <span className="text-[11px] text-gray-300 font-medium">Time goal</span>
-          <span className="text-[10px] text-gray-600">Track hours</span>
+          <span className="text-caption text-gray-300 font-medium">Time goal</span>
+          <span className="text-micro text-gray-600">Track hours</span>
         </button>
         <button
           onClick={onPickTask}
-          className="flex-1 flex flex-col items-center gap-1.5 py-3 rounded-lg bg-discord-darker border border-white/5 hover:border-discord-purple/30 hover:bg-discord-purple/5 transition-all active:scale-[0.97]"
+          className="flex-1 flex flex-col items-center gap-1.5 py-3 rounded bg-surface-0 border border-white/5 hover:border-accent/30 hover:bg-accent/5 transition-all active:scale-[0.97]"
         >
           <span className="text-lg">✅</span>
-          <span className="text-[11px] text-gray-300 font-medium">Task</span>
-          <span className="text-[10px] text-gray-600">Checklist item</span>
+          <span className="text-caption text-gray-300 font-medium">Task</span>
+          <span className="text-micro text-gray-600">Checklist item</span>
         </button>
       </div>
     </div>
@@ -419,16 +419,16 @@ function TaskItem({ task, onToggle, onDelete, onUpdateText }: { task: Task; onTo
   }, [editing])
 
   return (
-    <div className={`group flex items-center gap-2.5 w-full rounded-lg px-3 py-2 border transition-colors duration-150 ${
-      done ? 'bg-discord-card/30 border-white/[0.03]' : 'bg-discord-card/50 border-white/5'
+    <div className={`group flex items-center gap-2.5 w-full rounded px-3 py-2 border transition-colors duration-150 ${
+      done ? 'bg-surface-2/30 border-white/[0.03]' : 'bg-surface-2/50 border-white/5'
     }`}>
       <button
         onClick={onToggle}
         className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-all duration-150 ${
-          done ? 'bg-cyber-neon border-cyber-neon text-discord-darker' : 'border-gray-600 hover:border-gray-400'
+          done ? 'bg-accent border-accent text-surface-0' : 'border-gray-600 hover:border-gray-400'
         }`}
       >
-        {done && <span className="text-[10px] font-bold leading-none">✓</span>}
+        {done && <span className="text-micro font-bold leading-none">✓</span>}
       </button>
 
       {editing ? (
@@ -441,7 +441,7 @@ function TaskItem({ task, onToggle, onDelete, onUpdateText }: { task: Task; onTo
             if (e.key === 'Enter') commitEdit()
             if (e.key === 'Escape') { setEditText(task.text); setEditing(false) }
           }}
-          className="flex-1 text-xs bg-transparent text-gray-200 outline-none border-b border-cyber-neon/40 py-0"
+          className="flex-1 text-xs bg-transparent text-gray-200 outline-none border-b border-accent/40 py-0"
         />
       ) : (
         <span
@@ -456,7 +456,7 @@ function TaskItem({ task, onToggle, onDelete, onUpdateText }: { task: Task; onTo
 
       <button
         onClick={onDelete}
-        className="text-gray-700 hover:text-red-400 transition-colors text-[10px] opacity-0 group-hover:opacity-100"
+        className="text-gray-700 hover:text-red-400 transition-colors text-micro opacity-0 group-hover:opacity-100"
       >
         ✕
       </button>
@@ -494,9 +494,9 @@ function TaskCreator({ onCreated, onCancel }: { onCreated: () => void; onCancel:
   }
 
   return (
-    <div className="rounded-xl bg-discord-card/70 border border-white/10 p-3 space-y-2.5">
+    <div className="rounded-card bg-surface-2/70 border border-white/10 p-3 space-y-2.5">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-mono text-gray-500 uppercase tracking-wider">New task</span>
+        <span className="text-micro font-mono text-gray-500 uppercase tracking-wider">New task</span>
         <button onClick={onCancel} className="text-gray-600 hover:text-gray-400 transition-colors"><X className="w-3.5 h-3.5" /></button>
       </div>
       <input
@@ -506,22 +506,22 @@ function TaskCreator({ onCreated, onCancel }: { onCreated: () => void; onCancel:
         onChange={(e) => setText(e.target.value)}
         onKeyDown={handleKeyDown}
         placeholder="What needs to get done?"
-        className="w-full text-sm px-3 py-2 rounded-lg bg-discord-darker border border-white/10 text-white placeholder-gray-600 focus:border-discord-purple/40 outline-none transition-colors"
+        className="w-full text-sm px-3 py-2 rounded bg-surface-0 border border-white/10 text-white placeholder-gray-600 focus:border-accent/40 outline-none transition-colors"
       />
       <div className="flex gap-2">
         <button
           onClick={onCancel}
-          className="flex-1 text-xs py-1.5 rounded-lg bg-discord-darker text-gray-400 border border-white/5 hover:border-white/10 transition-colors active:scale-95"
+          className="flex-1 text-xs py-1.5 rounded bg-surface-0 text-gray-400 border border-white/5 hover:border-white/10 transition-colors active:scale-95"
         >
           Back
         </button>
         <button
           onClick={handleCreate}
           disabled={!text.trim()}
-          className={`flex-1 text-xs py-1.5 rounded-lg border font-semibold transition-all active:scale-95 ${
+          className={`flex-1 text-xs py-1.5 rounded border font-semibold transition-all active:scale-95 ${
             text.trim()
-              ? 'bg-discord-purple/20 text-discord-purple border-discord-purple/30 hover:bg-discord-purple/30'
-              : 'bg-discord-darker text-gray-600 border-white/5 cursor-default'
+              ? 'bg-violet-500/20 text-violet-500 border-violet-500/30 hover:bg-violet-500/30'
+              : 'bg-surface-0 text-gray-600 border-white/5 cursor-default'
           }`}
         >
           Add task
@@ -561,7 +561,7 @@ function GoalReachedModal({
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.95, opacity: 0, y: 6 }}
           transition={{ type: 'spring', damping: 20, stiffness: 260 }}
-          className="rounded-2xl bg-discord-card border border-cyber-neon/25 shadow-[0_0_40px_rgba(0,255,136,0.10)] max-w-sm w-full p-5 space-y-3"
+          className="rounded-card bg-surface-2 border border-accent/25 shadow-[0_0_40px_rgba(0,255,136,0.10)] max-w-sm w-full p-5 space-y-3"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="text-center space-y-1">
@@ -574,7 +574,7 @@ function GoalReachedModal({
               🎯
             </motion.div>
             <p className="text-white font-semibold text-sm">Goal Complete!</p>
-            <p className="text-gray-500 text-[11px]">
+            <p className="text-gray-500 text-caption">
               {formatDuration(goal.target_seconds)}{categoryLabel ? ` · ${categoryLabel}` : ''}
             </p>
           </div>
@@ -583,26 +583,26 @@ function GoalReachedModal({
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.18 }}
-              className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-cyber-neon/[0.06] border border-cyber-neon/20"
+              className="flex items-center gap-2.5 px-3 py-2.5 rounded bg-accent/[0.06] border border-accent/20"
             >
               <span className="text-xl shrink-0">{chest.icon}</span>
               <div className="flex-1 min-w-0">
-                <p className="text-[11px] font-semibold text-cyber-neon">{chest.name}</p>
-                <p className="text-[10px] text-gray-600">Sent to your inbox</p>
+                <p className="text-caption font-semibold text-accent">{chest.name}</p>
+                <p className="text-micro text-gray-600">Sent to your inbox</p>
               </div>
-              <span className="text-[10px] font-mono text-gray-600 uppercase tracking-wide shrink-0">Reward</span>
+              <span className="text-micro font-mono text-gray-600 uppercase tracking-wide shrink-0">Reward</span>
             </motion.div>
           )}
           <div className="flex gap-2 pt-0.5">
             <button
               onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl bg-discord-darker text-gray-300 border border-white/10 hover:bg-white/5 font-medium text-sm transition-colors"
+              className="flex-1 py-2.5 rounded bg-surface-0 text-gray-300 border border-white/10 hover:bg-white/5 font-medium text-sm transition-colors"
             >
               Claim
             </button>
             <button
               onClick={onAddOneHour}
-              className="flex-1 py-2.5 rounded-xl bg-cyber-neon/15 text-cyber-neon border border-cyber-neon/25 hover:bg-cyber-neon/25 font-medium text-sm transition-colors"
+              className="flex-1 py-2.5 rounded bg-accent/15 text-accent border border-accent/25 hover:bg-accent/25 font-medium text-sm transition-colors"
             >
               +1 hour
             </button>
@@ -623,10 +623,10 @@ function GoalCard({ goal, onEdit }: { goal: GoalWithProgress; onEdit: () => void
 
   return (
     <div
-      className={`group w-full rounded-xl px-3.5 py-2.5 border transition-colors duration-150 cursor-pointer ${
+      className={`group w-full rounded px-3.5 py-2.5 border transition-colors duration-150 cursor-pointer ${
         isComplete
-          ? 'bg-cyber-neon/10 border-cyber-neon/30'
-          : 'bg-discord-card/50 border-white/5 hover:border-white/10'
+          ? 'bg-accent/10 border-accent/30'
+          : 'bg-surface-2/50 border-white/5 hover:border-white/10'
       }`}
       onClick={onEdit}
     >
@@ -637,23 +637,23 @@ function GoalCard({ goal, onEdit }: { goal: GoalWithProgress; onEdit: () => void
           {goal.target_category ? ` ${goal.target_category}` : ''}
         </span>
         <div className="flex items-center gap-2">
-          <span className={`text-[10px] font-mono ${isComplete ? 'text-cyber-neon' : 'text-gray-500'}`}>
+          <span className={`text-micro font-mono ${isComplete ? 'text-accent' : 'text-gray-500'}`}>
             {formatDuration(goal.progress)} / {formatDuration(goal.target_seconds)}
           </span>
-          <span className="text-[10px] text-gray-600 group-hover:opacity-100 opacity-0 transition-opacity duration-150">
+          <span className="text-micro text-gray-600 group-hover:opacity-100 opacity-0 transition-opacity duration-150">
             ✏️
           </span>
         </div>
       </div>
-      <div className="h-1.5 rounded-full bg-discord-darker/80 overflow-hidden">
+      <div className="h-1.5 rounded-full bg-surface-0/80 overflow-hidden">
         <div
-          className={`h-full rounded-full transition-all duration-700 ${isComplete ? 'bg-cyber-neon' : 'bg-cyber-neon/60'}`}
+          className={`h-full rounded-full transition-all duration-700 ${isComplete ? 'bg-accent' : 'bg-accent/60'}`}
           style={{ width: `${pct}%` }}
         />
       </div>
       {!isComplete && rewardChest && (
         <div className="mt-1.5 flex items-center gap-1">
-          <span className="text-[10px] text-gray-600 font-mono">
+          <span className="text-micro text-gray-600 font-mono">
             {rewardChest.icon} {rewardChest.name} on completion
           </span>
         </div>
@@ -687,9 +687,9 @@ function GoalEditor({
     (category || null) !== (goal.target_category || null)
 
   return (
-    <div className="rounded-xl bg-discord-card/80 border border-cyber-neon/20 p-3.5 space-y-2.5">
+    <div className="rounded-card bg-surface-2/80 border border-accent/20 p-3.5 space-y-2.5">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-mono text-gray-500 uppercase tracking-wider">Edit goal</span>
+        <span className="text-micro font-mono text-gray-500 uppercase tracking-wider">Edit goal</span>
         <button onClick={onCancel} className="text-gray-600 hover:text-gray-400 transition-colors"><X className="w-3.5 h-3.5" /></button>
       </div>
       <div className="flex gap-2">
@@ -697,8 +697,8 @@ function GoalEditor({
           <button
             key={p}
             onClick={() => setPeriod(p)}
-            className={`flex-1 text-xs py-1.5 rounded-lg font-medium transition-all duration-150 ${
-              period === p ? 'bg-cyber-neon/20 text-cyber-neon border border-cyber-neon/30' : 'bg-discord-darker text-gray-400 border border-white/5 hover:border-white/10'
+            className={`flex-1 text-xs py-1.5 rounded font-medium transition-all duration-150 ${
+              period === p ? 'bg-accent/20 text-accent border border-accent/30' : 'bg-surface-0 text-gray-400 border border-white/5 hover:border-white/10'
             }`}
           >
             {p === 'daily' ? 'Daily' : 'Weekly'}
@@ -708,25 +708,25 @@ function GoalEditor({
       <div className="flex items-center gap-2.5">
         <span className="text-xs text-gray-400 shrink-0">Hours:</span>
         <input type="range" min={1} max={period === 'daily' ? 12 : 40} value={hours}
-          onChange={(e) => setHours(parseInt(e.target.value, 10))} className="flex-1 accent-cyber-neon h-1 cursor-pointer" />
-        <span className="text-xs font-mono text-cyber-neon w-6 text-right font-bold">{hours}</span>
+          onChange={(e) => setHours(parseInt(e.target.value, 10))} className="flex-1 accent-accent h-1 cursor-pointer" />
+        <span className="text-xs font-mono text-accent w-6 text-right font-bold">{hours}</span>
       </div>
       <select value={category} onChange={(e) => setCategory(e.target.value)}
-        className="w-full text-xs py-1.5 px-2.5 rounded-lg bg-discord-darker border border-white/10 text-gray-300 focus:outline-none focus:border-cyber-neon/40 transition-colors cursor-pointer">
+        className="w-full text-xs py-1.5 px-2.5 rounded bg-surface-0 border border-white/10 text-gray-300 focus:outline-none focus:border-accent/40 transition-colors cursor-pointer">
         {CATEGORIES.map((c) => (<option key={c.value} value={c.value}>{c.label}</option>))}
       </select>
       <div className="flex gap-2 pt-0.5">
         {confirmDelete ? (
           <div className="flex gap-1.5 flex-1">
-            <button onClick={() => setConfirmDelete(false)} className="flex-1 text-xs py-1.5 rounded-lg bg-discord-darker text-gray-400 border border-white/5 active:scale-95">Keep</button>
-            <button onClick={onDelete} className="flex-1 text-xs py-1.5 rounded-lg bg-red-500/20 text-red-400 border border-red-500/30 font-semibold active:scale-95">Delete</button>
+            <button onClick={() => setConfirmDelete(false)} className="flex-1 text-xs py-1.5 rounded bg-surface-0 text-gray-400 border border-white/5 active:scale-95">Keep</button>
+            <button onClick={onDelete} className="flex-1 text-xs py-1.5 rounded bg-red-500/20 text-red-400 border border-red-500/30 font-semibold active:scale-95">Delete</button>
           </div>
         ) : (
           <>
-            <button onClick={() => setConfirmDelete(true)} className="text-xs py-1.5 px-3 rounded-lg bg-discord-darker text-red-400/70 border border-white/5 hover:text-red-400 transition-all active:scale-95">🗑</button>
+            <button onClick={() => setConfirmDelete(true)} className="text-xs py-1.5 px-3 rounded bg-surface-0 text-red-400/70 border border-white/5 hover:text-red-400 transition-all active:scale-95">🗑</button>
             <button onClick={handleSave} disabled={!hasChanges}
-              className={`flex-1 text-xs py-1.5 rounded-lg border font-semibold transition-all active:scale-95 ${
-                hasChanges ? 'bg-cyber-neon/20 text-cyber-neon border-cyber-neon/30 hover:bg-cyber-neon/30' : 'bg-discord-darker text-gray-500 border-white/5 cursor-default'
+              className={`flex-1 text-xs py-1.5 rounded border font-semibold transition-all active:scale-95 ${
+                hasChanges ? 'bg-accent/20 text-accent border-accent/30 hover:bg-accent/30' : 'bg-surface-0 text-gray-500 border-white/5 cursor-default'
               }`}>Save</button>
           </>
         )}
@@ -764,9 +764,9 @@ function GoalCreator({ onCreated, onCancel }: { onCreated: () => void; onCancel:
   }
 
   return (
-    <div className="rounded-xl bg-discord-card/70 border border-white/10 p-3.5 space-y-2.5">
+    <div className="rounded-card bg-surface-2/70 border border-white/10 p-3.5 space-y-2.5">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-mono text-gray-500 uppercase tracking-wider">Time goal</span>
+        <span className="text-micro font-mono text-gray-500 uppercase tracking-wider">Time goal</span>
         <button onClick={onCancel} className="text-gray-600 hover:text-gray-400 transition-colors"><X className="w-3.5 h-3.5" /></button>
       </div>
       <div className="flex gap-2">
@@ -774,8 +774,8 @@ function GoalCreator({ onCreated, onCancel }: { onCreated: () => void; onCancel:
           <button
             key={p}
             onClick={() => setPeriod(p)}
-            className={`flex-1 text-xs py-1.5 rounded-lg font-medium transition-all duration-150 ${
-              period === p ? 'bg-cyber-neon/20 text-cyber-neon border border-cyber-neon/30' : 'bg-discord-darker text-gray-400 border border-white/5 hover:border-white/10'
+            className={`flex-1 text-xs py-1.5 rounded font-medium transition-all duration-150 ${
+              period === p ? 'bg-accent/20 text-accent border border-accent/30' : 'bg-surface-0 text-gray-400 border border-white/5 hover:border-white/10'
             }`}
           >
             {p === 'daily' ? 'Daily' : 'Weekly'}
@@ -785,18 +785,18 @@ function GoalCreator({ onCreated, onCancel }: { onCreated: () => void; onCancel:
       <div className="flex items-center gap-2.5">
         <span className="text-xs text-gray-400 shrink-0">Hours:</span>
         <input type="range" min={1} max={period === 'daily' ? 12 : 40} value={hours}
-          onChange={(e) => setHours(parseInt(e.target.value, 10))} className="flex-1 accent-cyber-neon h-1 cursor-pointer" />
-        <span className="text-xs font-mono text-cyber-neon w-6 text-right font-bold">{hours}</span>
+          onChange={(e) => setHours(parseInt(e.target.value, 10))} className="flex-1 accent-accent h-1 cursor-pointer" />
+        <span className="text-xs font-mono text-accent w-6 text-right font-bold">{hours}</span>
       </div>
       <select value={category} onChange={(e) => setCategory(e.target.value)}
-        className="w-full text-xs py-1.5 px-2.5 rounded-lg bg-discord-darker border border-white/10 text-gray-300 focus:outline-none focus:border-cyber-neon/40 transition-colors cursor-pointer">
+        className="w-full text-xs py-1.5 px-2.5 rounded bg-surface-0 border border-white/10 text-gray-300 focus:outline-none focus:border-accent/40 transition-colors cursor-pointer">
         {CATEGORIES.map((c) => (<option key={c.value} value={c.value}>{c.label}</option>))}
       </select>
       <div className="flex gap-2 pt-0.5">
         <button onClick={onCancel}
-          className="flex-1 text-xs py-1.5 rounded-lg bg-discord-darker text-gray-400 border border-white/5 hover:border-white/10 transition-colors active:scale-95">Back</button>
+          className="flex-1 text-xs py-1.5 rounded bg-surface-0 text-gray-400 border border-white/5 hover:border-white/10 transition-colors active:scale-95">Back</button>
         <button onClick={handleCreate}
-          className="flex-1 text-xs py-1.5 rounded-lg bg-cyber-neon/20 text-cyber-neon border border-cyber-neon/30 font-semibold hover:bg-cyber-neon/30 transition-colors active:scale-95">Create</button>
+          className="flex-1 text-xs py-1.5 rounded bg-accent/20 text-accent border border-accent/30 font-semibold hover:bg-accent/30 transition-colors active:scale-95">Create</button>
       </div>
     </div>
   )

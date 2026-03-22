@@ -41,7 +41,7 @@ export function FoodSelector({ slots, onChange, ownedItems }: FoodSelectorProps)
     <div className="space-y-1.5">
       {/* Slot row */}
       <div className="flex items-center gap-1.5">
-        <span className="text-[10px] text-gray-500 font-mono">Food <span className="text-gray-700">(1/run)</span>:</span>
+        <span className="text-micro text-gray-500 font-mono">Food <span className="text-gray-700">(1/run)</span>:</span>
         {slots.map((slot, idx) => {
           const food = slot ? FOOD_ITEMS.find((f) => f.id === slot.foodId) : null
           const isOpen = pickerIdx === idx
@@ -50,9 +50,9 @@ export function FoodSelector({ slots, onChange, ownedItems }: FoodSelectorProps)
               <button
                 type="button"
                 onClick={() => setPickerIdx(isOpen ? null : idx)}
-                className={`w-7 h-7 rounded-lg border flex items-center justify-center text-xs transition-colors ${
+                className={`w-7 h-7 rounded border flex items-center justify-center text-xs transition-colors ${
                   isOpen
-                    ? 'border-cyber-neon/40 bg-cyber-neon/10 text-cyber-neon'
+                    ? 'border-accent/40 bg-accent/10 text-accent'
                     : 'border-white/10 bg-white/[0.04] hover:bg-white/[0.08]'
                 }`}
                 title={food
@@ -71,7 +71,7 @@ export function FoodSelector({ slots, onChange, ownedItems }: FoodSelectorProps)
                 {food ? (
                   <>
                     <span>{food.icon}</span>
-                    <span className="absolute -bottom-0.5 -right-0.5 text-[10px] font-bold text-white bg-black/60 rounded px-0.5">{slot!.qty}</span>
+                    <span className="absolute -bottom-0.5 -right-0.5 text-micro font-bold text-white bg-black/60 rounded px-0.5">{slot!.qty}</span>
                   </>
                 ) : (
                   <span className="text-gray-600">+</span>
@@ -81,7 +81,7 @@ export function FoodSelector({ slots, onChange, ownedItems }: FoodSelectorProps)
                 <button
                   type="button"
                   onClick={() => handleClear(idx)}
-                  className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-500/80 text-[10px] text-white flex items-center justify-center hover:bg-red-500"
+                  className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-red-500/80 text-micro text-white flex items-center justify-center hover:bg-red-500"
                 >×</button>
               )}
             </div>
@@ -91,9 +91,9 @@ export function FoodSelector({ slots, onChange, ownedItems }: FoodSelectorProps)
 
       {/* Inline picker — expands below the slot row, no floating */}
       {pickerIdx !== null && (
-        <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] overflow-hidden">
+        <div className="rounded-card border border-white/[0.08] bg-white/[0.03] overflow-hidden">
           {availableFood.length === 0 ? (
-            <p className="text-[10px] text-gray-600 font-mono text-center py-2">No food in inventory</p>
+            <p className="text-micro text-gray-600 font-mono text-center py-2">No food in inventory</p>
           ) : (
             availableFood.map((f) => {
               const owned = ownedItems[f.id] ?? 0
@@ -107,18 +107,18 @@ export function FoodSelector({ slots, onChange, ownedItems }: FoodSelectorProps)
                 >
                   <span className="text-sm shrink-0">{f.icon}</span>
                   <div className="flex-1 min-w-0 flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[10px] font-semibold text-gray-200">{f.name}</span>
-                    {f.effect.heal && <span className="text-[10px] font-medium px-1 rounded" style={{ color: '#4ade80', background: 'rgba(74,222,128,0.12)' }}>+{f.effect.heal}HP</span>}
-                    {f.effect.buffAtk && <span className="text-[10px] font-medium px-1 rounded" style={{ color: '#f87171', background: 'rgba(248,113,113,0.12)' }}>+{f.effect.buffAtk}ATK</span>}
-                    {f.effect.buffDef && <span className="text-[10px] font-medium px-1 rounded" style={{ color: '#818cf8', background: 'rgba(129,140,248,0.12)' }}>+{f.effect.buffDef}DEF</span>}
-                    {f.effect.buffRegen && <span className="text-[10px] font-medium px-1 rounded" style={{ color: '#34d399', background: 'rgba(52,211,153,0.12)' }}>+{f.effect.buffRegen}reg</span>}
-                    {f.effect.goldBonusPct && <span className="text-[10px] font-medium px-1 rounded" style={{ color: '#fbbf24', background: 'rgba(251,191,36,0.12)' }}>+{f.effect.goldBonusPct}%g</span>}
-                    {f.effect.dropBonusPct && <span className="text-[10px] font-medium px-1 rounded" style={{ color: '#a78bfa', background: 'rgba(167,139,250,0.12)' }}>+{f.effect.dropBonusPct}%drop</span>}
+                    <span className="text-micro font-semibold text-gray-200">{f.name}</span>
+                    {f.effect.heal && <span className="text-micro font-medium px-1 rounded" style={{ color: '#4ade80', background: 'rgba(74,222,128,0.12)' }}>+{f.effect.heal}HP</span>}
+                    {f.effect.buffAtk && <span className="text-micro font-medium px-1 rounded" style={{ color: '#f87171', background: 'rgba(248,113,113,0.12)' }}>+{f.effect.buffAtk}ATK</span>}
+                    {f.effect.buffDef && <span className="text-micro font-medium px-1 rounded" style={{ color: '#818cf8', background: 'rgba(129,140,248,0.12)' }}>+{f.effect.buffDef}DEF</span>}
+                    {f.effect.buffRegen && <span className="text-micro font-medium px-1 rounded" style={{ color: '#34d399', background: 'rgba(52,211,153,0.12)' }}>+{f.effect.buffRegen}reg</span>}
+                    {f.effect.goldBonusPct && <span className="text-micro font-medium px-1 rounded" style={{ color: '#fbbf24', background: 'rgba(251,191,36,0.12)' }}>+{f.effect.goldBonusPct}%g</span>}
+                    {f.effect.dropBonusPct && <span className="text-micro font-medium px-1 rounded" style={{ color: '#a78bfa', background: 'rgba(167,139,250,0.12)' }}>+{f.effect.dropBonusPct}%drop</span>}
                     {f.effect.buffDurationSec && (f.effect.buffAtk || f.effect.buffDef || f.effect.buffRegen) && (
-                      <span className="text-[10px] font-mono text-gray-600">{f.effect.buffDurationSec}s</span>
+                      <span className="text-micro font-mono text-gray-600">{f.effect.buffDurationSec}s</span>
                     )}
                   </div>
-                  <span className="text-[10px] font-mono text-gray-500 shrink-0">×{owned - usedOther}</span>
+                  <span className="text-micro font-mono text-gray-500 shrink-0">×{owned - usedOther}</span>
                 </button>
               )
             })

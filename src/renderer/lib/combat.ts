@@ -53,6 +53,9 @@ export interface BossDef {
   /** Boss-exclusive material drop (guaranteed on kill). */
   materialDropId?: string
   materialDropQty?: number
+  /** Secondary guaranteed material drop on kill. */
+  bonusMaterialDropId?: string
+  bonusMaterialDropQty?: number
 }
 
 export interface MobDef {
@@ -73,6 +76,10 @@ export interface MobDef {
   materialDropChance?: number
   /** How many materials drop on success (default 1). */
   materialDropQty?: number
+  /** Secondary material drop (rolled independently). */
+  bonusMaterialDropId?: string
+  bonusMaterialDropChance?: number
+  bonusMaterialDropQty?: number
 }
 
 export interface EntryCost {
@@ -113,7 +120,7 @@ export const ZONES: ZoneDef[] = [
     boss: {
       id: 'slime', name: 'Slime King', icon: '💧', hp: 350, atk: 3,
       rewards: { chestTier: 'common_chest' },
-      materialDropId: 'ore_iron', materialDropQty: 2,
+      materialDropId: 'slime_gel', materialDropQty: 3,
     },
   },
   // ── Zone 2 — Goblin Outpost (target: Copper set → 18 ATK, 155 HP, 2 Regen) ─
@@ -124,11 +131,10 @@ export const ZONES: ZoneDef[] = [
     themeColor: '#84cc16',
     prevZoneId: 'zone1',
     warriorLevelRequired: 3,
-    gateItems: ['craft_iron_helm'],
     entryCost: [{ itemId: 'herbs', quantity: 3 }],
     mobs: [
-      { id: 'goblin_scout',   name: 'Goblin Scout',   icon: '👺', hp: 220,   atk: 2.5, xpReward: 60,   goldMin: 10,  goldMax: 20,   materialDropId: 'goblin_tooth', materialDropChance: 0.3 },
-      { id: 'goblin_warrior', name: 'Goblin Warrior',  icon: '👺', hp: 350,   atk: 3.5, xpReward: 100,  goldMin: 15,  goldMax: 30,   materialDropId: 'goblin_tooth', materialDropChance: 0.4 },
+      { id: 'goblin_scout',   name: 'Goblin Scout',   icon: '👺', hp: 220,   atk: 2.5, xpReward: 60,   goldMin: 10,  goldMax: 20,   materialDropId: 'goblin_tooth', materialDropChance: 0.3, bonusMaterialDropId: 'ore_iron',      bonusMaterialDropChance: 0.25 },
+      { id: 'goblin_warrior', name: 'Goblin Warrior',  icon: '👺', hp: 350,   atk: 3.5, xpReward: 100,  goldMin: 15,  goldMax: 30,   materialDropId: 'goblin_tooth', materialDropChance: 0.4, bonusMaterialDropId: 'monster_fang',  bonusMaterialDropChance: 0.3 },
       { id: 'goblin_shaman',  name: 'Goblin Shaman',  icon: '👺', hp: 480,   atk: 4,   xpReward: 150,  goldMin: 20,  goldMax: 40,   materialDropId: 'goblin_tooth', materialDropChance: 0.5 },
     ],
     boss: {
@@ -147,17 +153,18 @@ export const ZONES: ZoneDef[] = [
     prevZoneId: 'zone2',
     warriorLevelRequired: 8,
     gateItems: ['craft_slime_shield'],
-    entryCost: [{ itemId: 'slime_gel', quantity: 2 }, { itemId: 'apples', quantity: 1 }],
+    entryCost: [{ itemId: 'apples', quantity: 1 }],
     mobs: [
       { id: 'wolf_young', name: 'Young Wolf',  icon: '🐺', hp: 320,   atk: 3.5, def: 1, xpReward: 150,   goldMin: 20,  goldMax: 40,   materialDropId: 'wolf_fang', materialDropChance: 0.3 },
-      { id: 'wolf_pack',  name: 'Pack Wolf',   icon: '🐺', hp: 450,   atk: 4.5, def: 2, xpReward: 250,   goldMin: 30,  goldMax: 55,   materialDropId: 'wolf_fang', materialDropChance: 0.4 },
-      { id: 'wolf_alpha', name: 'Alpha Wolf',  icon: '🐺', hp: 580,   atk: 5,   def: 2, xpReward: 400,   goldMin: 45,  goldMax: 80,   materialDropId: 'wolf_fang', materialDropChance: 0.5 },
+      { id: 'wolf_pack',  name: 'Pack Wolf',   icon: '🐺', hp: 450,   atk: 4.5, def: 2, xpReward: 250,   goldMin: 30,  goldMax: 55,   materialDropId: 'wolf_fang', materialDropChance: 0.4, bonusMaterialDropId: 'ore_iron',     bonusMaterialDropChance: 0.3 },
+      { id: 'wolf_alpha', name: 'Alpha Wolf',  icon: '🐺', hp: 580,   atk: 5,   def: 2, xpReward: 400,   goldMin: 45,  goldMax: 80,   materialDropId: 'wolf_fang', materialDropChance: 0.5, bonusMaterialDropId: 'monster_fang', bonusMaterialDropChance: 0.35 },
     ],
     boss: {
       id: 'wolf', name: 'Forest Wolf', icon: '🐺', hp: 650, atk: 5, def: 2,
       rewards: { chestTier: 'epic_chest' },
       requirements: { minAtk: 12, minHp: 130 },
       materialDropId: 'wolf_fang', materialDropQty: 2,
+      bonusMaterialDropId: 'magic_essence', bonusMaterialDropQty: 1,
     },
   },
   // ── Zone 4 — Orc Stronghold (target: Shadow set → 34 ATK, 205 HP, 5 Regen) ─
@@ -173,7 +180,7 @@ export const ZONES: ZoneDef[] = [
     mobs: [
       { id: 'orc_grunt',  name: 'Orc Grunt',  icon: '👹', hp: 800,   atk: 6,   def: 3, xpReward: 800,   goldMin: 60,  goldMax: 120,  materialDropId: 'orc_shard', materialDropChance: 0.3, materialDropQty: 2 },
       { id: 'orc_brute',  name: 'Orc Brute',  icon: '👹', hp: 1200,  atk: 7,   def: 4, xpReward: 1400,  goldMin: 90,  goldMax: 160,  materialDropId: 'orc_shard', materialDropChance: 0.4, materialDropQty: 2 },
-      { id: 'orc_shaman', name: 'Orc Shaman', icon: '👹', hp: 1600,  atk: 8,   def: 5, xpReward: 2000,  goldMin: 120, goldMax: 200,  materialDropId: 'orc_shard', materialDropChance: 0.5, materialDropQty: 3 },
+      { id: 'orc_shaman', name: 'Orc Shaman', icon: '👹', hp: 1600,  atk: 8,   def: 5, xpReward: 2000,  goldMin: 120, goldMax: 200,  materialDropId: 'orc_shard', materialDropChance: 0.5, materialDropQty: 3, bonusMaterialDropId: 'magic_essence', bonusMaterialDropChance: 0.3 },
     ],
     boss: {
       id: 'orc', name: 'Orc Warlord', icon: '👹', hp: 1800, atk: 8.5, def: 6,
