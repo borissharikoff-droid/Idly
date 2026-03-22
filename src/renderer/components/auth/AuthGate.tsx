@@ -105,7 +105,7 @@ function HeroBanner() {
       <motion.img
         src={mascotImg}
         alt="Grindly"
-        className="absolute left-1/2 top-[28%] w-20 h-20 drop-shadow-[0_0_12px_rgba(88,101,242,0.3)]"
+        className="absolute left-1/2 top-[28%] w-20 h-20 object-contain drop-shadow-[0_0_12px_rgba(88,101,242,0.3)]"
         style={{ x: '-50%' }}
         draggable={false}
         animate={{ x: `calc(-50% + ${mascotX}px)`, y: mascotY }}

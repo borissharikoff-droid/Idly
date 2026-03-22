@@ -155,7 +155,7 @@ export function WelcomeBanner() {
             <motion.img
               src={mascotImg}
               alt="Grindly"
-              className="w-11 h-11 mb-1.5 drop-shadow-[0_0_8px_rgba(88,101,242,0.25)]"
+              className="w-11 h-11 object-contain mb-1.5 drop-shadow-[0_0_8px_rgba(88,101,242,0.25)]"
               draggable={false}
               animate={{ x: mascotX, y: mascotY }}
               exit={{

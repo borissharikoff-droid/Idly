@@ -103,7 +103,7 @@ export function OnboardingWizard({ onDone }: Props) {
               <motion.img
                 src={mascotImg}
                 alt="Grindly"
-                className="w-24 h-24 drop-shadow-[0_0_16px_rgba(88,101,242,0.4)]"
+                className="w-24 h-24 object-contain drop-shadow-[0_0_16px_rgba(88,101,242,0.4)]"
                 animate={{ y: [0, -5, 0] }}
                 transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
                 draggable={false}
