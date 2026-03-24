@@ -1,13 +1,13 @@
 {
   "name": "grindly",
-  "version": "4.2.1",
+  "version": "4.2.2",
   "description": "Windows productivity tracker with session timer, activity monitoring, and gamification",
   "main": "dist/main/main/index.js",
   "scripts": {
     "dev": "vite",
     "build": "tsc -p tsconfig.main.json && tsc -p tsconfig.preload.json && vite build",
     "preview": "vite preview",
-    "electron:dev": "npm run build:electron && concurrently \"vite\" \"wait-on http://localhost:5173 && electron . --remote-debugging-port=9222\"",
+    "electron:dev": "npm run build:electron && concurrently \"vite\" \"wait-on http://localhost:5174 && electron . --remote-debugging-port=9222\"",
     "build:electron": "tsc -p tsconfig.main.json && tsc -p tsconfig.preload.json",
     "clean:release": "node -e \"try{require('fs').rmSync('release/win-unpacked',{recursive:true,force:true});console.log('Cleaned release/win-unpacked')}catch(e){console.warn('Clean skipped:',e.message)}\"",
     "electron:build": "npm run build && npm run clean:release && electron-builder --config electron-builder.yml",
@@ -20,6 +20,7 @@
     "@supabase/supabase-js": "^2.45.0",
     "@tanstack/react-virtual": "^3.13.19",
     "better-sqlite3": "^11.5.0",
+    "discord-rpc": "^4.0.1",
     "dotenv": "^16.6.1",
     "electron-log": "^5.4.3",
     "electron-updater": "^6.7.3",
@@ -30,6 +31,7 @@
     "zustand": "^5.0.0"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.3",
     "@types/better-sqlite3": "^7.6.11",
     "@types/node": "^22.9.0",
     "@types/react": "^18.3.12",

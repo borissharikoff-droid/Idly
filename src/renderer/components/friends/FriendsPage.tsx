@@ -187,12 +187,14 @@ export function FriendsPage({ friendsModel }: FriendsPageProps) {
           onBack={backToList}
           onOpenProfile={() => { setProfileFromChat(true); setView('profile') }}
           messages={chat.messages}
+          reactions={chat.reactions}
           loading={chat.loading}
           sending={chat.sending}
           sendError={chat.sendError}
           getConversation={chat.getConversation}
           sendMessage={chat.sendMessage}
           markConversationRead={markConversationReadAndRefresh}
+          toggleReaction={chat.toggleReaction}
         />
       ) : view === 'profile' && selected ? (
         <FriendProfile

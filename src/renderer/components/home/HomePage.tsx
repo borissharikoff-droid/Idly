@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ProfileBar } from './ProfileBar'
+import { StreakBar } from './StreakBar'
 import { Timer } from './Timer'
 import { SessionControls } from './SessionControls'
 import { CurrentActivity } from './CurrentActivity'
@@ -26,6 +27,7 @@ interface HomePageProps {
   onNavigateProfile: () => void
   onNavigateInventory: () => void
   onNavigateFriends?: () => void
+  hasFriends?: boolean
 }
 
 const APP_LAUNCHED_AT = Date.now()
@@ -53,9 +55,10 @@ function raidCountdown(dateStr: string | null): string {
   return `${m}m left`
 }
 
-export function HomePage({ onNavigateProfile, onNavigateInventory, onNavigateFriends }: HomePageProps) {
+export function HomePage({ onNavigateProfile, onNavigateInventory, onNavigateFriends, hasFriends }: HomePageProps) {
   const showComplete = useSessionStore((s) => s.showComplete)
   const status = useSessionStore((s) => s.status)
+  const sessionId = useSessionStore((s) => s.sessionId) // changes each new session
   const pushNotification = useNotificationStore((s) => s.push)
   const [showWelcome, setShowWelcome] = useState(() => !localStorage.getItem('grindly_welcomed'))
   const prevStatusRef = useRef(status)
@@ -164,6 +167,7 @@ export function HomePage({ onNavigateProfile, onNavigateInventory, onNavigateFri
       <OrbBlast />
 
       <ProfileBar onNavigateProfile={onNavigateProfile} onNavigateInventory={onNavigateInventory} />
+      <StreakBar sessionVersion={sessionId ?? undefined} />
 
       {/* Active raid ambient bar */}
       {activeRaid && raidCfg && activeRaid.status === 'active' && (
@@ -311,6 +315,7 @@ export function HomePage({ onNavigateProfile, onNavigateInventory, onNavigateFri
         {showComplete && (
           <SessionComplete
             onNavigateFriends={onNavigateFriends}
+            hasFriends={hasFriends}
           />
         )}
       </AnimatePresence>

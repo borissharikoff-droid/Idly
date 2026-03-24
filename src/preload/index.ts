@@ -214,6 +214,9 @@ try {
       disable: () => ipcRenderer.invoke(CH.focus.disable),
       status: () => ipcRenderer.invoke(CH.focus.status),
     },
+    discord: {
+      update: (data: unknown) => ipcRenderer.invoke('discord:update', data),
+    },
     admin: {
       pickImageFile: (): Promise<string | null> => ipcRenderer.invoke('admin.pickImageFile'),
     },

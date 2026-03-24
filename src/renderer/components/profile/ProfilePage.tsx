@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
 import { ACHIEVEMENTS, getAchievementProgress, type AchievementProgressContext } from '../../lib/xp'
-import { computeTotalSkillLevel, skillLevelFromXP } from '../../lib/skills'
+import { computeTotalSkillLevel, skillLevelFromXP, MAX_TOTAL_SKILL_LEVEL } from '../../lib/skills'
 import type { AchievementDef } from '../../lib/xp'
 import { useAlertStore } from '../../stores/alertStore'
 import { playClickSound } from '../../lib/sounds'
@@ -1085,7 +1085,7 @@ function FlexCard({ avatar, username, frameId, equippedLootItems, unlockedCount,
 
       {/* Stat grid — 4 key stats */}
       <div className="grid grid-cols-4 gap-px bg-white/[0.04] mx-4 mb-4 rounded overflow-hidden">
-        <StatCell icon="⚡" value={String(totalSkillLevel)} label="Skill LVL" color="#00FF88" />
+        <StatCell icon="⚡" value={`${totalSkillLevel}/${MAX_TOTAL_SKILL_LEVEL}`} label="Skill LVL" color="#00FF88" />
         <StatCell icon="🏆" value={`${unlockedCount}/${ACHIEVEMENTS.length}`} label="Achieve" color="#FACC15" />
         <StatCell icon="🔥" value={grindStats.streak > 0 ? `${grindStats.streak}d` : '-'} label="Streak" color="#FF6B35" />
         <StatCell icon="⏱️" value={grindStats.totalHours > 0 ? `${grindStats.totalHours}h` : '-'} label="Grind" color="#818CF8" />

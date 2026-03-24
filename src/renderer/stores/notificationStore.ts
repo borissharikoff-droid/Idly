@@ -37,6 +37,11 @@ export interface Notification {
     options: Array<{ id: string; label: string }>
   }
   patchVersion?: string
+  friendLevelUp?: {
+    friendId: string
+    friendName: string
+    newLevel: number
+  }
 }
 
 interface NotificationStore {

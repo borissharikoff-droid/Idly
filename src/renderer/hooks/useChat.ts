@@ -12,10 +12,14 @@ export interface ChatMessage {
   read_at: string | null
 }
 
+// messageId → reaction → userId[]
+export type ReactionsMap = Record<string, Record<string, string[]>>
+
 /** @param peerId When set, new messages from this peer are appended to the thread and do not increase unread count. */
 export function useChat(peerId: string | null = null) {
   const { user } = useAuthStore()
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [reactions, setReactions] = useState<ReactionsMap>({})
   const [loading, setLoading] = useState(false)
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState<string | null>(null)
@@ -53,6 +57,22 @@ export function useChat(peerId: string | null = null) {
     return () => clearInterval(interval)
   }, [user?.id, peerId])
 
+  const fetchReactions = useCallback(async (messageIds: string[]) => {
+    if (!supabase || messageIds.length === 0) return
+    const { data } = await supabase
+      .from('message_reactions')
+      .select('message_id, user_id, reaction')
+      .in('message_id', messageIds)
+    if (!data) return
+    const map: ReactionsMap = {}
+    for (const row of data as { message_id: string; user_id: string; reaction: string }[]) {
+      if (!map[row.message_id]) map[row.message_id] = {}
+      if (!map[row.message_id][row.reaction]) map[row.message_id][row.reaction] = []
+      map[row.message_id][row.reaction].push(row.user_id)
+    }
+    setReactions(map)
+  }, [])
+
   const getConversation = useCallback(
     async (otherUserId: string) => {
       if (!supabase || !user?.id) return []
@@ -64,10 +84,44 @@ export function useChat(peerId: string | null = null) {
         .order('created_at', { ascending: true })
       setLoading(false)
       if (error) return []
-      setMessages((data as ChatMessage[]) ?? [])
-      return (data as ChatMessage[]) ?? []
+      const msgs = (data as ChatMessage[]) ?? []
+      setMessages(msgs)
+      fetchReactions(msgs.map((m) => m.id))
+      return msgs
     },
-    [user?.id]
+    [user?.id, fetchReactions]
+  )
+
+  const toggleReaction = useCallback(
+    async (messageId: string, reaction: string) => {
+      if (!supabase || !user?.id) return
+      const existing = reactions[messageId]?.[reaction]?.includes(user.id)
+      // Optimistic update
+      setReactions((prev) => {
+        const next = { ...prev }
+        if (!next[messageId]) next[messageId] = {}
+        const users = next[messageId][reaction] ? [...next[messageId][reaction]] : []
+        if (existing) {
+          next[messageId] = { ...next[messageId], [reaction]: users.filter((id) => id !== user.id) }
+        } else {
+          next[messageId] = { ...next[messageId], [reaction]: [...users, user.id] }
+        }
+        return next
+      })
+      if (existing) {
+        await supabase
+          .from('message_reactions')
+          .delete()
+          .eq('message_id', messageId)
+          .eq('user_id', user.id)
+          .eq('reaction', reaction)
+      } else {
+        await supabase
+          .from('message_reactions')
+          .insert({ message_id: messageId, user_id: user.id, reaction })
+      }
+    },
+    [user?.id, reactions]
   )
 
   const sendMessage = useCallback(
@@ -112,6 +166,7 @@ export function useChat(peerId: string | null = null) {
 
   return {
     messages,
+    reactions,
     loading,
     sending,
     sendError,
@@ -119,5 +174,6 @@ export function useChat(peerId: string | null = null) {
     sendMessage,
     markConversationRead,
     fetchUnreadCount,
+    toggleReaction,
   }
 }

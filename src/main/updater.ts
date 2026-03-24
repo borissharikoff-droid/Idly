@@ -48,8 +48,13 @@ export function initAutoUpdater(win: BrowserWindow): void {
 
   autoUpdater.on('update-downloaded', (info) => {
     log.info('[updater] Update downloaded:', info.version)
-    // Tell renderer to show "restart to update" badge
+    // Tell renderer to show countdown banner
     win.webContents.send(IPC_CHANNELS.updater.status, { status: 'ready', version: info.version })
+    // Auto-install after 30 seconds if user doesn't act
+    setTimeout(() => {
+      log.info('[updater] Auto-installing update after countdown')
+      autoUpdater.quitAndInstall(false, true)
+    }, 30_000)
   })
 
   autoUpdater.on('error', (err: Error & { code?: string }) => {

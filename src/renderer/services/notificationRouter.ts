@@ -14,6 +14,7 @@ export interface RoutedNotificationEvent {
   body: string
   dedupeKey: string
   desktop?: boolean
+  friendLevelUp?: { friendId: string; friendName: string; newLevel: number }
 }
 
 const COOLDOWNS_MS: Record<RoutedNotificationEventType, number> = {
@@ -67,6 +68,7 @@ export async function routeNotification(
     icon: event.icon,
     title: event.title,
     body: event.body,
+    ...(event.friendLevelUp ? { friendLevelUp: event.friendLevelUp } : {}),
   })
 
   const globalEnabled = typeof localStorage !== 'undefined'

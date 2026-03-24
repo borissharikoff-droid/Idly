@@ -1165,14 +1165,14 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                       type="number" min={0} value={priceMin}
                       onChange={(e) => setPriceMin(e.target.value)}
                       placeholder="Min"
-                      className="grindly-no-spinner w-14 px-1.5 py-0.5 rounded-md bg-[#0d0d1a] border border-white/[0.08] text-white text-caption placeholder-gray-600 focus:border-accent/40 outline-none text-center"
+                      className="grindly-no-spinner w-14 px-1.5 py-0.5 rounded-md bg-surface-0 border border-white/[0.08] text-white text-caption placeholder-gray-600 focus:border-accent/40 outline-none text-center"
                     />
                     <span className="text-gray-600 text-micro">–</span>
                     <input
                       type="number" min={0} value={priceMax}
                       onChange={(e) => setPriceMax(e.target.value)}
                       placeholder="Max"
-                      className="grindly-no-spinner w-14 px-1.5 py-0.5 rounded-md bg-[#0d0d1a] border border-white/[0.08] text-white text-caption placeholder-gray-600 focus:border-accent/40 outline-none text-center"
+                      className="grindly-no-spinner w-14 px-1.5 py-0.5 rounded-md bg-surface-0 border border-white/[0.08] text-white text-caption placeholder-gray-600 focus:border-accent/40 outline-none text-center"
                     />
                   </div>
                 </motion.div>

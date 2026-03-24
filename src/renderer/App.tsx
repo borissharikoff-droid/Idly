@@ -28,7 +28,8 @@ import { useCookingTick } from './hooks/useCookingTick'
 import { UpdateBanner } from './components/UpdateBanner'
 import { useSessionStore, setupAfkListener } from './stores/sessionStore'
 import { useChatTargetStore } from './stores/chatTargetStore'
-import { categoryToSkillId, getSkillById } from './lib/skills'
+import { categoryToSkillId, getSkillById, SKILLS } from './lib/skills'
+import { skillLevelFromXP } from './lib/skills'
 import { warmUpAudio } from './lib/sounds'
 import { runSupabaseHealthCheck } from './services/supabaseHealth'
 import { routeNotification } from './services/notificationRouter'
@@ -37,11 +38,13 @@ import { PageLoading } from './components/shared/PageLoading'
 import { BOSSES, ZONES } from './lib/combat'
 import { CRAFT_RECIPES } from './lib/crafting'
 import { useAchievementStatsStore } from './stores/achievementStatsStore'
+import { useNavCustomizationStore } from './stores/navCustomizationStore'
 import { applyAdminConfig, syncAdminConfigFromSupabase } from './lib/itemConfig'
 import { useAdminConfigStore } from './stores/adminConfigStore'
 import { supabase } from './lib/supabase'
 import { useNavigationStore } from './stores/navigationStore'
 import { useEscapeHandler } from './hooks/useEscapeHandler'
+import { clearEscapeStack } from './lib/escapeStack'
 import { useWhatsNew, WhatsNewModal } from './components/WhatsNewModal'
 import { useRemotePatchNotes } from './hooks/useRemotePatchNotes'
 import { PartyHUD } from './components/party/PartyHUD'
@@ -134,8 +137,18 @@ function migrateLegacyLocalStorage(): void {
 }
 
 export default function App() {
-  const [showOnboarding, setShowOnboarding] = useState(() => !localStorage.getItem('grindly_onboarding_done'))
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    if (localStorage.getItem('grindly_onboarding_done')) return false
+    // Returning user who updated before onboarding existed — skip wizard + tour
+    if (localStorage.getItem('grindly_last_seen_version') || localStorage.getItem('grindly_tour_done')) {
+      localStorage.setItem('grindly_onboarding_done', '1')
+      localStorage.setItem('grindly_tour_done', '1')
+      return false
+    }
+    return true
+  })
   const [showTour, setShowTour] = useState(false)
+  const [pendingTour, setPendingTour] = useState(false)
   const [tourStep, setTourStep] = useState(0)
   const [activeTab, setActiveTab] = useState<TabId>('home')
   const [skillsInitialTab, setSkillsInitialTab] = useState<'overview' | 'history'>('overview')
@@ -149,7 +162,10 @@ export default function App() {
     }
   }, [])
   useEffect(() => { useNavigationStore.getState().setNavigateTo(navigateTo) }, [navigateTo])
-  useEffect(() => { useNavigationStore.getState().setCurrentTab(activeTab) }, [activeTab])
+  useEffect(() => {
+    useNavigationStore.getState().setCurrentTab(activeTab)
+    clearEscapeStack()
+  }, [activeTab])
   useEffect(() => { useAchievementStatsStore.getState().hydrate() }, [])
   const [showStreak, setShowStreak] = useState(false)
   const [streakCount, setStreakCount] = useState(0)
@@ -176,6 +192,54 @@ export default function App() {
   useEffect(() => { setupAfkListener() }, [])
   usePresenceSync(presenceLabel, status === 'running', currentActivity?.appName ?? null, sessionStartTime, isSystemIdle)
 
+  // ── Discord Rich Presence ──────────────────────────────────────────────────
+  const skillXPAtStart = useSessionStore((s) => s.skillXPAtStart)
+  const sessionSkillXP = useSessionStore((s) => s.sessionSkillXP)
+  useEffect(() => {
+    const api = window.electronAPI
+    if (!api?.discord?.update) return
+    if (status !== 'running') {
+      api.discord.update({ status: 'idle' })
+      return
+    }
+    // Find top skill by total XP (start + session earned), excluding warrior (arena skill)
+    let topSkillName = 'Developer'
+    let topSkillLevel = 1
+    let topXP = -1
+    for (const skill of SKILLS) {
+      if (skill.id === 'warrior') continue
+      const base = skillXPAtStart[skill.id] ?? 0
+      const earned = sessionSkillXP[skill.id] ?? 0
+      const total = base + earned
+      const level = skillLevelFromXP(total)
+      if (total > topXP) { topXP = total; topSkillName = skill.name; topSkillLevel = level }
+    }
+    api.discord.update({
+      status: 'running',
+      topSkillName,
+      topSkillLevel,
+      streak: streakCount,
+      startTimestamp: sessionStartTime ?? undefined,
+    })
+  // skillXPAtStart added so level updates once DB load completes after session start
+  }, [status, sessionStartTime, skillXPAtStart])
+  // ─────────────────────────────────────────────────────────────────────────
+
+  // ── Progressive tab disclosure: unlock advanced tabs after 3 sessions ─────
+  const lockedTabs = useNavCustomizationStore((s) => s.lockedTabs)
+  const unlockAllAdvanced = useNavCustomizationStore((s) => s.unlockAllAdvanced)
+  useEffect(() => {
+    if (lockedTabs.length === 0) return
+    const api = window.electronAPI
+    if (!api?.db?.getSessionCount) return
+    api.db.getSessionCount(0).then((count: number) => {
+      if ((count ?? 0) >= 3) unlockAllAdvanced()
+    }).catch(() => {})
+  // Re-check whenever a session completes (status goes idle)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status, lockedTabs.length])
+  // ─────────────────────────────────────────────────────────────────────────
+
   useProfileSync()
   useKeyboardShortcuts({ onEscapeToHome: handleEscapeToHome, onTabChange: setActiveTab })
   const friendsModel = useFriends() // single orchestrator for friends/presence/notifications
@@ -188,6 +252,15 @@ export default function App() {
   useCookingTick()              // cooking job queue — runs on all tabs
   const whatsNew = useWhatsNew()
   useRemotePatchNotes(whatsNew.showRemotePatch)
+  // Start tour only after WhatsNew modal and streak overlay are gone (prevents overlap)
+  useEffect(() => {
+    if (pendingTour && !whatsNew.showModal && !showStreak) {
+      setPendingTour(false)
+      navigateTo('home')
+      setTourStep(0)
+      setShowTour(true)
+    }
+  }, [pendingTour, whatsNew.showModal, showStreak, navigateTo])
   const arenaResultModal = useArenaStore((s) => s.resultModal)
   const setArenaResultModal = useArenaStore((s) => s.setResultModal)
   const arenaAutoRunning = useArenaStore((s) => s.isAutoRunning)
@@ -424,6 +497,7 @@ export default function App() {
                     onNavigateProfile={handleNavigateProfile}
                     onNavigateInventory={handleNavigateInventory}
                     onNavigateFriends={() => navigateTo('friends')}
+                    hasFriends={friendsModel.friends.length > 0}
                   />
                 </motion.div>
               )}
@@ -533,9 +607,13 @@ export default function App() {
           <OnboardingWizard onDone={() => {
             setShowOnboarding(false)
             if (!localStorage.getItem('grindly_tour_done')) {
-              navigateTo('home')
-              setTourStep(0)
-              setShowTour(true)
+              if (whatsNew.showModal || showStreak) {
+                setPendingTour(true)
+              } else {
+                navigateTo('home')
+                setTourStep(0)
+                setShowTour(true)
+              }
             }
           }} />
         )}

@@ -5,7 +5,6 @@ import { useSessionStore, type SkillXPGain } from '../../stores/sessionStore'
 import { getDailyActivities } from '../../services/dailyActivityService'
 import { useAlertStore } from '../../stores/alertStore'
 import { useAuthStore } from '../../stores/authStore'
-import { useFriends } from '../../hooks/useFriends'
 import { ConfettiEffect } from '../animations/ConfettiEffect'
 import { playClickSound, playLevelUpSound, playXpRevealSound } from '../../lib/sounds'
 import { getSkillById, skillXPProgress } from '../../lib/skills'
@@ -18,6 +17,7 @@ const CARDS_START_MS = 480
 
 interface SessionCompleteProps {
   onNavigateFriends?: () => void
+  hasFriends?: boolean
 }
 
 function useCountUp(target: number, durationMs: number, delayMs: number): number {
@@ -140,15 +140,14 @@ function SkillXPCard({ gain, index }: { gain: SkillXPGain; index: number }) {
   )
 }
 
-export function SessionComplete({ onNavigateFriends }: SessionCompleteProps = {}) {
+export function SessionComplete({ onNavigateFriends, hasFriends }: SessionCompleteProps = {}) {
   const { lastSessionSummary, skillXPGains, streakMultiplier, sessionSkillXPEarned, sessionRewards, newAchievements, dismissComplete } =
     useSessionStore()
   const hasLootOpen = useAlertStore((s) => s.currentAlert !== null)
   const user = useAuthStore((s) => s.user)
-  const { friends } = useFriends()
   const showFriendsCTA = useMemo(
-    () => user && friends.length === 0 && onNavigateFriends,
-    [user, friends.length, onNavigateFriends],
+    () => user && !hasFriends && onNavigateFriends,
+    [user, hasFriends, onNavigateFriends],
   )
   const [progress, setProgress] = useState(100)
   const elapsedRef = useRef(0)

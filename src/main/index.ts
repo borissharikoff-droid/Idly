@@ -6,6 +6,7 @@ import { startSmartNotifications, stopSmartNotifications } from './notifications
 import { closeDatabase } from './database'
 import { initAutoUpdater } from './updater'
 import { disableFocusMode } from './focusMode'
+import { initDiscordRPC, destroyDiscordRPC } from './discord'
 import log from './logger'
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock()
@@ -106,7 +107,7 @@ function createWindow() {
     })
   }
 
-  const devServerUrl = 'http://localhost:5173'
+  const devServerUrl = 'http://localhost:5174'
   if (isDev) {
     mainWindow.loadURL(devServerUrl).catch(() => {})
     mainWindow.webContents.on('did-fail-load', (_e, errorCode, errorDescription, validatedURL) => {
@@ -179,6 +180,7 @@ app.whenReady().then(() => {
   registerIpcHandlers()
   createWindow()
   if (process.platform === 'win32') createTray()
+  initDiscordRPC()
   log.info('Grindly ready')
 })
 
@@ -193,6 +195,7 @@ app.on('before-quit', () => {
   isQuitting = true
   stopSmartNotifications()
   disableFocusMode().catch(() => {})
+  destroyDiscordRPC()
   closeDatabase()
   log.info('Database closed, goodbye')
 })

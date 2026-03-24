@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavCustomizationStore, ADVANCED_TABS } from '../../stores/navCustomizationStore'
 import { motion, AnimatePresence } from 'framer-motion'
 import mascotImg from '../../assets/mascot.png'
 import { SKILLS } from '../../lib/skills'
@@ -69,6 +70,8 @@ export function OnboardingWizard({ onDone }: Props) {
     localStorage.setItem('grindly_daily_goal_secs', String(goalSecs))
     localStorage.setItem('grindly_first_chest_pending', '1')
     localStorage.setItem('grindly_onboarding_done', '1')
+    // Lock advanced tabs for new users — they unlock after 3 sessions
+    useNavCustomizationStore.getState().setLockedTabs(ADVANCED_TABS)
     onDone()
   }
 
@@ -178,6 +181,12 @@ export function OnboardingWizard({ onDone }: Props) {
                 })}
               </div>
 
+              {selectedSkills.length === 0 && (
+                <p className="text-caption text-gray-600 text-center -mt-1">
+                  Pick at least one skill to show on your home screen
+                </p>
+              )}
+
               <div className="flex gap-2 mt-1">
                 <button
                   onClick={() => setStep(0)}
@@ -187,9 +196,10 @@ export function OnboardingWizard({ onDone }: Props) {
                 </button>
                 <motion.button
                   onClick={() => setStep(2)}
-                  className="flex-1 py-2 rounded bg-accent text-white font-bold text-sm active:scale-[0.98] transition-transform"
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.98 }}
+                  disabled={selectedSkills.length === 0}
+                  className="flex-1 py-2 rounded bg-accent text-white font-bold text-sm active:scale-[0.98] transition-transform disabled:opacity-40 disabled:cursor-not-allowed"
+                  whileHover={selectedSkills.length > 0 ? { scale: 1.01 } : {}}
+                  whileTap={selectedSkills.length > 0 ? { scale: 0.98 } : {}}
                 >
                   Next →
                 </motion.button>

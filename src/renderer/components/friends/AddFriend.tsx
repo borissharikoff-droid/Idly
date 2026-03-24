@@ -57,7 +57,7 @@ export function AddFriend({ onAdded }: AddFriendProps) {
           placeholder="Username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
-          className="flex-1 rounded bg-[#111214] border border-white/10 px-3 py-2 text-white placeholder-gray-500 text-sm focus:border-accent outline-none"
+          className="flex-1 rounded bg-surface-0 border border-white/10 px-3 py-2 text-white placeholder-gray-500 text-sm focus:border-accent outline-none"
         />
         <button
           type="submit"

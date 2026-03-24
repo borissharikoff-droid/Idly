@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
 import { getStreakMultiplier } from '../../lib/xp'
 import { FRAMES, getEquippedFrame } from '../../lib/cosmetics'
+import { computeTotalSkillLevel, MAX_TOTAL_SKILL_LEVEL } from '../../lib/skills'
 import { playClickSound } from '../../lib/sounds'
 import { useAlertStore } from '../../stores/alertStore'
 import { useNotificationStore } from '../../stores/notificationStore'
@@ -36,6 +37,7 @@ export function ProfileBar({ onNavigateProfile, onNavigateInventory }: ProfileBa
   const [avatar, setAvatar] = useState('🤖')
   const [frameId, setFrameId] = useState<string | null>(null)
   const [streak, setStreak] = useState(0)
+  const [totalLevel, setTotalLevel] = useState(0)
   const activeFrame = FRAMES.find(f => f.id === frameId)
   const streakMult = getStreakMultiplier(streak)
   const lootCount = useAlertStore((s) => (s.currentAlert ? 1 : 0) + s.queue.length)
@@ -83,9 +85,24 @@ export function ProfileBar({ onNavigateProfile, onNavigateInventory }: ProfileBa
       }).catch(() => {})
     }
     const api = window.electronAPI
-    setFrameId(getEquippedFrame())
+    const localFrame = getEquippedFrame()
+    if (localFrame) {
+      setFrameId(localFrame)
+    } else if (api?.db?.getLocalStat) {
+      api.db.getLocalStat('grindly_equipped_frame').then((val: string | null) => {
+        if (val) {
+          localStorage.setItem('grindly_equipped_frame', val)
+          setFrameId(val)
+        }
+      }).catch(() => {})
+    }
     if (api?.db?.getStreak) {
       api.db.getStreak().then((s: number) => setStreak(s || 0))
+    }
+    if (api?.db?.getAllSkillXP) {
+      api.db.getAllSkillXP().then((rows: { skill_id: string; total_xp: number }[]) => {
+        setTotalLevel(computeTotalSkillLevel(rows || []))
+      }).catch(() => {})
     }
     ensureInventoryHydrated()
 
@@ -166,6 +183,11 @@ export function ProfileBar({ onNavigateProfile, onNavigateInventory }: ProfileBa
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-white font-medium text-sm leading-none truncate">{username}</span>
+            {totalLevel > 0 && (
+              <span className="text-gray-500 text-xs font-mono leading-none shrink-0">
+                ({totalLevel}/{MAX_TOTAL_SKILL_LEVEL})
+              </span>
+            )}
 
             {isAfkPaused && (
               <span className="font-mono text-micro leading-none px-1.5 py-0.5 rounded border border-amber-500/35 bg-amber-500/15 text-amber-300 animate-pulse" title="Session paused — AFK detected">

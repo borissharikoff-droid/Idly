@@ -287,6 +287,7 @@ export function useFriends() {
               title: `${name(friend)} leveled up!`,
               body: `Total level: ${prevLevel} → ${newLevel}`,
               dedupeKey: `friend-level:${friend.id}:${newLevel}`,
+              friendLevelUp: { friendId: friend.id, friendName: name(friend), newLevel },
             }, window.electronAPI || null).catch(() => {})
           }
         }

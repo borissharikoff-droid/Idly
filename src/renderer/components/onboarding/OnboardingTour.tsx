@@ -71,7 +71,6 @@ const CONTENT: Record<TourPhase, CardContent> = {
   stop_session: {
     title: 'Stop your session',
     desc: 'Press GRIND again to end the session. All your XP, skill progress and loot will be saved.',
-    showSkip: true,
   },
   celebrate: {
     title: '⚔ You\'re all set!',
@@ -121,6 +120,8 @@ export function OnboardingTour({ onNavigate, onDone, onStepChange }: Props) {
   useEffect(() => {
     if (phase === 'grind_running' && countdown === 0 && !chestGranted.current) {
       chestGranted.current = true
+      // Clear first_chest_pending so sessionStore doesn't grant a second chest simultaneously
+      localStorage.removeItem('grindly_first_chest_pending')
       useInventoryStore.getState().addChest('common_chest', 'session_complete')
       onNavigate('home')
       goTo('open_chest')
@@ -149,9 +150,11 @@ export function OnboardingTour({ onNavigate, onDone, onStepChange }: Props) {
     onDone()
   }
 
-  const content  = CONTENT[phase]
-  const phaseIdx = PHASES.indexOf(phase)
-  const atTop    = Boolean(content.atTop)
+  const content   = CONTENT[phase]
+  const phaseIdx  = PHASES.indexOf(phase)
+  const atTop     = Boolean(content.atTop)
+  // GRIND button is at screen center — card is at bottom → arrow should point UP
+  const arrowUp   = phase === 'press_grind' || phase === 'stop_session'
 
   return (
     <motion.div
@@ -250,7 +253,7 @@ export function OnboardingTour({ onNavigate, onDone, onStepChange }: Props) {
 
               {/* Actions row */}
               <div className="flex items-center justify-between">
-                {content.showSkip && phase !== 'stop_session' ? (
+                {content.showSkip ? (
                   <button
                     type="button"
                     onClick={skip}
@@ -273,16 +276,22 @@ export function OnboardingTour({ onNavigate, onDone, onStepChange }: Props) {
               </div>
             </div>
 
-            {/* Down arrow */}
-            {!atTop && (
-              <div className="flex justify-center pb-2">
-                <div className="w-2 h-2 border-r border-b border-accent/40 rotate-45 translate-y-0.5" />
+            {/* Up arrow pointing at GRIND button above */}
+            {arrowUp && (
+              <div className="absolute -top-[5px] left-1/2 -translate-x-1/2">
+                <div className="w-2 h-2 border-l border-t border-accent/40 rotate-45 bg-surface-2" />
               </div>
             )}
-            {/* Up arrow (points toward bell) */}
+            {/* Up arrow pointing at bell (top-right) */}
             {atTop && (
               <div className="absolute -top-[5px] right-16">
                 <div className="w-2 h-2 border-l border-t border-accent/40 rotate-45 bg-surface-2" />
+              </div>
+            )}
+            {/* Down arrow — other phases where target is below card */}
+            {!atTop && !arrowUp && (
+              <div className="flex justify-center pb-2">
+                <div className="w-2 h-2 border-r border-b border-accent/40 rotate-45 translate-y-0.5" />
               </div>
             )}
           </motion.div>

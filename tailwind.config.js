@@ -33,11 +33,12 @@ export default {
         'ui-lg': '1rem',
       },
       borderRadius: {
-        // `rounded` = 6px — compact elements (buttons, tags, inputs).
-        // `rounded-card` = 12px — large surfaces (modals, panels, page cards).
+        // `rounded` = 4px — all UI elements (buttons, inputs, cards, panels).
+        // `rounded-card` = 8px — large surfaces (modals, page cards) for subtle lift.
         // `rounded-full` for circles/pills.
-        DEFAULT: '8px',
-        'card': '16px',
+        // `rounded-md` = 6px — context menus, tooltips only.
+        DEFAULT: '4px',
+        'card': '8px',
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

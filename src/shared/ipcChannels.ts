@@ -99,4 +99,7 @@ export const IPC_CHANNELS = {
     setAlwaysOnTop: 'window:setAlwaysOnTop',
     getAlwaysOnTop: 'window:getAlwaysOnTop',
   },
+  discord: {
+    update: 'discord:update',
+  },
 } as const

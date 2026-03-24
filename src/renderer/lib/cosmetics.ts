@@ -237,8 +237,13 @@ export function getEquippedFrame(): string | null {
   return localStorage.getItem(STORAGE_FRAME) || null
 }
 export function equipFrame(id: string | null): void {
-  if (id) localStorage.setItem(STORAGE_FRAME, id)
-  else localStorage.removeItem(STORAGE_FRAME)
+  if (id) {
+    localStorage.setItem(STORAGE_FRAME, id)
+    window.electronAPI?.db?.setLocalStat?.(STORAGE_FRAME, id).catch(() => {})
+  } else {
+    localStorage.removeItem(STORAGE_FRAME)
+    window.electronAPI?.db?.setLocalStat?.(STORAGE_FRAME, '').catch(() => {})
+  }
 }
 
 export function getUnlockedBadges(): string[] {

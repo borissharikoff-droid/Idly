@@ -25,7 +25,7 @@ export function normalizeEquippedLoot(raw: unknown): Partial<Record<LootSlot, st
   return out
 }
 
-export type LootSource = 'skill_grind' | 'achievement_claim' | 'goal_complete' | 'daily_activity' | 'session_complete' | 'bounty_reward'
+export type LootSource = 'skill_grind' | 'achievement_claim' | 'goal_complete' | 'daily_activity' | 'session_complete' | 'bounty_reward' | 'comeback'
 
 /** Human-readable labels for loot sources (shown in inventory, chest modals) */
 export const LOOT_SOURCE_LABELS: Record<LootSource, string> = {
@@ -35,6 +35,7 @@ export const LOOT_SOURCE_LABELS: Record<LootSource, string> = {
   daily_activity: 'Daily Activity',
   session_complete: 'Session Complete',
   bounty_reward: 'Daily Bounty',
+  comeback: 'Comeback Reward',
 }
 
 /** Item Power score by rarity (100+). Higher rarity = higher IP. Used for leaderboard and item descriptions. */
@@ -815,35 +816,27 @@ export function getCombatStatsFromEquipped(equippedBySlot: Partial<Record<LootSl
 
 export interface SalvageYield { id: string; qty: number }
 
-/** Base materials by rarity when salvaging. */
+/** Base materials by rarity when salvaging.
+ *  Kept intentionally low — common items drop in bulk so yields must be small to prevent material farming loops.
+ */
 const SALVAGE_BASE: Record<LootRarity, SalvageYield[]> = {
-  common:    [{ id: 'ore_iron',      qty: 4 }, { id: 'slime_gel',    qty: 2 }, { id: 'goblin_tooth', qty: 1 }],
-  rare:      [{ id: 'magic_essence', qty: 3 }, { id: 'ancient_scale', qty: 2 }, { id: 'wolf_fang',   qty: 1 }],
-  epic:      [{ id: 'void_crystal',  qty: 3 }, { id: 'shadow_dust',  qty: 2 }, { id: 'troll_hide',   qty: 1 }],
-  legendary: [{ id: 'shadow_dust',   qty: 3 }, { id: 'lich_crystal', qty: 2 }, { id: 'dragon_scale', qty: 1 }],
-  mythic:    [{ id: 'storm_shard',   qty: 3 }, { id: 'titan_core',   qty: 2 }, { id: 'dragon_scale', qty: 2 }],
+  common:    [{ id: 'ore_iron',      qty: 1 }, { id: 'slime_gel',    qty: 1 }],
+  rare:      [{ id: 'magic_essence', qty: 2 }, { id: 'ancient_scale', qty: 1 }],
+  epic:      [{ id: 'void_crystal',  qty: 2 }, { id: 'shadow_dust',  qty: 1 }],
+  legendary: [{ id: 'shadow_dust',   qty: 3 }, { id: 'lich_crystal', qty: 1 }, { id: 'dragon_scale', qty: 1 }],
+  mythic:    [{ id: 'storm_shard',   qty: 3 }, { id: 'titan_core',   qty: 1 }, { id: 'dragon_scale', qty: 1 }],
 }
 
-/** Slot-specific bonus materials on top of base. */
-const SALVAGE_SLOT_BONUS: Partial<Record<LootSlot, SalvageYield[]>> = {
-  weapon: [{ id: 'ore_iron', qty: 2 }],
-  head:   [{ id: 'ore_iron', qty: 1 }],
-  body:   [{ id: 'ore_iron', qty: 3 }],
-  legs:   [{ id: 'ore_iron', qty: 1 }],
-  ring:   [{ id: 'magic_essence', qty: 1 }],
-}
-
-/** Returns salvage output for an item (base + slot bonus), or null if not salvageable. */
+/** Returns salvage output for an item, or null if not salvageable.
+ *  Crafted items (craft_* prefix) yield 25% — prevents craft→salvage→craft loops.
+ */
 export function getSalvageOutput(item: LootItemDef): SalvageYield[] | null {
   if (!LOOT_SLOTS.includes(item.slot as typeof LOOT_SLOTS[number])) return null
-  const base = SALVAGE_BASE[item.rarity] ?? []
-  const bonus = SALVAGE_SLOT_BONUS[item.slot] ?? []
-  // Merge: add bonus quantities to existing entries or append
-  const merged = [...base.map((y) => ({ ...y }))]
-  for (const b of bonus) {
-    const existing = merged.find((m) => m.id === b.id)
-    if (existing) existing.qty += b.qty
-    else merged.push({ ...b })
+  const merged = (SALVAGE_BASE[item.rarity] ?? []).map((y) => ({ ...y }))
+  if (item.id.startsWith('craft_')) {
+    return merged
+      .map((y) => ({ ...y, qty: Math.floor(y.qty * 0.25) }))
+      .filter((y) => y.qty > 0)
   }
   return merged
 }

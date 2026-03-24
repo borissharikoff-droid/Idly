@@ -5,28 +5,112 @@ import { playClickSound } from '../../lib/sounds'
 import { useAuthStore } from '../../stores/authStore'
 import { supabase } from '../../lib/supabase'
 import type { FriendProfile as FriendProfileType } from '../../hooks/useFriends'
-import type { ChatMessage } from '../../hooks/useChat'
+import type { ChatMessage, ReactionsMap } from '../../hooks/useChat'
 import { MOTION } from '../../lib/motion'
 import { BackButton } from '../shared/BackButton'
 import { ErrorState } from '../shared/ErrorState'
 import { SkeletonBlock } from '../shared/PageLoading'
+
+const REACTIONS = ['👍', '👎', '🖕', '💩', '🤡'] as const
+const IMAGE_PREFIX = '[img]'
+
+const isChatImage = (body: string) => body.startsWith(IMAGE_PREFIX)
+const chatImageUrl = (body: string) => body.slice(IMAGE_PREFIX.length)
+
+async function compressImage(file: File): Promise<File> {
+  // GIFs lose animation on canvas — skip
+  if (file.type === 'image/gif') return file
+
+  const MAX_PX = 1920
+  const QUALITY = 0.85
+
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      let { width, height } = img
+      if (width > MAX_PX || height > MAX_PX) {
+        if (width >= height) { height = Math.round(height * MAX_PX / width); width = MAX_PX }
+        else { width = Math.round(width * MAX_PX / height); height = MAX_PX }
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      canvas.getContext('2d')!.drawImage(img, 0, 0, width, height)
+      // Keep PNG for transparency, convert everything else to JPEG
+      const outType = file.type === 'image/png' ? 'image/png' : 'image/jpeg'
+      const outExt  = outType === 'image/png' ? 'png' : 'jpg'
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) { resolve(file); return }
+          resolve(new File([blob], file.name.replace(/\.[^.]+$/, `.${outExt}`), { type: outType }))
+        },
+        outType,
+        QUALITY,
+      )
+    }
+    img.onerror = () => { URL.revokeObjectURL(url); resolve(file) }
+    img.src = url
+  })
+}
+
+// ── Reaction picker (always rendered, shown/hidden via CSS opacity) ──────────
+
+interface ReactionPickerProps {
+  messageId: string
+  isMe: boolean
+  visible: boolean
+  myUserId: string | undefined
+  reactions: ReactionsMap
+  onToggle: (messageId: string, reaction: string) => void
+}
+
+function ReactionPicker({ messageId, isMe, visible, myUserId, reactions, onToggle }: ReactionPickerProps) {
+  return (
+    <div
+      className={`absolute ${isMe ? 'right-full top-1/2 -translate-y-1/2 pr-1' : 'left-full top-1/2 -translate-y-1/2 pl-1'} z-10 transition-opacity duration-75 pointer-events-none ${visible ? 'opacity-100 pointer-events-auto' : 'opacity-0'}`}
+    >
+      <div className="flex items-center gap-0.5 px-1 py-0.5 rounded-full border border-white/[0.08] bg-surface-1 shadow-lg">
+        {REACTIONS.map((emoji) => {
+          const reacted = myUserId ? (reactions[messageId]?.[emoji]?.includes(myUserId) ?? false) : false
+          return (
+            <button
+              key={emoji}
+              type="button"
+              onClick={() => onToggle(messageId, emoji)}
+              className={`text-sm leading-none w-6 h-6 flex items-center justify-center rounded-full transition-transform duration-75 hover:scale-110 hover:bg-white/10 ${reacted ? 'bg-accent/20' : ''}`}
+            >
+              {emoji}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ── Props ─────────────────────────────────────────────────────────────────────
 
 interface ChatThreadProps {
   profile: FriendProfileType
   onBack: () => void
   onOpenProfile?: () => void
   messages: ChatMessage[]
+  reactions: ReactionsMap
   loading: boolean
   sending: boolean
   sendError?: string | null
   getConversation: (otherUserId: string) => Promise<ChatMessage[]>
   sendMessage: (receiverId: string, body: string) => Promise<void>
   markConversationRead: (otherUserId: string) => Promise<void>
+  toggleReaction: (messageId: string, reaction: string) => void
 }
 
 const NEAR_BOTTOM_THRESHOLD = 100
 
-/** Linkify URLs in text — returns array of string | JSX elements */
+// ── Linkify ───────────────────────────────────────────────────────────────────
+
 function renderMessageBody(text: string): (string | JSX.Element)[] {
   const urlRegex = /(https?:\/\/[^\s<>'")\]]+)/g
   const parts: (string | JSX.Element)[] = []
@@ -52,6 +136,8 @@ function renderMessageBody(text: string): (string | JSX.Element)[] {
   if (lastIndex < text.length) parts.push(text.slice(lastIndex))
   return parts
 }
+
+// ── Sub-components ────────────────────────────────────────────────────────────
 
 function CopyToast({ visible }: { visible: boolean }) {
   return (
@@ -90,7 +176,6 @@ function ReadReceipt({ read }: { read: boolean }) {
   )
 }
 
-/** Typing indicator — three bouncing dots */
 function TypingIndicator({ name }: { name: string }) {
   return (
     <motion.div
@@ -115,36 +200,22 @@ function TypingIndicator({ name }: { name: string }) {
   )
 }
 
-interface ReplyPreviewProps {
-  message: ChatMessage
-  senderName: string
-  onClear: () => void
-}
-
-function ReplyPreview({ message, senderName, onClear }: ReplyPreviewProps) {
+function ReplyPreview({ message, senderName, onClear }: { message: ChatMessage; senderName: string; onClear: () => void }) {
   return (
     <div className="flex items-center gap-2 px-3 py-2 mb-2 rounded bg-white/[0.04] border-l-2 border-accent/50 text-xs">
       <div className="flex-1 min-w-0">
         <span className="text-accent/80 font-medium">{senderName}</span>
         <p className="text-gray-400 truncate mt-0.5">{message.body.slice(0, 80)}{message.body.length > 80 ? '...' : ''}</p>
       </div>
-      <button
-        type="button"
-        onClick={onClear}
-        className="shrink-0 text-gray-500 hover:text-gray-300 transition-colors p-1"
-      >
+      <button type="button" onClick={onClear} className="shrink-0 text-gray-500 hover:text-gray-300 transition-colors p-1">
         <X className="w-3 h-3" />
       </button>
     </div>
   )
 }
 
-/** Send icon wrapper */
-function SendIcon({ className }: { className?: string }) {
-  return <Send className={`w-[18px] h-[18px] ${className ?? ''}`} />
-}
+// ── Typing indicator hook ─────────────────────────────────────────────────────
 
-/** Hook for typing indicator via Supabase Realtime Broadcast */
 function useTypingIndicator(peerId: string | null, userId: string | undefined) {
   const [peerIsTyping, setPeerIsTyping] = useState(false)
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
@@ -153,14 +224,9 @@ function useTypingIndicator(peerId: string | null, userId: string | undefined) {
 
   useEffect(() => {
     if (!supabase || !userId || !peerId) return
-
-    // Use a deterministic channel name so both peers join the same channel
     const ids = [userId, peerId].sort()
-    const channelName = `chat-typing:${ids[0]}:${ids[1]}`
-
-    const channel = supabase.channel(channelName)
+    const channel = supabase.channel(`chat-typing:${ids[0]}:${ids[1]}`)
     channelRef.current = channel
-
     channel
       .on('broadcast', { event: 'typing' }, (payload: { payload?: { user_id?: string } }) => {
         if (payload.payload?.user_id === peerId) {
@@ -170,7 +236,6 @@ function useTypingIndicator(peerId: string | null, userId: string | undefined) {
         }
       })
       .subscribe()
-
     return () => {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
       channel.unsubscribe()
@@ -180,7 +245,6 @@ function useTypingIndicator(peerId: string | null, userId: string | undefined) {
 
   const broadcastTyping = useCallback(() => {
     if (!channelRef.current || !userId) return
-    // Throttle: max once per 2s
     const now = Date.now()
     if (now - lastBroadcastRef.current < 2000) return
     lastBroadcastRef.current = now
@@ -190,17 +254,72 @@ function useTypingIndicator(peerId: string | null, userId: string | undefined) {
   return { peerIsTyping, broadcastTyping }
 }
 
-const isImageUrl = (s: string | null | undefined): boolean => !!s && /^(https?:\/\/|data:|blob:|file:|\/)/i.test(s)
+const isAvatarUrl = (s: string | null | undefined): boolean => !!s && /^(https?:\/\/|data:|blob:|file:|\/)/i.test(s)
 
-export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, sending, sendError, getConversation, sendMessage, markConversationRead }: ChatThreadProps) {
+function ImageLightbox({ url, onClose }: { url: string; onClose: () => void }) {
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [onClose])
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <motion.img
+        src={url}
+        alt=""
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        transition={{ duration: 0.15 }}
+        className="max-w-[90vw] max-h-[85vh] rounded-lg shadow-2xl object-contain"
+        onClick={(e) => e.stopPropagation()}
+      />
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors"
+      >
+        <X className="w-4 h-4" />
+      </button>
+    </motion.div>
+  )
+}
+
+// ── ImageUploadButton ─────────────────────────────────────────────────────────
+
+function ImageIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+      <circle cx="8.5" cy="8.5" r="1.5"/>
+      <polyline points="21 15 16 10 5 21"/>
+    </svg>
+  )
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
+export function ChatThread({ profile, onBack, onOpenProfile, messages, reactions, loading, sending, sendError, getConversation, sendMessage, markConversationRead, toggleReaction }: ChatThreadProps) {
   const { user } = useAuthStore()
   const [input, setInput] = useState('')
   const [copyToast, setCopyToast] = useState(false)
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null)
   const [hoveredMsg, setHoveredMsg] = useState<string | null>(null)
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
+  const sendTimestampsRef = useRef<number[]>([])
   const listRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const wasAtBottomRef = useRef(true)
   const prevMessageCountRef = useRef(0)
   const copyTimerRef = useRef<ReturnType<typeof setTimeout>>()
@@ -214,9 +333,7 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, 
   }, [profile.id, getConversation, markConversationRead])
 
   useEffect(() => {
-    if (messages.length > 0) {
-      markConversationRead(profile.id)
-    }
+    if (messages.length > 0) markConversationRead(profile.id)
   }, [messages.length, profile.id, markConversationRead])
 
   useEffect(() => {
@@ -235,26 +352,19 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, 
     if (loading || messages.length === 0) return
     const el = listRef.current
     if (!el) return
-
     const lastMsg = messages[messages.length - 1]
     const isIncoming = lastMsg.sender_id !== user?.id
     const prevCount = prevMessageCountRef.current
     prevMessageCountRef.current = messages.length
-
     const isInitialLoad = prevCount === 0
-    const shouldScrollOnIncoming = isIncoming && wasAtBottomRef.current
-    const shouldScrollOnSend = !isIncoming
-
-    if (isInitialLoad || shouldScrollOnIncoming || shouldScrollOnSend) {
+    if (isInitialLoad || (isIncoming && wasAtBottomRef.current) || !isIncoming) {
       bottomRef.current?.scrollIntoView({ block: 'end', behavior: 'instant' })
       requestAnimationFrame(() => bottomRef.current?.scrollIntoView({ block: 'end', behavior: 'instant' }))
     }
     wasAtBottomRef.current = true
   }, [loading, messages, user?.id])
 
-  useEffect(() => {
-    inputRef.current?.focus()
-  }, [profile.id])
+  useEffect(() => { inputRef.current?.focus() }, [profile.id])
 
   useEffect(() => {
     const el = inputRef.current
@@ -265,9 +375,19 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, 
     el.style.overflowY = h >= 120 ? 'auto' : 'hidden'
   }, [input])
 
+  const checkRateLimit = (): boolean => {
+    const now = Date.now()
+    sendTimestampsRef.current = sendTimestampsRef.current.filter((t) => now - t < 10_000)
+    if (now - (sendTimestampsRef.current.at(-1) ?? 0) < 500) return false
+    if (sendTimestampsRef.current.length >= 10) return false
+    sendTimestampsRef.current.push(now)
+    return true
+  }
+
   const handleSend = () => {
     const text = input.trim()
     if (!text || sending) return
+    if (!checkRateLimit()) return
     const body = replyTo
       ? `> ${replyTo.body.split('\n')[0].slice(0, 60)}${replyTo.body.length > 60 ? '...' : ''}\n${text}`
       : text
@@ -290,6 +410,21 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, 
     inputRef.current?.focus()
   }, [])
 
+  const handleImageFile = useCallback(async (file: File) => {
+    if (!supabase || !user?.id) return
+    if (!checkRateLimit()) return
+    setUploadingImage(true)
+    const compressed = await compressImage(file)
+    const ext = compressed.name.split('.').pop()?.toLowerCase() ?? 'jpg'
+    const path = `${user.id}/${Date.now()}.${ext}`
+    const { error } = await supabase.storage.from('chat-images').upload(path, compressed, { contentType: compressed.type })
+    if (!error) {
+      const { data: { publicUrl } } = supabase.storage.from('chat-images').getPublicUrl(path)
+      await sendMessage(profile.id, `${IMAGE_PREFIX}${publicUrl}`)
+    }
+    setUploadingImage(false)
+  }, [user?.id, profile.id, sendMessage])
+
   const groupedMessages = useMemo(() => {
     const groups: Array<{ key: string; label: string; items: ChatMessage[] }> = []
     for (const m of messages) {
@@ -302,25 +437,14 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, 
       const isYesterday = d.getFullYear() === yesterday.getFullYear() && d.getMonth() === yesterday.getMonth() && d.getDate() === yesterday.getDate()
       const label = isToday ? 'Today' : isYesterday ? 'Yesterday' : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
       const prev = groups[groups.length - 1]
-      if (!prev || prev.key !== key) {
-        groups.push({ key, label, items: [m] })
-      } else {
-        prev.items.push(m)
-      }
+      if (!prev || prev.key !== key) groups.push({ key, label, items: [m] })
+      else prev.items.push(m)
     }
     return groups
   }, [messages])
 
-  // Determine if consecutive messages from same sender (for avatar grouping)
-  const isFirstInGroup = (items: ChatMessage[], idx: number): boolean => {
-    if (idx === 0) return true
-    return items[idx].sender_id !== items[idx - 1].sender_id
-  }
-
-  const isLastInGroup = (items: ChatMessage[], idx: number): boolean => {
-    if (idx === items.length - 1) return true
-    return items[idx].sender_id !== items[idx + 1].sender_id
-  }
+  const isFirstInGroup = (items: ChatMessage[], idx: number) => idx === 0 || items[idx].sender_id !== items[idx - 1].sender_id
+  const isLastInGroup  = (items: ChatMessage[], idx: number) => idx === items.length - 1 || items[idx].sender_id !== items[idx + 1].sender_id
 
   return (
     <motion.div
@@ -329,6 +453,9 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, 
       transition={{ duration: MOTION.duration.base, ease: MOTION.easing }}
       className="flex flex-col flex-1 min-h-0"
     >
+      <AnimatePresence>
+        {lightboxUrl && <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
+      </AnimatePresence>
       <CopyToast visible={copyToast} />
 
       {/* Header */}
@@ -341,10 +468,9 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, 
           onClick={() => { onOpenProfile?.(); playClickSound() }}
           className="flex items-center gap-2.5 px-3 py-1.5 rounded hover:bg-white/[0.04] transition-colors cursor-pointer"
         >
-          {/* Avatar */}
           <div className="relative">
             <div className="w-7 h-7 rounded-full bg-surface-2 flex items-center justify-center text-xs font-bold text-gray-300 overflow-hidden border border-white/10">
-              {isImageUrl(profile.avatar_url)
+              {isAvatarUrl(profile.avatar_url)
                 ? <img src={profile.avatar_url!} alt="" className="w-full h-full object-cover" />
                 : (profile.avatar_url || profile.username?.[0]?.toUpperCase() || '?')
               }
@@ -354,11 +480,7 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, 
           <div className="text-left">
             <p className="text-sm text-white font-medium leading-none">{profile.username || 'Friend'}</p>
             <p className="text-micro text-gray-500 mt-0.5">
-              {peerIsTyping ? (
-                <span className="text-accent/70">typing...</span>
-              ) : (
-                profile.is_online ? 'Online' : 'Offline'
-              )}
+              {peerIsTyping ? <span className="text-accent/70">typing...</span> : profile.is_online ? 'Online' : 'Offline'}
             </p>
           </div>
         </button>
@@ -372,21 +494,11 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, 
       >
         {loading ? (
           <div className="space-y-3 py-2">
-            <div className="flex justify-center">
-              <SkeletonBlock className="h-5 w-16 rounded-full" />
-            </div>
-            <div className="flex justify-start">
-              <SkeletonBlock className="h-12 w-40 rounded rounded-bl-sm" />
-            </div>
-            <div className="flex justify-end">
-              <SkeletonBlock className="h-10 w-32 rounded rounded-br-sm bg-accent/10" />
-            </div>
-            <div className="flex justify-start">
-              <SkeletonBlock className="h-14 w-36 rounded rounded-bl-sm" />
-            </div>
-            <div className="flex justify-end">
-              <SkeletonBlock className="h-8 w-28 rounded rounded-br-sm bg-accent/10" />
-            </div>
+            <div className="flex justify-center"><SkeletonBlock className="h-5 w-16 rounded-full" /></div>
+            <div className="flex justify-start"><SkeletonBlock className="h-12 w-40 rounded rounded-bl-sm" /></div>
+            <div className="flex justify-end"><SkeletonBlock className="h-10 w-32 rounded rounded-br-sm bg-accent/10" /></div>
+            <div className="flex justify-start"><SkeletonBlock className="h-14 w-36 rounded rounded-bl-sm" /></div>
+            <div className="flex justify-end"><SkeletonBlock className="h-8 w-28 rounded rounded-br-sm bg-accent/10" /></div>
           </div>
         ) : messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full gap-3 py-12">
@@ -403,128 +515,169 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, 
                 {/* Date divider */}
                 <div className="flex items-center justify-center py-3">
                   <div className="h-px flex-1 bg-white/[0.04]" />
-                  <span className="text-micro text-gray-500 font-medium px-3">
-                    {group.label}
-                  </span>
+                  <span className="text-micro text-gray-500 font-medium px-3">{group.label}</span>
                   <div className="h-px flex-1 bg-white/[0.04]" />
                 </div>
+
                 {group.items.map((m, idx) => {
                   const isMe = m.sender_id === user?.id
                   const isHovered = hoveredMsg === m.id
                   const first = isFirstInGroup(group.items, idx)
-                  const last = isLastInGroup(group.items, idx)
-                  // Collapse timestamps: show only if >2 min gap from prev msg by same sender
-                  const prev = idx > 0 ? group.items[idx - 1] : null
-                  const showTime = !prev
-                    || prev.sender_id !== m.sender_id
+                  const last  = isLastInGroup(group.items, idx)
+                  const prev  = idx > 0 ? group.items[idx - 1] : null
+                  const showTime = !prev || prev.sender_id !== m.sender_id
                     || (new Date(m.created_at).getTime() - new Date(prev.created_at).getTime()) > 120_000
 
-                  // Detect quoted reply
-                  const isQuote = m.body.startsWith('> ')
+                  const isImg = isChatImage(m.body)
+                  const imgUrl = isImg ? chatImageUrl(m.body) : ''
+
+                  // Quoted reply (text messages only)
+                  const isQuote = !isImg && m.body.startsWith('> ')
                   let quoteLine = ''
-                  let bodyText = m.body
+                  let bodyText  = m.body
                   if (isQuote) {
                     const nlIdx = m.body.indexOf('\n')
-                    if (nlIdx > 0) {
-                      quoteLine = m.body.slice(2, nlIdx)
-                      bodyText = m.body.slice(nlIdx + 1)
-                    }
+                    if (nlIdx > 0) { quoteLine = m.body.slice(2, nlIdx); bodyText = m.body.slice(nlIdx + 1) }
                   }
 
-                  // Dynamic border radius based on grouping
                   const radius = isMe
                     ? `${first ? '18px' : '6px'} 18px 18px ${last ? '6px' : '6px'}`
                     : `18px ${first ? '18px' : '6px'} ${last ? '6px' : '6px'} 18px`
 
+                  const msgReactions   = reactions[m.id] ?? {}
+                  const activeReactions = REACTIONS.filter((r) => (msgReactions[r]?.length ?? 0) > 0)
+
                   return (
                     <div
                       key={m.id}
-                      className={`group flex items-end gap-1 ${isMe ? 'justify-end pl-12' : 'justify-start pr-12'} ${first && idx > 0 ? 'mt-2' : ''}`}
+                      className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} ${first && idx > 0 ? 'mt-2' : ''}`}
                       onMouseEnter={() => setHoveredMsg(m.id)}
                       onMouseLeave={() => setHoveredMsg(null)}
                     >
-                      {/* Avatar placeholder for received messages — only show on last msg in group */}
-                      {!isMe && (
-                        <div className="w-7 shrink-0 self-end">
-                          {last && (
-                            <div className="w-7 h-7 rounded-full bg-surface-2 flex items-center justify-center text-micro font-bold text-gray-400 overflow-hidden border border-white/10">
-                              {isImageUrl(profile.avatar_url)
-                                ? <img src={profile.avatar_url!} alt="" className="w-full h-full object-cover" />
-                                : (profile.avatar_url || profile.username?.[0]?.toUpperCase() || '?')
-                              }
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      <div className={`flex items-end gap-1 ${isMe ? 'justify-end pl-12' : 'justify-start pr-12'} w-full`}>
 
-                      {/* Action buttons for received msgs */}
-                      {!isMe && (
-                        <div className={`flex gap-0.5 shrink-0 transition-opacity duration-100 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
-                          <button
-                            type="button"
-                            onClick={() => handleReply(m)}
-                            className="p-1 rounded-md hover:bg-white/[0.08] text-gray-500 hover:text-gray-300 transition-colors"
-                            title="Reply"
-                          >
-                            <CornerUpLeft className="w-3 h-3" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleCopy(m.body)}
-                            className="p-1 rounded-md hover:bg-white/[0.08] text-gray-500 hover:text-gray-300 transition-colors"
-                            title="Copy"
-                          >
-                            <Copy className="w-3 h-3" />
-                          </button>
-                        </div>
-                      )}
-
-                      {/* Message bubble */}
-                      <div
-                        className={`max-w-[75%] px-3.5 py-2 text-body leading-relaxed transition-all duration-75 ${
-                          isMe
-                            ? 'bg-accent/12 text-white border border-accent/20'
-                            : 'bg-white/[0.06] text-gray-100 border border-white/[0.06]'
-                        } ${isHovered ? (isMe ? 'bg-accent/18' : 'bg-white/[0.09]') : ''}`}
-                        style={{ borderRadius: radius }}
-                      >
-                        {/* Quoted reply */}
-                        {quoteLine && (
-                          <div className={`text-caption mb-1.5 pl-2 py-1 border-l-2 ${isMe ? 'border-accent/40 text-accent/50' : 'border-white/20 text-gray-400'} truncate`}>
-                            {quoteLine}
+                        {/* Avatar (received) */}
+                        {!isMe && (
+                          <div className="w-7 shrink-0 self-end">
+                            {last && (
+                              <div className="w-7 h-7 rounded-full bg-surface-2 flex items-center justify-center text-micro font-bold text-gray-400 overflow-hidden border border-white/10">
+                                {isAvatarUrl(profile.avatar_url)
+                                  ? <img src={profile.avatar_url!} alt="" className="w-full h-full object-cover" />
+                                  : (profile.avatar_url || profile.username?.[0]?.toUpperCase() || '?')
+                                }
+                              </div>
+                            )}
                           </div>
                         )}
-                        <p className="break-words whitespace-pre-wrap">{renderMessageBody(bodyText)}</p>
-                        {/* Footer: time + read receipt */}
-                        {showTime && (
-                          <div className={`flex items-center gap-1 mt-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
-                            <span className={`text-micro ${isMe ? 'text-accent/40' : 'text-gray-500/60'}`}>
-                              {new Date(m.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
-                            </span>
-                            {isMe && <ReadReceipt read={m.read_at != null} />}
+
+                        {/* Action buttons (received) */}
+                        {!isMe && (
+                          <div className={`flex gap-0.5 shrink-0 transition-opacity duration-75 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
+                            <button type="button" onClick={() => handleReply(m)} className="p-1 rounded-md hover:bg-white/[0.08] text-gray-500 hover:text-gray-300 transition-colors" title="Reply">
+                              <CornerUpLeft className="w-3 h-3" />
+                            </button>
+                            {!isImg && (
+                              <button type="button" onClick={() => handleCopy(m.body)} className="p-1 rounded-md hover:bg-white/[0.08] text-gray-500 hover:text-gray-300 transition-colors" title="Copy">
+                                <Copy className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Message bubble (relative so ReactionPicker can float outside it) */}
+                        <div className="relative">
+                          {isImg ? (
+                            <div className="max-w-[220px] relative cursor-zoom-in" style={{ borderRadius: radius, overflow: 'hidden' }} onClick={() => setLightboxUrl(imgUrl)}>
+                              <img
+                                src={imgUrl}
+                                alt="image"
+                                className="block w-full h-auto hover:brightness-90 transition-[filter] duration-100"
+                                style={{ maxHeight: 260 }}
+                                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                              />
+                              {showTime && (
+                                <div className={`absolute bottom-1 ${isMe ? 'right-2' : 'left-2'} flex items-center gap-1 px-1 py-0.5 rounded bg-black/50`}>
+                                  <span className="text-micro text-white/70">
+                                    {new Date(m.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                  </span>
+                                  {isMe && <ReadReceipt read={m.read_at != null} />}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div
+                              className={`max-w-[75%] px-3.5 py-2 text-body leading-relaxed transition-colors duration-75 ${
+                                isMe
+                                  ? 'bg-accent/12 text-white border border-accent/20'
+                                  : 'bg-white/[0.06] text-gray-100 border border-white/[0.06]'
+                              } ${isHovered ? (isMe ? 'bg-accent/18' : 'bg-white/[0.09]') : ''}`}
+                              style={{ borderRadius: radius }}
+                            >
+                              {quoteLine && (
+                                <div className={`text-caption mb-1.5 pl-2 py-1 border-l-2 ${isMe ? 'border-accent/40 text-accent/50' : 'border-white/20 text-gray-400'} truncate`}>
+                                  {quoteLine}
+                                </div>
+                              )}
+                              <p className="break-words whitespace-pre-wrap">{renderMessageBody(bodyText)}</p>
+                              {showTime && (
+                                <div className={`flex items-center gap-1 mt-1 ${isMe ? 'justify-end' : 'justify-start'}`}>
+                                  <span className={`text-micro ${isMe ? 'text-accent/40' : 'text-gray-500/60'}`}>
+                                    {new Date(m.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}
+                                  </span>
+                                  {isMe && <ReadReceipt read={m.read_at != null} />}
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Reaction picker — absolute, floats outside bubble, no layout impact */}
+                          <ReactionPicker
+                            messageId={m.id}
+                            isMe={isMe}
+                            visible={isHovered}
+                            myUserId={user?.id}
+                            reactions={reactions}
+                            onToggle={toggleReaction}
+                          />
+                        </div>
+
+                        {/* Action buttons (sent) */}
+                        {isMe && (
+                          <div className={`flex gap-0.5 shrink-0 transition-opacity duration-75 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
+                            {!isImg && (
+                              <button type="button" onClick={() => handleCopy(m.body)} className="p-1 rounded-md hover:bg-white/[0.08] text-gray-500 hover:text-gray-300 transition-colors" title="Copy">
+                                <Copy className="w-3 h-3" />
+                              </button>
+                            )}
+                            <button type="button" onClick={() => handleReply(m)} className="p-1 rounded-md hover:bg-white/[0.08] text-gray-500 hover:text-gray-300 transition-colors" title="Reply">
+                              <CornerUpLeft className="w-3 h-3" />
+                            </button>
                           </div>
                         )}
                       </div>
 
-                      {/* Action buttons for sent msgs */}
-                      {isMe && (
-                        <div className={`flex gap-0.5 shrink-0 transition-opacity duration-100 ${isHovered ? 'opacity-100' : 'opacity-0'}`}>
-                          <button
-                            type="button"
-                            onClick={() => handleCopy(m.body)}
-                            className="p-1 rounded-md hover:bg-white/[0.08] text-gray-500 hover:text-gray-300 transition-colors"
-                            title="Copy"
-                          >
-                            <Copy className="w-3 h-3" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleReply(m)}
-                            className="p-1 rounded-md hover:bg-white/[0.08] text-gray-500 hover:text-gray-300 transition-colors"
-                            title="Reply"
-                          >
-                            <CornerUpLeft className="w-3 h-3" />
-                          </button>
+                      {/* Reaction pills */}
+                      {activeReactions.length > 0 && (
+                        <div className={`flex flex-wrap gap-1 mt-1 ${isMe ? 'pr-1 justify-end' : 'pl-8 justify-start'}`}>
+                          {activeReactions.map((emoji) => {
+                            const count   = msgReactions[emoji].length
+                            const reacted = user?.id ? msgReactions[emoji].includes(user.id) : false
+                            return (
+                              <button
+                                key={emoji}
+                                type="button"
+                                onClick={() => toggleReaction(m.id, emoji)}
+                                className={`flex items-center gap-1 px-1.5 py-0.5 rounded-full text-xs border transition-all duration-75 hover:scale-105 ${
+                                  reacted
+                                    ? 'bg-accent/20 border-accent/40 text-accent'
+                                    : 'bg-white/[0.06] border-white/[0.08] text-gray-400 hover:border-white/20'
+                                }`}
+                              >
+                                <span className="leading-none">{emoji}</span>
+                                <span className="leading-none font-medium tabular-nums">{count}</span>
+                              </button>
+                            )
+                          })}
                         </div>
                       )}
                     </div>
@@ -535,22 +688,17 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, 
 
             {/* Typing indicator */}
             <AnimatePresence>
-              {peerIsTyping && (
-                <TypingIndicator name={profile.username || 'Friend'} />
-              )}
+              {peerIsTyping && <TypingIndicator name={profile.username || 'Friend'} />}
             </AnimatePresence>
           </>
         )}
         <div ref={bottomRef} />
       </div>
 
-      {sendError && (
-        <ErrorState message={sendError} className="mb-2 py-2 shrink-0" />
-      )}
+      {sendError && <ErrorState message={sendError} className="mb-2 py-2 shrink-0" />}
 
       {/* Input area */}
       <div className="shrink-0 px-2 pb-1">
-        {/* Reply preview */}
         <AnimatePresence>
           {replyTo && (
             <motion.div
@@ -567,13 +715,52 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, 
             </motion.div>
           )}
         </AnimatePresence>
+
         <div className="flex gap-2 items-end">
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/gif,image/webp"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              if (file) handleImageFile(file)
+              e.target.value = ''
+            }}
+          />
+
+          {/* Image upload button */}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={uploadingImage}
+            title="Send image"
+            className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center text-gray-500 hover:text-gray-300 hover:bg-white/[0.06] border border-white/[0.06] transition-all duration-150 disabled:opacity-30"
+          >
+            {uploadingImage ? (
+              <motion.span
+                animate={{ rotate: 360 }}
+                transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
+                className="block w-4 h-4 border-2 border-current border-t-transparent rounded-full"
+              />
+            ) : (
+              <ImageIcon />
+            )}
+          </button>
+
           <textarea
             ref={inputRef}
             value={input}
-            onChange={(e) => {
-              setInput(e.target.value)
-              broadcastTyping()
+            onChange={(e) => { setInput(e.target.value); broadcastTyping() }}
+            onPaste={(e) => {
+              const items = Array.from(e.clipboardData.items)
+              const imgItem = items.find((i) => i.type.startsWith('image/'))
+              if (imgItem) {
+                e.preventDefault()
+                const file = imgItem.getAsFile()
+                if (file) handleImageFile(file)
+              }
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
@@ -581,14 +768,13 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, 
                 e.preventDefault()
                 handleSend()
               }
-              if (e.key === 'Escape' && replyTo) {
-                setReplyTo(null)
-              }
+              if (e.key === 'Escape' && replyTo) setReplyTo(null)
             }}
             placeholder={replyTo ? 'Type your reply...' : 'Message...'}
             rows={1}
             className="flex-1 resize-none min-h-[40px] rounded bg-surface-0/80 border border-white/[0.06] px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-accent/30 transition-colors"
           />
+
           <motion.button
             onClick={handleSend}
             disabled={sending || !input.trim()}
@@ -606,7 +792,7 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, loading, 
                 className="block w-4 h-4 border-2 border-current border-t-transparent rounded-full"
               />
             ) : (
-              <SendIcon />
+              <Send className="w-[18px] h-[18px]" />
             )}
           </motion.button>
         </div>

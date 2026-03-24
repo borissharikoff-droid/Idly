@@ -14,7 +14,6 @@ export function SessionControls({ glowPulse }: SessionControlsProps) {
   const isPaused = status === 'paused'
   const isActive = isRunning || isPaused
   const [confirmState, setConfirmState] = useState<'none' | 'discard' | 'confirm'>('none')
-  const [starting, setStarting] = useState(false)
   const [showStartFx, setShowStartFx] = useState(false)
   const fxTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -24,13 +23,7 @@ export function SessionControls({ glowPulse }: SessionControlsProps) {
     }
   }, [])
 
-  useEffect(() => {
-    if (status !== 'running' || !starting) return
-    const t = setTimeout(() => setStarting(false), 220)
-    return () => clearTimeout(t)
-  }, [status, starting])
-
-  const handleStartStop = async () => {
+  const handleStartStop = () => {
     if (isActive) {
       playClickSound()
       if (elapsedSeconds < 30) {
@@ -39,18 +32,11 @@ export function SessionControls({ glowPulse }: SessionControlsProps) {
       }
       setConfirmState('confirm')
     } else {
-      setStarting(true)
       setShowStartFx(true)
       if (fxTimerRef.current) clearTimeout(fxTimerRef.current)
       fxTimerRef.current = setTimeout(() => setShowStartFx(false), 1150)
       playClickSound()
-      // Let the first animation frame render before tracker startup work begins.
-      await new Promise((resolve) => setTimeout(resolve, 120))
-      try {
-        await start()
-      } catch {
-        setStarting(false)
-      }
+      start().catch(() => {})
     }
   }
 
@@ -101,8 +87,10 @@ export function SessionControls({ glowPulse }: SessionControlsProps) {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.985 }}
               transition={{ duration: MOTION.duration.base, ease: MOTION.easingSoft }}
-              className="w-full max-w-[320px] rounded-card p-3.5 border border-white/10 bg-surface-2/90 shadow-lg"
+              className="fixed inset-0 z-[400] flex items-center justify-center"
+              style={{ background: 'rgba(0,0,0,0.55)' }}
             >
+            <div className="w-full max-w-[320px] rounded-card p-3.5 border border-white/10 bg-surface-2/90 shadow-lg mx-4">
               <div className="text-center mb-2">
                 <span className="text-2xl">{confirmState === 'discard' ? '🗑️' : '🛑'}</span>
               </div>
@@ -128,6 +116,7 @@ export function SessionControls({ glowPulse }: SessionControlsProps) {
                   {confirmState === 'discard' ? 'Discard' : 'Stop'}
                 </button>
               </div>
+            </div>
             </motion.div>
           ) : (
             <motion.div
@@ -168,29 +157,12 @@ export function SessionControls({ glowPulse }: SessionControlsProps) {
                   )}
                   <motion.button
                     onClick={handleStartStop}
-                    disabled={starting}
-                    whileHover={!starting ? MOTION.interactive.hover : undefined}
-                    whileTap={!starting ? MOTION.interactive.tap : undefined}
-                    animate={starting ? { scale: 1.015 } : { scale: 1 }}
+                    whileHover={MOTION.interactive.hover}
+                    whileTap={MOTION.interactive.tap}
                     transition={{ duration: MOTION.duration.base, ease: MOTION.easingSoft }}
-                    className={`relative min-w-[200px] px-12 py-4 rounded font-bold text-base tracking-widest transition-colors duration-200 ${
-                      starting
-                        ? 'bg-accent/60 text-white cursor-wait'
-                        : 'bg-accent text-white hover:shadow-[0_0_30px_rgba(88,101,242,0.5)]'
-                    }`}
+                    className="relative min-w-[200px] px-12 py-4 rounded font-bold text-base tracking-widest transition-colors duration-200 bg-accent text-white hover:shadow-[0_0_30px_rgba(88,101,242,0.5)]"
                   >
-                    <AnimatePresence mode="wait" initial={false}>
-                      <motion.span
-                        key={starting ? 'starting' : 'grind'}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: MOTION.duration.base }}
-                        className="inline-block"
-                      >
-                        {starting ? 'Starting...' : 'GRIND'}
-                      </motion.span>
-                    </AnimatePresence>
+                    GRIND
                   </motion.button>
                 </div>
               )}
@@ -209,7 +181,7 @@ export function SessionControls({ glowPulse }: SessionControlsProps) {
                     onClick={handlePauseResume}
                     whileHover={MOTION.interactive.hover}
                     whileTap={MOTION.interactive.tap}
-                    className={`px-8 py-3.5 rounded-xl font-semibold text-sm tracking-wide transition-all duration-150 ${
+                    className={`px-8 py-3.5 rounded font-semibold text-sm tracking-wide transition-all duration-150 ${
                       isPaused
                         ? 'bg-accent/15 border border-accent/40 text-accent hover:bg-accent/25'
                         : 'bg-white/6 border border-white/12 text-gray-300 hover:bg-white/10 hover:border-white/20'
@@ -223,7 +195,7 @@ export function SessionControls({ glowPulse }: SessionControlsProps) {
                     onClick={handleStartStop}
                     whileHover={MOTION.interactive.hover}
                     whileTap={MOTION.interactive.tap}
-                    className="px-8 py-3.5 rounded-xl font-semibold text-sm tracking-wide bg-red-500/12 border border-red-500/30 text-red-400 hover:bg-red-500/22 hover:border-red-500/50 transition-all duration-150"
+                    className="px-8 py-3.5 rounded font-semibold text-sm tracking-wide bg-red-500/12 border border-red-500/30 text-red-400 hover:bg-red-500/22 hover:border-red-500/50 transition-all duration-150"
                   >
                     STOP
                   </motion.button>

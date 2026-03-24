@@ -23,3 +23,8 @@ export function triggerEscape(): boolean {
   handlers[handlers.length - 1]()
   return true
 }
+
+/** Removes all handlers (call on tab navigation to prevent stale handlers from a previous page). */
+export function clearEscapeStack(): void {
+  handlers.length = 0
+}

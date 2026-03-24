@@ -7,6 +7,7 @@ import { disableFocusMode, enableFocusMode, getFocusModeStatus } from './focusMo
 import { getDatabaseApi } from './database'
 import { analyzeSession, analyzeOverview, refineActivityLabels } from './deepseek'
 import { getDeepSeekApiKey } from './aiConfig'
+import { updateDiscordPresence, type PresenceUpdate } from './discord'
 import type { OverviewData } from './deepseek'
 import {
   saveSessionSchema,
@@ -442,6 +443,10 @@ export function registerIpcHandlers() {
         if (img) mainWindow.setOverlayIcon(img, `${n} unread`)
       }
     }
+  })
+
+  ipcMain.handle(IPC_CHANNELS.discord.update, (_: unknown, data: unknown) => {
+    try { updateDiscordPresence(data as PresenceUpdate) } catch { /* ignore */ }
   })
 }
 

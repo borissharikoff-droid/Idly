@@ -57,6 +57,7 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
   const [votingId, setVotingId] = useState<string | null>(null)
   const [votedPolls, setVotedPolls] = useState<Set<string>>(new Set())
   const [patchModalOpen, setPatchModalOpen] = useState(false)
+  const [gzSent, setGzSent] = useState<Set<string>>(new Set())
   const panelRef = useRef<HTMLDivElement>(null)
   const filteredItems = items.filter((i) => {
     if (filter === 'all') return true
@@ -360,7 +361,50 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                       </div>
                     </div>
                   </div>
-                ) : (
+                ) : item.friendLevelUp ? (() => {
+                  const fl = item.friendLevelUp!
+                  const sent = gzSent.has(item.id)
+                  return (
+                    <div key={item.id} className="px-2.5 py-1.5 border-b border-white/[0.03] last:border-0">
+                      <div className="rounded border border-blue-400/20 bg-blue-400/[0.05] px-3 py-2">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded flex items-center justify-center shrink-0 bg-blue-400/10 border border-blue-400/20">
+                            <span className="text-sm leading-none">{item.icon}</span>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-baseline justify-between gap-1">
+                              <p className="text-caption font-semibold text-white truncate">{item.title}</p>
+                              <span className="text-micro text-gray-500 font-mono shrink-0">{timeAgo(item.timestamp)}</span>
+                            </div>
+                            <p className="text-micro text-blue-300/70 truncate mt-0.5">{item.body}</p>
+                          </div>
+                          <button
+                            type="button"
+                            disabled={sent || !supabase || !user}
+                            onClick={async () => {
+                              if (!supabase || !user || sent) return
+                              playClickSound()
+                              setGzSent((prev) => new Set(prev).add(item.id))
+                              await supabase.from('messages').insert({
+                                sender_id: user.id,
+                                receiver_id: fl.friendId,
+                                body: `🎉 GZ on level ${fl.newLevel}! Keep grinding!`,
+                              })
+                            }}
+                            className={`shrink-0 px-2.5 py-1 rounded text-caption font-semibold transition-colors ${
+                              sent
+                                ? 'bg-green-400/10 border border-green-400/25 text-green-400 cursor-default'
+                                : 'bg-blue-400/15 border border-blue-400/30 text-blue-300 hover:bg-blue-400/25'
+                            }`}
+                          >
+                            {sent ? '✓ Sent' : 'GZ!'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })()
+                : (
                   <div
                     key={item.id}
                     className="px-2.5 py-1.5 flex items-center gap-2.5 hover:bg-white/[0.02] border-b border-white/[0.03] last:border-0 cursor-pointer"

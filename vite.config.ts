@@ -43,8 +43,9 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
-    open: true,
+    port: 5174,
+    strictPort: true,
+    open: false,
   },
   test: {
     include: ['../../src/tests/**/*.test.ts'],

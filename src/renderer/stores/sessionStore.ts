@@ -492,6 +492,35 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       }
     })
     track('session_start')
+
+    // ── Comeback reward: 3+ days gap since last session ──────────────────────
+    Promise.resolve().then(async () => {
+      if (!api?.db?.getSessions) return
+      const todayKey = new Date().toISOString().slice(0, 10)
+      const lastComebackDate = localStorage.getItem('grindly_last_comeback_date')
+      if (lastComebackDate === todayKey) return // already triggered today
+      try {
+        const lastSessions = (await api.db.getSessions(1)) as { end_time: number }[]
+        if (lastSessions && lastSessions.length > 0) {
+          const gapMs = Date.now() - lastSessions[0].end_time
+          const threeDaysMs = 3 * 24 * 60 * 60 * 1000
+          if (gapMs > threeDaysMs) {
+            localStorage.setItem('grindly_last_comeback_date', todayKey)
+            ensureInventoryHydrated()
+            useInventoryStore.getState().addChest('rare_chest', 'comeback')
+            routeNotification({
+              type: 'progression_info',
+              icon: '⚔️',
+              title: 'Welcome back!',
+              body: `You were away for ${Math.floor(gapMs / 86_400_000)} days. Here's a Rare Chest for returning.`,
+              dedupeKey: `comeback:${todayKey}`,
+            }, api)
+          }
+        }
+      } catch { /* ignore — non-critical */ }
+    })
+    // ─────────────────────────────────────────────────────────────────────────
+
     if (api) {
       api.tracker.start()
       // AFK uses fixed 3 min threshold; passive activities (reading, learning) get extended automatically
@@ -906,6 +935,9 @@ declare global {
         enable: (durationMs: number) => Promise<void>
         disable: () => Promise<void>
         status: () => Promise<{ active: boolean; endsAt: number | null; osApplied: boolean }>
+      }
+      discord?: {
+        update: (data: unknown) => Promise<void>
       }
       admin?: {
         pickImageFile: () => Promise<string | null>

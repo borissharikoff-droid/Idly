@@ -1079,7 +1079,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ duration: 0.12, ease: 'easeOut' }}
-              className="fixed z-[205] w-[200px] rounded-xl overflow-hidden"
+              className="fixed z-[205] w-[200px] rounded-md overflow-hidden"
               style={{
                 left: Math.min(contextMenu.x, window.innerWidth - 216),
                 top: Math.min(contextMenu.y, window.innerHeight - 200),
@@ -1110,7 +1110,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                   <button type="button"
                     onClick={() => { playClickSound(); setContextMenu(null); onNavigateFarm?.() }}
                     className="flex items-center gap-2.5 w-full text-left px-3 py-2 text-caption font-medium text-accent hover:bg-accent/10 transition-colors">
-                    <span className="text-sm w-4 text-center">🌱</span> Plant seed
+                    Plant seed
                   </button>
                 )}
                 {showPrimary && (
@@ -1120,9 +1120,6 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                     className={`flex items-center gap-2.5 w-full text-left px-3 py-2 text-caption font-medium transition-colors ${
                       isMaxed || isGearLocked ? 'text-gray-600 cursor-not-allowed' : 'text-accent hover:bg-accent/10'
                     }`}>
-                    <span className="text-sm w-4 text-center">
-                      {isChest ? '🎁' : isConsumable ? '⚗️' : (slot.kind === 'item' && slot.equipped) ? '↩' : '⚔'}
-                    </span>
                     {primaryLabel}
                   </button>
                 )}
@@ -1130,7 +1127,6 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                   <button type="button"
                     onClick={() => { playClickSound(); setContextMenu(null); openAllChests(slot.chestType) }}
                     className="flex items-center gap-2.5 w-full text-left px-3 py-2 text-caption font-medium text-purple-300 hover:bg-purple-400/10 transition-colors">
-                    <span className="text-sm w-4 text-center">📦</span>
                     Open all ({chestTotal})
                   </button>
                 )}
@@ -1138,7 +1134,6 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                   <button type="button"
                     onClick={() => { playClickSound(); setListForSaleTarget(slot.itemId); setContextMenu(null) }}
                     className="flex items-center gap-2.5 w-full text-left px-3 py-2 text-caption font-medium text-amber-300 hover:bg-amber-500/10 transition-colors">
-                    <span className="text-sm w-4 text-center">🏷</span>
                     List for sale{slot.equipped ? ` (${slot.quantity - 1})` : ''}
                   </button>
                 )}
@@ -1149,7 +1144,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                 <button type="button"
                   onClick={() => { playClickSound(); runDeleteAction(slot); setContextMenu(null) }}
                   className="flex items-center gap-2.5 w-full text-left px-3 py-2 text-caption font-medium text-red-400/70 hover:text-red-300 hover:bg-red-400/8 transition-colors">
-                  <span className="text-sm w-4 text-center">🗑</span> Delete
+                  Delete
                 </button>
               </div>
             </motion.div>

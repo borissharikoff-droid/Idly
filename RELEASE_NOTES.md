@@ -1,16 +1,15 @@
-## What's new in v4.2.1
+## What's new in v4.2.2
 
 **New:**
-- Interactive onboarding tour — GRIND → chest drops → equip item → visit arena → stop session
-- Primary Skills widget on Home — XP bars for skills picked during onboarding
+- Discord Rich Presence — статус с топ-скиллом, уровнем и стриком пока идёт сессия
+- Comeback reward — 3+ дня без игры → Rare Chest при старте
+- Progressive nav — Farm/Craft/Cook скрыты для новых игроков до 3-й сессии
+- Total level в ProfileBar — показывает суммарный уровень (X/792)
+- Stop-confirm теперь полноэкранный оверлей
 
 **Improved:**
-- New mascot art across all screens (auth, welcome banner, onboarding wizard)
-- Tray, taskbar and notification icons updated with new mascot
-
-**Fixed:**
-- Patch notes now correctly appear in the 🔔 bell after updating
-- Mascot no longer stretches — fixed aspect ratio
+- Design system: border-radius 4px везде (Discord-стиль), surface-токены заменили raw hex
+- Escape stack — глобальный обработчик Esc для модалок и панелей
 
 ---
-Released: 2026-03-23
+Released: 2026-03-25

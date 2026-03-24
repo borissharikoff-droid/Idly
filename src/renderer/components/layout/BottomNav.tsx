@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { playTabSound, playClickSound } from '../../lib/sounds'
 import { track } from '../../lib/analytics'
 import { useBadges, BADGE_URGENT, BADGE_READY } from '../../hooks/useBadges'
-import { useNavCustomizationStore } from '../../stores/navCustomizationStore'
+import { useNavCustomizationStore, ADVANCED_TABS } from '../../stores/navCustomizationStore'
 import { MOTION } from '../../lib/motion'
 import { getUIIcons } from '../../lib/itemConfig'
 import { useAdminConfigStore } from '../../stores/adminConfigStore'
@@ -64,6 +64,7 @@ export function BottomNav({ activeTab, onTabChange, tourHighlightTab }: BottomNa
   const uiIcons = getUIIcons()
   const pinnedTabs = useNavCustomizationStore((s) => s.pinnedTabs)
   const setPinnedTabs = useNavCustomizationStore((s) => s.setPinnedTabs)
+  const lockedTabs = useNavCustomizationStore((s) => s.lockedTabs)
   const [moreOpen, setMoreOpen] = useState(false)
 
   const [dropTarget, setDropTarget] = useState<number | null>(null)
@@ -108,7 +109,7 @@ export function BottomNav({ activeTab, onTabChange, tourHighlightTab }: BottomNa
     (tabId === 'craft' && badges.isCraftingActive) ||
     (tabId === 'cooking' && badges.isCookingActive)
 
-  const moreTabs = ALL_TABS.filter((t) => !pinnedTabs.includes(t.id))
+  const moreTabs = ALL_TABS.filter((t) => !pinnedTabs.includes(t.id) && !lockedTabs.includes(t.id))
   const moreBadge = moreTabs.some((t) => getTabBadge(t.id) !== null || getTabPulse(t.id))
   const moreIsActiveTab = !pinnedTabs.includes(activeTab)
 
@@ -234,6 +235,32 @@ export function BottomNav({ activeTab, onTabChange, tourHighlightTab }: BottomNa
                   )
                 })}
               </div>
+
+              {/* Locked advanced tabs */}
+              {lockedTabs.filter((t) => ADVANCED_TABS.includes(t)).length > 0 && (
+                <div className="px-2 pb-2 pt-1 border-t border-white/[0.05]">
+                  <p className="text-micro font-mono text-gray-700 text-center mb-1 select-none">
+                    🔒 unlocks after 3 sessions
+                  </p>
+                  <div className="grid grid-cols-3 gap-0.5">
+                    {lockedTabs.filter((t) => ADVANCED_TABS.includes(t)).map((tabId) => {
+                      const tab = ALL_TABS.find((t) => t.id === tabId)
+                      if (!tab) return null
+                      return (
+                        <div
+                          key={tabId}
+                          className="flex flex-col items-center gap-1 px-2 py-2.5 rounded select-none opacity-30 cursor-not-allowed"
+                        >
+                          <span className="text-lg leading-none">
+                            <NavIcon tabId={tabId} adminIcon="" />
+                          </span>
+                          <span className="text-micro font-mono leading-none tracking-wide text-gray-500">{tab.label}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </motion.div>
           </>
         )}

@@ -64,9 +64,15 @@ export function FriendList({ friends, onSelectFriend, onMessageFriend, unreadByF
     )
   }
 
-  // Sort: online first, then by total skill level desc
+  // Sort: online → AFK → offline, then by skill level
+  const presenceRank = (f: FriendProfile) => {
+    if (!f.is_online) return 2
+    if (f.current_activity === 'AFK') return 1
+    return 0
+  }
   const sorted = [...friends].sort((a, b) => {
-    if (a.is_online !== b.is_online) return a.is_online ? -1 : 1
+    const rd = presenceRank(a) - presenceRank(b)
+    if (rd !== 0) return rd
     return (b.total_skill_level ?? 0) - (a.total_skill_level ?? 0)
   })
 
@@ -86,7 +92,8 @@ export function FriendList({ friends, onSelectFriend, onMessageFriend, unreadByF
     <div className="space-y-2">
       {sorted.map((f) => {
         const { activityLabel, appName, sessionStartMs } = parseFriendPresence(f.current_activity ?? null)
-        const isLeveling = f.is_online && activityLabel.startsWith('Leveling ')
+        const isAfk = f.is_online && f.current_activity === 'AFK'
+        const isLeveling = f.is_online && !isAfk && activityLabel.startsWith('Leveling ')
         const levelingSkill = isLeveling ? activityLabel.replace('Leveling ', '') : null
         const unread = unreadByFriendId[f.id] ?? 0
         const liveDuration = f.is_online && sessionStartMs ? formatSessionDurationCompact(sessionStartMs, nowMs) : null
@@ -98,9 +105,11 @@ export function FriendList({ friends, onSelectFriend, onMessageFriend, unreadByF
             key={f.id}
             onContextMenu={(e) => { e.preventDefault(); setCtxMenu({ x: e.clientX, y: e.clientY, friend: f }) }}
             className={`w-full flex items-center gap-3 rounded border p-3 text-left transition-all ${
-              f.is_online
-                ? 'bg-surface-2/90 border-white/10 hover:border-white/20 hover:-translate-y-[1px]'
-                : 'bg-surface-2/50 border-white/5 opacity-70 hover:opacity-90 hover:-translate-y-[1px]'
+              isAfk
+                ? 'bg-surface-2/70 border-white/8 opacity-85 hover:opacity-95 hover:-translate-y-[1px]'
+                : f.is_online
+                  ? 'bg-surface-2/90 border-white/10 hover:border-white/20 hover:-translate-y-[1px]'
+                  : 'bg-surface-2/50 border-white/5 opacity-70 hover:opacity-90 hover:-translate-y-[1px]'
             }`}
           >
             <button
@@ -121,7 +130,7 @@ export function FriendList({ friends, onSelectFriend, onMessageFriend, unreadByF
               />
               {/* Online indicator */}
               <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-surface-2 ${
-                f.is_online ? 'bg-accent' : 'bg-gray-600'
+                isAfk ? 'bg-yellow-400' : f.is_online ? 'bg-green-500' : 'bg-gray-600'
               }`} />
             </div>
 
@@ -146,7 +155,9 @@ export function FriendList({ friends, onSelectFriend, onMessageFriend, unreadByF
               <div className="flex flex-col gap-0.5">
                 <div className="flex items-center gap-1.5">
                   {f.is_online ? (
-                    isLeveling ? (() => {
+                    isAfk ? (
+                      <span className="text-caption text-yellow-400">AFK</span>
+                    ) : isLeveling ? (() => {
                       const skill = getSkillByName(levelingSkill ?? '')
                       return (
                         <span className="text-caption text-gray-400 font-medium flex items-center gap-1.5">
