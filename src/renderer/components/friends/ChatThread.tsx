@@ -585,7 +585,7 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, reactions
                         )}
 
                         {/* Message bubble (relative so ReactionPicker can float outside it) */}
-                        <div className="relative">
+                        <div className={`relative ${isImg ? '' : 'max-w-[75%]'}`}>
                           {isImg ? (
                             <div className="max-w-[220px] relative cursor-zoom-in" style={{ borderRadius: radius, overflow: 'hidden' }} onClick={() => setLightboxUrl(imgUrl)}>
                               <img
@@ -606,7 +606,7 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, reactions
                             </div>
                           ) : (
                             <div
-                              className={`max-w-[75%] px-3.5 py-2 text-body leading-relaxed transition-colors duration-75 ${
+                              className={`px-3.5 py-2 text-body leading-relaxed transition-colors duration-75 ${
                                 isMe
                                   ? 'bg-accent/12 text-white border border-accent/20'
                                   : 'bg-white/[0.06] text-gray-100 border border-white/[0.06]'
