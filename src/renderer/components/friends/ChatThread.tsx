@@ -69,7 +69,7 @@ interface ReactionPickerProps {
 function ReactionPicker({ messageId, isMe, visible, myUserId, reactions, onToggle }: ReactionPickerProps) {
   return (
     <div
-      className={`absolute ${isMe ? 'right-full top-1/2 -translate-y-1/2 pr-1' : 'left-full top-1/2 -translate-y-1/2 pl-1'} z-10 transition-opacity duration-75 pointer-events-none ${visible ? 'opacity-100 pointer-events-auto' : 'opacity-0'}`}
+      className={`absolute ${isMe ? 'right-0 -top-8' : 'left-8 -top-8'} z-10 transition-opacity duration-75 pointer-events-none ${visible ? 'opacity-100 pointer-events-auto' : 'opacity-0'}`}
     >
       <div className="flex items-center gap-0.5 px-1 py-0.5 rounded-full border border-white/[0.08] bg-surface-1 shadow-lg">
         {REACTIONS.map((emoji) => {
@@ -326,10 +326,14 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, reactions
 
   const { peerIsTyping, broadcastTyping } = useTypingIndicator(profile.id, user?.id)
 
+  // Reset counter synchronously before the scroll effect so initial-load detection works
+  useLayoutEffect(() => {
+    prevMessageCountRef.current = 0
+  }, [profile.id])
+
   useEffect(() => {
     getConversation(profile.id)
     markConversationRead(profile.id)
-    prevMessageCountRef.current = 0
   }, [profile.id, getConversation, markConversationRead])
 
   useEffect(() => {
@@ -489,7 +493,7 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, reactions
       {/* Messages */}
       <div
         ref={listRef}
-        className="flex-1 min-h-0 overflow-y-auto px-3 py-3 space-y-0.5 mb-2 select-text"
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 py-3 space-y-0.5 mb-2 select-text"
         style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.08) transparent' }}
       >
         {loading ? (

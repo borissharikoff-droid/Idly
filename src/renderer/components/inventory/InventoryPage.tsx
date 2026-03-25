@@ -613,7 +613,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
             const onClickCard = () => { playClickSound(); setInspectSlotId(slot.id); setContextMenu(null) }
             const onRightClick = (e: React.MouseEvent) => {
               e.preventDefault()
-              setContextMenu({ x: Math.min(e.clientX, window.innerWidth - 168), y: Math.min(e.clientY, window.innerHeight - 128), slotId: slot.id })
+              setContextMenu({ x: Math.min(e.clientX, window.innerWidth - 216), y: Math.min(e.clientY, window.innerHeight - 270), slotId: slot.id })
             }
 
             if (viewMode === 'list') {
@@ -1070,7 +1070,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
             : 0
 
           const primaryLabel = getPrimaryActionLabel(slot)
-          const showPrimary = !isPlant && !isFood && !isMaterial
+          const showPrimary = !isPlant && !isFood && !isMaterial && !isSeed
 
           return (
             <motion.div
@@ -1082,7 +1082,7 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
               className="fixed z-[205] w-[200px] rounded-md overflow-hidden"
               style={{
                 left: Math.min(contextMenu.x, window.innerWidth - 216),
-                top: Math.min(contextMenu.y, window.innerHeight - 200),
+                top: Math.min(contextMenu.y, window.innerHeight - 270),
                 background: 'linear-gradient(160deg, #0d0d1c 0%, #10101e 100%)',
                 border: `1px solid ${ctxTheme.color}30`,
                 boxShadow: `0 0 28px ${ctxTheme.color}14, 0 12px 40px rgba(0,0,0,0.75)`,

@@ -178,9 +178,8 @@ function ActiveJob({ onCancel }: { onCancel: (id: string) => void }) {
 
       <div className="space-y-1">
         <div className="h-2.5 rounded-full bg-white/[0.12] overflow-hidden">
-          <motion.div className="h-full rounded-full"
-            style={{ background: `linear-gradient(90deg, ${theme.glow}, ${theme.color})` }}
-            animate={{ width: `${pct}%` }} transition={{ duration: 0.4, ease: 'linear' }} />
+          <div className="h-full rounded-full"
+            style={{ background: `linear-gradient(90deg, ${theme.glow}, ${theme.color})`, width: `${pct}%`, transition: 'width 0.25s linear' }} />
         </div>
         <div className="flex justify-between">
           <span className="text-micro font-mono text-gray-500">{Math.round(pct)}%</span>

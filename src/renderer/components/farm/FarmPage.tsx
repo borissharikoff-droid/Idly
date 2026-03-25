@@ -1628,7 +1628,7 @@ function SeedPicker({ slotIndex, seeds, onClose }: { slotIndex: number; seeds: R
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 72, opacity: 0 }}
         transition={MOTION.spring.pop}
-        className="w-full max-w-sm rounded-t border-t border-x border-white/[0.09] bg-surface-0/95 backdrop-blur-md p-4 pb-6"
+        className="w-full max-w-sm rounded-t border-t border-x border-white/[0.09] bg-surface-0/95 backdrop-blur-md p-4 pb-20"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Handle bar */}
