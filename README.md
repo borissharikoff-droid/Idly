@@ -67,19 +67,6 @@ Open VS Code for 3 hours → **Developer** skill levels up. Browse research tabs
 
 ---
 
-## Why the SmartScreen warning?
-
-Grindly is not code-signed (costs $300–$500/yr). The app is fully open source — you can read every line of code in this repo. If you're not comfortable, build it yourself:
-
-```bash
-git clone https://github.com/lovepsm94/grindly
-cd grindly
-npm install
-npm run electron:dev
-```
-
----
-
 ## Tech Stack
 
 Electron · React · TypeScript · Tailwind CSS · SQLite · Supabase · Framer Motion
