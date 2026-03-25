@@ -7,6 +7,8 @@ import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts'
 import { BottomNav } from './components/layout/BottomNav'
 import { HomePage } from './components/home/HomePage'
 import { StreakOverlay } from './components/animations/StreakOverlay'
+import { DailyLoginCalendar } from './components/quests/DailyLoginCalendar'
+import { canClaimToday } from './lib/dailyLoginRewards'
 import { LootDrop } from './components/alerts/LootDrop'
 import { ChestDrop } from './components/alerts/ChestDrop'
 import { ToastStack } from './components/alerts/ToastStack'
@@ -169,6 +171,7 @@ export default function App() {
   useEffect(() => { useAchievementStatsStore.getState().hydrate() }, [])
   const [showStreak, setShowStreak] = useState(false)
   const [streakCount, setStreakCount] = useState(0)
+  const [showAppDailyLogin, setShowAppDailyLogin] = useState(false)
   const [healthIssues, setHealthIssues] = useState<string[]>([])
   const [healthDismissed, setHealthDismissed] = useState(false)
   const [isBackground, setIsBackground] = useState(false)
@@ -195,11 +198,16 @@ export default function App() {
   // ── Discord Rich Presence ──────────────────────────────────────────────────
   const skillXPAtStart = useSessionStore((s) => s.skillXPAtStart)
   const sessionSkillXP = useSessionStore((s) => s.sessionSkillXP)
+  const isAfkPaused = useSessionStore((s) => s.isAfkPaused)
   useEffect(() => {
     const api = window.electronAPI
     if (!api?.discord?.update) return
-    if (status !== 'running') {
+    if (status === 'idle') {
       api.discord.update({ status: 'idle' })
+      return
+    }
+    if (isAfkPaused) {
+      api.discord.update({ status: 'afk' })
       return
     }
     // Find top skill by total XP (start + session earned), excluding warrior (arena skill)
@@ -221,8 +229,7 @@ export default function App() {
       streak: streakCount,
       startTimestamp: sessionStartTime ?? undefined,
     })
-  // skillXPAtStart added so level updates once DB load completes after session start
-  }, [status, sessionStartTime, skillXPAtStart])
+  }, [status, sessionStartTime, skillXPAtStart, sessionSkillXP, isAfkPaused, streakCount])
   // ─────────────────────────────────────────────────────────────────────────
 
   // ── Progressive tab disclosure: unlock advanced tabs after 3 sessions ─────
@@ -489,7 +496,7 @@ export default function App() {
             </div>
           )}
           <PartyHUD />
-          <main className="flex-1 overflow-y-auto overflow-x-hidden isolate">
+          <main className="flex-1 overflow-y-auto overflow-x-hidden isolate pb-[60px]">
             <>
               {activeTab === 'home' && (
                 <motion.div key="home" className="h-full" variants={PAGE_SLIDE} initial="initial" animate="animate">
@@ -582,7 +589,13 @@ export default function App() {
           <BottomNav activeTab={activeTab} onTabChange={navigateTo} tourHighlightTab={getTourHighlightTab(showTour, tourStep)} />
           <AnimatePresence>
             {showStreak && streakCount >= 2 && (
-              <StreakOverlay streak={streakCount} onClose={() => setShowStreak(false)} />
+              <StreakOverlay streak={streakCount} onClose={() => {
+                setShowStreak(false)
+                if (canClaimToday()) setTimeout(() => setShowAppDailyLogin(true), 300)
+              }} />
+            )}
+            {showAppDailyLogin && (
+              <DailyLoginCalendar onClose={() => setShowAppDailyLogin(false)} />
             )}
           </AnimatePresence>
           <LootDrop />

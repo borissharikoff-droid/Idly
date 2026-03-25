@@ -268,7 +268,7 @@ export function BottomNav({ activeTab, onTabChange, tourHighlightTab }: BottomNa
 
       {/* ── Bottom nav bar ───────────────────────────────────────────── */}
       <div
-        className="shrink-0 flex justify-center pb-1.5 pt-1 px-2"
+        className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pb-1.5 pt-1 px-2"
         onDragOver={(e) => e.preventDefault()}
         onDrop={onDropNavArea}
       >
