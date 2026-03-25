@@ -638,16 +638,11 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                     {isEquipped && <span className="absolute bottom-0 right-0 text-[5px] font-bold font-mono px-0.5 rounded-tl leading-tight" style={{ background: slotTheme.color, color: '#000' }}>EQ</span>}
                   </div>
                   {/* Text */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-caption font-semibold text-gray-100 truncate">{slot.title}</p>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-micro font-mono uppercase" style={{ color: slotTheme.color }}>{rarityNorm}</span>
-                      {perkChip && <span className="text-micro text-gray-500 truncate">· {perkChip}</span>}
-                    </div>
-                  </div>
-                  {/* Right */}
-                  <div className="flex items-center gap-1 flex-shrink-0">
-                    {slot.quantity > 1 && <span className="text-micro font-mono font-semibold" style={{ color: slotTheme.color }}>×{slot.quantity}</span>}
+                  <div className="flex-1 min-w-0 overflow-hidden">
+                    <p className="text-[11px] font-semibold text-gray-100 truncate leading-tight">{slot.title}</p>
+                    <p className="text-[10px] font-mono uppercase truncate mt-0.5" style={{ color: slotTheme.color }}>
+                      {rarityNorm}{slot.quantity > 1 ? ` ×${slot.quantity}` : ''}{perkChip ? ` · ${perkChip}` : ''}
+                    </p>
                   </div>
                 </button>
               )
@@ -702,15 +697,13 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
                   )}
                 </div>
                 {/* Info */}
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 overflow-hidden">
                   <p className="text-[10px] font-semibold text-gray-100 leading-tight truncate">{slot.title}</p>
-                  <div className="flex items-center gap-1 mt-0.5 min-w-0 overflow-hidden">
-                    <span className="text-[9px] font-mono uppercase shrink-0" style={{ color: slotTheme.color }}>{rarityNorm}</span>
-                    {slot.quantity > 1 && <span className="text-[9px] font-mono font-bold shrink-0" style={{ color: slotTheme.color }}>×{slot.quantity}</span>}
-                    {typeLabel && <span className="text-[8px] font-mono text-gray-500 uppercase truncate">{typeLabel}</span>}
-                  </div>
+                  <p className="text-[9px] font-mono uppercase truncate mt-0.5" style={{ color: slotTheme.color }}>
+                    {rarityNorm}{slot.quantity > 1 ? ` ×${slot.quantity}` : ''}{typeLabel ? ` · ${typeLabel}` : ''}
+                  </p>
                   {perkChip && (
-                    <p className="text-[9px] text-gray-500 truncate mt-0.5">{perkChip}</p>
+                    <p className="text-[9px] text-gray-500 truncate">{perkChip}</p>
                   )}
                 </div>
                 {/* Left rarity accent */}
