@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
 import { getSoundSettings, setSoundVolume, setSoundMuted, playClickSound } from '../../lib/sounds'
+import { getFontScalePreset, setFontScale, FONT_SCALE_PRESETS, type FontScalePreset } from '../../lib/fontScale'
 import { MOTION } from '../../lib/motion'
 import { PageHeader } from '../shared/PageHeader'
 import { Settings as SettingsIcon } from '../../lib/icons'
@@ -32,6 +33,7 @@ export function SettingsPage() {
   const [autoLaunch, setAutoLaunch] = useState(false)
   const [shortcutsEnabled, setShortcutsEnabled] = useState(true)
   const [alwaysOnTop, setAlwaysOnTop] = useState(false)
+  const [fontScale, setFontScaleState] = useState<FontScalePreset>(() => getFontScalePreset())
 
   // Notifications — master
   const [notificationsEnabled, setNotificationsEnabled] = useState(true)
@@ -104,6 +106,12 @@ export function SettingsPage() {
   const handleAlwaysOnTop = (enabled: boolean) => {
     setAlwaysOnTop(enabled)
     window.electronAPI?.window?.setAlwaysOnTop?.(enabled)
+  }
+
+  const handleFontScale = (preset: FontScalePreset) => {
+    playClickSound()
+    setFontScaleState(preset)
+    setFontScale(preset)
   }
 
   const handleSoundMuted = (muted: boolean) => {
@@ -222,6 +230,7 @@ export function SettingsPage() {
           enabled={alwaysOnTop}
           onChange={handleAlwaysOnTop}
         />
+        <FontScaleRow value={fontScale} onChange={handleFontScale} />
       </Section>
 
       {/* ─── NOTIFICATIONS ──────────────────────────────────── */}
@@ -456,6 +465,34 @@ function SliderRow({ label, value, onChange }: {
       <span className="text-xs text-gray-500 w-8 text-right font-mono">
         {Math.round(value * 100)}%
       </span>
+    </div>
+  )
+}
+
+// ─── FontScaleRow ────────────────────────────────────────────
+function FontScaleRow({ value, onChange }: { value: FontScalePreset; onChange: (v: FontScalePreset) => void }) {
+  return (
+    <div className="flex items-center justify-between">
+      <div className="min-w-0 mr-3">
+        <p className="text-sm text-white">Font size</p>
+        <p className="text-xs text-gray-500">Scales all text and UI elements</p>
+      </div>
+      <div className="flex gap-1 shrink-0">
+        {FONT_SCALE_PRESETS.map((preset) => (
+          <button
+            key={preset.id}
+            onClick={() => onChange(preset.id)}
+            className={[
+              'w-8 h-7 rounded text-xs font-bold transition-colors',
+              value === preset.id
+                ? 'bg-accent text-white'
+                : 'bg-surface-0 border border-white/10 text-gray-400 hover:border-white/25 hover:text-gray-200',
+            ].join(' ')}
+          >
+            {preset.label}
+          </button>
+        ))}
+      </div>
     </div>
   )
 }

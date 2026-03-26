@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { AIAnalysis } from './AIAnalysis'
 import { MOTION } from '../../lib/motion'
 import { CATEGORY_COLORS, CATEGORY_EMOJI, CATEGORY_LABELS } from '../../lib/uiConstants'
 import { BackButton } from '../shared/BackButton'
@@ -419,7 +418,6 @@ export function SessionDetail({ sessionId, onBack }: SessionDetailProps) {
         </div>
       )}
 
-      <AIAnalysis sessionId={sessionId} />
     </div>
   )
 }

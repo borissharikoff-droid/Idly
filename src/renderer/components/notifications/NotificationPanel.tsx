@@ -233,6 +233,7 @@ export function NotificationPanel({ open, onClose, bellRef }: NotificationPanelP
                               startTime: item.recovery?.startTime ?? Date.now(),
                               elapsedSeconds: item.recovery?.elapsedSeconds ?? 0,
                               sessionSkillXP: item.recovery?.sessionSkillXP || {},
+                              sessionActivities: item.recovery?.sessionActivities,
                             })
                             window.electronAPI?.db?.clearCheckpoint?.().catch(() => {})
                             dismiss(item.id)

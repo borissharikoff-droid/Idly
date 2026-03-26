@@ -13,7 +13,11 @@ import {
 } from '../../services/raidService'
 import { ROLE_ICONS, ROLE_LABELS, ROLE_COLORS } from '../../services/partyService'
 import { usePartyStore } from '../../stores/partyStore'
-import { skillLevelFromXP } from '../../lib/skills'
+import { skillLevelFromXP, SKILLS } from '../../lib/skills'
+
+const MAIN_SKILL_IDS = new Set(
+  SKILLS.filter((s) => !['warrior', 'farmer', 'crafter', 'chef', 'grindly'].includes(s.id)).map((s) => s.id)
+)
 import { RaidFightModal } from './RaidFightModal'
 import { playClickSound } from '../../lib/sounds'
 
@@ -205,26 +209,26 @@ function TierCard({ tier, onStart }: { tier: RaidTierId; onStart: () => void }) 
     gearSlots.has(item.slot) && (items[item.id] ?? 0) >= 1 && rarityMeetsMin(item.rarity, cfg.tribute_min_rarity)
   ).length
 
-  const skillXp = (() => {
-    try {
-      return JSON.parse(localStorage.getItem('grindly_skill_xp') || '{}') as Record<string, number>
-    } catch { return {} as Record<string, number> }
-  })()
+  const [skillXp, setSkillXp] = useState<Record<string, number>>(() => {
+    try { return JSON.parse(localStorage.getItem('grindly_skill_xp') || '{}') } catch { return {} }
+  })
+  useEffect(() => {
+    const refresh = () => {
+      try { setSkillXp(JSON.parse(localStorage.getItem('grindly_skill_xp') || '{}')) } catch { /* ignore */ }
+    }
+    const id = setInterval(refresh, 2000)
+    return () => clearInterval(id)
+  }, [])
 
-  const warriorLevel = (() => {
-    try {
-      const stored = JSON.parse(localStorage.getItem('grindly_skill_xp') || '{}') as Record<string, number>
-      return skillLevelFromXP(stored['warrior'] ?? 0)
-    } catch { return 0 }
-  })()
+  const warriorLevel = skillLevelFromXP(skillXp['warrior'] ?? 0)
 
   const clearedZoneIds = clearedZones ?? []
   const participantCount = party?.status === 'active' ? partyMembers.length : 1
   const gateCheck = checkRaidGates(tier, clearedZoneIds, warriorLevel, skillXp, participantCount)
   const canEnter = eligibleCount >= cfg.tribute_count && Boolean(user) && gateCheck.ok
 
-  const qualifiedSkills = Object.values(skillXp).filter(
-    (xp) => skillLevelFromXP(xp) >= cfg.skill_level_req,
+  const qualifiedSkills = Object.entries(skillXp).filter(
+    ([id, xp]) => MAIN_SKILL_IDS.has(id) && skillLevelFromXP(xp) >= cfg.skill_level_req,
   ).length
 
   return (
@@ -619,6 +623,7 @@ function ActiveRaidPanel({ onAttack }: { onAttack: () => void }) {
             const snap = p.character_snapshot
             const displayName = isMe ? 'You' : (p.username ?? 'Unknown')
             const avatar = p.avatar_url
+            const avatarIsUrl = !!avatar && /^(https?:\/\/|data:|blob:|file:|\/)/i.test(avatar)
 
             // HP bar fills relative to 500 HP (reasonable max for display)
             const hpPct = snap ? Math.min(100, (snap.hp / 500) * 100) : 100
@@ -639,9 +644,9 @@ function ActiveRaidPanel({ onAttack }: { onAttack: () => void }) {
                     className="w-7 h-7 rounded overflow-hidden shrink-0 flex items-center justify-center text-sm"
                     style={{ background: 'rgba(255,255,255,0.06)', border: `1px solid ${roleColor}25` }}
                   >
-                    {avatar
-                      ? <img src={avatar} alt={displayName} className="w-full h-full object-cover" />
-                      : <span>{isMe ? '🧑' : '👤'}</span>
+                    {avatarIsUrl
+                      ? <img src={avatar!} alt={displayName} className="w-full h-full object-cover" />
+                      : <span>{avatar || (isMe ? '🧑' : '👤')}</span>
                     }
                   </div>
 

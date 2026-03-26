@@ -25,6 +25,7 @@ export interface Notification {
     startTime: number
     elapsedSeconds: number
     sessionSkillXP?: Record<string, number>
+    sessionActivities?: unknown[]
   }
   chestReward?: {
     rewardId: string
@@ -47,7 +48,7 @@ export interface Notification {
 interface NotificationStore {
   items: Notification[]
   unreadCount: number
-  push: (n: Omit<Notification, 'id' | 'timestamp' | 'read'>) => string
+  push: (n: Omit<Notification, 'id' | 'timestamp' | 'read'> & { timestamp?: number }) => string
   dismiss: (id: string) => void
   markAllRead: () => void
   clear: () => void
@@ -62,7 +63,8 @@ export const useNotificationStore = create<NotificationStore>((set) => ({
   push(payload) {
     if (!ALLOWED_TYPES.includes(payload.type)) return ''
     const id = crypto.randomUUID()
-    const n: Notification = { ...payload, id, timestamp: Date.now(), read: false }
+    const { timestamp: tsOverride, ...rest } = payload
+    const n: Notification = { ...rest, id, timestamp: tsOverride ?? Date.now(), read: false }
     set((s) => {
       // Deduplicate: only keep the latest recovery notification
       let base = s.items

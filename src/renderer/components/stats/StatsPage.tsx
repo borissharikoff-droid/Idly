@@ -505,12 +505,9 @@ export function StatsPage() {
               rightSlot={
                 <div className="flex items-center gap-2">
                   {totalSessions > 0 && (
-                    <button
-                      type="button"
-                      className="text-xs px-3 py-1.5 rounded-full bg-surface-2 border border-white/10 text-gray-300 inline-flex items-center justify-center min-w-[148px]"
-                    >
-                      <span>Activity style: {persona.emoji} {persona.label}</span>
-                    </button>
+                    <span className="text-xs px-3 py-1.5 rounded-full bg-surface-2 border border-white/10 text-gray-300 inline-flex items-center justify-center select-none">
+                      Activity style: {persona.emoji} {persona.label}
+                    </span>
                   )}
                   <button onClick={() => loadData(true)} className="w-7 h-7 rounded bg-surface-2 border border-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors" title="Refresh">
                     <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
@@ -606,7 +603,7 @@ export function StatsPage() {
                     </div>
                     <div className="rounded border border-white/8 bg-surface-0/50 p-2.5 text-center">
                       <p className="text-micro text-gray-500 font-mono mb-0.5">Longest focus</p>
-                      <p className="text-violet-500 font-mono font-bold text-base leading-none">{longestFocus}m</p>
+                      <p className="text-violet-500 font-mono font-bold text-base leading-none">{longestFocus > 0 ? formatDuration(longestFocus * 60) : '—'}</p>
                     </div>
                     <div className="rounded border border-white/8 bg-surface-0/50 p-2.5 text-center">
                       <p className="text-micro text-gray-500 font-mono mb-0.5">Longest session</p>
@@ -760,47 +757,13 @@ export function StatsPage() {
                     </div>
                   </div>
                 )}
-                <div className="mt-3 pt-2 border-t border-white/5 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <p className="text-micro uppercase tracking-wider text-gray-500">Smart category cleanup (optional)</p>
-                    <button
-                      onClick={() => setAiRefineEnabled((v) => !v)}
-                      className={`text-micro px-2 py-0.5 rounded-md border transition-colors ${
-                        aiRefineEnabled
-                          ? 'text-accent border-accent/30 bg-accent/10'
-                          : 'text-gray-500 border-white/10 hover:text-white'
-                      }`}
-                    >
-                      {aiRefineEnabled ? 'Enabled' : 'Enable'}
-                    </button>
-                  </div>
-                  {aiRefineEnabled && (
-                    <>
-                      {aiRefining && <p className="text-micro text-gray-500 font-mono">Clarifying ambiguous browser titles...</p>}
-                      {!aiRefining && aiRefined.length === 0 && (
-                        <p className="text-micro text-gray-600 font-mono">No suggestions yet, or AI service is unavailable.</p>
-                      )}
-                      {!aiRefining && aiRefined.length > 0 && (
-                        <div className="space-y-1">
-                          {aiRefined.slice(0, 6).map((row, idx) => (
-                            <div key={`${row.window_title}-${idx}`} className="text-micro text-gray-400">
-                              <span className="text-accent font-mono">{row.refined_category}</span>
-                              <span className="text-gray-600"> ({Math.round(row.confidence * 100)}%)</span>
-                              <span className="text-gray-500"> - {row.window_title}</span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
               </div>
             )}
 
             {/* 4/5 Distraction Patterns */}
             <div className="rounded-card bg-surface-2/80 border border-white/10 p-3">
               <p className="text-xs font-semibold tracking-wide text-gray-300 mb-2">Distraction Patterns</p>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <div className="rounded border border-white/10 bg-surface-0/60 p-3">
                   <p className="text-micro text-gray-500 font-mono">Distraction time</p>
                   <p className="text-amber-300 font-mono text-sm">{formatDuration(distractionSeconds)}</p>
@@ -818,7 +781,7 @@ export function StatsPage() {
                 </div>
                 <div className="rounded border border-white/10 bg-surface-0/60 p-3">
                   <p className="text-micro text-gray-500 font-mono">Longest focus run</p>
-                  <p className="text-accent font-mono text-sm">{distractionMetrics?.longest_focus_minutes || 0}m</p>
+                  <p className="text-accent font-mono text-sm">{(distractionMetrics?.longest_focus_minutes || 0) > 0 ? formatDuration((distractionMetrics?.longest_focus_minutes || 0) * 60) : '—'}</p>
                   <p className="text-micro text-gray-600 mt-1">Your best uninterrupted focus streak.</p>
                 </div>
               </div>
@@ -841,7 +804,7 @@ export function StatsPage() {
                 <EmptyState title="No sessions yet" description="Start a session from Home to see behavior insights." icon="📊" />
               ) : (
                 <div className="space-y-1">
-                  {sessions.slice(0, 10).map((s) => (
+                  {sessions.map((s) => (
                     <button key={s.id}
                       onClick={() => setSelectedId(s.id)}
                       className="w-full rounded bg-surface-2/60 border border-white/5 px-3 py-2 hover:border-white/10 transition-colors text-left"
@@ -880,7 +843,7 @@ export function StatsPage() {
                       const pct = maxHourMs > 0 ? (ms / maxHourMs) * 100 : 0
                       return (
                         <div key={h} className="flex-1 h-full flex items-end" title={`${h}:00 — ${formatMs(ms)}`}>
-                          <div className="w-full rounded-t-sm bg-accent/20" style={{ height: `${Math.max(pct, 2)}%` }} />
+                          <div className="w-full rounded-t-sm bg-accent/40 hover:bg-accent/60 transition-colors" style={{ height: `${Math.max(pct, 2)}%` }} />
                         </div>
                       )
                     })}

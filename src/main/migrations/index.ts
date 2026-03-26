@@ -94,6 +94,9 @@ const MIGRATIONS: [string, string][] = [
   ['007_skill_prestige', `
     ALTER TABLE skill_xp ADD COLUMN prestige_count INTEGER NOT NULL DEFAULT 0;
   `],
+  ['008_checkpoint_activities', `
+    ALTER TABLE session_checkpoint ADD COLUMN session_activities TEXT;
+  `],
 ]
 
 /**

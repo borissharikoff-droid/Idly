@@ -27,8 +27,8 @@ export const SEED_DEFS: SeedDef[] = [
     yieldPlantId: 'wheat',
     yieldMin: 8,
     yieldMax: 15,
-    xpOnPlant: 10,
-    xpOnHarvest: 50,
+    xpOnPlant: 80,
+    xpOnHarvest: 500,
   },
   {
     id: 'herb_seed',
@@ -39,8 +39,8 @@ export const SEED_DEFS: SeedDef[] = [
     yieldPlantId: 'herbs',
     yieldMin: 1,
     yieldMax: 2,
-    xpOnPlant: 10,
-    xpOnHarvest: 80,
+    xpOnPlant: 80,
+    xpOnHarvest: 750,
   },
   {
     id: 'apple_seed',
@@ -51,8 +51,8 @@ export const SEED_DEFS: SeedDef[] = [
     yieldPlantId: 'apples',
     yieldMin: 1,
     yieldMax: 4,
-    xpOnPlant: 20,
-    xpOnHarvest: 200,
+    xpOnPlant: 200,
+    xpOnHarvest: 2_500,
   },
   {
     id: 'blossom_seed',
@@ -63,8 +63,8 @@ export const SEED_DEFS: SeedDef[] = [
     yieldPlantId: 'blossoms',
     yieldMin: 1,
     yieldMax: 3,
-    xpOnPlant: 20,
-    xpOnHarvest: 250,
+    xpOnPlant: 200,
+    xpOnHarvest: 3_000,
   },
   {
     id: 'clover_seed',
@@ -75,8 +75,8 @@ export const SEED_DEFS: SeedDef[] = [
     yieldPlantId: 'clovers',
     yieldMin: 1,
     yieldMax: 5,
-    xpOnPlant: 40,
-    xpOnHarvest: 600,
+    xpOnPlant: 500,
+    xpOnHarvest: 7_000,
   },
   {
     id: 'orchid_seed',
@@ -87,8 +87,8 @@ export const SEED_DEFS: SeedDef[] = [
     yieldPlantId: 'orchids',
     yieldMin: 1,
     yieldMax: 3,
-    xpOnPlant: 40,
-    xpOnHarvest: 900,
+    xpOnPlant: 500,
+    xpOnHarvest: 10_000,
   },
   {
     id: 'starbloom_seed',
@@ -99,8 +99,8 @@ export const SEED_DEFS: SeedDef[] = [
     yieldPlantId: 'star_bloom',
     yieldMin: 1,
     yieldMax: 4,
-    xpOnPlant: 80,
-    xpOnHarvest: 1800,
+    xpOnPlant: 1_200,
+    xpOnHarvest: 22_000,
   },
   {
     id: 'crystal_seed',
@@ -111,8 +111,8 @@ export const SEED_DEFS: SeedDef[] = [
     yieldPlantId: 'crystal_root',
     yieldMin: 1,
     yieldMax: 3,
-    xpOnPlant: 80,
-    xpOnHarvest: 2400,
+    xpOnPlant: 1_200,
+    xpOnHarvest: 30_000,
   },
   {
     id: 'void_spore',
@@ -123,8 +123,8 @@ export const SEED_DEFS: SeedDef[] = [
     yieldPlantId: 'void_blossom',
     yieldMin: 1,
     yieldMax: 6,
-    xpOnPlant: 160,
-    xpOnHarvest: 4800,
+    xpOnPlant: 3_000,
+    xpOnHarvest: 60_000,
   },
 ]
 

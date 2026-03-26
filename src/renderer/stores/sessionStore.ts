@@ -94,7 +94,7 @@ interface SessionStore {
   setCurrentActivity: (a: ActivitySnapshot | null) => void
   setShowComplete: (v: boolean) => void
   setLastSessionSummary: (s: { durationFormatted: string; coach?: SessionCoachSummary } | null) => void
-  presentRecoveryComplete: (payload: { sessionId: string; startTime: number; elapsedSeconds: number; sessionSkillXP?: Record<string, number> }) => Promise<void>
+  presentRecoveryComplete: (payload: { sessionId: string; startTime: number; elapsedSeconds: number; sessionSkillXP?: Record<string, number>; sessionActivities?: unknown[] }) => Promise<void>
   dismissComplete: () => void
   dismissLevelUp: () => void
   checkStreakOnMount: () => Promise<number>
@@ -135,13 +135,23 @@ function startCheckpointSaving() {
   checkpointInterval = setInterval(() => {
     const { sessionId, sessionStartTime, elapsedSeconds, status, sessionSkillXP } = useSessionStore.getState()
     if (status !== 'idle' && sessionId && sessionStartTime && window.electronAPI?.db?.saveCheckpoint) {
-      window.electronAPI.db.saveCheckpoint({
-        sessionId,
-        startTime: sessionStartTime,
-        elapsedSeconds,
-        pausedAccumulated,
-        sessionSkillXP,
-      }).catch(() => { })
+      // Include an activity snapshot so recovery can recompute XP accurately (like normal stop)
+      const saveWithActivities = async () => {
+        let sessionActivities: unknown[] | undefined
+        try {
+          const snap = await window.electronAPI?.tracker?.getSnapshot?.()
+          if (Array.isArray(snap) && snap.length > 0) sessionActivities = snap
+        } catch { /* ignore — activities snapshot is best-effort */ }
+        window.electronAPI!.db!.saveCheckpoint!({
+          sessionId: sessionId!,
+          startTime: sessionStartTime!,
+          elapsedSeconds,
+          pausedAccumulated,
+          sessionSkillXP,
+          sessionActivities,
+        }).catch(() => { })
+      }
+      saveWithActivities()
     }
   }, 30_000) // every 30 seconds
 }
@@ -732,10 +742,6 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
   async presentRecoveryComplete(payload) {
     const api = typeof window !== 'undefined' ? window.electronAPI : null
-    const rawSkillXP = payload.sessionSkillXP || {}
-    const normalizedSkillXP = Object.fromEntries(
-      Object.entries(rawSkillXP).filter(([skillId, xp]) => typeof skillId === 'string' && Number.isFinite(xp) && xp > 0),
-    ) as Record<string, number>
 
     const elapsedSeconds = Math.max(0, Math.floor(payload.elapsedSeconds || 0))
     const endTime = payload.startTime + elapsedSeconds * 1000
@@ -752,33 +758,54 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       } catch { /* session may already exist if checkpoint was from a partial save */ }
     }
 
-    let baseSkillXP: Record<string, number> = {}
-    if (api?.db?.getAllSkillXP) {
-      try {
-        const rows = await api.db.getAllSkillXP()
-        baseSkillXP = Object.fromEntries((rows || []).map((r) => [r.skill_id, r.total_xp]))
-      } catch {
-        baseSkillXP = {}
-      }
-    }
+    let gains: SkillXPGain[] = []
 
-    const gains: SkillXPGain[] = []
-    for (const [skillId, xpRaw] of Object.entries(normalizedSkillXP)) {
-      const xp = Math.max(1, Math.floor(xpRaw))
-      const beforeXp = baseSkillXP[skillId] ?? 0
-      const afterXp = beforeXp + xp
-      gains.push({
-        skillId,
-        xp,
-        levelBefore: skillLevelFromXP(beforeXp),
-        levelAfter: skillLevelFromXP(afterXp),
-        totalXpAfter: afterXp,
-      })
-      if (api?.db?.addSkillXP) {
-        await api.db.addSkillXP(skillId, xp).catch(() => {})
+    // Preferred path: use the activity snapshot from the checkpoint (same logic as normal stop,
+    // applies all perk/prestige/grindly multipliers and correct per-category time attribution).
+    const activitySegments = payload.sessionActivities
+    if (api && Array.isArray(activitySegments) && activitySegments.length > 0) {
+      const segments = activitySegments as { category: string; startTime: number; endTime: number }[]
+      // Save activities so the recovered session has proper history in the DB
+      if (api.db?.saveActivities) {
+        api.db.saveActivities(payload.sessionId, segments.map((s) => ({
+          appName: (s as { appName?: string }).appName ?? 'Unknown',
+          windowTitle: (s as { windowTitle?: string }).windowTitle ?? '',
+          category: s.category,
+          startTime: s.startTime,
+          endTime: s.endTime,
+          keystrokes: (s as { keystrokes?: number }).keystrokes ?? 0,
+        }))).catch(() => {})
       }
-      if (api?.db?.addSkillXPLog) {
-        await api.db.addSkillXPLog(skillId, xp).catch(() => {})
+      gains = await computeAndSaveSkillXPElectron(api, segments)
+    } else {
+      // Fallback: use tick-based sessionSkillXP from the checkpoint.
+      // Apply perk/grindly/prestige multipliers that the tick accumulation may have missed.
+      const rawSkillXP = payload.sessionSkillXP || {}
+      const normalizedSkillXP = Object.fromEntries(
+        Object.entries(rawSkillXP).filter(([skillId, xp]) => typeof skillId === 'string' && Number.isFinite(xp) && xp > 0),
+      ) as Record<string, number>
+
+      let baseSkillXP: Record<string, number> = {}
+      if (api?.db?.getAllSkillXP) {
+        try {
+          const rows = await api.db.getAllSkillXP()
+          baseSkillXP = Object.fromEntries((rows || []).map((r) => [r.skill_id, r.total_xp]))
+        } catch { baseSkillXP = {} }
+      }
+
+      for (const [skillId, xpRaw] of Object.entries(normalizedSkillXP)) {
+        const xp = Math.max(1, Math.floor(xpRaw))
+        const beforeXp = baseSkillXP[skillId] ?? 0
+        const afterXp = beforeXp + xp
+        gains.push({
+          skillId,
+          xp,
+          levelBefore: skillLevelFromXP(beforeXp),
+          levelAfter: skillLevelFromXP(afterXp),
+          totalXpAfter: afterXp,
+        })
+        if (api?.db?.addSkillXP) await api.db.addSkillXP(skillId, xp).catch(() => {})
+        if (api?.db?.addSkillXPLog) await api.db.addSkillXPLog(skillId, xp).catch(() => {})
       }
     }
 
@@ -834,6 +861,7 @@ declare global {
         pause: () => Promise<void>
         resume: () => Promise<void>
         getCurrentActivity: () => Promise<ActivitySnapshot | null>
+        getSnapshot: () => Promise<{ appName: string; windowTitle: string; category: string; startTime: number; endTime: number; keystrokes?: number }[]>
         onActivityUpdate: (cb: (a: ActivitySnapshot) => void) => () => void
         onIdleChange: (cb: (idle: boolean) => void) => () => void
         setAfkThreshold: (ms: number) => Promise<void>
@@ -900,6 +928,7 @@ declare global {
           elapsedSeconds: number
           pausedAccumulated: number
           sessionSkillXP?: Record<string, number>
+          sessionActivities?: unknown[]
         }) => Promise<void>
         getCheckpoint: () => Promise<{
           session_id: string
@@ -908,6 +937,7 @@ declare global {
           paused_accumulated: number
           updated_at: number
           session_skill_xp: string | null
+          session_activities: string | null
         } | null>
         clearCheckpoint: () => Promise<void>
       }

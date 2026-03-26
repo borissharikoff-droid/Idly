@@ -828,15 +828,14 @@ const SALVAGE_BASE: Record<LootRarity, SalvageYield[]> = {
 }
 
 /** Returns salvage output for an item, or null if not salvageable.
- *  Crafted items (craft_* prefix) yield 25% — prevents craft→salvage→craft loops.
+ *  Crafted items (craft_* prefix) yield reduced amounts — prevents craft→salvage→craft loops.
+ *  Minimum 1 of each material so salvage always produces something.
  */
 export function getSalvageOutput(item: LootItemDef): SalvageYield[] | null {
   if (!LOOT_SLOTS.includes(item.slot as typeof LOOT_SLOTS[number])) return null
   const merged = (SALVAGE_BASE[item.rarity] ?? []).map((y) => ({ ...y }))
   if (item.id.startsWith('craft_')) {
-    return merged
-      .map((y) => ({ ...y, qty: Math.floor(y.qty * 0.25) }))
-      .filter((y) => y.qty > 0)
+    return merged.map((y) => ({ ...y, qty: Math.max(1, Math.floor(y.qty * 0.25)) }))
   }
   return merged
 }

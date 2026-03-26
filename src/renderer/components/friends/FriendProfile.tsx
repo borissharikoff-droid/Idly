@@ -72,7 +72,7 @@ export function FriendProfile({ profile, onBack, onMessage }: FriendProfileProps
   const pushToast = useToastStore((s) => s.push)
   const [inviteSent, setInviteSent] = useState(false)
 
-  const canInvite = !!myGuild && !!guildMembership && ['owner', 'officer'].includes(guildMembership.role) && profile.id !== currentUser?.id
+  const canInvite = !!myGuild && !!guildMembership && ['owner', 'officer'].includes(guildMembership.role) && profile.id !== currentUser?.id && profile.guild_tag !== myGuild.tag
 
   const handleInvite = useCallback(async () => {
     const result = await sendInvite(profile.id)
@@ -353,7 +353,7 @@ export function FriendProfile({ profile, onBack, onMessage }: FriendProfileProps
                 roundedClass="rounded"
                 ringInsetClass="-inset-0.5"
               />
-              <span className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-surface-2 ${profile.is_online ? 'bg-accent' : 'bg-gray-600'}`} />
+              <span className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-surface-2 ${profile.is_online ? 'bg-green-500' : 'bg-gray-600'}`} />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">

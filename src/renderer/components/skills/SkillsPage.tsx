@@ -448,7 +448,7 @@ export function SkillsPage({ initialTab }: { initialTab?: 'overview' | 'history'
             <>
               <span className="text-micro text-gray-500 font-mono uppercase">XP Source</span>
               <p className="mt-1.5 text-micro text-gray-400 leading-relaxed">Earned by planting and harvesting crops in the Farm tab.</p>
-              <p className="mt-0.5 text-micro text-gray-600 font-mono">Plant +10–160 XP · Harvest +50–800 XP</p>
+              <p className="mt-0.5 text-micro text-gray-600 font-mono">Plant +80–3,000 XP · Harvest +500–60,000 XP</p>
             </>
           ) : skill.category === 'warrior' ? (() => {
             const wLevel = skillLevelFromXP(xp)

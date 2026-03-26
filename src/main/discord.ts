@@ -92,7 +92,7 @@ export function initDiscordRPC(): void {
 }
 
 export interface PresenceUpdate {
-  status: 'running' | 'idle'
+  status: 'running' | 'idle' | 'afk'
   /** e.g. "Developer" */
   topSkillName?: string
   /** 1–99 */
@@ -118,18 +118,22 @@ export function updateDiscordPresence(data: PresenceUpdate): void {
     instance: false,
   }
 
-  if (data.topSkillName && data.topSkillLevel !== undefined) {
-    activity.details = `${data.topSkillName}  Lvl.${data.topSkillLevel}`
+  if (data.status === 'afk') {
+    activity.details = '💤 Away from keyboard'
   } else {
-    activity.details = 'Grinding...'
-  }
+    if (data.topSkillName && data.topSkillLevel !== undefined) {
+      activity.details = `${data.topSkillName}  Lvl.${data.topSkillLevel}`
+    } else {
+      activity.details = 'Grinding...'
+    }
 
-  if (data.streak && data.streak > 0) {
-    activity.state = `🔥 ${data.streak}-day streak`
-  }
+    if (data.streak && data.streak > 0) {
+      activity.state = `🔥 ${data.streak}-day streak`
+    }
 
-  if (data.startTimestamp) {
-    activity.startTimestamp = data.startTimestamp
+    if (data.startTimestamp) {
+      activity.startTimestamp = data.startTimestamp
+    }
   }
 
   activity.buttons = [

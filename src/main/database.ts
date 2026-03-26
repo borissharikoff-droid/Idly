@@ -611,9 +611,10 @@ export function getDatabaseApi() {
       elapsedSeconds: number
       pausedAccumulated: number
       sessionSkillXP?: Record<string, number>
+      sessionActivities?: { appName: string; windowTitle: string; category: string; startTime: number; endTime: number; keystrokes?: number }[]
     }): void {
       database.prepare(
-        'INSERT OR REPLACE INTO session_checkpoint (id, session_id, start_time, elapsed_seconds, paused_accumulated, updated_at, session_skill_xp) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        'INSERT OR REPLACE INTO session_checkpoint (id, session_id, start_time, elapsed_seconds, paused_accumulated, updated_at, session_skill_xp, session_activities) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
       ).run(
         'current',
         data.sessionId,
@@ -622,6 +623,7 @@ export function getDatabaseApi() {
         data.pausedAccumulated,
         Date.now(),
         data.sessionSkillXP ? JSON.stringify(data.sessionSkillXP) : null,
+        data.sessionActivities ? JSON.stringify(data.sessionActivities) : null,
       )
     },
     getCheckpoint(): {
@@ -631,6 +633,7 @@ export function getDatabaseApi() {
       paused_accumulated: number
       updated_at: number
       session_skill_xp: string | null
+      session_activities: string | null
     } | null {
       const row = database.prepare('SELECT * FROM session_checkpoint WHERE id = ?').get('current') as {
         session_id: string
@@ -639,6 +642,7 @@ export function getDatabaseApi() {
         paused_accumulated: number
         updated_at: number
         session_skill_xp: string | null
+        session_activities: string | null
       } | undefined
       return row ?? null
     },

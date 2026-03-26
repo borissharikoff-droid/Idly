@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from 'react'
 import { X, Send, Copy, CornerUpLeft } from '../../lib/icons'
+import { parseFriendPresence, formatSessionDurationCompact } from '../../lib/friendPresence'
 import { motion, AnimatePresence } from 'framer-motion'
 import { playClickSound } from '../../lib/sounds'
 import { useAuthStore } from '../../stores/authStore'
@@ -13,9 +14,51 @@ import { SkeletonBlock } from '../shared/PageLoading'
 
 const REACTIONS = ['👍', '👎', '🖕', '💩', '🤡'] as const
 const IMAGE_PREFIX = '[img]'
+const ROLL_PREFIX = '[roll:'
 
 const isChatImage = (body: string) => body.startsWith(IMAGE_PREFIX)
 const chatImageUrl = (body: string) => body.slice(IMAGE_PREFIX.length)
+const isChatRoll = (body: string) => body.startsWith(ROLL_PREFIX) && body.endsWith(']')
+const chatRollValue = (body: string) => parseInt(body.slice(ROLL_PREFIX.length, -1), 10)
+
+function RollBubble({ value, username, rolling = false }: { value: number; username: string; rolling?: boolean }) {
+  return (
+    <div className="flex items-center justify-center py-1.5">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.85 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.2, ease: 'backOut' }}
+        className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-violet-500/30 bg-violet-500/10"
+      >
+        <motion.span
+          animate={rolling ? { rotate: [0, 20, -20, 20, -10, 0] } : {}}
+          transition={{ duration: 0.6, repeat: rolling ? Infinity : 0, ease: 'easeInOut' }}
+          className="text-base select-none"
+        >🎲</motion.span>
+        <span className="text-micro text-gray-400 font-mono">{username}</span>
+        <span className="text-micro text-gray-500">rolled</span>
+        {rolling ? (
+          <span className="text-violet-300 font-mono font-bold text-xs w-6 text-center">
+            <motion.span animate={{ opacity: [1, 0.3, 1] }} transition={{ duration: 0.25, repeat: Infinity }}>
+              {Math.floor(Math.random() * 101)}
+            </motion.span>
+          </span>
+        ) : (
+          <motion.span
+            key={value}
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.25, ease: 'backOut' }}
+            className="text-violet-300 font-mono font-bold text-xs"
+          >
+            {value}
+          </motion.span>
+        )}
+        <span className="text-micro text-gray-600 font-mono">(0–100)</span>
+      </motion.div>
+    </div>
+  )
+}
 
 async function compressImage(file: File): Promise<File> {
   // GIFs lose animation on canvas — skip
@@ -99,9 +142,12 @@ interface ChatThreadProps {
   messages: ChatMessage[]
   reactions: ReactionsMap
   loading: boolean
+  loadingMore: boolean
+  hasMoreMessages: boolean
   sending: boolean
   sendError?: string | null
   getConversation: (otherUserId: string) => Promise<ChatMessage[]>
+  loadMoreMessages: (otherUserId: string, oldestCreatedAt: string) => Promise<void>
   sendMessage: (receiverId: string, body: string) => Promise<void>
   markConversationRead: (otherUserId: string) => Promise<void>
   toggleReaction: (messageId: string, reaction: string) => void
@@ -307,12 +353,21 @@ function ImageIcon() {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export function ChatThread({ profile, onBack, onOpenProfile, messages, reactions, loading, sending, sendError, getConversation, sendMessage, markConversationRead, toggleReaction }: ChatThreadProps) {
+export function ChatThread({ profile, onBack, onOpenProfile, messages, reactions, loading, loadingMore, hasMoreMessages, sending, sendError, getConversation, loadMoreMessages, sendMessage, markConversationRead, toggleReaction }: ChatThreadProps) {
   const { user } = useAuthStore()
   const [input, setInput] = useState('')
   const [copyToast, setCopyToast] = useState(false)
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null)
+  const [rolling, setRolling] = useState(false)
   const [hoveredMsg, setHoveredMsg] = useState<string | null>(null)
+  const [contextMenuMsg, setContextMenuMsg] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!contextMenuMsg) return
+    const close = () => setContextMenuMsg(null)
+    window.addEventListener('click', close, { once: true })
+    return () => window.removeEventListener('click', close)
+  }, [contextMenuMsg])
   const [uploadingImage, setUploadingImage] = useState(false)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   const sendTimestampsRef = useRef<number[]>([])
@@ -330,6 +385,25 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, reactions
   useLayoutEffect(() => {
     prevMessageCountRef.current = 0
   }, [profile.id])
+
+  // Hard-scroll to bottom when switching chats (covers cached messages + reactions already loaded)
+  useEffect(() => {
+    wasAtBottomRef.current = true
+    const el = listRef.current
+    if (el) el.scrollTop = el.scrollHeight
+    // Extra pass after images/reactions render
+    const t = requestAnimationFrame(() => {
+      if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight
+    })
+    return () => cancelAnimationFrame(t)
+  }, [profile.id])
+
+  // When reactions load/change and we're at bottom — stay at bottom
+  useEffect(() => {
+    if (!wasAtBottomRef.current) return
+    const el = listRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [reactions])
 
   useEffect(() => {
     getConversation(profile.id)
@@ -366,7 +440,14 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, reactions
       requestAnimationFrame(() => bottomRef.current?.scrollIntoView({ block: 'end', behavior: 'instant' }))
     }
     wasAtBottomRef.current = true
-  }, [loading, messages, user?.id])
+  }, [loading, messages, user?.id, profile.id])
+
+  // Scroll to bottom when peer starts typing (same as Telegram behaviour)
+  useEffect(() => {
+    if (!peerIsTyping) return
+    if (!wasAtBottomRef.current) return
+    bottomRef.current?.scrollIntoView({ block: 'end', behavior: 'smooth' })
+  }, [peerIsTyping])
 
   useEffect(() => { inputRef.current?.focus() }, [profile.id])
 
@@ -392,6 +473,17 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, reactions
     const text = input.trim()
     if (!text || sending) return
     if (!checkRateLimit()) return
+    if (text === '/roll') {
+      setInput('')
+      setRolling(true)
+      const result = Math.floor(Math.random() * 101)
+      setTimeout(() => {
+        setRolling(false)
+        sendMessage(profile.id, `${ROLL_PREFIX}${result}]`)
+        playClickSound()
+      }, 1200)
+      return
+    }
     const body = replyTo
       ? `> ${replyTo.body.split('\n')[0].slice(0, 60)}${replyTo.body.length > 60 ? '...' : ''}\n${text}`
       : text
@@ -447,6 +539,16 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, reactions
     return groups
   }, [messages])
 
+  const handleLoadMore = useCallback(async () => {
+    if (!hasMoreMessages || loadingMore || messages.length === 0) return
+    const el = listRef.current
+    const prevScrollHeight = el?.scrollHeight ?? 0
+    await loadMoreMessages(profile.id, messages[0].created_at)
+    requestAnimationFrame(() => {
+      if (el) el.scrollTop += el.scrollHeight - prevScrollHeight
+    })
+  }, [hasMoreMessages, loadingMore, messages, loadMoreMessages, profile.id])
+
   const isFirstInGroup = (items: ChatMessage[], idx: number) => idx === 0 || items[idx].sender_id !== items[idx - 1].sender_id
   const isLastInGroup  = (items: ChatMessage[], idx: number) => idx === items.length - 1 || items[idx].sender_id !== items[idx + 1].sender_id
 
@@ -481,10 +583,25 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, reactions
             </div>
             <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#1e2024] ${profile.is_online ? 'bg-emerald-400' : 'bg-gray-500'}`} />
           </div>
-          <div className="text-left">
+          <div className="text-left min-w-0">
             <p className="text-sm text-white font-medium leading-none">{profile.username || 'Friend'}</p>
-            <p className="text-micro text-gray-500 mt-0.5">
-              {peerIsTyping ? <span className="text-accent/70">typing...</span> : profile.is_online ? 'Online' : 'Offline'}
+            <p className="text-micro text-gray-500 mt-0.5 truncate max-w-[180px]">
+              {peerIsTyping ? (
+                <span className="text-accent/70">typing...</span>
+              ) : (() => {
+                if (!profile.is_online) return 'Offline'
+                const { activityLabel, appName, sessionStartMs } = parseFriendPresence(profile.current_activity)
+                if (appName) {
+                  const dur = sessionStartMs ? ` · ${formatSessionDurationCompact(sessionStartMs)}` : ''
+                  return <span title={activityLabel}>{appName}{dur}</span>
+                }
+                if (activityLabel && activityLabel !== 'AFK') {
+                  const dur = sessionStartMs ? ` · ${formatSessionDurationCompact(sessionStartMs)}` : ''
+                  return <span>{activityLabel}{dur}</span>
+                }
+                if (activityLabel === 'AFK') return <span className="text-gray-600">AFK</span>
+                return 'Online'
+              })()}
             </p>
           </div>
         </button>
@@ -514,6 +631,19 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, reactions
           </div>
         ) : (
           <>
+            {/* Load older messages */}
+            {hasMoreMessages && (
+              <div className="flex justify-center py-2">
+                <button
+                  type="button"
+                  onClick={handleLoadMore}
+                  disabled={loadingMore}
+                  className="text-micro text-gray-500 hover:text-gray-300 border border-white/10 rounded-full px-3 py-1 transition-colors disabled:opacity-40"
+                >
+                  {loadingMore ? 'Loading...' : '↑ Load older messages'}
+                </button>
+              </div>
+            )}
             {groupedMessages.map((group) => (
               <div key={group.key} className="space-y-0.5">
                 {/* Date divider */}
@@ -534,6 +664,19 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, reactions
 
                   const isImg = isChatImage(m.body)
                   const imgUrl = isImg ? chatImageUrl(m.body) : ''
+                  const isRoll = isChatRoll(m.body)
+
+                  // Roll messages render as centered system bubbles — skip normal bubble
+                  if (isRoll) {
+                    const rollSenderName = isMe
+                      ? (user?.user_metadata?.username || 'You')
+                      : (profile.username || 'Friend')
+                    return (
+                      <div key={m.id}>
+                        <RollBubble value={chatRollValue(m.body)} username={rollSenderName} />
+                      </div>
+                    )
+                  }
 
                   // Quoted reply (text messages only)
                   const isQuote = !isImg && m.body.startsWith('> ')
@@ -557,6 +700,7 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, reactions
                       className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} ${first && idx > 0 ? 'mt-2' : ''}`}
                       onMouseEnter={() => setHoveredMsg(m.id)}
                       onMouseLeave={() => setHoveredMsg(null)}
+                      onContextMenu={(e) => { e.preventDefault(); setContextMenuMsg(m.id) }}
                     >
                       <div className={`flex items-end gap-1 ${isMe ? 'justify-end pl-12' : 'justify-start pr-12'} w-full`}>
 
@@ -638,7 +782,7 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, reactions
                           <ReactionPicker
                             messageId={m.id}
                             isMe={isMe}
-                            visible={isHovered}
+                            visible={contextMenuMsg === m.id}
                             myUserId={user?.id}
                             reactions={reactions}
                             onToggle={toggleReaction}
@@ -693,6 +837,10 @@ export function ChatThread({ profile, onBack, onOpenProfile, messages, reactions
             {/* Typing indicator */}
             <AnimatePresence>
               {peerIsTyping && <TypingIndicator name={profile.username || 'Friend'} />}
+            </AnimatePresence>
+            {/* Local roll animation */}
+            <AnimatePresence>
+              {rolling && <RollBubble key="rolling" value={0} username={user?.user_metadata?.username || 'You'} rolling />}
             </AnimatePresence>
           </>
         )}

@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import './styles/globals.css'
+import { getFontScalePreset, applyFontScale } from './lib/fontScale'
 
 // ── One-time admin skill fixes ──
 // Fix 003: Phil — farmer→21 (1500 XP), chef→1 (0 XP)
@@ -114,6 +115,9 @@ window.addEventListener('unhandledrejection', (e) => {
   console.warn('[unhandledrejection]', msg)
 })
 
+
+// Apply saved font scale before first paint
+applyFontScale(getFontScalePreset())
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <ErrorBoundary>

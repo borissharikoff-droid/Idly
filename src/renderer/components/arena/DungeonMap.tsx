@@ -73,7 +73,7 @@ export function DungeonMap({ zone, mobIndex, goldEarned, themeColor }: DungeonMa
       {/* Accumulated gold */}
       {goldEarned > 0 && (
         <div className="flex items-center justify-center gap-1">
-          <span className="text-micro text-amber-400 font-mono">🪙 {fmt(goldEarned)}g accumulated</span>
+          <span className="text-micro text-amber-400 font-mono">🪙 {fmt(goldEarned)} accumulated</span>
         </div>
       )}
     </div>

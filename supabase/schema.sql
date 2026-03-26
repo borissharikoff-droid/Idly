@@ -643,3 +643,95 @@ ALTER TABLE public.party_craft_sessions REPLICA IDENTITY FULL;
 -- All party/craft tables must be in supabase_realtime for events to fire.
 ALTER PUBLICATION supabase_realtime ADD TABLE public.party_members;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.party_craft_sessions;
+
+-- ── Auth security: login rate limiting ────────────────────────────────────────
+
+-- Stores every login attempt so server-side rate limiting RPCs can count failures.
+-- No RLS — only accessible through security-definer functions below.
+CREATE TABLE IF NOT EXISTS public.login_attempts (
+  id           UUID        PRIMARY KEY DEFAULT uuid_generate_v4(),
+  identifier   TEXT        NOT NULL,      -- email or username, lowercased+trimmed
+  success      BOOLEAN     NOT NULL DEFAULT false,
+  attempted_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_login_attempts_id_time
+  ON public.login_attempts(identifier, attempted_at DESC);
+
+-- Check if an identifier is currently rate-limited.
+-- Returns {blocked, failures, retry_after} — callable by anon for login flow.
+-- Rule: 5 failures within 15 minutes → blocked for the remainder of that window.
+CREATE OR REPLACE FUNCTION public.check_login_rate_limit(p_identifier text)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_failures   int;
+  v_oldest     timestamptz;
+  v_retry_after int;
+BEGIN
+  SELECT count(*), min(attempted_at)
+  INTO   v_failures, v_oldest
+  FROM   public.login_attempts
+  WHERE  identifier = lower(trim(p_identifier))
+    AND  success    = false
+    AND  attempted_at > now() - interval '15 minutes';
+
+  IF v_failures >= 5 THEN
+    v_retry_after := greatest(0,
+      extract(epoch from (v_oldest + interval '15 minutes' - now()))::int);
+    RETURN json_build_object(
+      'blocked',      true,
+      'failures',     v_failures,
+      'retry_after',  v_retry_after
+    );
+  END IF;
+
+  RETURN json_build_object('blocked', false, 'failures', v_failures, 'retry_after', 0);
+END;
+$$;
+REVOKE ALL  ON FUNCTION public.check_login_rate_limit(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.check_login_rate_limit(text) TO anon, authenticated;
+
+-- Record one login attempt. Automatically purges entries older than 24 h.
+CREATE OR REPLACE FUNCTION public.record_login_attempt(p_identifier text, p_success boolean)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO public.login_attempts (identifier, success)
+  VALUES (lower(trim(p_identifier)), p_success);
+
+  -- Rolling cleanup — keeps the table small
+  DELETE FROM public.login_attempts
+  WHERE attempted_at < now() - interval '24 hours';
+END;
+$$;
+REVOKE ALL  ON FUNCTION public.record_login_attempt(text, boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.record_login_attempt(text, boolean) TO anon, authenticated;
+
+-- Resolve a username to its email for the login-by-username flow.
+-- Security definer so anon callers cannot read the profiles table directly.
+CREATE OR REPLACE FUNCTION public.get_email_by_username(p_username text)
+RETURNS text
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_email text;
+BEGIN
+  SELECT email INTO v_email
+  FROM   public.profiles
+  WHERE  username = trim(p_username)
+  LIMIT  1;
+
+  RETURN v_email;
+END;
+$$;
+REVOKE ALL  ON FUNCTION public.get_email_by_username(text) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_email_by_username(text) TO anon, authenticated;

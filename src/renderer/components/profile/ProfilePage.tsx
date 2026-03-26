@@ -13,10 +13,11 @@ import { syncCosmeticsToSupabase } from '../../services/supabaseSync'
 import { PageHeader } from '../shared/PageHeader'
 import { User } from '../../lib/icons'
 import { InlineSuccess } from '../shared/InlineSuccess'
-import { getEquippedPerkRuntime, getItemPower, getRarityTheme, LOOT_ITEMS, type LootSlot, type ChestType, type LootItemDef, type BonusMaterial } from '../../lib/loot'
+import { getEquippedPerkRuntime, getItemPower, getRarityTheme, LOOT_ITEMS, CHEST_DEFS, RARITY_COLORS, type LootSlot, type ChestType, type LootItemDef, type BonusMaterial } from '../../lib/loot'
 import { ensureInventoryHydrated, useInventoryStore } from '../../stores/inventoryStore'
 import { getDailyActivities, getWeeklyActivities } from '../../services/dailyActivityService'
 import { QuestsSection } from '../quests/QuestsSection'
+import { DailyLoginTrigger, DailyLoginCalendar } from '../quests/DailyLoginCalendar'
 import { ChestOpenModal } from '../animations/ChestOpenModal'
 import { AvatarWithFrame } from '../shared/AvatarWithFrame'
 import { ItemInspectModal } from '../shared/ItemInspectModal'
@@ -351,6 +352,7 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
 
   const [inspectItemId, setInspectItemId] = useState<string | null>(null)
   const inspectItem = inspectItemId ? (LOOT_ITEMS.find((x) => x.id === inspectItemId) ?? null) : null
+  const [showDailyLogin, setShowDailyLogin] = useState(false)
 
   return (
     <div
@@ -498,6 +500,10 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
           : <p className="text-xs text-center text-red-500">{message.text}</p>
       )}
 
+      {/* Daily Login Reward — always visible above tabs */}
+      <DailyLoginTrigger onClick={() => setShowDailyLogin(true)} />
+      {showDailyLogin && <DailyLoginCalendar onClose={() => setShowDailyLogin(false)} />}
+
       {/* Sub-tabs */}
       <div className="flex gap-1 bg-surface-0/50 rounded p-1">
         {([
@@ -565,7 +571,7 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
                             <span className="text-lg shrink-0">{typeIcon}</span>
                             <div className="min-w-0">
                               <p className={`text-sm font-semibold leading-tight ${b.claimed ? 'text-gray-500' : 'text-white'}`}>{b.description}</p>
-                              <p className="text-caption text-gray-500 mt-0.5">+{b.goldReward}g{b.chestReward ? ` · ${b.chestReward.replace('_chest', ' chest')}` : ''}</p>
+                              <p className="text-caption text-gray-500 mt-0.5">+{b.goldReward} 🪙{b.chestReward && <> · <span style={{ color: RARITY_COLORS[CHEST_DEFS[b.chestReward as ChestType].rarity].color }}>{b.chestReward.replace('_chest', ' chest')}</span></>}</p>
                             </div>
                           </div>
                           {b.claimed && <span className="text-lime-500 text-base shrink-0">✓</span>}
@@ -629,7 +635,7 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
                             <span className="text-lg shrink-0">{typeIcon}</span>
                             <div className="min-w-0">
                               <p className={`text-sm font-semibold leading-tight ${b.claimed ? 'text-gray-500' : 'text-white'}`}>{b.description}</p>
-                              <p className="text-caption text-gray-500 mt-0.5">+{b.goldReward}g{b.chestReward ? ` · ${b.chestReward.replace('_chest', ' chest')}` : ''}</p>
+                              <p className="text-caption text-gray-500 mt-0.5">+{b.goldReward} 🪙{b.chestReward && <> · <span style={{ color: RARITY_COLORS[CHEST_DEFS[b.chestReward as ChestType].rarity].color }}>{b.chestReward.replace('_chest', ' chest')}</span></>}</p>
                             </div>
                           </div>
                           {b.claimed && <span className="text-amber-500 text-base shrink-0">✓</span>}

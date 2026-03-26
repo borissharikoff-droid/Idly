@@ -5,6 +5,7 @@ export const IPC_CHANNELS = {
     pause: 'tracker:pause',
     resume: 'tracker:resume',
     getCurrentActivity: 'tracker:getCurrentActivity',
+    getSnapshot: 'tracker:getSnapshot',
     setAfkThreshold: 'tracker:setAfkThreshold',
     activityUpdate: 'tracker:activityUpdate',
     idleChange: 'tracker:idleChange',

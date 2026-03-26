@@ -17,6 +17,8 @@ import {
   getNextFarmhouseUpgrade,
   FARMHOUSE_UNLOCK_LEVEL,
   canUnlockSlot,
+  getFarmerSpeedMultiplier,
+  getFarmerBonusYieldChance,
   type SeedDef,
   type SeedZipTier,
   type FieldId,
@@ -32,6 +34,15 @@ import { useWeeklyStore } from './weeklyStore'
 import { track } from '../lib/analytics'
 import { getGuildFarmYieldBonus } from '../lib/guildBuffs'
 import { useGuildStore } from './guildStore'
+
+function getFarmerLevel(): number {
+  try {
+    const stored = JSON.parse(localStorage.getItem('grindly_skill_xp') || '{}') as Record<string, number>
+    return skillLevelFromXP(stored['farmer'] ?? 0)
+  } catch {
+    return 0
+  }
+}
 
 export interface PlantedSlot {
   seedId: string
@@ -189,7 +200,8 @@ export const useFarmStore = create<FarmState>()(
         }
 
         const now = Date.now()
-        const effectiveGrowTime = getEffectiveGrowTime(seed.growTimeSeconds, farmhouseLevel)
+        const farmerLvl = getFarmerLevel()
+        const effectiveGrowTime = Math.ceil(getEffectiveGrowTime(seed.growTimeSeconds, farmhouseLevel) * getFarmerSpeedMultiplier(farmerLvl))
 
         set({
           planted: {
@@ -220,7 +232,8 @@ export const useFarmStore = create<FarmState>()(
         const newComposted = { ...compostedSlots }
         let count = 0
         const now = Date.now()
-        const effectiveGrowTime = getEffectiveGrowTime(seed.growTimeSeconds, farmhouseLevel)
+        const farmerLvl = getFarmerLevel()
+        const effectiveGrowTime = Math.ceil(getEffectiveGrowTime(seed.growTimeSeconds, farmhouseLevel) * getFarmerSpeedMultiplier(farmerLvl))
         const autoCompostPct = getFarmhouseBonuses(farmhouseLevel).autoCompostPct
 
         for (let i = 0; i < unlockedSlots; i++) {
@@ -275,6 +288,9 @@ export const useFarmStore = create<FarmState>()(
         const isComposted = !!slot.composted
         let qty = randomBetween(seed.yieldMin, seed.yieldMax)
         if (isComposted) qty = Math.ceil(qty * 1.2)
+        // Farmer level bonus yield chance (+1 per proc)
+        const farmerBonusChance = getFarmerBonusYieldChance(getFarmerLevel())
+        if (farmerBonusChance > 0 && Math.random() < farmerBonusChance) qty += 1
         // Farmhouse + guild hall yield bonus (additive)
         const yieldBonus = getFarmhouseBonuses(farmhouseLevel).yieldBonusPct
           + getGuildFarmYieldBonus(useGuildStore.getState().hallLevel)
@@ -319,6 +335,7 @@ export const useFarmStore = create<FarmState>()(
         const results: HarvestResult[] = []
         const yieldBonus = getFarmhouseBonuses(farmhouseLevel).yieldBonusPct
           + getGuildFarmYieldBonus(useGuildStore.getState().hallLevel)
+        const farmerBonusChance = getFarmerBonusYieldChance(getFarmerLevel())
 
         for (const [idxStr, slot] of Object.entries(planted)) {
           if (!slot) continue
@@ -329,6 +346,7 @@ export const useFarmStore = create<FarmState>()(
           const isComposted = !!slot.composted
           let qty = randomBetween(seed.yieldMin, seed.yieldMax)
           if (isComposted) qty = Math.ceil(qty * 1.2)
+          if (farmerBonusChance > 0 && Math.random() < farmerBonusChance) qty += 1
           if (yieldBonus > 0) qty = Math.ceil(qty * (1 + yieldBonus / 100))
           useInventoryStore.getState().addItem(seed.yieldPlantId, qty)
           const xp = isComposted ? Math.ceil(seed.xpOnHarvest * 1.05) : seed.xpOnHarvest

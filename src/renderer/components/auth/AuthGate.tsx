@@ -161,7 +161,7 @@ function clearStoredLockout(id: string) {
 }
 
 export function AuthGate({ children }: { children: React.ReactNode }) {
-  const { user, loading, init, signIn, signUp } = useAuthStore()
+  const { user, loading, init, signIn, signUp, verifyEmailOtp } = useAuthStore()
   const [loginId, setLoginId] = useState('')
   const [password, setPassword] = useState('')
   const [username, setUsername] = useState('')
@@ -175,6 +175,12 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const [lockoutUntil, setLockoutUntil] = useState(0)
   const [lockoutSeconds, setLockoutSeconds] = useState(0)
   const lockoutTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // Email OTP verification step
+  const [otpStep, setOtpStep] = useState(false)
+  const [otp, setOtp] = useState('')
+  const [otpError, setOtpError] = useState('')
+  const [otpResending, setOtpResending] = useState(false)
+  const [otpResent, setOtpResent] = useState(false)
 
   // Countdown timer when locked out
   useEffect(() => {
@@ -259,30 +265,34 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         setBusy(false)
         return
       }
-      const { error: err } = await signUp(email, password, username.trim())
+      const { error: err, needsEmailConfirm } = await signUp(email, password, username.trim())
       if (err) { setError(err.message); setBusy(false); return }
+      if (needsEmailConfirm) {
+        // Supabase sent a confirmation email — show OTP step
+        setOtpStep(true)
+        setBusy(false)
+        return
+      }
+      // Email confirmation disabled — user is already logged in; save profile now
       if (supabase) {
         const { data: { user: newUser } } = await supabase.auth.getUser()
         if (newUser) {
           await supabase.from('profiles').upsert(
-            {
-              id: newUser.id,
-              username: username.trim(),
-              avatar_url: avatar,
-              email: email.trim().toLowerCase(),
-            },
+            { id: newUser.id, username: username.trim(), avatar_url: avatar, email: email.trim().toLowerCase() },
             { onConflict: 'id' }
           )
         }
         localStorage.setItem('grindly_remember_me', 'true')
       }
     } else {
-      let loginEmail = loginId.trim()
+      // ── The original identifier (username or email) is the stable rate-limit key ──
+      const originalId = loginId.trim()
+      let loginEmail = originalId
       if (!supabase) { setError('Supabase not available'); setBusy(false); return }
 
-      // ── Server-side rate limit check ─────────────────────────────────────
+      // ── Server-side rate limit check (keyed to original identifier) ──────
       const { data: rlData } = await supabase
-        .rpc('check_login_rate_limit', { p_identifier: loginEmail })
+        .rpc('check_login_rate_limit', { p_identifier: originalId })
       const rl = rlData as { blocked: boolean; failures: number; retry_after?: number } | null
       if (rl?.blocked) {
         const wait = rl.retry_after ?? 900
@@ -298,19 +308,18 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         const { data: resolvedEmail, error: rpcErr } = await supabase
           .rpc('get_email_by_username', { p_username: loginEmail })
         if (rpcErr || !resolvedEmail) {
-          // Record failed attempt (wrong username)
-          await supabase.rpc('record_login_attempt', { p_identifier: loginEmail, p_success: false })
-          const stored = getStoredLockout(loginEmail)
+          await supabase.rpc('record_login_attempt', { p_identifier: originalId, p_success: false })
+          const stored = getStoredLockout(originalId)
           const failures = stored.failures + 1
           const delaySeconds = LOCKOUT_DELAYS[Math.min(failures, LOCKOUT_DELAYS.length - 1)]
           if (delaySeconds > 0) {
             const until = Date.now() + delaySeconds * 1000
             setLockoutUntil(until)
-            setStoredLockout(loginEmail, until, failures)
+            setStoredLockout(originalId, until, failures)
           } else {
-            setStoredLockout(loginEmail, 0, failures)
+            setStoredLockout(originalId, 0, failures)
           }
-          setError(rpcErr ? rpcErr.message : 'User not found')
+          setError('User not found')
           setBusy(false)
           return
         }
@@ -320,33 +329,64 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       // ── Sign in ───────────────────────────────────────────────────────────
       const { error: err } = await signIn(loginEmail, password)
       if (err) {
-        // Record failed attempt
-        await supabase.rpc('record_login_attempt', { p_identifier: loginEmail, p_success: false })
-        const stored = getStoredLockout(loginEmail)
+        await supabase.rpc('record_login_attempt', { p_identifier: originalId, p_success: false })
+        const stored = getStoredLockout(originalId)
         const failures = stored.failures + 1
         const delaySeconds = LOCKOUT_DELAYS[Math.min(failures, LOCKOUT_DELAYS.length - 1)]
         if (delaySeconds > 0) {
           const until = Date.now() + delaySeconds * 1000
           setLockoutUntil(until)
-          setStoredLockout(loginEmail, until, failures)
+          setStoredLockout(originalId, until, failures)
           setError(`${err.message} — wait ${delaySeconds}s before trying again`)
         } else {
-          setStoredLockout(loginEmail, 0, failures)
+          setStoredLockout(originalId, 0, failures)
           setError(err.message)
         }
         setBusy(false)
         return
       }
 
-      // Success — clear lockout
-      await supabase.rpc('record_login_attempt', { p_identifier: loginEmail, p_success: true })
-      clearStoredLockout(loginEmail)
-      clearStoredLockout(loginId.trim())
-
+      // Success — clear lockout, keyed to original identifier
+      await supabase.rpc('record_login_attempt', { p_identifier: originalId, p_success: true })
+      clearStoredLockout(originalId)
       localStorage.setItem('grindly_remember_me', rememberMe ? 'true' : 'false')
     }
 
     setBusy(false)
+  }
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!supabase) return
+    setBusy(true)
+    setOtpError('')
+    const { error } = await verifyEmailOtp(email, otp)
+    if (error) {
+      setOtpError(error.message)
+      setBusy(false)
+      return
+    }
+    // Create profile after successful verification
+    const { data: { user: newUser } } = await supabase.auth.getUser()
+    if (newUser) {
+      await supabase.from('profiles').upsert(
+        { id: newUser.id, username: username.trim(), avatar_url: avatar, email: email.trim().toLowerCase() },
+        { onConflict: 'id' }
+      )
+    }
+    localStorage.setItem('grindly_remember_me', 'true')
+    setBusy(false)
+    // authStore.onAuthStateChange fires and sets user → AuthGate renders children
+  }
+
+  const handleResendOtp = async () => {
+    if (!supabase || otpResending) return
+    setOtpResending(true)
+    setOtpResent(false)
+    await supabase.auth.resend({ type: 'signup', email })
+    setOtpResending(false)
+    setOtpResent(true)
+    setTimeout(() => setOtpResent(false), 4000)
   }
 
   const containerVariants = {
@@ -359,6 +399,75 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   const itemVariants = {
     hidden: { opacity: 0, y: 10 },
     visible: { opacity: 1, y: 0 },
+  }
+
+  // ── OTP verification screen ─────────────────────────────────────────────────
+  if (otpStep) {
+    return (
+      <div className="flex h-full min-h-0 flex-col bg-surface-0 p-4 overflow-y-auto">
+        <div className="flex min-h-full flex-col items-center justify-center py-6">
+          <motion.div
+            initial={{ opacity: 0, y: 14 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            className="w-full max-w-sm flex-shrink-0"
+          >
+            <HeroBanner />
+            <div className="rounded-card bg-surface-2 border border-white/10 p-6 space-y-4">
+              <div>
+                <h2 className="text-white font-semibold text-sm">Check your email</h2>
+                <p className="text-gray-400 text-xs mt-1">
+                  We sent a 6-digit code to <span className="text-white/80">{email}</span>
+                </p>
+              </div>
+              <form onSubmit={handleVerifyOtp} className="space-y-3">
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="000000"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  autoFocus
+                  className="w-full rounded bg-surface-0 border border-white/10 px-3 py-2.5 text-white placeholder-gray-600 text-sm focus:border-accent outline-none transition-colors text-center tracking-[0.5em] font-mono"
+                />
+                {otpError && (
+                  <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-red-500 text-xs">
+                    {otpError}
+                  </motion.p>
+                )}
+                <motion.button
+                  type="submit"
+                  disabled={busy || otp.length < 6}
+                  className="w-full py-3 rounded bg-accent text-surface-0 font-bold text-sm disabled:opacity-50 transition-all active:scale-[0.98]"
+                  whileHover={!busy ? { scale: 1.01 } : undefined}
+                  whileTap={!busy ? { scale: 0.99 } : undefined}
+                >
+                  {busy ? 'Verifying...' : 'Confirm email'}
+                </motion.button>
+              </form>
+              <div className="flex items-center justify-between pt-1">
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={otpResending}
+                  className="text-xs text-accent/70 hover:text-accent transition-colors disabled:opacity-50"
+                >
+                  {otpResending ? 'Sending…' : otpResent ? '✓ Sent!' : 'Resend code'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setOtpStep(false); setOtp(''); setOtpError('') }}
+                  className="text-xs text-white/30 hover:text-white/60 transition-colors"
+                >
+                  Back
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -389,7 +498,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
         <motion.div
           variants={itemVariants}
           layout
-          transition={{ layout: { duration: 0.35, ease: [0.16, 1, 0.3, 1] } }}
+          transition={{ layout: { duration: 0.22, ease: [0.16, 1, 0.3, 1] } }}
           className="rounded-card bg-surface-2 border border-white/10 p-6 overflow-hidden"
         >
           <form onSubmit={handleAuth} className="space-y-3">
@@ -402,10 +511,10 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
               {isSignUp ? (
                 <motion.div
                   key="signup-fields"
-                  initial={{ opacity: 0, y: 12 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
                   className="space-y-3"
                 >
                   <div>
@@ -458,10 +567,10 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
               ) : (
                 <motion.div
                   key="signin-field"
-                  initial={{ opacity: 0, y: 12 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
                 >
                   <input
                     type="text"

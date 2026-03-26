@@ -11,6 +11,7 @@ const CH = {
     pause: 'tracker:pause',
     resume: 'tracker:resume',
     getCurrentActivity: 'tracker:getCurrentActivity',
+    getSnapshot: 'tracker:getSnapshot',
     setAfkThreshold: 'tracker:setAfkThreshold',
     activityUpdate: 'tracker:activityUpdate',
     idleChange: 'tracker:idleChange',
@@ -93,6 +94,7 @@ try {
       pause: () => ipcRenderer.invoke(CH.tracker.pause),
       resume: () => ipcRenderer.invoke(CH.tracker.resume),
       getCurrentActivity: () => ipcRenderer.invoke(CH.tracker.getCurrentActivity),
+      getSnapshot: () => ipcRenderer.invoke(CH.tracker.getSnapshot),
       setAfkThreshold: (ms: number) => ipcRenderer.invoke(CH.tracker.setAfkThreshold, ms),
       onActivityUpdate: (cb: (activity: unknown) => void) => {
         const handler = (_: unknown, activity: unknown) => cb(activity)
@@ -166,6 +168,7 @@ try {
         elapsedSeconds: number
         pausedAccumulated: number
         sessionSkillXP?: Record<string, number>
+        sessionActivities?: unknown[]
       }) =>
         ipcRenderer.invoke(CH.db.saveCheckpoint, data),
       getCheckpoint: () => ipcRenderer.invoke(CH.db.getCheckpoint),

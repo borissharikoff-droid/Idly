@@ -490,7 +490,8 @@ function CookModal({
   if (!output) return null
 
   const theme = getRarityTheme(output.rarity)
-  const canStart = canAffordCookRecipe(recipe, qty, items)
+  const lvlLocked = chefLevel < recipe.chefLevelRequired
+  const canStart = !lvlLocked && canAffordCookRecipe(recipe, qty, items)
   const max = maxAffordableCookQty(recipe, items)
   const grindlyMult = computeGrindlyBonuses(getGrindlyLevel()).craftSpeedMultiplier
   const duration = cookTotalDuration(recipe, qty, chefLevel, grindlyMult, instrumentTiers)
@@ -627,25 +628,34 @@ function CookModal({
                   style={{ background: K.warn, color: '#fff' }}>Missing ingredients!</motion.div>
               )}
             </AnimatePresence>
-            <motion.button type="button"
-              whileTap={canStart ? { scale: .93 } : {}}
-              animate={btnShake ? { x: [0, -4, 4, -3, 3, 0] } : {}}
-              transition={btnShake ? { duration: 0.4 } : {}}
-              onClick={(e) => {
-                if (canStart) { spawnRipple(e); playClickSound(); onStart(recipe, qty) }
-                else {
-                  playCookErrorSound()
-                  setBtnShake(true); setTimeout(() => setBtnShake(false), 400)
-                  setMissingTip(true); setTimeout(() => setMissingTip(false), 1500)
-                }
-              }}
-              className="px-7 py-2.5 rounded text-sm font-bold relative overflow-hidden"
-              style={canStart
-                ? { color: '#fff', background: `linear-gradient(135deg, ${K.copper}, ${K.clay})`,
-                    boxShadow: `0 4px 20px ${K.copper}20` }
-                : { color: `${K.muted}60`, border: `1px solid ${K.faint}`, background: 'rgba(255,255,255,.01)' }}>
-              <span className="relative">{canStart ? 'Cook!' : 'Need more'}</span>
-            </motion.button>
+            {lvlLocked ? (
+              <motion.button type="button" whileTap={{ scale: .93 }}
+                onClick={() => { playClickSound(); onClose() }}
+                className="px-7 py-2.5 rounded text-sm font-bold"
+                style={{ color: '#fff', background: `linear-gradient(135deg, ${K.copper}, ${K.clay})`, boxShadow: `0 4px 20px ${K.copper}20` }}>
+                Next
+              </motion.button>
+            ) : (
+              <motion.button type="button"
+                whileTap={canStart ? { scale: .93 } : {}}
+                animate={btnShake ? { x: [0, -4, 4, -3, 3, 0] } : {}}
+                transition={btnShake ? { duration: 0.4 } : {}}
+                onClick={(e) => {
+                  if (canStart) { spawnRipple(e); playClickSound(); onStart(recipe, qty) }
+                  else {
+                    playCookErrorSound()
+                    setBtnShake(true); setTimeout(() => setBtnShake(false), 400)
+                    setMissingTip(true); setTimeout(() => setMissingTip(false), 1500)
+                  }
+                }}
+                className="px-7 py-2.5 rounded text-sm font-bold relative overflow-hidden"
+                style={canStart
+                  ? { color: '#fff', background: `linear-gradient(135deg, ${K.copper}, ${K.clay})`,
+                      boxShadow: `0 4px 20px ${K.copper}20` }
+                  : { color: `${K.muted}60`, border: `1px solid ${K.faint}`, background: 'rgba(255,255,255,.01)' }}>
+                <span className="relative">{canStart ? 'Cook!' : 'Need more'}</span>
+              </motion.button>
+            )}
           </div>
         </div>
         </motion.div>
@@ -758,7 +768,7 @@ function ToolsPanel({ chefLevel, onClose, focusId }: { chefLevel: number; onClos
                         className="shrink-0 px-3 py-1.5 rounded text-micro font-bold"
                         style={canUL ? { color: K.xp, background: `${K.xp}0c`, border: `1px solid ${K.xp}18` }
                           : { color: `${K.muted}60`, background: 'rgba(255,255,255,.01)', border: `1px solid ${K.faint}` }}>
-                        {lvlLock ? `Lvl ${inst.unlockLevel}` : `${fmt(inst.unlockCost)}g`}
+                        {lvlLock ? `Lvl ${inst.unlockLevel}` : `${fmt(inst.unlockCost)} 🪙`}
                       </button>
                     ) : maxed ? (
                       <span className="text-micro font-mono px-2" style={{ color: K.muted }}>MAX</span>
@@ -768,7 +778,7 @@ function ToolsPanel({ chefLevel, onClose, focusId }: { chefLevel: number; onClos
                         className="shrink-0 px-3 py-1.5 rounded text-micro font-bold"
                         style={canUP ? { color: K.xp, background: `${K.xp}0c`, border: `1px solid ${K.xp}18` }
                           : { color: `${K.muted}60`, background: 'rgba(255,255,255,.01)', border: `1px solid ${K.faint}` }}>
-                        {fmt(next!.cost)}g
+                        {fmt(next!.cost)} 🪙
                       </button>
                     )}
                   </div>
@@ -1673,12 +1683,16 @@ export function CookingPage() {
     const res = startCook(recipe.id, qty, items, (id, n) => deleteItem(id, n))
     if (res === 'ok') {
       setSelRecipe(null)
+      setActiveTab('recipes')
       playLootRaritySound(FOOD_ITEM_MAP[recipe.outputItemId]?.rarity ?? 'common')
       setTimeout(() => playCookSoundForInstrument(stepToInstrument(recipe.steps[0])), 200)
-      setTimeout(() => {
-        const main = document.querySelector('main')
-        if (main) main.scrollTo({ top: 0, behavior: 'smooth' })
-      }, 100)
+      // Scroll after React re-renders so CookingStation is visible at the top
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          const main = document.querySelector('main')
+          if (main) main.scrollTo({ top: 0, behavior: 'smooth' })
+        })
+      })
       const u = useAuthStore.getState().user
       if (supabase && u) {
         const { items: ci, chests } = useInventoryStore.getState()

@@ -7,7 +7,8 @@ interface AuthStore {
   loading: boolean
   init: () => void
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>
-  signUp: (email: string, password: string, username?: string) => Promise<{ error: Error | null }>
+  signUp: (email: string, password: string, username?: string) => Promise<{ error: Error | null; needsEmailConfirm: boolean }>
+  verifyEmailOtp: (email: string, token: string) => Promise<{ error: Error | null }>
   signOut: () => Promise<void>
 }
 
@@ -44,12 +45,18 @@ export const useAuthStore = create<AuthStore>((set) => ({
   },
 
   async signUp(email: string, password: string, username?: string) {
-    if (!supabase) return { error: new Error('Supabase not configured') }
-    const { error } = await supabase.auth.signUp({
+    if (!supabase) return { error: new Error('Supabase not configured'), needsEmailConfirm: false }
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { username } },
     })
+    return { error: error ?? null, needsEmailConfirm: !error && !data.session }
+  },
+
+  async verifyEmailOtp(email: string, token: string) {
+    if (!supabase) return { error: new Error('Supabase not configured') }
+    const { error } = await supabase.auth.verifyOtp({ email, token, type: 'signup' })
     return { error: error ?? null }
   },
 

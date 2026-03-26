@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  getDailyActivities, getWeeklyActivities, getQuestStreak,
+  getDailyActivities, getWeeklyActivities,
   claimDailyActivity, claimWeeklyActivity, claimDailyAllBonus,
   isDailyAllBonusClaimed,
   type DailyActivityId, type WeeklyActivityId,
@@ -108,7 +108,6 @@ export function QuestsSection({ unlockedIds, claimedIds, onClaimAchievement, onC
 
   const dailies = useMemo(() => getDailyActivities(), [tick])
   const weeklies = useMemo(() => getWeeklyActivities(), [tick])
-  const streak = useMemo(() => getQuestStreak(), [tick])
   const allBonusClaimed = useMemo(() => isDailyAllBonusClaimed(), [tick])
   const allDailyClaimed = dailies.every((d) => d.claimed)
 
@@ -121,7 +120,6 @@ export function QuestsSection({ unlockedIds, claimedIds, onClaimAchievement, onC
     chestType: ChestType; itemId: string | null; goldDropped?: number; bonusMaterials?: BonusMaterial[]
   } | null>(null)
   const [bulkOpened, setBulkOpened] = useState<{ chestType: ChestType; result: BulkOpenResult } | null>(null)
-
   useEffect(() => { ensureInventoryHydrated() }, [])
   useEffect(() => { const id = setInterval(refresh, 10_000); return () => clearInterval(id) }, [refresh])
 
@@ -253,16 +251,6 @@ export function QuestsSection({ unlockedIds, claimedIds, onClaimAchievement, onC
   return (
     <>
       <div className="space-y-5">
-
-        {/* ── Streak ── */}
-        {streak > 0 && (
-          <div className="flex items-center justify-center">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded bg-orange-500/10 border border-orange-500/25">
-              <span className="text-sm">🔥</span>
-              <span className="text-caption font-bold text-orange-400">{streak} day streak</span>
-            </div>
-          </div>
-        )}
 
         {/* ══════════ DAILY QUESTS ══════════ */}
         <section className="space-y-2">

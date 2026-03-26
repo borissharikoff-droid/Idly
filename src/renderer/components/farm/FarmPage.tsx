@@ -859,7 +859,7 @@ function SeedCabinetSection() {
               : 'border-white/[0.06] text-gray-600 cursor-not-allowed'
           }`}
         >
-          Unlock — {UNLOCK_COST}g
+          Unlock — 🪙{UNLOCK_COST}
         </button>
       </div>
     )

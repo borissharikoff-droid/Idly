@@ -44,6 +44,7 @@ export function registerIpcHandlers() {
   ipcMain.handle(IPC_CHANNELS.tracker.pause, () => tracker.pause())
   ipcMain.handle(IPC_CHANNELS.tracker.resume, () => tracker.resume())
   ipcMain.handle(IPC_CHANNELS.tracker.getCurrentActivity, () => tracker.getCurrentActivity())
+  ipcMain.handle(IPC_CHANNELS.tracker.getSnapshot, () => tracker.getSnapshot())
   ipcMain.handle(IPC_CHANNELS.tracker.setAfkThreshold, (_, ms: unknown) => {
     const parsed = nonNegativeInt.parse(ms)
     tracker.setAfkThreshold(parsed)
@@ -225,6 +226,7 @@ export function registerIpcHandlers() {
       elapsedSeconds: number
       pausedAccumulated: number
       sessionSkillXP?: Record<string, number>
+      sessionActivities?: { appName: string; windowTitle: string; category: string; startTime: number; endTime: number; keystrokes?: number }[]
     }
     if (!parsed || typeof parsed.sessionId !== 'string') throw new Error('Invalid checkpoint data')
     return db.saveCheckpoint(parsed)

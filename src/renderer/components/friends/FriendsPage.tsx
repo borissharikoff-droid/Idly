@@ -189,9 +189,12 @@ export function FriendsPage({ friendsModel }: FriendsPageProps) {
           messages={chat.messages}
           reactions={chat.reactions}
           loading={chat.loading}
+          loadingMore={chat.loadingMore}
+          hasMoreMessages={chat.hasMoreMessages}
           sending={chat.sending}
           sendError={chat.sendError}
           getConversation={chat.getConversation}
+          loadMoreMessages={chat.loadMoreMessages}
           sendMessage={chat.sendMessage}
           markConversationRead={markConversationReadAndRefresh}
           toggleReaction={chat.toggleReaction}

@@ -1108,5 +1108,23 @@ export function getTrackerApi() {
     setAfkThreshold(ms: number) {
       afkThresholdMs = Math.max(30000, ms) // minimum 30s
     },
+    getSnapshot(): ActivitySegment[] {
+      const now = Date.now()
+      const snap = [...segments]
+      // Include the current in-progress segment (not yet pushed to segments array)
+      if (currentSegmentActivity && currentSegmentCategories.length > 0 && currentSegmentStart < now) {
+        const base = {
+          appName: currentSegmentActivity.appName,
+          windowTitle: currentSegmentActivity.windowTitle,
+          startTime: currentSegmentStart,
+          endTime: now,
+          keystrokes: currentSegmentKeystrokes,
+        }
+        for (const cat of currentSegmentCategories) {
+          snap.push({ ...base, category: cat })
+        }
+      }
+      return snap
+    },
   }
 }

@@ -420,7 +420,7 @@ export function GuildTab({ onSelectMember }: GuildTabProps) {
                     <span className="text-micro font-mono text-amber-400/60 uppercase tracking-wider">Guild</span>
                     <span className="text-caption font-bold text-amber-400 font-mono">Lv.{guildLevel}</span>
                   </div>
-                  <span className="text-micro text-gray-600 font-mono">{fmt(totalContrib)}g donated total</span>
+                  <span className="text-micro text-gray-600 font-mono">{fmt(totalContrib)} 🪙 donated total</span>
                 </div>
                 <div className="h-1 rounded-full bg-white/[0.06] overflow-hidden">
                   <div className="h-full rounded-full bg-gradient-to-r from-amber-600 to-amber-400 transition-[width] duration-700"
@@ -456,7 +456,7 @@ export function GuildTab({ onSelectMember }: GuildTabProps) {
                 <button type="button" onClick={() => { playClickSound(); setShowChest((v) => !v) }}
                   className="ml-auto flex items-center gap-1 text-micro text-gray-600 hover:text-amber-400 transition-colors font-mono">
                   <span>🪙</span>
-                  <span>{fmt(myGuild.chest_gold)}g</span>
+                  <span>{fmt(myGuild.chest_gold)}</span>
                   <span className="text-micro">{showChest ? '▲' : '▼'}</span>
                 </button>
               </div>
@@ -614,7 +614,7 @@ export function GuildTab({ onSelectMember }: GuildTabProps) {
                         ringOpacity={0.95}
                       />
                       <span className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-surface-2 ${
-                        m.is_online ? 'bg-accent' : 'bg-gray-600'
+                        m.is_online ? 'bg-green-500' : 'bg-gray-600'
                       }`} />
                     </div>
 
@@ -653,7 +653,7 @@ export function GuildTab({ onSelectMember }: GuildTabProps) {
                             )
                           ) : (
                             <span className="text-caption text-gray-600">
-                              {m.contribution_gold > 0 ? `+${m.contribution_gold >= 1000 ? `${(m.contribution_gold / 1000).toFixed(1)}k` : m.contribution_gold}g contributed` : 'Offline'}
+                              {m.contribution_gold > 0 ? `+${m.contribution_gold >= 1000 ? `${(m.contribution_gold / 1000).toFixed(1)}k` : m.contribution_gold} 🪙 contributed` : 'Offline'}
                             </span>
                           )}
                         </div>

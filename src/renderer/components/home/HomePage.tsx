@@ -122,16 +122,23 @@ export function HomePage({ onNavigateProfile, onNavigateInventory, onNavigateFri
         } catch {
           parsedSkillXP = {}
         }
+        let parsedActivities: unknown[] | undefined
+        try {
+          const raw = cp.session_activities ? JSON.parse(cp.session_activities) : null
+          if (Array.isArray(raw) && raw.length > 0) parsedActivities = raw
+        } catch { /* ignore */ }
         pushNotification({
           type: 'progression',
           icon: '🌱',
           title: 'Session restored',
           body: `Last run lasted ${formatRecoveryDuration(cp.elapsed_seconds)}. Your progress is safe and ready to claim.`,
+          timestamp: cp.updated_at,
           recovery: {
             sessionId: cp.session_id,
             startTime: cp.start_time,
             elapsedSeconds: cp.elapsed_seconds,
             sessionSkillXP: parsedSkillXP,
+            sessionActivities: parsedActivities,
           },
         })
       }

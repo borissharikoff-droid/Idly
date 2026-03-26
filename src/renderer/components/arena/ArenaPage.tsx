@@ -8,7 +8,7 @@ import {
 const RaidsTab = lazy(() => import('./RaidsTab').then((m) => ({ default: m.RaidsTab })))
 const HallOfRaidsTab = lazy(() => import('./HallOfRaidsTab').then((m) => ({ default: m.HallOfRaidsTab })))
 import { getHotZoneId, hotZoneResetsInDays } from '../../lib/hotZone'
-import { LOOT_ITEMS, type ChestType, type BonusMaterial } from '../../lib/loot'
+import { LOOT_ITEMS, CHEST_DEFS, RARITY_COLORS, type ChestType, type BonusMaterial } from '../../lib/loot'
 import { computePlayerStats, type FoodLoadout, type FoodLoadoutSlot } from '../../lib/combat'
 import { FoodSelector } from '../shared/FoodSelector'
 import { useInventoryStore } from '../../stores/inventoryStore'
@@ -214,14 +214,6 @@ function ZoneCard({
             </div>
           </div>
 
-          {/* Stats row */}
-          {!isActive && (
-            <div className="flex gap-3 mt-3 text-micro font-mono text-gray-500">
-              <span>Boss HP <span className="text-white">{formatShort(zone.boss.hp)}</span></span>
-              <span>Reward <span className="text-amber-400">{zone.boss.rewards.chestTier.replace('_chest', '')}</span></span>
-              <span>Mobs <span className="text-white">{zone.mobs.length} + boss</span></span>
-            </div>
-          )}
 
           {/* Mob chain progress (active only) */}
           {isActive && (
@@ -473,7 +465,7 @@ function ZoneCard({
                   </span>
                   <span
                     className="text-micro font-mono tabular-nums leading-none"
-                    style={{ color: bossFlash ? '#fed7aa' : `${tc}88` }}
+                    style={{ color: `${tc}88` }}
                   >
                     {Math.max(0, Math.round((battleState.bossHp / activeBattle.bossSnapshot.hp) * 100))}%
                   </span>
@@ -494,7 +486,7 @@ function ZoneCard({
                   <div className="flex items-center gap-1.5">
                     {activeDungeon && activeDungeon.goldEarned > 0 && (
                       <span className="text-micro font-mono text-yellow-400 leading-none">
-                        🪙 {fmt(activeDungeon.goldEarned)}g
+                        🪙 {fmt(activeDungeon.goldEarned)}
                       </span>
                     )}
                     <div className="flex items-center gap-0.5">
@@ -573,7 +565,7 @@ function ZoneCard({
                   {/* Enemy HP */}
                   <div>
                     <div className="flex justify-between items-center mb-1">
-                      <span className={`text-micro font-semibold transition-colors duration-100 ${bossFlash ? 'text-orange-200' : 'text-red-400'}`}>
+                      <span className="text-micro font-semibold text-red-400">
                         {currentEnemy.name}
                       </span>
                       <span className="text-micro text-gray-400 font-mono tabular-nums">
@@ -585,7 +577,7 @@ function ZoneCard({
                         <motion.div
                           className="h-full rounded-full"
                           style={{
-                            background: bossFlash ? '#fed7aa' : `linear-gradient(90deg, ${tc}cc, ${tc})`,
+                            background: `linear-gradient(90deg, ${tc}cc, ${tc})`,
                           }}
                           animate={{
                             width: `${Math.max(0, (battleState.bossHp / activeBattle.bossSnapshot.hp) * 100)}%`,
@@ -637,7 +629,7 @@ function ZoneCard({
                     <div className="flex flex-col gap-1 items-end">
                       {activeDungeon && activeDungeon.goldEarned > 0 && (
                         <p className="text-micro font-mono text-red-400/80">
-                          lose {fmt(activeDungeon.goldEarned)}g accumulated
+                          lose 🪙{fmt(activeDungeon.goldEarned)} accumulated
                         </p>
                       )}
                       <div className="flex items-center gap-1">
@@ -1374,7 +1366,7 @@ export function ArenaPage() {
                       <span className="text-micro text-gray-400 font-mono shrink-0">{b.progress}/{b.targetCount}</span>
                     </div>
                     <p className="text-micro text-gray-500 font-mono mt-0.5">
-                      +{fmt(b.goldReward)}g{b.chestReward ? ` · ${b.chestReward.replace('_chest', ' chest')}` : ''}
+                      +{fmt(b.goldReward)} 🪙{b.chestReward && <> · <span style={{ color: RARITY_COLORS[CHEST_DEFS[b.chestReward as ChestType].rarity].color }}>{b.chestReward.replace('_chest', ' chest')}</span></>}
                     </p>
                   </div>
                   {done && !b.claimed && (
@@ -1451,7 +1443,7 @@ export function ArenaPage() {
               {dungeonDeathModal.goldLost > 0 && (
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-gray-400">Gold lost</span>
-                  <span className="text-red-400 font-mono font-semibold">−{dungeonDeathModal.goldLost}g</span>
+                  <span className="text-red-400 font-mono font-semibold">−🪙{dungeonDeathModal.goldLost}</span>
                 </div>
               )}
               {dungeonDeathModal.insuranceUsed && (

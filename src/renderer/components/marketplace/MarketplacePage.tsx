@@ -486,7 +486,7 @@ function SellTab({ onListed, onToast, floorPriceMap }: { onListed: () => void; o
           <button
             type="button"
             onClick={(e) => handleQuickList(e, entry)}
-            title={`Quick list at ${activeFloor - 1}g (floor − 1)`}
+            title={`Quick list at ${activeFloor - 1} 🪙 (floor − 1)`}
             className="absolute top-0.5 right-0.5 px-1 py-0.5 rounded text-micro font-bold border text-amber-400 border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 transition-colors leading-none z-10"
           >
             ⚡
@@ -1407,7 +1407,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                             >{meta.rarity}</span>
                             <span className="text-micro text-gray-500">{offersTarget.offers.length} offer{offersTarget.offers.length !== 1 ? 's' : ''} · {offersTarget.totalQty} total</span>
                             <span className="flex items-center gap-0.5 px-1.5 py-px rounded bg-green-500/12 border border-green-500/25 text-micro font-bold text-green-400 font-mono">
-                              🏷 {fmt(offersTarget.floorPrice)}g
+                              🏷 {fmt(offersTarget.floorPrice)} 🪙
                             </span>
                           </div>
                         </div>
@@ -1446,7 +1446,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                                 </div>
                                 {isFloor
                                   ? <span className="text-micro font-mono text-green-400/70 tracking-wide">floor</span>
-                                  : <span className="text-micro font-mono text-gray-600">+{aboveFloor}g ({abovePct}%)</span>
+                                  : <span className="text-micro font-mono text-gray-600">+{aboveFloor} 🪙 ({abovePct}%)</span>
                                 }
                               </div>
                               {/* Info */}

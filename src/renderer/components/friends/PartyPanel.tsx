@@ -299,7 +299,7 @@ export function PartyPanel({ friends, onClose, onViewProfile, onMessageFriend }:
                       roundedClass="rounded-full"
                       ringInsetClass="-inset-0.5"
                     />
-                    <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-surface-0 ${f.is_online ? 'bg-accent' : 'bg-gray-600'}`} />
+                    <span className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-surface-0 ${f.is_online ? 'bg-green-500' : 'bg-gray-600'}`} />
                   </button>
 
                   {/* Info */}

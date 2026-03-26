@@ -56,7 +56,18 @@ export function ChestDrop() {
 
   const handleLater = () => {
     playClickSound()
-    if (current) clearByRewardId(current.rewardId)
+    if (!current) return
+    const liveChest = CHEST_DEFS[current.chestType]
+    if (liveChest) {
+      useNotificationStore.getState().push({
+        type: 'progression',
+        icon: liveChest.icon,
+        title: `Saved: ${liveChest.name}`,
+        body: 'Tap Open to claim it from your inbox.',
+        chestReward: { rewardId: current.rewardId, chestType: current.chestType, chestImage: liveChest.image, chestRarity: liveChest.rarity },
+      })
+    }
+    clearByRewardId(current.rewardId)
   }
 
   const handleOpen = () => {
