@@ -102,6 +102,23 @@ export function useProfileSync() {
       if (!supabase || !user) return
       await useGoldStore.getState().syncFromSupabase(user.id)
 
+      // Apply admin inventory grants (additive, bypasses local-authoritative logic)
+      if (supabase && user) {
+        supabase.from('admin_inventory_grants').select('id, item_id, quantity').eq('user_id', user.id)
+          .then(({ data: grants }) => {
+            if (!grants?.length) return
+            ensureInventoryHydrated()
+            const store = useInventoryStore.getState()
+            for (const g of grants) {
+              store.addItem(g.item_id, g.quantity)
+            }
+            // Delete applied grants
+            const ids = grants.map((g) => g.id)
+            supabase!.from('admin_inventory_grants').delete().in('id', ids).then(() => {})
+          })
+          .catch(() => {})
+      }
+
       // Inventory + seeds + seed zips sync — merge cloud → local so admin grants appear
       ensureInventoryHydrated()
       const { items, chests } = useInventoryStore.getState()

@@ -128,6 +128,22 @@ create policy "Users can delete own inventory"
   on public.user_inventory for delete
   using (auth.uid() = user_id);
 
+-- Admin inventory grants — written by dashboard, consumed by client on next sync
+create table if not exists public.admin_inventory_grants (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  item_id text not null,
+  quantity integer not null default 1 check (quantity > 0),
+  created_at timestamptz default now()
+);
+alter table public.admin_inventory_grants enable row level security;
+create policy "Users can read own inventory grants"
+  on public.admin_inventory_grants for select
+  using (auth.uid() = user_id);
+create policy "Users can delete own inventory grants"
+  on public.admin_inventory_grants for delete
+  using (auth.uid() = user_id);
+
 -- Achievements unlocked (for display on profile)
 create table if not exists public.user_achievements (
   id uuid primary key default uuid_generate_v4(),
@@ -735,3 +751,99 @@ END;
 $$;
 REVOKE ALL  ON FUNCTION public.get_email_by_username(text) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_email_by_username(text) TO anon, authenticated;
+
+-- ── Group Chats ───────────────────────────────────────────────────────────────
+
+create table if not exists group_chats (
+  id uuid primary key default gen_random_uuid(),
+  name text not null check (char_length(name) between 1 and 40),
+  owner_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists group_chat_members (
+  group_id uuid not null references group_chats(id) on delete cascade,
+  user_id  uuid not null references auth.users(id) on delete cascade,
+  joined_at timestamptz not null default now(),
+  primary key (group_id, user_id)
+);
+
+create table if not exists group_messages (
+  id         uuid primary key default gen_random_uuid(),
+  group_id   uuid not null references group_chats(id) on delete cascade,
+  sender_id  uuid not null references auth.users(id) on delete cascade,
+  body       text not null check (char_length(body) between 1 and 2000),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists group_messages_group_created on group_messages(group_id, created_at desc);
+create index if not exists group_chat_members_user on group_chat_members(user_id);
+
+alter table group_chats        enable row level security;
+alter table group_chat_members enable row level security;
+alter table group_messages     enable row level security;
+
+create policy "member can read group" on group_chats
+  for select using (
+    exists (select 1 from group_chat_members where group_id = group_chats.id and user_id = auth.uid())
+  );
+create policy "member can create group" on group_chats
+  for insert with check (owner_id = auth.uid());
+create policy "owner can update group" on group_chats
+  for update using (owner_id = auth.uid());
+create policy "owner can delete group" on group_chats
+  for delete using (owner_id = auth.uid());
+
+-- SECURITY DEFINER function to avoid self-referential RLS recursion on group_chat_members
+create or replace function public.is_group_member(gid uuid)
+returns boolean language sql security definer stable
+as $$
+  select exists (
+    select 1 from public.group_chat_members
+    where group_id = gid and user_id = auth.uid()
+  );
+$$;
+
+create policy "member can read members" on group_chat_members
+  for select using (public.is_group_member(group_id));
+create policy "owner can insert members" on group_chat_members
+  for insert with check (
+    user_id = auth.uid()
+    or exists (select 1 from group_chats where id = group_id and owner_id = auth.uid())
+  );
+create policy "owner or self can delete member" on group_chat_members
+  for delete using (
+    user_id = auth.uid()
+    or exists (select 1 from group_chats where id = group_id and owner_id = auth.uid())
+  );
+
+create policy "member can read messages" on group_messages
+  for select using (
+    exists (select 1 from group_chat_members where group_id = group_messages.group_id and user_id = auth.uid())
+  );
+create policy "member can send messages" on group_messages
+  for insert with check (
+    sender_id = auth.uid()
+    and exists (select 1 from group_chat_members where group_id = group_messages.group_id and user_id = auth.uid())
+  );
+
+-- ── Group message reactions ──────────────────────────────────────────────────
+create table if not exists group_message_reactions (
+  id               uuid primary key default gen_random_uuid(),
+  group_message_id uuid not null references group_messages(id) on delete cascade,
+  user_id          uuid not null references auth.users(id) on delete cascade,
+  reaction         text not null,
+  created_at       timestamptz not null default now(),
+  unique(group_message_id, user_id, reaction)
+);
+
+alter table group_message_reactions enable row level security;
+
+create policy "Users can view reactions" on group_message_reactions
+  for select using (true);
+
+create policy "Users can add their own reactions" on group_message_reactions
+  for insert with check (auth.uid() = user_id);
+
+create policy "Users can remove their own reactions" on group_message_reactions
+  for delete using (auth.uid() = user_id);

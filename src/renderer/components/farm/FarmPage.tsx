@@ -2260,6 +2260,8 @@ export function FarmPage() {
   const compostAll = useFarmStore((s) => s.compostAll)
   const compostedSlots = useFarmStore((s) => s.compostedSlots)
   const compostCount = useInventoryStore((s) => s.items['compost'] ?? 0)
+  const seedCabinetUnlocked = useFarmStore((s) => s.seedCabinetUnlocked)
+  const inventoryItems = useInventoryStore((s) => s.items)
   const activeField = useFarmStore((s) => s.activeField)
   const setActiveField = useFarmStore((s) => s.setActiveField)
   const farmhouseLevel = useFarmStore((s) => s.farmhouseLevel)
@@ -2268,7 +2270,7 @@ export function FarmPage() {
   const farmerLevel = skillLevelFromXP(skillXP['farmer'] ?? 0)
   const emptyUncompostedCount = Array.from({ length: unlockedSlots }, (_, i) => i).filter((i) => !planted[i] && !compostedSlots[i]).length
   const emptySlotCount = Array.from({ length: unlockedSlots }, (_, i) => i).filter((i) => !planted[i]).length
-  const hasAnySeed = SEED_DEFS.some((s) => (seeds[s.id] ?? 0) > 0)
+  const hasAnySeed = SEED_DEFS.some((s) => (seeds[s.id] ?? 0) > 0 || (!seedCabinetUnlocked && (inventoryItems[s.id] ?? 0) > 0))
   const activeFieldDef = FIELD_DEFS.find((f) => f.id === activeField) ?? FIELD_DEFS[0]
 
   // Rot tick
