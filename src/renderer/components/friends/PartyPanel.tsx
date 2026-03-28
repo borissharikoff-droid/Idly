@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { Users, Sword, Shield } from '../../lib/icons'
 import { motion, AnimatePresence } from 'framer-motion'
 import { usePartyStore } from '../../stores/partyStore'
 import { useAuthStore } from '../../stores/authStore'
@@ -92,7 +93,7 @@ export function PartyPanel({ friends, onClose, onViewProfile, onMessageFriend }:
               exit={{ opacity: 0 }}
               className="flex items-center gap-2.5 px-3 py-2.5 rounded border border-accent/20 bg-accent/5"
             >
-              <span className="text-base shrink-0">👥</span>
+              <Users className="w-4 h-4 shrink-0 text-accent/70" />
               <div className="flex-1 min-w-0">
                 <p className="text-caption text-white truncate">
                   {inv.from_username ?? 'Someone'} invited you to a party
@@ -122,12 +123,12 @@ export function PartyPanel({ friends, onClose, onViewProfile, onMessageFriend }:
             <p className="text-caption font-bold text-white mb-3">Party Perks</p>
             <div className="space-y-2">
               {([
-                ['⚔', '+5% XP', 'Bonus XP for all skills while in a party with 2+ members'],
-                ['🛡', 'Raid Roles', 'Tank absorbs boss damage · Healer restores party HP · DPS attacks'],
-                ['👥', 'Shared Raids', 'Coordinate multi-day boss raids with your party'],
-              ] as const).map(([icon, label, desc]) => (
+                { Icon: Sword,  label: '+5% XP',      desc: 'Bonus XP for all skills while in a party with 2+ members' },
+                { Icon: Shield, label: 'Raid Roles',   desc: 'Tank absorbs boss damage · Healer restores party HP · DPS attacks' },
+                { Icon: Users,  label: 'Shared Raids', desc: 'Coordinate multi-day boss raids with your party' },
+              ]).map(({ Icon, label, desc }) => (
                 <div key={label} className="flex items-start gap-2.5">
-                  <span className="text-base leading-none mt-0.5">{icon}</span>
+                  <Icon className="w-4 h-4 shrink-0 mt-0.5 text-gray-400" />
                   <div>
                     <p className="text-micro font-semibold text-white leading-none mb-0.5">{label}</p>
                     <p className="text-micro text-gray-500 leading-relaxed">{desc}</p>

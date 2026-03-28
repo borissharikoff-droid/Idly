@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Users } from '../../lib/icons'
 import { usePartyStore, subscribePartyInvitesRealtime, unsubscribePartyInvitesRealtime } from '../../stores/partyStore'
 import { usePartyCraftStore } from '../../stores/partyCraftStore'
 import { useAuthStore } from '../../stores/authStore'
@@ -31,7 +32,7 @@ function PartyInviteOverlay() {
           >
             {/* Header */}
             <div className="px-5 pt-5 pb-3 text-center">
-              <p className="text-2xl mb-2">👥</p>
+              <div className="flex items-center justify-center mb-2"><Users className="w-8 h-8 text-accent/70" /></div>
               <p className="text-body font-bold text-white">Party Invite</p>
               <p className="text-caption text-gray-400 mt-1">
                 <span className="text-accent font-semibold">{invite.from_username ?? 'Someone'}</span>

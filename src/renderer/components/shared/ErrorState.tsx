@@ -1,3 +1,5 @@
+import { AlertTriangle } from '../../lib/icons'
+
 interface ErrorStateProps {
   message: string
   onRetry?: () => void
@@ -19,8 +21,8 @@ export function ErrorState({
       role="status"
       aria-live="polite"
     >
-      <div className="w-12 h-12 rounded-card bg-red-500/[0.08] border border-red-500/20 flex items-center justify-center mb-4 text-xl leading-none">
-        ⚠️
+      <div className="w-12 h-12 rounded-card bg-red-500/[0.08] border border-red-500/20 flex items-center justify-center mb-4">
+        <AlertTriangle className="w-5 h-5 text-red-400" />
       </div>
       <p className="text-red-400 text-sm font-medium mb-1">Something went wrong</p>
       <p className="text-gray-500 text-xs leading-relaxed max-w-[220px] mb-4">{message}</p>

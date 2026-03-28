@@ -410,6 +410,9 @@ export const useArenaStore = create<ArenaState>()(
       endBattle() {
         const { activeBattle, activeDungeon } = get()
         if (!activeBattle) return { goldLost: 0, chest: null, lostItem: null, materialDrop: null, dungeonGold: 0, warriorXP: 0, insuranceUsed: false }
+        // Immediately clear activeBattle to make this call idempotent —
+        // prevents ArenaPage and useArenaBattleTick from both resolving the same battle.
+        set({ activeBattle: null })
 
         const fightElapsed = (Date.now() - activeBattle.startTime) / 1000
         let state: ReturnType<typeof computeBattleStateAtTime>
@@ -802,11 +805,11 @@ export const useArenaStore = create<ArenaState>()(
             } else {
               failed = true
               failedAt = mob.name
-              // Death penalty
+              // Death penalty applied live to wallet; do NOT subtract from totalGold
+              // (totalGold only tracks earned gold — prevents negative total voiding the credit)
               const currentGold = useGoldStore.getState().gold
               const goldLost = Math.floor(currentGold * DEATH_GOLD_PENALTY)
               if (goldLost > 0) useGoldStore.getState().addGold(-goldLost)
-              totalGold -= goldLost
               const lostResult = loseRandomEquippedItem()
               if (lostResult?.insuranceUsed) {
                 lostItem = { name: 'Death Insurance consumed', icon: '🛡️' }
@@ -887,7 +890,7 @@ export const useArenaStore = create<ArenaState>()(
             const currentGold = useGoldStore.getState().gold
             const goldLost = Math.floor(currentGold * DEATH_GOLD_PENALTY)
             if (goldLost > 0) useGoldStore.getState().addGold(-goldLost)
-            totalGold -= goldLost
+            // Do NOT subtract from totalGold — death penalty already taken live from wallet
             track('dungeon_death', { zone_id: zoneId, gold_lost: goldLost })
             const bossLostResult = loseRandomEquippedItem()
             if (bossLostResult?.insuranceUsed) {
@@ -928,7 +931,6 @@ export const useArenaStore = create<ArenaState>()(
         clearedZones: s.clearedZones,
         killCounts: s.killCounts,
         dailyBossClaimedDate: s.dailyBossClaimedDate,
-        isAutoRunning: s.isAutoRunning,
       }),
     },
   ),

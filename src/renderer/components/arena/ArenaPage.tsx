@@ -109,6 +109,8 @@ function ZoneCard({
 
   // Material drop for current mob
 
+  const [reqOpen, setReqOpen] = useState(false)
+
   // ── Floating damage numbers ──────────────────────────────────────────────
   const [dmgNumbers, setDmgNumbers] = useState<Array<{ id: string; value: number; target: 'player' | 'boss' }>>([])
   const prevPlayerHpZoneRef = useRef<number | null>(null)
@@ -246,26 +248,17 @@ function ZoneCard({
         {/* Power bar + Requirements + CTA (hidden while active battle) */}
         {!isActive && (
           <>
-            {/* Power match bar */}
-            {playerAtk !== undefined && unlocked && (() => {
-              const ratio = playerAtk / zone.boss.atk
-              const barPct = Math.min((ratio / 1.5) * 100, 100)
-              const barColor = ratio >= 1.2 ? '#4ade80' : ratio >= 0.85 ? '#fbbf24' : '#f87171'
-              const label = ratio >= 1.2 ? 'Ready' : ratio >= 0.85 ? 'Caution' : 'Danger'
-              return (
-                <div className="px-4 pb-2 flex items-center gap-2">
-                  <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.08)' }}>
-                    <div className="h-full rounded-full transition-all duration-700"
-                      style={{ width: `${barPct}%`, background: barColor, boxShadow: `0 0 6px ${barColor}70` }} />
-                  </div>
-                  <span className="text-micro font-mono font-semibold shrink-0 w-12 text-right" style={{ color: barColor }}>{label}</span>
-                </div>
-              )
-            })()}
-
             {/* Requirements section */}
-            <div className="px-4 pb-3 space-y-1.5 border-t" style={{ borderColor: `${tc}12` }}>
-              <p className="text-micro uppercase tracking-wider font-mono text-gray-600 mt-2.5">Requirements</p>
+            <div className="border-t" style={{ borderColor: `${tc}12` }}>
+              <button
+                type="button"
+                onClick={() => setReqOpen((v) => !v)}
+                className="w-full flex items-center justify-between px-4 py-2 text-left hover:bg-white/[0.03] transition-colors"
+              >
+                <span className="text-micro uppercase tracking-wider font-mono text-gray-600">Requirements</span>
+                <span className="text-micro text-gray-600 font-mono">{reqOpen ? '▲' : '▼'}</span>
+              </button>
+            <div className={`px-4 pb-3 space-y-1.5 ${reqOpen ? '' : 'hidden'}`}>
 
               {/* Prev zone unlock */}
               {zone.prevZoneId && (() => {
@@ -333,6 +326,7 @@ function ZoneCard({
               {!zone.prevZoneId && !zone.warriorLevelRequired && (!zone.gateItems?.length) && (!zone.entryCost?.length) && (
                 <p className="text-micro font-mono text-gray-600 italic">No requirements</p>
               )}
+            </div>
             </div>
 
             {/* Food selector */}

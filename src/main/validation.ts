@@ -64,3 +64,17 @@ export const restoreSkillXPSchema = z.array(
     total_xp: z.number().int().nonnegative(),
   }),
 ).max(50)
+
+export const createTaskSchema = z.object({
+  id: z.string().min(1).max(128),
+  text: z.string().min(1).max(2000),
+})
+
+export const saveCheckpointSchema = z.object({
+  sessionId: z.string().min(1).max(128),
+  startTime: z.number().int().positive(),
+  elapsedSeconds: z.number().int().nonnegative(),
+  pausedAccumulated: z.number().int().nonnegative(),
+  sessionSkillXP: z.record(z.string(), z.number().int().nonnegative()).optional(),
+  sessionActivities: z.array(activitySchema).max(50000).optional(),
+})

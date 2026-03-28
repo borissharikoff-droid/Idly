@@ -23,6 +23,8 @@ import {
   localStatKey,
   localStatValue,
   restoreSkillXPSchema,
+  createTaskSchema,
+  saveCheckpointSchema,
 } from './validation'
 import { IPC_CHANNELS } from '../shared/ipcChannels'
 
@@ -161,9 +163,7 @@ export function registerIpcHandlers() {
   // Grind Tasks
   ipcMain.handle(IPC_CHANNELS.db.getTasks, () => db.getTasks())
   ipcMain.handle(IPC_CHANNELS.db.createTask, (_, task: unknown) => {
-    const parsed = task as { id: string; text: string }
-    if (!parsed.id || !parsed.text) throw new Error('Invalid task')
-    return db.createTask(parsed)
+    return db.createTask(createTaskSchema.parse(task))
   })
   ipcMain.handle(IPC_CHANNELS.db.toggleTask, (_, id: unknown) => db.toggleTask(stringId.parse(id)))
   ipcMain.handle(IPC_CHANNELS.db.updateTaskText, (_, id: unknown, text: unknown) => {
@@ -220,16 +220,7 @@ export function registerIpcHandlers() {
 
   // Session Checkpoint (crash recovery)
   ipcMain.handle(IPC_CHANNELS.db.saveCheckpoint, (_, data: unknown) => {
-    const parsed = data as {
-      sessionId: string
-      startTime: number
-      elapsedSeconds: number
-      pausedAccumulated: number
-      sessionSkillXP?: Record<string, number>
-      sessionActivities?: { appName: string; windowTitle: string; category: string; startTime: number; endTime: number; keystrokes?: number }[]
-    }
-    if (!parsed || typeof parsed.sessionId !== 'string') throw new Error('Invalid checkpoint data')
-    return db.saveCheckpoint(parsed)
+    return db.saveCheckpoint(saveCheckpointSchema.parse(data))
   })
   ipcMain.handle(IPC_CHANNELS.db.getCheckpoint, () => db.getCheckpoint())
   ipcMain.handle(IPC_CHANNELS.db.clearCheckpoint, () => db.clearCheckpoint())

@@ -3,6 +3,7 @@ import { computePlayerStats } from '../../lib/combat'
 import { LootVisual, RARITY_THEME, normalizeRarity, SLOT_META } from '../loot/LootUI'
 import { BuffTooltip } from '../shared/BuffTooltip'
 import { playClickSound } from '../../lib/sounds'
+import { Sword, Heart, Droplets, Shield, Sparkles } from '../../lib/icons'
 
 export interface CharacterPanelProps {
   equippedBySlot: Partial<Record<LootSlot, string>>
@@ -163,11 +164,11 @@ export function CharacterPanel({
 
   const PMAX = POTION_MAX
   const statRows = [
-    { icon: '⚔', value: playerStats.atk,     label: 'ATK', unit: '/s', color: '#f87171', maxed: (permanentStats?.atk ?? 0) >= PMAX },
-    { icon: '♥', value: playerStats.hp,       label: 'HP',  unit: '',   color: '#4ade80', maxed: (permanentStats?.hp ?? 0) >= PMAX },
-    { icon: '❋', value: playerStats.hpRegen,  label: 'REG', unit: '/s', color: '#22d3ee', maxed: (permanentStats?.hpRegen ?? 0) >= PMAX },
-    { icon: '🛡', value: playerStats.def,     label: 'DEF', unit: '',   color: '#818cf8', maxed: (permanentStats?.def ?? 0) >= PMAX },
-    { icon: '✦', value: ip,                   label: 'IP',  unit: '',   color: '#fcd34d', maxed: false },
+    { Icon: Sword,     value: playerStats.atk,    label: 'ATK', unit: '/s', color: '#f87171', maxed: (permanentStats?.atk ?? 0) >= PMAX },
+    { Icon: Heart,     value: playerStats.hp,      label: 'HP',  unit: '',   color: '#4ade80', maxed: (permanentStats?.hp ?? 0) >= PMAX },
+    { Icon: Droplets,  value: playerStats.hpRegen, label: 'REG', unit: '/s', color: '#22d3ee', maxed: (permanentStats?.hpRegen ?? 0) >= PMAX },
+    { Icon: Shield,    value: playerStats.def,     label: 'DEF', unit: '',   color: '#818cf8', maxed: (permanentStats?.def ?? 0) >= PMAX },
+    { Icon: Sparkles,  value: ip,                  label: 'IP',  unit: '',   color: '#fcd34d', maxed: false },
   ]
 
   const p = { equippedBySlot, onSlotClick, locked }
@@ -201,7 +202,7 @@ export function CharacterPanel({
 
       {/* Статы */}
       <div className="grid grid-cols-5 gap-1.5">
-        {statRows.map(({ icon, value, label, unit, color, maxed }) => {
+        {statRows.map(({ Icon, value, label, unit, color, maxed }) => {
           const c = maxed ? '#f59e0b' : color
           return (
             <div
@@ -213,7 +214,7 @@ export function CharacterPanel({
                 boxShadow: `inset 0 0 8px rgba(0,0,0,0.4)`,
               }}
             >
-              <span className="text-caption leading-none flex-shrink-0" style={{ color: c, textShadow: `0 0 8px ${c}88` }}>{icon}</span>
+              <Icon className="w-3 h-3 flex-shrink-0" style={{ color: c, filter: `drop-shadow(0 0 4px ${c}88)` }} />
               <div className="min-w-0 flex-1">
                 <p className="text-body font-mono font-bold tabular-nums leading-none" style={{ color: c }}>{value}</p>
                 <p className="text-[7px] font-mono uppercase tracking-wide leading-none mt-[3px]" style={{ color: `${c}66` }}>{label}{unit}</p>

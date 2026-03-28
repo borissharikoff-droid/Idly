@@ -10,6 +10,7 @@
 
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
+import { AlertTriangle } from '../../lib/icons'
 
 interface StreakBarProps {
   /** Changes each new session — triggers streak refresh */
@@ -75,10 +76,10 @@ export function StreakBar({ sessionVersion }: StreakBarProps) {
         <motion.span
           animate={{ opacity: [1, 0.4, 1] }}
           transition={{ duration: 1.2, repeat: Infinity }}
-          className="text-xs"
+          className="flex items-center"
           aria-hidden
         >
-          ⚠️
+          <AlertTriangle className="w-3.5 h-3.5" />
         </motion.span>
       )}
       <span className={`text-xs font-mono ${textClass}`}>{label}</span>

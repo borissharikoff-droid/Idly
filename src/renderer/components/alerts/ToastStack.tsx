@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useToastStore, type Toast } from '../../stores/toastStore'
 import { useArenaStore } from '../../stores/arenaStore'
@@ -7,6 +7,7 @@ import { LOOT_ITEMS, type BonusMaterial, type ChestType } from '../../lib/loot'
 import { useInventoryStore } from '../../stores/inventoryStore'
 import { playClickSound } from '../../lib/sounds'
 import type { TabId } from '../../App'
+import { Trophy, Skull, Sword, MessageCircle, Tag, ShoppingCart, Check, X as XIcon } from '../../lib/icons'
 
 function formatShort(n: number): string {
   if (!Number.isFinite(n) || n < 0) return '0'
@@ -61,17 +62,17 @@ function ToastItem({ toast, onDismiss, onNavigate }: { toast: Toast; onDismiss: 
   const accent = accentFor(toast)
   const d = toast.data
 
-  const icon = (() => {
-    if (d.kind === 'arena_boss')     return d.victory ? '🏆' : '💀'
-    if (d.kind === 'mob_kill')       return '⚔️'
-    if (d.kind === 'craft_complete') return d.itemIcon
-    if (d.kind === 'cook_complete')  return d.itemIcon
-    if (d.kind === 'friend_online')  return '🟢'
-    if (d.kind === 'friend_message')      return '💬'
-    if (d.kind === 'marketplace_listed') return '🏷️'
-    if (d.kind === 'marketplace_sold')   return '🛒'
-    if (d.kind === 'crop_rot')           return '🥀'
-    if (d.kind === 'generic')            return d.type === 'success' ? '✓' : '✕'
+  const icon = ((): ReactNode => {
+    if (d.kind === 'arena_boss')          return d.victory ? <Trophy className="w-4 h-4" style={{ color: '#FACC15' }} /> : <Skull className="w-4 h-4" style={{ color: '#f87171' }} />
+    if (d.kind === 'mob_kill')            return <Sword className="w-4 h-4" style={{ color: '#f87171' }} />
+    if (d.kind === 'craft_complete')      return <span className="text-lg leading-none">{d.itemIcon}</span>
+    if (d.kind === 'cook_complete')       return <span className="text-lg leading-none">{d.itemIcon}</span>
+    if (d.kind === 'friend_online')       return <div className="w-2.5 h-2.5 rounded-full bg-green-500 ring-2 ring-green-500/30" />
+    if (d.kind === 'friend_message')      return <MessageCircle className="w-4 h-4" style={{ color: '#57F287' }} />
+    if (d.kind === 'marketplace_listed')  return <Tag className="w-4 h-4" style={{ color: '#FB923C' }} />
+    if (d.kind === 'marketplace_sold')    return <ShoppingCart className="w-4 h-4" style={{ color: '#22c55e' }} />
+    if (d.kind === 'crop_rot')            return <span className="text-lg leading-none">🥀</span>
+    if (d.kind === 'generic')             return d.type === 'success' ? <Check className="w-4 h-4 text-accent" /> : <XIcon className="w-4 h-4 text-red-400" />
   })()
 
   const title = (() => {
@@ -169,7 +170,7 @@ function ToastItem({ toast, onDismiss, onNavigate }: { toast: Toast; onDismiss: 
             if (tab && onNavigate) { playClickSound(); onNavigate(tab); onDismiss() }
           }}
         >
-          <span className="text-lg leading-none shrink-0">{icon}</span>
+          <span className="shrink-0 flex items-center justify-center w-5 h-5">{icon}</span>
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold text-white leading-tight truncate">{title}</p>
             {body && (

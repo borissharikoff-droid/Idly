@@ -674,40 +674,47 @@ export function InventoryPage({ onBack, onNavigateFarm }: { onBack: () => void; 
               )
             }
 
-            // grid (2-col) mode
+            // grid (3-col) mode
             return (
               <button
                 key={slot.id}
                 type="button"
                 onClick={onClickCard}
                 onContextMenu={onRightClick}
-                className="relative flex items-center gap-2 p-2 rounded border border-white/[0.06] bg-surface-0/50 hover:bg-surface-0/80 active:scale-[0.98] transition-all text-left overflow-hidden"
+                className="relative flex items-center gap-2 px-2 py-1.5 rounded active:scale-[0.98] transition-all text-left overflow-hidden bg-[#0d0d18] hover:bg-[#121220]"
+                style={{ border: `1px solid ${slotTheme.color}${isEquipped ? '50' : '22'}` }}
               >
                 {isPending && (
-                  <span className="absolute inset-0 rounded pointer-events-none animate-pulse border border-amber-400/30" />
+                  <span className="absolute inset-0 pointer-events-none animate-pulse border border-amber-400/30 rounded" />
                 )}
-                {/* Icon box */}
+                {/* Left rarity stripe */}
                 <div
-                  className="w-10 h-10 rounded flex items-center justify-center flex-shrink-0 overflow-hidden relative"
-                  style={{ background: '#0a0a14', border: `1px solid ${slotTheme.color}30` }}
-                >
-                  <LootVisual icon={slot.icon} image={slotImage} className="w-6 h-6 object-contain" scale={lootItem?.renderScale ?? 1} />
-                  {isEquipped && (
-                    <span className="absolute bottom-0 right-0 text-[6px] font-bold font-mono px-0.5 rounded-tl leading-tight" style={{ background: slotTheme.color, color: '#000' }}>EQ</span>
-                  )}
+                  className="absolute left-0 inset-y-0 w-[3px] rounded-l"
+                  style={{ background: slotTheme.color, opacity: rarityNorm === 'common' ? 0.4 : 0.9 }}
+                />
+                {/* Icon */}
+                <div className="relative flex-shrink-0 w-8 h-8 flex items-center justify-center ml-0.5">
+                  <LootVisual icon={slot.icon} image={slotImage} className="w-7 h-7 object-contain" scale={lootItem?.renderScale ?? 1} />
                 </div>
                 {/* Info */}
-                <div className="flex-1 min-w-0 overflow-hidden">
-                  <p className="text-[10px] font-semibold text-gray-100 leading-tight truncate">{slot.title}</p>
-                  <p className="text-[9px] font-mono uppercase truncate mt-0.5" style={{ color: slotTheme.color }}>
-                    {rarityNorm}{slot.quantity > 1 ? ` ×${slot.quantity}` : ''}{typeLabel ? ` · ${typeLabel}` : ''}
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-semibold text-white leading-tight truncate">{slot.title}</p>
+                  <p className="text-[9px] font-mono font-bold uppercase leading-tight mt-0.5" style={{ color: slotTheme.color }}>
+                    {rarityNorm}
                   </p>
-                  {perkChip && (
-                    <p className="text-[9px] text-gray-500 truncate">{perkChip}</p>
+                </div>
+                {/* Right side badges */}
+                <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                  {isEquipped && (
+                    <span
+                      className="text-[7px] font-bold font-mono px-1 py-px rounded leading-tight"
+                      style={{ background: slotTheme.color, color: '#000' }}
+                    >EQ</span>
+                  )}
+                  {slot.quantity > 1 && (
+                    <span className="text-[9px] font-mono text-gray-400 leading-tight">×{slot.quantity}</span>
                   )}
                 </div>
-                {/* Left rarity accent */}
-                <div className="absolute left-0 top-1 bottom-1 w-[2px] rounded-full" style={{ background: slotTheme.color, opacity: rarityNorm === 'common' ? 0.3 : 0.7 }} />
               </button>
             )
           }

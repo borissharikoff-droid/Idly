@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { getLatestPatch, getAppVersion, CHANGE_TYPE_META, type PatchNote } from '../lib/changelog'
 import { useNotificationStore } from '../stores/notificationStore'
@@ -26,6 +26,7 @@ function pushPatchNotification(patch: PatchNote) {
 export function useWhatsNew() {
   const [showModal, setShowModal] = useState(false)
   const [patch, setPatch] = useState<PatchNote | null>(null)
+  const [pendingShow, setPendingShow] = useState(false)
 
   useEffect(() => {
     const current = getAppVersion()
@@ -34,27 +35,32 @@ export function useWhatsNew() {
     if (seen === current) return
 
     const latest = getLatestPatch()
-    if (latest.version === current || !seen) {
-      // First install or matching version — show modal
-      setPatch(latest)
-      if (seen) {
-        // Not first install — show modal + notification
-        setShowModal(true)
-        pushPatchNotification(latest)
-      }
-      localStorage.setItem(SEEN_KEY, current)
+    setPatch(latest)
+    if (seen) {
+      // Not first install — queue modal until daily login flow is done
+      setPendingShow(true)
+      pushPatchNotification(latest)
     } else {
-      // Version mismatch but no matching changelog entry — just mark seen
-      localStorage.setItem(SEEN_KEY, current)
+      // First install — show immediately (no daily login flow to wait for)
+      setPendingShow(true)
     }
+    localStorage.setItem(SEEN_KEY, current)
   }, [])
+
+  /** Call this once the daily login flow is resolved (claimed, skipped, or not applicable). */
+  const releasePending = useCallback(() => {
+    if (pendingShow) {
+      setPendingShow(false)
+      setTimeout(() => setShowModal(true), 400)
+    }
+  }, [pendingShow])
 
   const showRemotePatch = (p: PatchNote) => {
     setPatch(p)
     setShowModal(true)
   }
 
-  return { showModal, patch, closeModal: () => setShowModal(false), showRemotePatch }
+  return { showModal, patch, closeModal: () => setShowModal(false), showRemotePatch, releasePending }
 }
 
 /** Standalone trigger — call to show patch notes on demand (e.g. from Settings). */

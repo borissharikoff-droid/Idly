@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { MessageCircle } from '../../lib/icons'
+import { MessageCircle, Users } from '../../lib/icons'
 import type { FriendProfile } from '../../hooks/useFriends'
 import { getSkillByName, getSkillActivityLine, MAX_TOTAL_SKILL_LEVEL } from '../../lib/skills'
 import { playClickSound } from '../../lib/sounds'
@@ -57,7 +57,7 @@ export function FriendList({ friends, onSelectFriend, onMessageFriend, unreadByF
   if (friends.length === 0) {
     return (
       <div className="rounded-card bg-surface-2/80 border border-white/10 p-6 text-center">
-        <span className="text-3xl block mb-3">👥</span>
+        <div className="w-10 h-10 rounded-full bg-white/[0.04] border border-white/10 flex items-center justify-center mx-auto mb-3"><Users className="w-5 h-5 text-gray-500" /></div>
         <p className="text-white font-medium text-sm mb-1">No squad yet</p>
         <p className="text-gray-500 text-xs mb-3">Add your first friend by username to compete and flex stats.</p>
       </div>

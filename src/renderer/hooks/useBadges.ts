@@ -13,7 +13,7 @@ export const BADGE_READY = 'bg-lime-500'
 
 export function useBadges() {
   const { queue, currentAlert } = useAlertStore()
-  const { incomingRequestsCount, unreadMessagesCount, marketplaceSaleCount } = useNavBadgeStore()
+  const { incomingRequestsCount, unreadMessagesCount, marketplaceSaleCount, unreadGroupsCount } = useNavBadgeStore()
   const isArenaBattleActive = useArenaStore((s) => !!s.activeBattle)
   const claimableBounties = useBountyStore((s) => s.bounties.filter((b) => !b.claimed && b.progress >= b.targetCount).length)
   const claimableWeekly = useWeeklyStore((s) => s.bounties.filter((b) => !b.claimed && b.progress >= b.targetCount).length)
@@ -46,7 +46,7 @@ export function useBadges() {
 
   return {
     badgeHome: (currentAlert && !currentAlert.claimed ? 1 : 0) + queue.length,
-    badgeFriends: incomingRequestsCount + unreadMessagesCount,
+    badgeFriends: incomingRequestsCount + unreadMessagesCount + unreadGroupsCount,
     badgeFarm,
     badgeMarketplace: marketplaceSaleCount,
     badgeProfile: claimableBounties + claimableWeekly,
@@ -55,6 +55,6 @@ export function useBadges() {
     isCraftingActive,
     isCookingActive,
     isHomeLootBadge: hasUnclaimedLoot,
-    isFriendsUrgent: incomingRequestsCount > 0 || unreadMessagesCount > 0,
+    isFriendsUrgent: incomingRequestsCount > 0 || unreadMessagesCount > 0 || unreadGroupsCount > 0,
   }
 }

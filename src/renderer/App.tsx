@@ -194,6 +194,17 @@ export default function App() {
     })()
     : null
   useEffect(() => { setupAfkListener() }, [])
+
+  // Auto-start grind on launch if enabled
+  useEffect(() => {
+    try {
+      if (localStorage.getItem('grindly_auto_start_grind') === 'true'
+          && useSessionStore.getState().status === 'idle') {
+        useSessionStore.getState().start().catch(() => {})
+      }
+    } catch { /* ignore */ }
+  }, [])
+
   usePresenceSync(presenceLabel, status === 'running', currentActivity?.appName ?? null, sessionStartTime, isSystemIdle)
 
   // ── Discord Rich Presence ──────────────────────────────────────────────────
@@ -362,16 +373,20 @@ export default function App() {
 
     const checkStreak = async () => {
       const api = window.electronAPI
-      if (!api?.db?.getStreak) return
+      if (!api?.db?.getStreak) { whatsNew.releasePending(); return }
 
       try {
         const streak = await api.db.getStreak()
         if (streak >= 2) {
           setStreakCount(streak)
           setShowStreak(true)
+        } else {
+          // No streak overlay — daily login flow not applicable, release WhatsNew now
+          whatsNew.releasePending()
         }
       } catch {
         // non-critical — streak overlay simply won't show
+        whatsNew.releasePending()
       }
     }
 
@@ -592,17 +607,21 @@ export default function App() {
             {showStreak && streakCount >= 2 && (
               <StreakOverlay streak={streakCount} onClose={() => {
                 setShowStreak(false)
-                if (canClaimToday()) setTimeout(() => setShowAppDailyLogin(true), 300)
+                if (canClaimToday()) {
+                  setTimeout(() => setShowAppDailyLogin(true), 300)
+                } else {
+                  whatsNew.releasePending()
+                }
               }} />
             )}
             {showAppDailyLogin && (
               <DailyLoginCalendar
-                onClose={() => setShowAppDailyLogin(false)}
+                onClose={() => { setShowAppDailyLogin(false); whatsNew.releasePending() }}
                 onClaimed={(r) => { setShowAppDailyLogin(false); setAppClaimedReward(r) }}
               />
             )}
             {appClaimedReward && (
-              <ClaimBurst reward={appClaimedReward} onDone={() => setAppClaimedReward(null)} />
+              <ClaimBurst reward={appClaimedReward} onDone={() => { setAppClaimedReward(null); whatsNew.releasePending() }} />
             )}
           </AnimatePresence>
           <LootDrop />

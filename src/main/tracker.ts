@@ -50,8 +50,6 @@ public class WinApi {
     [DllImport("user32.dll")]
     public static extern short GetAsyncKeyState(int vKey);
     [DllImport("user32.dll")]
-    public static extern uint GetTickCount();
-    [DllImport("user32.dll")]
     public static extern bool GetLastInputInfo(ref LASTINPUTINFO plii);
     [StructLayout(LayoutKind.Sequential)]
     public struct LASTINPUTINFO {
@@ -91,8 +89,11 @@ public class WinApi {
         LASTINPUTINFO lii = new LASTINPUTINFO();
         lii.cbSize = (uint)Marshal.SizeOf(typeof(LASTINPUTINFO));
         if (!GetLastInputInfo(ref lii)) return 0;
-        uint now = GetTickCount();
-        return (int)(now - lii.dwTime);
+        // Use TickCount64 to avoid 32-bit overflow at ~49.7 days of uptime
+        long now = Environment.TickCount64;
+        long elapsed = now - lii.dwTime;
+        if (elapsed < 0) elapsed = 0; // guard against dwTime > now at startup
+        return (int)Math.Min(elapsed, int.MaxValue);
     }
     private static string GetProcessName(uint pid) {
         try {
@@ -1082,11 +1083,17 @@ export function getTrackerApi() {
       return result
     },
     pause() {
+      const now = Date.now()
+      pushCurrentSegment(now)
+      currentSegmentActivity = null
+      currentSegmentCategories = []
+      currentSegmentKeystrokes = 0
       isPaused = true
     },
     resume() {
       isPaused = false
       isIdle = false
+      currentSegmentStart = Date.now()
     },
     getCurrentActivity(): ActivitySnapshot | null {
       return lastActivity

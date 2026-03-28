@@ -28,7 +28,7 @@ export function levelFromTotalXP(totalXP: number): number {
   if (totalXP < 0) return 1
   let level = 1
   let xpRemaining = totalXP
-  while (xpRemaining >= xpRequiredForLevel(level)) {
+  while (level < 99 && xpRemaining >= xpRequiredForLevel(level)) {
     xpRemaining -= xpRequiredForLevel(level)
     level++
   }
@@ -331,7 +331,7 @@ const ACHIEVEMENTS_BASE: AchievementDef[] = [
 
   // Arena achievements
   { id: 'first_dungeon', name: 'Dungeon Delver', description: 'Complete 1 dungeon', icon: '🏰', xpReward: 20, reward: { type: 'badge', value: '🏰', label: 'Dungeon badge' }, category: 'grind' },
-  { id: 'clear_all_zones', name: 'Zone Clearer', description: 'Clear all 6 zones', icon: '🗺️', xpReward: 250, reward: { type: 'profile_frame', value: 'conqueror', label: 'Conqueror frame unlocked' }, category: 'grind' },
+  { id: 'clear_all_zones', name: 'Zone Clearer', description: 'Clear all 8 zones', icon: '🗺️', xpReward: 250, reward: { type: 'profile_frame', value: 'conqueror', label: 'Conqueror frame unlocked' }, category: 'grind' },
   { id: 'kill_100_mobs', name: 'Monster Slayer', description: 'Kill 100 mobs', icon: '💀', xpReward: 100, reward: { type: 'badge', value: '💀', label: 'Slayer badge' }, category: 'grind' },
   { id: 'dragon_slayer', name: 'Dragon Slayer', description: 'Defeat the Ancient Dragon', icon: '🐉', xpReward: 300, reward: { type: 'avatar', value: '🐉', label: 'Dragon Slayer avatar' }, category: 'grind' },
 
@@ -414,7 +414,7 @@ export function getAchievementProgress(
     case 'cook_mythic': return fixed(ctx.hasCookedMythic ? 1 : 0, 1, 'mythic dishes')
     // Arena
     case 'first_dungeon': return fixed(ctx.totalDungeonCompletions ?? 0, 1, 'dungeons')
-    case 'clear_all_zones': return fixed(ctx.clearedZoneCount ?? 0, 6, 'zones')
+    case 'clear_all_zones': return fixed(ctx.clearedZoneCount ?? 0, 8, 'zones')
     case 'kill_100_mobs': return fixed(ctx.totalMobKills ?? 0, 100, 'mobs')
     case 'dragon_slayer': return fixed(ctx.hasDragonKill ? 1 : 0, 1, 'dragon kills')
     // Gold
@@ -523,7 +523,7 @@ export function checkGameAchievements(
     { id: 'cook_mythic', pass: stats.hasCookedMythic },
     // Arena
     { id: 'first_dungeon', pass: stats.totalDungeonCompletions >= 1 },
-    { id: 'clear_all_zones', pass: stats.clearedZoneCount >= 6 },
+    { id: 'clear_all_zones', pass: stats.clearedZoneCount >= 8 },
     { id: 'kill_100_mobs', pass: stats.totalMobKills >= 100 },
     { id: 'dragon_slayer', pass: stats.hasDragonKill },
     // Gold

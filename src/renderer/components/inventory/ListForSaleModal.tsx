@@ -47,7 +47,7 @@ export function ListForSaleModal({ itemId, onClose, onListed, maxQty = 1, onDedu
   const clampedMaxQty = Math.max(1, maxQty)
 
   const handleList = async () => {
-    if (!user) return
+    if (loading || !user) return
     setError(null)
     setLoading(true)
     const { deleteItem, addItem } = useInventoryStore.getState()

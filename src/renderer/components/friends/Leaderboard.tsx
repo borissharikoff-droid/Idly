@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
+import { Trophy } from '../../lib/icons'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
 import { ensureInventoryHydrated, useInventoryStore } from '../../stores/inventoryStore'
@@ -281,7 +282,7 @@ export function Leaderboard({ onSelectUser }: LeaderboardProps) {
         })}
         {sortedRows.length === 0 && (
           <div className="py-4 text-center">
-            <span className="text-2xl block mb-2">🏆</span>
+            <div className="flex items-center justify-center mb-2"><Trophy className="w-7 h-7 text-gray-600" /></div>
             <p className="text-gray-500 text-sm">No data yet.</p>
             <p className="text-gray-600 text-xs mt-1">Add friends and start grinding to populate the leaderboard.</p>
           </div>

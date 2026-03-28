@@ -9,6 +9,8 @@ interface NavBadgeStore {
   marketplaceSaleCount: number
   /** Unclaimed profile rewards (achievements + quests) */
   profileUnclaimedCount: number
+  /** Groups with unread messages */
+  unreadGroupsCount: number
   setIncomingRequestsCount: (n: number) => void
   setUnreadMessagesCount: (n: number) => void
   addUnreadMessages: (n: number) => void
@@ -16,6 +18,7 @@ interface NavBadgeStore {
   addMarketplaceSale: () => void
   clearMarketplaceSale: () => void
   setProfileUnclaimedCount: (n: number) => void
+  setUnreadGroupsCount: (n: number) => void
 }
 
 export const useNavBadgeStore = create<NavBadgeStore>((set) => ({
@@ -23,6 +26,7 @@ export const useNavBadgeStore = create<NavBadgeStore>((set) => ({
   unreadMessagesCount: 0,
   marketplaceSaleCount: 0,
   profileUnclaimedCount: 0,
+  unreadGroupsCount: 0,
   setIncomingRequestsCount: (n) => set({ incomingRequestsCount: n }),
   setUnreadMessagesCount: (n) => set({ unreadMessagesCount: n }),
   addUnreadMessages: (n) => set((s) => ({ unreadMessagesCount: s.unreadMessagesCount + n })),
@@ -30,4 +34,5 @@ export const useNavBadgeStore = create<NavBadgeStore>((set) => ({
   addMarketplaceSale: () => set((s) => ({ marketplaceSaleCount: s.marketplaceSaleCount + 1 })),
   clearMarketplaceSale: () => set({ marketplaceSaleCount: 0 }),
   setProfileUnclaimedCount: (n) => set({ profileUnclaimedCount: n }),
+  setUnreadGroupsCount: (n) => set({ unreadGroupsCount: n }),
 }))

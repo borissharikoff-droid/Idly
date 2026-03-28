@@ -48,9 +48,8 @@ export function AddFriend({ onAdded }: AddFriendProps) {
     <motion.div
       initial={{ opacity: 0, y: 5 }}
       animate={{ opacity: 1, y: 0 }}
-      className="rounded-card bg-surface-2/80 border border-white/10 p-4"
+      className="rounded-card bg-surface-2/80 border border-white/10 p-3"
     >
-      <p className="text-xs uppercase tracking-wider text-gray-400 font-mono mb-3">[ add to squad ]</p>
       <form onSubmit={handleAdd} className="flex gap-2">
         <input
           type="text"

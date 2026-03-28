@@ -1212,7 +1212,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                 animate={{ opacity: 1, scale: 1 }}
                 className="py-14 text-center rounded-card border border-white/[0.06] bg-surface-1/40"
               >
-                <span className="text-4xl mb-3 block opacity-40">🛒</span>
+                <div className="flex justify-center mb-3 opacity-40"><ShoppingCart className="w-10 h-10 text-gray-400" /></div>
                 <p className="text-xs text-gray-400 font-medium">
                   {otherCount === 0 ? 'No listings from other players' : 'No listings match your filters'}
                 </p>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Users } from '../../lib/icons'
 import { fmt } from '../../lib/format'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useGuildStore } from '../../stores/guildStore'
@@ -431,7 +432,7 @@ export function GuildTab({ onSelectMember }: GuildTabProps) {
               {/* Row 3: stat chips */}
               <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-white/[0.05]">
                 <div className="flex items-center gap-1 text-micro">
-                  <span>👥</span>
+                  <Users className="w-3 h-3 text-gray-500" />
                   <span className="font-semibold text-white">{memberCount}</span>
                   <span className="text-gray-600">member{memberCount !== 1 ? 's' : ''}</span>
                 </div>

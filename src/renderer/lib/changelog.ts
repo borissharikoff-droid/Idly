@@ -24,6 +24,44 @@ export const CHANGE_TYPE_META: Record<ChangeType, { label: string; color: string
 
 export const CHANGELOG: PatchNote[] = [
   {
+    version: '4.5.0',
+    date: '2026-03-27',
+    title: 'Daily login claim flow fix',
+    items: [
+      { type: 'fix', text: 'Daily login: calendar closes before showing loot window — no more overlapping modals' },
+      { type: 'fix', text: '"Awesome!" button closes loot overlay cleanly' },
+    ],
+  },
+  {
+    version: '4.4.0',
+    date: '2026-03-27',
+    title: 'Daily login rewards, font scale & email OTP',
+    items: [
+      { type: 'new', text: 'Daily login rewards calendar — 30-day streak with gold, items & chests' },
+      { type: 'new', text: 'Font scale presets — compact / default / comfortable / large in Settings' },
+      { type: 'new', text: 'Email OTP authentication with server-side login rate limiting' },
+      { type: 'fix', text: 'Cook! button now navigates to cooking progress after starting a recipe' },
+      { type: 'fix', text: 'Level-locked recipes show "Next" instead of "Cook!" in the modal' },
+      { type: 'fix', text: 'Raids menu: warrior level & skill count now correctly calculated' },
+      { type: 'fix', text: 'Gold display: replaced all g suffixes with 🪙 coin icon' },
+      { type: 'fix', text: 'Inventory cards: text overflow in XL font mode' },
+      { type: 'ui',  text: 'BottomNav, context menu, popup positioning fixed for XL font mode' },
+    ],
+  },
+  {
+    version: '4.3.0',
+    date: '2026-03-25',
+    title: 'Discord RPC, comeback reward & design system',
+    items: [
+      { type: 'new', text: 'Discord Rich Presence — shows current activity, session timer, skill icon' },
+      { type: 'new', text: 'Comeback reward — bonus chest after 3+ days away' },
+      { type: 'fix', text: 'Chat bubbles no longer collapse to word-per-line width' },
+      { type: 'fix', text: 'Inventory context menu opens left when near right screen edge' },
+      { type: 'fix', text: 'Inventory grid: text overflow in XL font mode fixed' },
+      { type: 'ui',  text: 'Design system pass — unified surface palette and spacing' },
+    ],
+  },
+  {
     version: '4.2.1',
     date: '2026-03-23',
     title: 'Onboarding tour, new mascot & patch note fix',

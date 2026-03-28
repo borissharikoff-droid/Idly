@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNotificationStore } from '../stores/notificationStore'
 import type { PatchNote, ChangeEntry } from '../lib/changelog'
@@ -23,6 +23,9 @@ function parsePatch(row: { version: string; title: string; date: string; items: 
 export function useRemotePatchNotes(
   showPatch: (patch: PatchNote) => void,
 ) {
+  const showPatchRef = useRef(showPatch)
+  useEffect(() => { showPatchRef.current = showPatch })
+
   useEffect(() => {
     const lastSeen = localStorage.getItem(SEEN_KEY)
     const currentVersion = getAppVersion()
@@ -43,7 +46,7 @@ export function useRemotePatchNotes(
       if (remote.version === currentVersion) return
       // Show the remote patch notes
       localStorage.setItem(SEEN_KEY, remote.version)
-      showPatch(remote)
+      showPatchRef.current(remote)
       pushNotification(remote)
     }).catch(() => {})
 
@@ -57,14 +60,14 @@ export function useRemotePatchNotes(
           const row = payload.new as { version: string; title: string; date: string; items: unknown }
           const patch = parsePatch(row)
           localStorage.setItem(SEEN_KEY, patch.version)
-          showPatch(patch)
+          showPatchRef.current(patch)
           pushNotification(patch)
         },
       )
       .subscribe()
 
     return () => {
-      supabase.removeChannel(channel)
+      void supabase.removeChannel(channel)
     }
   }, [])
 }

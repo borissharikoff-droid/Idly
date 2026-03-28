@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from 'react'
 import { fmt } from '../../lib/format'
 import { motion } from 'framer-motion'
+import { Trophy, Users } from '../../lib/icons'
 import { useSessionStore, type SkillXPGain } from '../../stores/sessionStore'
 import { getDailyActivities } from '../../services/dailyActivityService'
 import { useAlertStore } from '../../stores/alertStore'
@@ -296,7 +297,7 @@ export function SessionComplete({ onNavigateFriends, hasFriends }: SessionComple
                     transition={{ delay: 0.75 + i * 0.1, duration: 0.28 }}
                     className="flex items-center gap-2.5 px-3 py-2 rounded border border-amber-400/20 bg-amber-400/[0.05]"
                   >
-                    <span className="text-base shrink-0">🏆</span>
+                    <Trophy className="w-4 h-4 shrink-0 text-amber-400" />
                     <div className="flex-1 min-w-0">
                       <div className="text-caption font-semibold text-amber-300 truncate">{ach.name}</div>
                       <div className="text-micro text-gray-500 truncate">{ach.description}</div>
@@ -375,7 +376,7 @@ export function SessionComplete({ onNavigateFriends, hasFriends }: SessionComple
                   onClick={() => handleCTAClick(onNavigateFriends)}
                   className="px-3 py-1.5 rounded bg-accent/10 border border-accent/25 text-accent text-caption font-medium hover:bg-accent/20 transition-colors"
                 >
-                  👥 Add a friend
+                  <Users className="w-3.5 h-3.5 inline-block mr-1" />Add a friend
                 </button>
               </motion.div>
             )}

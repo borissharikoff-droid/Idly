@@ -492,7 +492,7 @@ export const CHEST_DEFS: Record<ChestType, ChestDef> = {
     id: 'legendary_chest',
     name: 'Legendary Bag',
     icon: '💎',
-    image: 'loot/chest_epic.png',
+    image: 'loot/chest_legendary.png',
     rarity: 'legendary',
     itemWeights: [
       { itemId: 'golden_helm',      weight: 3 },

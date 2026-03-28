@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Trophy, Skull } from '../../lib/icons'
 import {
   computeBattleStateAtTimeWithFood,
   simulateBattleWithFood,
@@ -305,7 +306,7 @@ export function RaidFightModal({ tier, onClose, onComplete }: Props) {
                     className="rounded p-3 text-center border"
                     style={{ borderColor: `${cfg.color}40`, background: `${cfg.color}0c` }}
                   >
-                    <p className="text-lg mb-1">🏆</p>
+                    <div className="flex justify-center mb-1"><Trophy className="w-5 h-5 text-amber-400" /></div>
                     <p className="text-sm font-bold text-white">Victory!</p>
                     <p className="text-micro font-mono mt-0.5" style={{ color: cfg.color }}>
                       +{(RAID_TIER_CONFIGS[tier].contribution_per_win / 1_000).toFixed(0)}K raid damage dealt
@@ -332,7 +333,7 @@ export function RaidFightModal({ tier, onClose, onComplete }: Props) {
                   className="px-4 pb-4"
                 >
                   <div className="text-center py-6">
-                    <p className="text-4xl mb-2">💀</p>
+                    <div className="flex justify-center mb-2"><Skull className="w-10 h-10 text-red-400/60" /></div>
                     <p className="text-sm font-bold text-red-400">You Fell in Battle</p>
                     <p className="text-micro text-gray-500 mt-1 font-mono">No damage dealt today.</p>
                     <p className="text-micro text-gray-600 mt-2 font-mono leading-relaxed">

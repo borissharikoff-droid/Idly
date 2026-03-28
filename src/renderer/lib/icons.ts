@@ -7,6 +7,7 @@ export {
   BarChart3,
   Settings,
   MoreHorizontal,
+  MessageSquare,
   UtensilsCrossed,
   // Pages
   Sword,
@@ -43,4 +44,15 @@ export {
   Info,
   RefreshCw,
   Filter,
+  LogOut,
+  UserMinus,
+  UserPlus,
+  // New — emoji replacements
+  AlertTriangle,
+  Heart,
+  Droplets,
+  Sparkles,
+  Skull,
+  Tag,
+  Dices,
 } from 'lucide-react';

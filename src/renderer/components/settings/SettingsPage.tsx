@@ -31,6 +31,7 @@ export function SettingsPage() {
 
   // General
   const [autoLaunch, setAutoLaunch] = useState(false)
+  const [autoStartGrind, setAutoStartGrind] = useState(false)
   const [shortcutsEnabled, setShortcutsEnabled] = useState(true)
   const [alwaysOnTop, setAlwaysOnTop] = useState(false)
   const [fontScale, setFontScaleState] = useState<FontScalePreset>(() => getFontScalePreset())
@@ -76,6 +77,7 @@ export function SettingsPage() {
     const sound = getSoundSettings()
     setSoundMutedState(sound.muted)
     setSoundVolumeState(sound.volume)
+    setAutoStartGrind(localStorage.getItem('grindly_auto_start_grind') === 'true')
     setShortcutsEnabled(loadBool('grindly_shortcuts_enabled'))
     setNotificationsEnabled(loadBool('grindly_notifications_enabled'))
     setShowWindowOnSessionEnd(loadBool('grindly_show_window_on_session_end'))
@@ -217,6 +219,15 @@ export function SettingsPage() {
           sublabel="Launch Grindly on PC boot"
           enabled={autoLaunch}
           onChange={handleAutoLaunch}
+        />
+        <ToggleRow
+          label="Grind Auto-start"
+          sublabel="Automatically start grinding when app launches"
+          enabled={autoStartGrind}
+          onChange={(v) => {
+            setAutoStartGrind(v)
+            localStorage.setItem('grindly_auto_start_grind', String(v))
+          }}
         />
         <ToggleRow
           label="Keyboard shortcuts"

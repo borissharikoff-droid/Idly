@@ -83,7 +83,7 @@ class ErrorBoundary extends React.Component<
             </>
           ) : (
             <>
-              <div style={{ fontSize: 40 }}>💥</div>
+              <div style={{ color: '#f87171', marginBottom: 8 }}><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
               <p style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Something went wrong</p>
               <p style={{ fontSize: 12, color: '#888', margin: 0, maxWidth: 320, textAlign: 'center', wordBreak: 'break-word' }}>
                 {this.state.error.message}

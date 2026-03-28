@@ -1,7 +1,9 @@
+import type { ReactNode } from 'react'
+
 interface EmptyStateProps {
   title: string
   description?: string
-  icon?: string
+  icon?: ReactNode
   actionLabel?: string
   onAction?: () => void
   className?: string

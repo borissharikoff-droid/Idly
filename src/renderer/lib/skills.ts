@@ -165,7 +165,8 @@ export function skillLevelFromXP(xp: number): number {
 export function skillXPProgress(xp: number): { current: number; needed: number } {
   const level = skillLevelFromXP(xp)
   const xpAtLevel = xpForLevel(level)
-  const xpForNext = level >= MAX_LEVEL ? xpAtLevel : xpForLevel(level + 1)
+  if (level >= MAX_LEVEL) return { current: xpForLevel(MAX_LEVEL), needed: xpForLevel(MAX_LEVEL) }
+  const xpForNext = xpForLevel(level + 1)
   const needed = xpForNext - xpAtLevel
   const current = xp - xpAtLevel
   return { current, needed }

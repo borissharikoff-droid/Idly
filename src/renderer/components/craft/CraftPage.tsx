@@ -21,7 +21,7 @@ import { playClickSound, playLootRaritySound } from '../../lib/sounds'
 import { MOTION } from '../../lib/motion'
 import { PageHeader } from '../shared/PageHeader'
 import { fmt } from '../../lib/format'
-import { Hammer } from '../../lib/icons'
+import { Hammer, Users } from '../../lib/icons'
 import { BackpackButton } from '../shared/BackpackButton'
 import { useNavigationStore } from '../../stores/navigationStore'
 import { InventoryPage } from '../inventory/InventoryPage'
@@ -430,7 +430,7 @@ function RecipeCard({
                   <p>⏱ {formatCraftTime(craftDuration(recipe, qty, crafterLevel, computeGrindlyBonuses(getGrindlyLevel()).craftSpeedMultiplier))}</p>
                   <p style={{ color: CRAFT_COLOR }}>✦ {fmt(qty * recipe.xpPerItem)} xp total</p>
                   {partySize > 1 && (
-                    <p style={{ color: PARTY_COLOR }}>👥 Party: {partySize}× faster</p>
+                    <p style={{ color: PARTY_COLOR }} className="flex items-center gap-1"><Users className="w-3 h-3" /> Party: {partySize}× faster</p>
                   )}
                 </div>
                 <div className="flex flex-col gap-1.5 items-end">
@@ -945,7 +945,7 @@ export function CraftPage() {
               exit={{ opacity: 0 }}
               className="inline-flex items-center gap-1.5 self-start px-2.5 py-1 rounded-full border border-white/[0.08] bg-white/[0.03]"
             >
-              <span className="text-caption">👥</span>
+              <Users className="w-3 h-3 text-gray-500" />
               <p className="text-micro font-mono text-gray-500">
                 Invite a friend → unlock <span style={{ color: PARTY_COLOR }}>Party Craft</span>
               </p>
