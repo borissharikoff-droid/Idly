@@ -24,6 +24,26 @@ export const CHANGE_TYPE_META: Record<ChangeType, { label: string; color: string
 
 export const CHANGELOG: PatchNote[] = [
   {
+    version: '4.6.0',
+    date: '2026-03-29',
+    title: 'Group Chats & Item Skins',
+    items: [
+      { type: 'new',     text: 'Group chats: create groups, invite friends, send messages, roll dice (🎲 0–100)' },
+      { type: 'new',     text: 'Friends page redesign: Friends / Groups tabs, unread indicators, last message preview' },
+      { type: 'new',     text: 'Group reactions, member avatars, kick/leave/delete with 2-click confirmation' },
+      { type: 'new',     text: '20 new item skins: Lich Set, Titan Set, Wolf Fang Pendant, Warlord Gauntlets, 3 Raid items, Zone 7–8 materials, Wilted Plant' },
+      { type: 'ui',      text: 'Character panel: item icons are larger and clearer' },
+      { type: 'ui',      text: 'Arena requirements section is now collapsible' },
+      { type: 'balance', text: 'Auto-farm: death penalty no longer voids mob gold earned mid-run' },
+      { type: 'fix',     text: 'Dungeon boss loot: switching tabs mid-dungeon no longer bypasses the chest-open animation' },
+      { type: 'fix',     text: 'Level cap: XP bar no longer shows NaN at level 99' },
+      { type: 'fix',     text: 'Legendary chest was showing epic chest image — fixed' },
+      { type: 'fix',     text: 'isAutoRunning no longer persists after a crash (auto-mode can\'t get stuck)' },
+      { type: 'fix',     text: 'clear_all_zones achievement target corrected (6 → 8 zones)' },
+      { type: 'fix',     text: 'What\'s New modal now only appears after daily login claim completes' },
+    ],
+  },
+  {
     version: '4.5.0',
     date: '2026-03-27',
     title: 'Daily login claim flow fix',
