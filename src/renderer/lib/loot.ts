@@ -329,7 +329,7 @@ export const LOOT_ITEMS: LootItemDef[] = [
   { id: 'star_bloom',   name: 'Star Bloom',   slot: 'plant', rarity: 'legendary', icon: '🌟', description: 'A radiant bloom said to hold cosmic energy.',    perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Farm harvest. Sell on the Marketplace.' },
   { id: 'crystal_root', name: 'Crystal Root', slot: 'plant', rarity: 'legendary', icon: '💎', description: 'A crystalline root pulsing with energy.',        perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Farm harvest. Sell on the Marketplace.' },
   { id: 'void_blossom', name: 'Void Blossom', slot: 'plant', rarity: 'mythic',   icon: '🔮', description: 'A flower from beyond — grown from a Void Spore.', perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Farm harvest. Sell on the Marketplace.' },
-  { id: 'wilted_plant', name: 'Wilted Plant', slot: 'plant', rarity: 'common',  icon: '🥀', description: 'A rotted crop. Can be composted or sold for scraps.', perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Rotted crop salvage.' },
+  { id: 'wilted_plant', name: 'Wilted Plant', slot: 'plant', rarity: 'common',  icon: '🥀', image: 'loot/item_wilted_plant.png', description: 'A rotted crop. Can be composted or sold for scraps.', perkType: 'harvested_plant', perkValue: 0, perkDescription: 'Rotted crop salvage.' },
 
   // Arena materials (dropped by dungeon mobs & bosses, used in crafting)
   { id: 'slime_gel',    name: 'Slime Gel',    slot: 'material', rarity: 'common',    icon: '🫧', description: 'Dropped by slimes. Craft into Slime Shield.',       perkType: 'cosmetic', perkValue: 0, perkDescription: 'Crafting material — Slime Cavern' },
@@ -343,10 +343,10 @@ export const LOOT_ITEMS: LootItemDef[] = [
   { id: 'warlord_sigil', name: 'Warlord Sigil', slot: 'material', rarity: 'epic',      icon: '🔱', description: 'Torn from the Orc Warlord. Pulses with brutal energy.',   perkType: 'cosmetic', perkValue: 0, perkDescription: 'Boss material — Orc Warlord' },
   { id: 'troll_heart',   name: 'Troll Heart',   slot: 'material', rarity: 'legendary', icon: '💜', description: 'A still-beating heart ripped from the Troll Overlord.',    perkType: 'cosmetic', perkValue: 0, perkDescription: 'Boss material — Troll Overlord' },
   { id: 'dragon_heart',  name: 'Dragon Heart',  slot: 'material', rarity: 'legendary', icon: '❤️‍🔥', description: 'The blazing core of the Ancient Dragon. Immense power.', perkType: 'cosmetic', perkValue: 0, perkDescription: 'Boss material — Ancient Dragon' },
-  { id: 'shadow_dust',   name: 'Shadow Dust',   slot: 'material', rarity: 'epic',      icon: '💜', description: 'Crystallized essence of shadow creatures.',                 perkType: 'cosmetic', perkValue: 0, perkDescription: 'Crafting material — Shadow Crypt' },
-  { id: 'lich_crystal',  name: 'Lich Crystal',  slot: 'material', rarity: 'legendary', icon: '💎', description: 'A shard of pure necromantic energy, pulsing with dark magic.', perkType: 'cosmetic', perkValue: 0, perkDescription: 'Boss material — Necromancer Lord' },
-  { id: 'storm_shard',   name: 'Storm Shard',   slot: 'material', rarity: 'epic',      icon: '⚡', description: 'Solidified lightning from celestial beings.',               perkType: 'cosmetic', perkValue: 0, perkDescription: 'Crafting material — Celestial Spire' },
-  { id: 'titan_core',    name: 'Titan Core',    slot: 'material', rarity: 'mythic',    icon: '🔮', description: 'The crystallized heart of a Storm Titan.',                  perkType: 'cosmetic', perkValue: 0, perkDescription: 'Boss material — Storm Titan' },
+  { id: 'shadow_dust',   name: 'Shadow Dust',   slot: 'material', rarity: 'epic',      icon: '💜', image: 'loot/item_shadow_dust.png',   description: 'Crystallized essence of shadow creatures.',                 perkType: 'cosmetic', perkValue: 0, perkDescription: 'Crafting material — Shadow Crypt' },
+  { id: 'lich_crystal',  name: 'Lich Crystal',  slot: 'material', rarity: 'legendary', icon: '💎', image: 'loot/item_lich_crystal.png',  description: 'A shard of pure necromantic energy, pulsing with dark magic.', perkType: 'cosmetic', perkValue: 0, perkDescription: 'Boss material — Necromancer Lord' },
+  { id: 'storm_shard',   name: 'Storm Shard',   slot: 'material', rarity: 'epic',      icon: '⚡', image: 'loot/item_storm_shard.png',   description: 'Solidified lightning from celestial beings.',               perkType: 'cosmetic', perkValue: 0, perkDescription: 'Crafting material — Celestial Spire' },
+  { id: 'titan_core',    name: 'Titan Core',    slot: 'material', rarity: 'mythic',    icon: '🔮', image: 'loot/item_titan_core.png',    description: 'The crystallized heart of a Storm Titan.',                  perkType: 'cosmetic', perkValue: 0, perkDescription: 'Boss material — Storm Titan' },
 
   // Crafting materials — drop from chests/bosses, consumed by craft recipes
   { id: 'ore_iron',      name: 'Iron Ore',      slot: 'material', rarity: 'common',    icon: '🪨', description: 'Raw iron ore. Used in basic smithing recipes.',           perkType: 'cosmetic', perkValue: 0, perkDescription: 'Crafting material' },
@@ -407,13 +407,13 @@ export const LOOT_ITEMS: LootItemDef[] = [
     perks: [{ perkType: 'atk_boost', perkValue: 10, perkDescription: '+10 ATK' }, { perkType: 'hp_regen_boost', perkValue: 5, perkDescription: '+5 HP Regen' }, { perkType: 'xp_global_boost', perkValue: 0.08, perkDescription: '+8% Global XP' }] },
 
   // Raid-exclusive mythic items (only drop from raid victories, tradeable)
-  { id: 'raid_ancient_ring', name: 'Ancient Relic Ring', slot: 'ring', rarity: 'mythic', icon: '💍', description: 'Forged in the fires of ancient raids. Untold gold flows to its bearer.',
+  { id: 'raid_ancient_ring', name: 'Ancient Relic Ring', slot: 'ring', rarity: 'mythic', icon: '💍', image: 'loot/item_raid_ancient_ring.png', description: 'Forged in the fires of ancient raids. Untold gold flows to its bearer.',
     perkType: 'atk_boost', perkValue: 22, perkDescription: '+22 ATK',
     perks: [{ perkType: 'atk_boost', perkValue: 22, perkDescription: '+22 ATK' }, { perkType: 'hp_regen_boost', perkValue: 10, perkDescription: '+10 HP Regen' }] },
-  { id: 'raid_void_blade', name: 'Void Conqueror Blade', slot: 'weapon', rarity: 'mythic', icon: '🗡️', description: 'Wielded only by those who have faced the mythic hydra and lived.',
+  { id: 'raid_void_blade', name: 'Void Conqueror Blade', slot: 'weapon', rarity: 'mythic', icon: '🗡️', image: 'loot/item_raid_void_blade.png', description: 'Wielded only by those who have faced the mythic hydra and lived.',
     perkType: 'atk_boost', perkValue: 35, perkDescription: '+35 ATK',
     perks: [{ perkType: 'atk_boost', perkValue: 35, perkDescription: '+35 ATK' }, { perkType: 'hp_regen_boost', perkValue: 15, perkDescription: '+15 HP Regen' }, { perkType: 'xp_global_boost', perkValue: 0.10, perkDescription: '+10% Global XP' }] },
-  { id: 'raid_eternal_crown', name: 'Eternal Crown', slot: 'head', rarity: 'mythic', icon: '👑', description: 'The crown of the eternal titan. Only the worthy shall wear it.',
+  { id: 'raid_eternal_crown', name: 'Eternal Crown', slot: 'head', rarity: 'mythic', icon: '👑', image: 'loot/item_raid_eternal_crown.png', description: 'The crown of the eternal titan. Only the worthy shall wear it.',
     perkType: 'atk_boost', perkValue: 28, perkDescription: '+28 ATK',
     perks: [{ perkType: 'atk_boost', perkValue: 28, perkDescription: '+28 ATK' }, { perkType: 'hp_boost', perkValue: 180, perkDescription: '+180 HP' }, { perkType: 'xp_global_boost', perkValue: 0.15, perkDescription: '+15% Global XP' }, { perkType: 'def_boost', perkValue: 12, perkDescription: '+12 DEF' }] },
 
