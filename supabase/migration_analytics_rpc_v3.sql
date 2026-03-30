@@ -54,6 +54,9 @@ returns table (
     end;
 $$;
 
+-- Drop first — return type changed (added retained_d1/d7/d30 columns)
+drop function if exists admin_retention_cohorts();
+
 -- ── Retention cohorts (weekly, last 12 weeks) ────────────────────────────────
 -- D1: returned within 24-48h of first session
 -- D7: returned 7-8 days after first session
