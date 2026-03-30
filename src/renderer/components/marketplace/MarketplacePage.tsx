@@ -702,6 +702,9 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
 
   useEffect(() => {
     if (activeTab === 'history') loadHistory()
+    // Reset scroll to top when switching inner marketplace tabs (same shared <main> scroll container)
+    const main = document.querySelector('main')
+    if (main) main.scrollTo({ top: 0, behavior: 'instant' })
   }, [activeTab, loadHistory])
 
   useEffect(() => {
@@ -853,7 +856,6 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
       const take = Math.min(remaining, listing.quantity)
       try {
         const res = await partialBuyListing(listing.id, take)
-        if (exitingRef.current) return
         if (res.ok) {
           syncFromSupabase(user.id).catch(() => {})
           if (res.item_id && res.quantity) {
@@ -881,17 +883,16 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
       await syncInventoryToSupabase(items, chests, { merge: false, seeds, seedZips })
     } catch { /* non-fatal */ }
 
-    if (!exitingRef.current) {
-      setBuying(false)
-      setBuyTarget(null)
-      if (totalBought > 0) {
-        playClickSound()
-        showToast(`Bought ${totalBought}× ${getItemName(itemId)}`, 'success')
-      } else {
-        showToast('Purchase failed — listing may have sold out', 'error')
-      }
-      loadListings().catch(() => {})
+    if (exitingRef.current) return
+    setBuying(false)
+    setBuyTarget(null)
+    if (totalBought > 0) {
+      playClickSound()
+      showToast(`Bought ${totalBought}× ${getItemName(itemId)}`, 'success')
+    } else {
+      showToast('Purchase failed — listing may have sold out', 'error')
     }
+    loadListings().catch(() => {})
   }
 
   const handleCancelConfirm = async (group: MergedMyListing) => {
@@ -1278,7 +1279,15 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
         )}
 
         {activeTab === 'sell' && (
-          <SellTab onListed={loadListings} onToast={showToast} floorPriceMap={floorPriceMap} />
+          <motion.div
+            key="tab-sell"
+            initial={{ opacity: 0, x: -12 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 12 }}
+            transition={{ duration: 0.2 }}
+          >
+            <SellTab onListed={loadListings} onToast={showToast} floorPriceMap={floorPriceMap} />
+          </motion.div>
         )}
 
         {activeTab === 'my_listings' && (
@@ -1421,7 +1430,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                       {/* Price history sparkline */}
                       {priceHistory.length >= 2 && (
                         <div className="flex flex-col items-center gap-1 mb-3 pb-3 border-b border-white/[0.06]">
-                          <PriceSparkline prices={priceHistory.map((p) => p.price_gold)} width={120} height={28} />
+                          <PriceSparkline prices={priceHistory.map((p) => p.price_gold)} dates={priceHistory.map((p) => p.sold_at)} width={120} height={28} />
                           <p className="text-micro text-gray-600 font-mono">last {priceHistory.length} sales</p>
                         </div>
                       )}
@@ -1525,7 +1534,7 @@ export function MarketplacePage({ onBack }: MarketplacePageProps) {
                         {/* Price history sparkline */}
                         {priceHistory.length >= 2 && (
                           <div className="flex flex-col items-center gap-1 mt-2">
-                            <PriceSparkline prices={priceHistory.map((p) => p.price_gold)} width={120} height={28} />
+                            <PriceSparkline prices={priceHistory.map((p) => p.price_gold)} dates={priceHistory.map((p) => p.sold_at)} width={120} height={28} />
                             <p className="text-micro text-gray-600 font-mono">last {priceHistory.length} sales</p>
                           </div>
                         )}
