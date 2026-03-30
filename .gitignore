@@ -13,3 +13,22 @@ Thumbs.db
 .vscode
 dashboard
 .gstack/
+
+# Internal dev artifacts — not for public repo
+itch-*.html
+itch-*.md
+itch-*.css
+*-test-report.html
+*-report.html
+grindly-v*.html
+grindly-brand-book.html
+grindly-missing-skins.html
+test-pw.ts
+pw-launch-test.ts
+x_post.md
+ship-safe-report.html
+.ship-safe/
+.understand-anything/
+launch/
+native/
+scripts/
