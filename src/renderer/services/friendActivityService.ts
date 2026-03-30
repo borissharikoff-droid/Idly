@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { fmt } from '../lib/format'
 
 export type FriendActivityEvent =
   | { type: 'boss_kill'; zoneId: string; zoneName: string; bossName: string; goldEarned: number }
@@ -63,7 +64,7 @@ export function formatActivityEntry(entry: FriendActivityEntry): { text: string;
   const p = entry.payload
   switch (entry.event_type) {
     case 'boss_kill':
-      return { icon: '⚔️', text: `cleared ${String(p.zoneName ?? 'a zone')} (+${String(p.goldEarned ?? 0)} 🪙)` }
+      return { icon: '⚔️', text: `cleared ${String(p.zoneName ?? 'a zone')} (+${fmt(p.goldEarned ?? 0)} 🪙)` }
     case 'achievement':
       return { icon: '🏅', text: `unlocked "${String(p.achievementName ?? '')}"` }
     case 'rare_drop':

@@ -218,7 +218,7 @@ export function SessionComplete({ onNavigateFriends, hasFriends }: SessionComple
           exit={{ scale: 0.95, opacity: 0 }}
           transition={MOTION.spring.soft}
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-[320px] max-h-[86vh] rounded-card bg-surface-2 border border-accent/25 shadow-[0_0_48px_rgba(88,101,242,0.10)] overflow-hidden flex flex-col"
+          className="w-full max-w-[320px] max-h-[calc(100vh-120px)] rounded-card bg-surface-2 border border-accent/25 shadow-[0_0_48px_rgba(88,101,242,0.10)] overflow-hidden flex flex-col"
         >
           <div className="overflow-y-auto overflow-x-hidden px-5 pt-5 pb-3 space-y-3 min-h-0">
             {/* Header */}

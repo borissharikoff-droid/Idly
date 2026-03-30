@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { fmt } from '../../lib/format'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useToastStore, type Toast } from '../../stores/toastStore'
 import { useArenaStore } from '../../stores/arenaStore'
@@ -89,10 +90,10 @@ function ToastItem({ toast, onDismiss, onNavigate }: { toast: Toast; onDismiss: 
   })()
 
   const body = (() => {
-    if (d.kind === 'arena_boss' && d.victory && d.gold > 0) return `+${d.gold} 🪙`
+    if (d.kind === 'arena_boss' && d.victory && d.gold > 0) return `+${fmt(d.gold)} 🪙`
     if (d.kind === 'mob_kill') {
       const matDef = d.material ? LOOT_ITEMS.find((x) => x.id === d.material) : null
-      const parts = [`+${d.gold}🪙`, `+${formatShort(d.xp)} ⚔ XP`]
+      const parts = [`+${fmt(d.gold)}🪙`, `+${formatShort(d.xp)} ⚔ XP`]
       if (matDef) parts.push(`${matDef.icon} ${matDef.name}`)
       return parts.join('  ·  ')
     }

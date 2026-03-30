@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { fmt } from '../../lib/format'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
 import { useAuthStore } from '../../stores/authStore'
@@ -34,7 +35,7 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
   const inventory = useInventoryStore((s) => s.items)
   const chests = useInventoryStore((s) => s.chests)
   const equippedBySlot = useInventoryStore((s) => s.equippedBySlot)
-  const openChestAndGrantItem = useInventoryStore((s) => s.openChestAndGrantItem)
+  const grantAndOpenChest = useInventoryStore((s) => s.grantAndOpenChest)
 
   const { user } = useAuthStore()
   const pushAlert = useAlertStore((s) => s.push)
@@ -581,7 +582,7 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
                             <span className="text-lg shrink-0">{typeIcon}</span>
                             <div className="min-w-0">
                               <p className={`text-sm font-semibold leading-tight ${b.claimed ? 'text-gray-500' : 'text-white'}`}>{b.description}</p>
-                              <p className="text-caption text-gray-500 mt-0.5">+{b.goldReward} 🪙{b.chestReward && <> · <span style={{ color: RARITY_COLORS[CHEST_DEFS[b.chestReward as ChestType].rarity].color }}>{b.chestReward.replace('_chest', ' chest')}</span></>}</p>
+                              <p className="text-caption text-gray-500 mt-0.5">+{fmt(b.goldReward)} 🪙{b.chestReward && <> · <span style={{ color: RARITY_COLORS[CHEST_DEFS[b.chestReward as ChestType].rarity].color }}>{b.chestReward.replace('_chest', ' chest')}</span></>}</p>
                             </div>
                           </div>
                           {b.claimed && <span className="text-lime-500 text-base shrink-0">✓</span>}
@@ -589,13 +590,12 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
                             <button
                               type="button"
                               onClick={() => {
+                                playClickSound()
                                 claimBounty(b.id)
                                 if (b.chestReward) {
-                                  const result = openChestAndGrantItem(b.chestReward, { source: 'bounty_reward' })
-                                  if (result) {
-                                    const itemDef = result.itemId ? LOOT_ITEMS.find((x) => x.id === result.itemId) ?? null : null
-                                    setBountyModal({ chestType: b.chestReward!, item: itemDef, goldDropped: result.goldDropped, bonusMaterials: result.bonusMaterials })
-                                  }
+                                  const result = grantAndOpenChest(b.chestReward as ChestType, { source: 'bounty_reward' })
+                                  const itemDef = result.itemId ? LOOT_ITEMS.find((x) => x.id === result.itemId) ?? null : null
+                                  setBountyModal({ chestType: b.chestReward as ChestType, item: itemDef, goldDropped: result.goldDropped, bonusMaterials: result.bonusMaterials })
                                 }
                               }}
                               className="shrink-0 px-3 py-1.5 rounded text-xs font-bold bg-lime-500/20 border border-lime-500/40 text-lime-400 hover:bg-lime-500/30 transition-colors"
@@ -645,7 +645,7 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
                             <span className="text-lg shrink-0">{typeIcon}</span>
                             <div className="min-w-0">
                               <p className={`text-sm font-semibold leading-tight ${b.claimed ? 'text-gray-500' : 'text-white'}`}>{b.description}</p>
-                              <p className="text-caption text-gray-500 mt-0.5">+{b.goldReward} 🪙{b.chestReward && <> · <span style={{ color: RARITY_COLORS[CHEST_DEFS[b.chestReward as ChestType].rarity].color }}>{b.chestReward.replace('_chest', ' chest')}</span></>}</p>
+                              <p className="text-caption text-gray-500 mt-0.5">+{fmt(b.goldReward)} 🪙{b.chestReward && <> · <span style={{ color: RARITY_COLORS[CHEST_DEFS[b.chestReward as ChestType].rarity].color }}>{b.chestReward.replace('_chest', ' chest')}</span></>}</p>
                             </div>
                           </div>
                           {b.claimed && <span className="text-amber-500 text-base shrink-0">✓</span>}
@@ -653,13 +653,12 @@ export function ProfilePage({ onBack }: { onBack?: () => void }) {
                             <button
                               type="button"
                               onClick={() => {
+                                playClickSound()
                                 claimWeekly(b.id)
                                 if (b.chestReward) {
-                                  const result = openChestAndGrantItem(b.chestReward, { source: 'bounty_reward' })
-                                  if (result) {
-                                    const itemDef = result.itemId ? LOOT_ITEMS.find((x) => x.id === result.itemId) ?? null : null
-                                    setBountyModal({ chestType: b.chestReward!, item: itemDef, goldDropped: result.goldDropped, bonusMaterials: result.bonusMaterials })
-                                  }
+                                  const result = grantAndOpenChest(b.chestReward as ChestType, { source: 'bounty_reward' })
+                                  const itemDef = result.itemId ? LOOT_ITEMS.find((x) => x.id === result.itemId) ?? null : null
+                                  setBountyModal({ chestType: b.chestReward as ChestType, item: itemDef, goldDropped: result.goldDropped, bonusMaterials: result.bonusMaterials })
                                 }
                               }}
                               className="shrink-0 px-3 py-1.5 rounded text-xs font-bold bg-amber-500/20 border border-amber-500/40 text-amber-400 hover:bg-amber-500/30 transition-colors"

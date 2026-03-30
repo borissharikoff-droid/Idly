@@ -25,7 +25,6 @@ function getAudioCtx(): AudioContext {
 export function warmUpAudio() {
   try {
     const ctx = getAudioCtx()
-    // Create a silent buffer to unlock audio
     const buf = ctx.createBuffer(1, 1, 22050)
     const src = ctx.createBufferSource()
     src.buffer = buf
@@ -34,16 +33,17 @@ export function warmUpAudio() {
   } catch { /* ignore */ }
 }
 
+// gainVal is the peak gain directly — no internal multiplier
 function playTone(frequency: number, duration: number, type: OscillatorType = 'sine', gainVal?: number) {
   loadSettings()
   if (cachedMuted) return
   const ctx = getAudioCtx()
   const osc = ctx.createOscillator()
   const gain = ctx.createGain()
-  const vol = gainVal ?? cachedVolume
+  const vol = gainVal ?? cachedVolume * 0.25
   osc.type = type
   osc.frequency.setValueAtTime(frequency, ctx.currentTime)
-  gain.gain.setValueAtTime(vol * 0.3, ctx.currentTime)
+  gain.gain.setValueAtTime(vol, ctx.currentTime)
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration)
   osc.connect(gain)
   gain.connect(ctx.destination)
@@ -60,7 +60,7 @@ export function playClickSound() {
   osc.type = 'sine'
   osc.frequency.setValueAtTime(800, ctx.currentTime)
   osc.frequency.exponentialRampToValueAtTime(600, ctx.currentTime + 0.05)
-  gain.gain.setValueAtTime(cachedVolume * 0.15, ctx.currentTime)
+  gain.gain.setValueAtTime(cachedVolume * 0.08, ctx.currentTime)
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08)
   osc.connect(gain)
   gain.connect(ctx.destination)
@@ -74,10 +74,9 @@ export function playTabSound() {
   const ctx = getAudioCtx()
   const osc = ctx.createOscillator()
   const gain = ctx.createGain()
-  const vol = cachedVolume * 0.4
   osc.type = 'sine'
   osc.frequency.setValueAtTime(520, ctx.currentTime)
-  gain.gain.setValueAtTime(vol * 0.12, ctx.currentTime)
+  gain.gain.setValueAtTime(cachedVolume * 0.06, ctx.currentTime)
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05)
   osc.connect(gain)
   gain.connect(ctx.destination)
@@ -91,11 +90,10 @@ export function playMessageSound() {
   const ctx = getAudioCtx()
   const osc = ctx.createOscillator()
   const gain = ctx.createGain()
-  const vol = cachedVolume * 0.35
   osc.type = 'sine'
   osc.frequency.setValueAtTime(880, ctx.currentTime)
   osc.frequency.exponentialRampToValueAtTime(1109, ctx.currentTime + 0.08)
-  gain.gain.setValueAtTime(vol * 0.2, ctx.currentTime)
+  gain.gain.setValueAtTime(cachedVolume * 0.12, ctx.currentTime)
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12)
   osc.connect(gain)
   gain.connect(ctx.destination)
@@ -106,16 +104,16 @@ export function playMessageSound() {
 export function playSessionStartSound() {
   loadSettings()
   if (cachedMuted) return
-  playTone(523, 0.2, 'sine', cachedVolume)
-  setTimeout(() => playTone(659, 0.2, 'sine', cachedVolume), 100)
-  setTimeout(() => playTone(784, 0.35, 'sine', cachedVolume), 200)
+  playTone(523, 0.2, 'sine', cachedVolume * 0.25)
+  setTimeout(() => playTone(659, 0.2, 'sine', cachedVolume * 0.25), 100)
+  setTimeout(() => playTone(784, 0.35, 'sine', cachedVolume * 0.28), 200)
 }
 
 export function playSessionStopSound() {
   loadSettings()
   if (cachedMuted) return
-  playTone(784, 0.25, 'sine', cachedVolume)
-  setTimeout(() => playTone(523, 0.4, 'sine', cachedVolume), 150)
+  playTone(784, 0.25, 'sine', cachedVolume * 0.25)
+  setTimeout(() => playTone(523, 0.4, 'sine', cachedVolume * 0.22), 150)
 }
 
 export function playSessionCompleteSound() {
@@ -123,27 +121,24 @@ export function playSessionCompleteSound() {
   if (cachedMuted) return
   const notes = [523, 659, 784, 1047]
   notes.forEach((freq, i) => {
-    setTimeout(() => playTone(freq, 0.3, 'sine', cachedVolume), i * 120)
+    setTimeout(() => playTone(freq, 0.3, 'sine', cachedVolume * 0.28), i * 120)
   })
 }
 
 export function playAchievementSound() {
   loadSettings()
   if (cachedMuted) return
-  // RPG fanfare: low root → fifth → octave chord stab → shimmer tail
-  const vol = cachedVolume
-  // chord stab at 0ms
-  playTone(261, 0.18, 'sine', vol * 0.7)       // C4 root
-  playTone(392, 0.18, 'sine', vol * 0.6)       // G4 fifth
+  playTone(261, 0.18, 'sine', cachedVolume * 0.2)
+  playTone(392, 0.18, 'sine', cachedVolume * 0.18)
   setTimeout(() => {
-    playTone(523, 0.22, 'sine', vol * 0.8)     // C5 octave
-    playTone(659, 0.18, 'sine', vol * 0.55)    // E5 third
+    playTone(523, 0.22, 'sine', cachedVolume * 0.24)
+    playTone(659, 0.18, 'sine', cachedVolume * 0.16)
   }, 90)
   setTimeout(() => {
-    playTone(784, 0.28, 'sine', vol * 0.7)     // G5 peak
-    playTone(1047, 0.14, 'triangle', vol * 0.35) // C6 shimmer
+    playTone(784, 0.28, 'sine', cachedVolume * 0.22)
+    playTone(1047, 0.14, 'triangle', cachedVolume * 0.1)
   }, 200)
-  setTimeout(() => playTone(1047, 0.12, 'triangle', vol * 0.25), 340) // tail
+  setTimeout(() => playTone(1047, 0.12, 'triangle', cachedVolume * 0.08), 340)
 }
 
 export function playLootRaritySound(rarity: string) {
@@ -152,32 +147,30 @@ export function playLootRaritySound(rarity: string) {
   const key = String(rarity || '').toLowerCase()
   if (key === 'legendary' || key === 'mythical') {
     ;[784, 988, 1319, 1568].forEach((freq, i) => {
-      setTimeout(() => playTone(freq, 0.2, 'triangle', cachedVolume * 1.05), i * 85)
+      setTimeout(() => playTone(freq, 0.2, 'triangle', cachedVolume * 0.3), i * 85)
     })
     return
   }
   if (key === 'epic') {
     ;[659, 880, 1175].forEach((freq, i) => {
-      setTimeout(() => playTone(freq, 0.18, 'triangle', cachedVolume), i * 80)
+      setTimeout(() => playTone(freq, 0.18, 'triangle', cachedVolume * 0.26), i * 80)
     })
     return
   }
   if (key === 'rare') {
     ;[587, 740].forEach((freq, i) => {
-      setTimeout(() => playTone(freq, 0.16, 'sine', cachedVolume * 0.9), i * 70)
+      setTimeout(() => playTone(freq, 0.16, 'sine', cachedVolume * 0.22), i * 70)
     })
     return
   }
-  playTone(523, 0.12, 'sine', cachedVolume * 0.75)
+  playTone(523, 0.12, 'sine', cachedVolume * 0.18)
 }
 
 export function playPotionSound() {
   loadSettings()
   if (cachedMuted) return
   const ctx = getAudioCtx()
-  // Bubbling gulp + ascending power-up flourish
-  const vol = cachedVolume * 1.1
-  // Bubble effect: rapid low-frequency pulses
+  // Bubble effect
   ;[0, 40, 80].forEach((delay) => {
     setTimeout(() => {
       const osc = ctx.createOscillator()
@@ -185,77 +178,72 @@ export function playPotionSound() {
       osc.type = 'sine'
       osc.frequency.setValueAtTime(180 + Math.random() * 60, ctx.currentTime)
       osc.frequency.exponentialRampToValueAtTime(380, ctx.currentTime + 0.06)
-      gain.gain.setValueAtTime(vol * 0.25, ctx.currentTime)
+      gain.gain.setValueAtTime(cachedVolume * 0.16, ctx.currentTime)
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07)
       osc.connect(gain); gain.connect(ctx.destination)
       osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.08)
     }, delay)
   })
-  // Power-up flourish after gulp
+  // Power-up flourish
   const notes = [523, 659, 784, 988, 1175, 1397]
   notes.forEach((freq, i) => {
-    setTimeout(() => playTone(freq, 0.18, 'triangle', vol * 0.9), 140 + i * 55)
+    setTimeout(() => playTone(freq, 0.18, 'triangle', cachedVolume * 0.24), 140 + i * 55)
   })
 }
 
 export function playArenaVictorySound() {
   loadSettings()
   if (cachedMuted) return
-  // Triumphant fanfare: rising arpeggio then sustained high note
   const notes = [523, 659, 784, 1047, 1319]
   notes.forEach((freq, i) => {
-    setTimeout(() => playTone(freq, i === notes.length - 1 ? 0.5 : 0.18, 'triangle', cachedVolume * 1.1), i * 90)
+    setTimeout(() => playTone(freq, i === notes.length - 1 ? 0.5 : 0.18, 'triangle', cachedVolume * 0.3), i * 90)
   })
 }
 
 export function playArenaDefeatSound() {
   loadSettings()
   if (cachedMuted) return
-  // Descending doom: falling minor chord
   const notes = [440, 370, 311, 277]
   notes.forEach((freq, i) => {
-    setTimeout(() => playTone(freq, 0.3, 'sawtooth', cachedVolume * 0.7), i * 110)
+    setTimeout(() => playTone(freq, 0.3, 'sawtooth', cachedVolume * 0.2), i * 110)
   })
 }
 
 export function playXpRevealSound() {
   loadSettings()
   if (cachedMuted) return
-  playTone(620, 0.07, 'sine', cachedVolume * 0.35)
+  playTone(620, 0.07, 'sine', cachedVolume * 0.1)
 }
 
 export function playLevelUpSound() {
   loadSettings()
   if (cachedMuted) return
-  // Bright ascending flourish, distinct from session complete
   const notes = [659, 784, 988, 1319, 1568]
   notes.forEach((freq, i) => {
-    setTimeout(() => playTone(freq, 0.22, 'triangle', cachedVolume * 1.05), i * 70)
+    setTimeout(() => playTone(freq, 0.22, 'triangle', cachedVolume * 0.3), i * 70)
   })
 }
 
 export function playPauseSound() {
   loadSettings()
   if (cachedMuted) return
-  playTone(440, 0.15, 'sine')
+  playTone(440, 0.15, 'sine', cachedVolume * 0.12)
 }
 
 export function playResumeSound() {
   loadSettings()
   if (cachedMuted) return
-  playTone(440, 0.1, 'sine', cachedVolume)
-  setTimeout(() => playTone(554, 0.15, 'sine', cachedVolume), 80)
+  playTone(440, 0.1, 'sine', cachedVolume * 0.12)
+  setTimeout(() => playTone(554, 0.15, 'sine', cachedVolume * 0.14), 80)
 }
 
 export function playCraftCompleteSound() {
   loadSettings()
   if (cachedMuted) return
-  // Anvil strike → ascending chime: metallic hit + bright resolution
-  const vol = cachedVolume
-  playTone(220, 0.08, 'square', vol * 0.6)
-  setTimeout(() => playTone(440, 0.12, 'triangle', vol * 0.8), 60)
-  setTimeout(() => playTone(660, 0.15, 'triangle', vol * 0.9), 140)
-  setTimeout(() => playTone(880, 0.2, 'sine', vol), 230)
+  playTone(220, 0.08, 'square', cachedVolume * 0.16)
+  setTimeout(() => playTone(440, 0.12, 'triangle', cachedVolume * 0.2), 60)
+  setTimeout(() => playTone(660, 0.15, 'triangle', cachedVolume * 0.24), 140)
+  setTimeout(() => playTone(880, 0.2, 'sine', cachedVolume * 0.28), 230)
 }
 
 export function playChestOpeningSound(rarity: string) {
@@ -264,7 +252,6 @@ export function playChestOpeningSound(rarity: string) {
   const ctx = getAudioCtx()
   const key = String(rarity || '').toLowerCase()
 
-  // Deep bass thud helper
   function playThud(freqHz: number, gainMul: number, delayMs: number) {
     setTimeout(() => {
       const osc = ctx.createOscillator()
@@ -280,33 +267,30 @@ export function playChestOpeningSound(rarity: string) {
   }
 
   if (key === 'legendary' || key === 'mythic') {
-    // Deep bass rumble (80Hz sawtooth)
     const osc = ctx.createOscillator()
     const gain = ctx.createGain()
     osc.type = 'sawtooth'
     osc.frequency.setValueAtTime(80, ctx.currentTime)
-    gain.gain.setValueAtTime(cachedVolume * 0.38, ctx.currentTime)
+    gain.gain.setValueAtTime(cachedVolume * 0.28, ctx.currentTime)
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.1)
     osc.connect(gain); gain.connect(ctx.destination)
     osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 1.15)
-    // Rising harmonic chord buildup
     ;[220, 330, 440, 550, 660].forEach((freq, i) => {
-      setTimeout(() => playTone(freq, 0.22, 'triangle', cachedVolume * (0.28 + i * 0.04)), i * 200)
+      setTimeout(() => playTone(freq, 0.22, 'triangle', cachedVolume * (0.16 + i * 0.03)), i * 200)
     })
     return
   }
 
   if (key === 'epic') {
-    // Double thud + whoosh sweep
-    playThud(120, 0.32, 0)
-    playThud(110, 0.28, 120)
+    playThud(120, 0.28, 0)
+    playThud(110, 0.24, 120)
     setTimeout(() => {
       const osc = ctx.createOscillator()
       const gain = ctx.createGain()
       osc.type = 'sawtooth'
       osc.frequency.setValueAtTime(150, ctx.currentTime)
       osc.frequency.exponentialRampToValueAtTime(350, ctx.currentTime + 0.38)
-      gain.gain.setValueAtTime(cachedVolume * 0.22, ctx.currentTime)
+      gain.gain.setValueAtTime(cachedVolume * 0.18, ctx.currentTime)
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.42)
       osc.connect(gain); gain.connect(ctx.destination)
       osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.45)
@@ -315,7 +299,6 @@ export function playChestOpeningSound(rarity: string) {
   }
 
   if (key === 'rare') {
-    // Low thud + short rising sweep
     playThud(120, 0.22, 0)
     setTimeout(() => {
       const osc = ctx.createOscillator()
@@ -323,7 +306,7 @@ export function playChestOpeningSound(rarity: string) {
       osc.type = 'sine'
       osc.frequency.setValueAtTime(120, ctx.currentTime)
       osc.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + 0.28)
-      gain.gain.setValueAtTime(cachedVolume * 0.16, ctx.currentTime)
+      gain.gain.setValueAtTime(cachedVolume * 0.14, ctx.currentTime)
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3)
       osc.connect(gain); gain.connect(ctx.destination)
       osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.32)
@@ -331,19 +314,16 @@ export function playChestOpeningSound(rarity: string) {
     return
   }
 
-  // common: single quiet low thud
+  // common
   playThud(120, 0.18, 0)
 }
 
 // ── Cooking sounds ──────────────────────────────────────────────────────────
 
-/** Soft chop sound — knife on board */
 export function playCookChopSound() {
   loadSettings()
   if (cachedMuted) return
   const ctx = getAudioCtx()
-  const vol = cachedVolume * 0.9
-  // Sharp transient click
   const noise = ctx.createBufferSource()
   const buf = ctx.createBuffer(1, ctx.sampleRate * 0.04, ctx.sampleRate)
   const data = buf.getChannelData(0)
@@ -354,29 +334,25 @@ export function playCookChopSound() {
   bp.frequency.value = 3200
   bp.Q.value = 1.5
   const gain = ctx.createGain()
-  gain.gain.setValueAtTime(vol * 0.35, ctx.currentTime)
+  gain.gain.setValueAtTime(cachedVolume * 0.22, ctx.currentTime)
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06)
   noise.connect(bp); bp.connect(gain); gain.connect(ctx.destination)
   noise.start(ctx.currentTime); noise.stop(ctx.currentTime + 0.06)
-  // Low wood thud
   const osc = ctx.createOscillator()
   const g2 = ctx.createGain()
   osc.type = 'sine'
   osc.frequency.setValueAtTime(180, ctx.currentTime)
   osc.frequency.exponentialRampToValueAtTime(100, ctx.currentTime + 0.05)
-  g2.gain.setValueAtTime(vol * 0.2, ctx.currentTime)
+  g2.gain.setValueAtTime(cachedVolume * 0.14, ctx.currentTime)
   g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.07)
   osc.connect(g2); g2.connect(ctx.destination)
   osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.08)
 }
 
-/** Sizzle sound — pan frying */
 export function playCookSizzleSound() {
   loadSettings()
   if (cachedMuted) return
   const ctx = getAudioCtx()
-  const vol = cachedVolume * 0.7
-  // White noise burst shaped as sizzle
   const noise = ctx.createBufferSource()
   const dur = 0.18
   const buf = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate)
@@ -390,19 +366,16 @@ export function playCookSizzleSound() {
   hp.type = 'highpass'
   hp.frequency.value = 4000
   const gain = ctx.createGain()
-  gain.gain.setValueAtTime(vol * 0.2, ctx.currentTime)
+  gain.gain.setValueAtTime(cachedVolume * 0.14, ctx.currentTime)
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur)
   noise.connect(hp); hp.connect(gain); gain.connect(ctx.destination)
   noise.start(ctx.currentTime); noise.stop(ctx.currentTime + dur + 0.01)
 }
 
-/** Bubble sound — boiling/simmering */
 export function playCookBubbleSound() {
   loadSettings()
   if (cachedMuted) return
   const ctx = getAudioCtx()
-  const vol = cachedVolume * 0.8
-  // 3 quick ascending bubble pops
   ;[0, 45, 100].forEach((delay, i) => {
     setTimeout(() => {
       const osc = ctx.createOscillator()
@@ -411,7 +384,7 @@ export function playCookBubbleSound() {
       osc.type = 'sine'
       osc.frequency.setValueAtTime(freq, ctx.currentTime)
       osc.frequency.exponentialRampToValueAtTime(freq * 1.8, ctx.currentTime + 0.04)
-      gain.gain.setValueAtTime(vol * 0.18, ctx.currentTime)
+      gain.gain.setValueAtTime(cachedVolume * 0.14, ctx.currentTime)
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.06)
       osc.connect(gain); gain.connect(ctx.destination)
       osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.07)
@@ -419,23 +392,19 @@ export function playCookBubbleSound() {
   })
 }
 
-/** Grind/mortar sound — grinding/crushing */
 export function playCookGrindSound() {
   loadSettings()
   if (cachedMuted) return
   const ctx = getAudioCtx()
-  const vol = cachedVolume * 0.7
-  // Low rumble + gritty noise
   const osc = ctx.createOscillator()
   const g1 = ctx.createGain()
   osc.type = 'sawtooth'
   osc.frequency.setValueAtTime(90, ctx.currentTime)
   osc.frequency.linearRampToValueAtTime(60, ctx.currentTime + 0.12)
-  g1.gain.setValueAtTime(vol * 0.12, ctx.currentTime)
+  g1.gain.setValueAtTime(cachedVolume * 0.1, ctx.currentTime)
   g1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.14)
   osc.connect(g1); g1.connect(ctx.destination)
   osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.15)
-  // High grit
   const noise = ctx.createBufferSource()
   const buf = ctx.createBuffer(1, ctx.sampleRate * 0.1, ctx.sampleRate)
   const data = buf.getChannelData(0)
@@ -444,28 +413,25 @@ export function playCookGrindSound() {
   const bp = ctx.createBiquadFilter()
   bp.type = 'bandpass'; bp.frequency.value = 1800; bp.Q.value = 2
   const g2 = ctx.createGain()
-  g2.gain.setValueAtTime(vol * 0.15, ctx.currentTime)
+  g2.gain.setValueAtTime(cachedVolume * 0.12, ctx.currentTime)
   g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1)
   noise.connect(bp); bp.connect(g2); g2.connect(ctx.destination)
   noise.start(ctx.currentTime); noise.stop(ctx.currentTime + 0.11)
 }
 
-/** Oven/bake sound — warm whoosh */
 export function playCookOvenSound() {
   loadSettings()
   if (cachedMuted) return
   const ctx = getAudioCtx()
-  const vol = cachedVolume * 0.7
   const osc = ctx.createOscillator()
   const gain = ctx.createGain()
   osc.type = 'sine'
   osc.frequency.setValueAtTime(120, ctx.currentTime)
   osc.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.2)
-  gain.gain.setValueAtTime(vol * 0.15, ctx.currentTime)
+  gain.gain.setValueAtTime(cachedVolume * 0.12, ctx.currentTime)
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3)
   osc.connect(gain); gain.connect(ctx.destination)
   osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.32)
-  // Warm crackle overlay
   setTimeout(() => {
     const n = ctx.createBufferSource()
     const b = ctx.createBuffer(1, ctx.sampleRate * 0.08, ctx.sampleRate)
@@ -475,44 +441,37 @@ export function playCookOvenSound() {
     const lp = ctx.createBiquadFilter()
     lp.type = 'lowpass'; lp.frequency.value = 2000
     const g = ctx.createGain()
-    g.gain.setValueAtTime(vol * 0.1, ctx.currentTime)
+    g.gain.setValueAtTime(cachedVolume * 0.08, ctx.currentTime)
     g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08)
     n.connect(lp); lp.connect(g); g.connect(ctx.destination)
     n.start(ctx.currentTime); n.stop(ctx.currentTime + 0.09)
   }, 100)
 }
 
-/** Bowl/mix sound — gentle swish */
 export function playCookMixSound() {
   loadSettings()
   if (cachedMuted) return
   const ctx = getAudioCtx()
-  const vol = cachedVolume * 0.7
-  // Sine sweep up then down
   const osc = ctx.createOscillator()
   const gain = ctx.createGain()
   osc.type = 'sine'
   osc.frequency.setValueAtTime(300, ctx.currentTime)
   osc.frequency.linearRampToValueAtTime(500, ctx.currentTime + 0.06)
   osc.frequency.linearRampToValueAtTime(280, ctx.currentTime + 0.12)
-  gain.gain.setValueAtTime(vol * 0.12, ctx.currentTime)
+  gain.gain.setValueAtTime(cachedVolume * 0.1, ctx.currentTime)
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.14)
   osc.connect(gain); gain.connect(ctx.destination)
   osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.15)
 }
 
-/** Step advance — satisfying "ding" with warmth */
 export function playCookAdvanceSound() {
   loadSettings()
   if (cachedMuted) return
-  const vol = cachedVolume * 1.0
-  // Two-note chime: warm + bright
-  playTone(440, 0.12, 'sine', vol * 0.7)
-  setTimeout(() => playTone(660, 0.18, 'triangle', vol * 0.8), 60)
-  setTimeout(() => playTone(880, 0.12, 'sine', vol * 0.5), 130)
+  playTone(440, 0.12, 'sine', cachedVolume * 0.18)
+  setTimeout(() => playTone(660, 0.18, 'triangle', cachedVolume * 0.22), 60)
+  setTimeout(() => playTone(880, 0.12, 'sine', cachedVolume * 0.14), 130)
 }
 
-/** Play cooking sound based on instrument type */
 export function playCookSoundForInstrument(instrument: string) {
   switch (instrument) {
     case 'knife': return playCookChopSound()
@@ -525,56 +484,46 @@ export function playCookSoundForInstrument(instrument: string) {
   }
 }
 
-/** Sweet spot tap HIT — bright positive chime */
 export function playTapHitSound() {
   loadSettings()
   if (cachedMuted) return
-  const vol = cachedVolume * 0.9
-  playTone(880, 0.08, 'sine', vol * 0.6)
-  setTimeout(() => playTone(1100, 0.12, 'triangle', vol * 0.8), 50)
-  setTimeout(() => playTone(1320, 0.15, 'sine', vol * 0.5), 110)
+  playTone(880, 0.08, 'sine', cachedVolume * 0.16)
+  setTimeout(() => playTone(1100, 0.12, 'triangle', cachedVolume * 0.22), 50)
+  setTimeout(() => playTone(1320, 0.15, 'sine', cachedVolume * 0.14), 110)
 }
 
-/** Sweet spot tap MISS — dull low thud */
 export function playTapMissSound() {
   loadSettings()
   if (cachedMuted) return
-  const vol = cachedVolume * 0.6
-  playTone(180, 0.12, 'sine', vol * 0.5)
-  setTimeout(() => playTone(120, 0.08, 'triangle', vol * 0.3), 40)
+  playTone(180, 0.12, 'sine', cachedVolume * 0.1)
+  setTimeout(() => playTone(120, 0.08, 'triangle', cachedVolume * 0.07), 40)
 }
 
 // ── Cooking polish sounds ────────────────────────────────────────────────────
 
-/** Descending two-note buzz — "wrong answer" feel */
 export function playCookErrorSound() {
   loadSettings()
   if (cachedMuted) return
-  const vol = cachedVolume * 0.8
-  playTone(350, 0.1, 'sine', vol * 0.5)
-  setTimeout(() => playTone(220, 0.12, 'sine', vol * 0.4), 100)
+  playTone(350, 0.1, 'sine', cachedVolume * 0.14)
+  setTimeout(() => playTone(220, 0.12, 'sine', cachedVolume * 0.12), 100)
 }
 
-/** Cooking-specific completion fanfare, scales by rarity */
 export function playCookCompleteSound(rarity: string = 'common') {
   loadSettings()
   if (cachedMuted) return
   const ctx = getAudioCtx()
-  const vol = cachedVolume
   const key = String(rarity || '').toLowerCase()
 
   if (key === 'legendary' || key === 'mythic') {
-    // 4-note fanfare with detuned dual oscillators
     const notes = [523, 659, 784, 1047]
     notes.forEach((freq, i) => {
       setTimeout(() => {
-        playTone(freq, 0.25, 'triangle', vol * 0.9)
-        // Detuned second voice for richness
+        playTone(freq, 0.25, 'triangle', cachedVolume * 0.28)
         const osc = ctx.createOscillator()
         const gain = ctx.createGain()
         osc.type = 'sine'
         osc.frequency.setValueAtTime(freq * 1.005, ctx.currentTime)
-        gain.gain.setValueAtTime(vol * 0.15, ctx.currentTime)
+        gain.gain.setValueAtTime(cachedVolume * 0.05, ctx.currentTime)
         gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25)
         osc.connect(gain); gain.connect(ctx.destination)
         osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.26)
@@ -583,44 +532,35 @@ export function playCookCompleteSound(rarity: string = 'common') {
     return
   }
   if (key === 'epic') {
-    // 3-note ascending + shimmer overlay
     const notes = [587, 740, 988]
     notes.forEach((freq, i) => {
-      setTimeout(() => playTone(freq, 0.2, 'triangle', vol * 0.85), i * 90)
+      setTimeout(() => playTone(freq, 0.2, 'triangle', cachedVolume * 0.24), i * 90)
     })
-    // Shimmer
-    setTimeout(() => playTone(1976, 0.15, 'sine', vol * 0.2), 270)
+    setTimeout(() => playTone(1976, 0.15, 'sine', cachedVolume * 0.06), 270)
     return
   }
   if (key === 'rare') {
-    // 2-note rising
-    playTone(523, 0.15, 'sine', vol * 0.7)
-    setTimeout(() => playTone(659, 0.2, 'triangle', vol * 0.8), 100)
+    playTone(523, 0.15, 'sine', cachedVolume * 0.2)
+    setTimeout(() => playTone(659, 0.2, 'triangle', cachedVolume * 0.24), 100)
     return
   }
-  // common: single warm chime
-  playTone(523, 0.2, 'triangle', vol * 0.6)
+  // common
+  playTone(523, 0.2, 'triangle', cachedVolume * 0.18)
 }
 
-/** 5-note ascending arpeggio — magical sparkle for Cauldron discovery */
 export function playCookDiscoverySound() {
   loadSettings()
   if (cachedMuted) return
-  const vol = cachedVolume * 1.0
-  // C5→E5→G5→C6→E6 triangle waves
   const notes = [523, 659, 784, 1047, 1319]
   notes.forEach((freq, i) => {
-    setTimeout(() => playTone(freq, 0.22, 'triangle', vol * (0.6 + i * 0.08)), i * 75)
+    setTimeout(() => playTone(freq, 0.22, 'triangle', cachedVolume * (0.18 + i * 0.024)), i * 75)
   })
 }
 
-/** Brief sizzle + descending sine — burn sound */
 export function playCookBurnSound() {
   loadSettings()
   if (cachedMuted) return
   const ctx = getAudioCtx()
-  const vol = cachedVolume * 0.8
-  // Sizzle noise burst
   const noise = ctx.createBufferSource()
   const dur = 0.1
   const buf = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate)
@@ -634,18 +574,17 @@ export function playCookBurnSound() {
   hp.type = 'highpass'
   hp.frequency.value = 4000
   const gain = ctx.createGain()
-  gain.gain.setValueAtTime(vol * 0.25, ctx.currentTime)
+  gain.gain.setValueAtTime(cachedVolume * 0.2, ctx.currentTime)
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur)
   noise.connect(hp); hp.connect(gain); gain.connect(ctx.destination)
   noise.start(ctx.currentTime); noise.stop(ctx.currentTime + dur + 0.01)
-  // Descending sine
   setTimeout(() => {
     const osc = ctx.createOscillator()
     const g2 = ctx.createGain()
     osc.type = 'sine'
     osc.frequency.setValueAtTime(400, ctx.currentTime)
     osc.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.12)
-    g2.gain.setValueAtTime(vol * 0.3, ctx.currentTime)
+    g2.gain.setValueAtTime(cachedVolume * 0.22, ctx.currentTime)
     g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.14)
     osc.connect(g2); g2.connect(ctx.destination)
     osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.15)

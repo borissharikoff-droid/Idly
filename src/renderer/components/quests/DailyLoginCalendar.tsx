@@ -5,13 +5,14 @@ import {
   canClaimToday, claimDailyLoginReward, getCalendarDays, getDailyLoginState,
   type CalendarDay, type DailyLoginReward,
 } from '../../lib/dailyLoginRewards'
-import { CHEST_DEFS, LOOT_ITEMS, RARITY_COLORS, getRarityTheme, type ChestType } from '../../lib/loot'
+import { CHEST_DEFS, LOOT_ITEMS, RARITY_COLORS, getRarityTheme, type ChestType, type BonusMaterial } from '../../lib/loot'
 import { SEED_DEFS } from '../../lib/farming'
 import { LootVisual } from '../loot/LootUI'
 import { useGoldStore } from '../../stores/goldStore'
 import { useInventoryStore } from '../../stores/inventoryStore'
 import { playClickSound } from '../../lib/sounds'
 import { PixelConfetti } from '../home/PixelConfetti'
+import { ChestOpenModal } from '../animations/ChestOpenModal'
 
 // ── Chest visuals ─────────────────────────────────────────────────────────────
 
@@ -262,14 +263,16 @@ function RewardItemBlock({ icon, image, name, qty, color }: {
 }) {
   return (
     <div
-      className="flex flex-col items-center gap-1.5 rounded-lg py-2 px-1.5 border"
-      style={{ minWidth: 66, width: 66, borderColor: `${color}40`, background: `${color}14` }}
+      className="flex flex-col items-center gap-1 rounded-lg py-2 px-2 border relative overflow-hidden"
+      style={{ minWidth: 62, width: 62, borderColor: `${color}55`, background: `${color}1c` }}
     >
-      <div className="flex items-center justify-center w-10 h-10">
-        <LootVisual icon={icon} image={image} className="w-9 h-9 object-contain" />
+      <div className="absolute inset-0 pointer-events-none"
+        style={{ background: `radial-gradient(ellipse at 50% 100%, ${color}28 0%, transparent 70%)` }} />
+      <div className="flex items-center justify-center w-9 h-9 relative">
+        <LootVisual icon={icon} image={image} className="w-8 h-8 object-contain" />
       </div>
-      <span className="text-[11px] font-bold font-mono leading-none" style={{ color }}>{qty}</span>
-      <span className="text-[9px] text-gray-400 leading-none text-center w-full truncate">{name}</span>
+      <span className="text-[11px] font-bold font-mono leading-none relative" style={{ color }}>{qty}</span>
+      <span className="text-[8px] text-gray-500 leading-none text-center w-full truncate relative">{name}</span>
     </div>
   )
 }
@@ -302,6 +305,7 @@ function RewardHeroCard({ day }: { day: CalendarDay }) {
   const accent = getRewardAccent(day.reward)
   const isToday = day.status === 'today'
   const isClaimed = day.status === 'claimed'
+  const isMilestone = MILESTONE_DAYS.has(day.day)
   const statusText = isToday ? "Today's Reward" : isClaimed ? 'Claimed' : 'Upcoming'
   const statusColor = isToday ? accent : isClaimed ? '#4ade80' : '#6B7280'
   const blocks = buildRewardBlocks(day.reward)
@@ -310,37 +314,52 @@ function RewardHeroCard({ day }: { day: CalendarDay }) {
     <motion.div
       key={day.day}
       className="relative rounded-xl overflow-hidden"
-      initial={{ opacity: 0, y: -5 }}
+      initial={{ opacity: 0, y: -4 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.18 }}
+      transition={{ duration: 0.15 }}
       style={{
-        background: `linear-gradient(135deg, ${accent}28 0%, ${accent}0e 100%)`,
-        border: `1px solid ${accent}50`,
+        background: `linear-gradient(135deg, ${accent}30 0%, rgba(255,255,255,0.05) 100%)`,
+        border: `1px solid ${accent}55`,
       }}
     >
+      {/* Left radial glow */}
       <div className="absolute inset-0 pointer-events-none"
-        style={{ background: `radial-gradient(ellipse at 0% 50%, ${accent}30 0%, transparent 55%)` }} />
+        style={{ background: `radial-gradient(ellipse at 0% 50%, ${accent}35 0%, transparent 60%)` }} />
 
-      <div className="relative px-4 pt-3 pb-3">
-        {/* Header row */}
-        <div className="flex items-center gap-2 mb-2.5">
-          <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: `${accent}80` }}>
-            {getWeekLabel(day.day)} · Day {day.day}
+      <div className="relative flex items-stretch gap-0">
+        {/* Left column — day number */}
+        <div className="flex flex-col items-center justify-center px-4 py-3 shrink-0 border-r"
+          style={{ borderColor: `${accent}20`, minWidth: 64 }}>
+          <span className="text-[9px] font-mono uppercase tracking-widest mb-0.5" style={{ color: `${accent}70` }}>
+            {getWeekLabel(day.day)}
           </span>
-          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-sm"
-            style={{ color: statusColor, background: `${statusColor}18` }}>
-            {statusText}
+          <span className="text-3xl font-black leading-none tabular-nums" style={{ color: isClaimed ? '#374151' : accent }}>
+            {day.day}
           </span>
-          {isToday && (
-            <motion.div className="w-1.5 h-1.5 rounded-full ml-auto shrink-0"
-              style={{ backgroundColor: accent }}
-              animate={{ opacity: [1, 0.2, 1], scale: [1, 0.7, 1] }}
-              transition={{ duration: 1.4, repeat: Infinity }} />
+          {isMilestone && (
+            <span className="text-[8px] font-bold mt-1 px-1 rounded" style={{ color: '#facc15', background: 'rgba(250,204,21,0.12)' }}>
+              MILESTONE
+            </span>
           )}
         </div>
-        {/* Item blocks */}
-        <div className="flex flex-wrap gap-1.5">
-          {blocks}
+
+        {/* Right column — status + items */}
+        <div className="flex-1 px-3.5 pt-2.5 pb-2.5 min-w-0">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded leading-none"
+              style={{ color: statusColor, background: `${statusColor}18`, border: `1px solid ${statusColor}30` }}>
+              {statusText}
+            </span>
+            {isToday && (
+              <motion.div className="w-1.5 h-1.5 rounded-full shrink-0"
+                style={{ backgroundColor: accent }}
+                animate={{ opacity: [1, 0.2, 1] }}
+                transition={{ duration: 1.4, repeat: Infinity }} />
+            )}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {blocks}
+          </div>
         </div>
       </div>
     </motion.div>
@@ -356,7 +375,6 @@ function DayCell({ day, onClick }: { day: CalendarDay; onClick: (day: CalendarDa
   const accentColor = useMemo(() => getRewardAccent(day.reward), [day.reward])
   const quality = useMemo(() => getCellQuality(day.reward), [day.reward])
 
-  // Scale glow into a hex alpha: 0.06→0f, 0.14→24, 0.22→38, 0.28→47, 0.35→59, 0.40→66, 0.55→8c
   const glowHex = (scale: number) =>
     Math.round(quality.glow * scale * 255).toString(16).padStart(2, '0').slice(0, 2)
 
@@ -366,25 +384,24 @@ function DayCell({ day, onClick }: { day: CalendarDay; onClick: (day: CalendarDa
       ? `${quality.color}${isFuture ? glowHex(1.2) : glowHex(1.8)}`
       : 'rgba(255,255,255,0.09)'
 
+  // Static box-shadow — no animation to avoid per-frame paint
+  const boxShadow = isToday
+    ? `0 0 14px ${accentColor}50, inset 0 0 12px ${accentColor}14`
+    : quality.glow >= 0.28 && !isClaimed
+      ? `0 0 ${isFuture ? '10px' : '16px'} ${quality.color}${isFuture ? '40' : '55'}`
+      : undefined
+
   return (
-    <motion.div
+    <div
       onClick={() => onClick(day)}
-      className="relative flex flex-col items-center justify-between rounded-lg select-none overflow-hidden border h-[92px] w-full pt-1.5 pb-1.5 transition-colors cursor-pointer"
-      whileHover={{ scale: 1.04, transition: { duration: 0.12 } }}
-      whileTap={{ scale: 0.97 }}
+      className="relative flex flex-col items-center justify-between rounded-lg select-none overflow-hidden border h-[92px] w-full pt-1.5 pb-1.5 cursor-pointer transition-transform duration-100 hover:scale-[1.04] active:scale-[0.97]"
       style={{
         borderColor,
         background: isClaimed
-          ? 'rgba(255,255,255,0.035)'
-          : `radial-gradient(ellipse at 50% 95%, ${quality.color}${isFuture ? glowHex(1.6) : glowHex(2.2)} 0%, transparent 72%), rgba(255,255,255,0.08)`,
-        boxShadow: isToday
-          ? `0 0 16px ${accentColor}60, inset 0 0 14px ${accentColor}18`
-          : quality.glow >= 0.28 && !isClaimed
-            ? `0 0 ${isFuture ? '10px' : '18px'} ${quality.color}${isFuture ? '40' : '66'}`
-            : undefined,
+          ? 'rgba(255,255,255,0.055)'
+          : `radial-gradient(ellipse at 50% 95%, ${quality.color}${isFuture ? glowHex(1.8) : glowHex(2.6)} 0%, transparent 72%), rgba(255,255,255,0.10)`,
+        boxShadow,
       }}
-      animate={isToday ? { boxShadow: [`0 0 12px ${accentColor}35`, `0 0 22px ${accentColor}60`, `0 0 12px ${accentColor}35`] } : {}}
-      transition={isToday ? { duration: 2, repeat: Infinity } : {}}
     >
       {/* Top accent bar for milestone cells */}
       {quality.glow >= 0.14 && !isClaimed && (
@@ -428,7 +445,7 @@ function DayCell({ day, onClick }: { day: CalendarDay; onClick: (day: CalendarDa
         </div>
       )}
 
-      {/* Today glow ring pulse */}
+      {/* Today glow ring pulse — opacity only (GPU composited, no paint) */}
       {isToday && (
         <motion.div
           className="absolute inset-0 rounded-lg pointer-events-none"
@@ -444,7 +461,7 @@ function DayCell({ day, onClick }: { day: CalendarDay; onClick: (day: CalendarDa
           <span className="text-[7px] text-gray-700/50">🔒</span>
         </div>
       )}
-    </motion.div>
+    </div>
   )
 }
 
@@ -680,6 +697,11 @@ export function DailyLoginCalendar({ onClose, onClaimed }: DailyLoginCalendarPro
   const addItem = useInventoryStore(s => s.addItem)
   const grantAndOpenChest = useInventoryStore(s => s.grantAndOpenChest)
 
+  const [pendingChest, setPendingChest] = useState<{
+    chestType: ChestType; itemId: string | null; goldDropped: number; bonusMaterials: BonusMaterial[]
+  } | null>(null)
+  const [deferredReward, setDeferredReward] = useState<DailyLoginReward | null>(null)
+
   const todayDay = days.find(d => d.status === 'today')
   const totalClaimed = getDailyLoginState().totalClaimed
 
@@ -693,20 +715,39 @@ export function DailyLoginCalendar({ onClose, onClaimed }: DailyLoginCalendarPro
     if (reward.materials) {
       for (const m of reward.materials) addItem(m.id, m.qty)
     }
-    if (reward.chests) {
-      for (const c of reward.chests) {
-        for (let i = 0; i < c.qty; i++) {
-          grantAndOpenChest(c.type, { source: 'daily_activity' })
-        }
-      }
-    }
 
     setClaimable(false)
-    onClaimed?.(reward)
-    onClose()
+
+    if (reward.chests && reward.chests.length > 0) {
+      let lastChestType: ChestType = reward.chests[reward.chests.length - 1].type
+      let lastResult = { itemId: null as string | null, goldDropped: 0, bonusMaterials: [] as BonusMaterial[] }
+      for (const c of reward.chests) {
+        for (let i = 0; i < c.qty; i++) {
+          const r = grantAndOpenChest(c.type, { source: 'daily_activity' })
+          lastChestType = c.type
+          lastResult = { itemId: r.itemId, goldDropped: r.goldDropped, bonusMaterials: r.bonusMaterials }
+        }
+      }
+      setDeferredReward(reward)
+      setPendingChest({ chestType: lastChestType, ...lastResult })
+    } else {
+      onClaimed?.(reward)
+      onClose()
+    }
   }, [claimable, addGold, addItem, grantAndOpenChest, onClaimed, onClose])
 
-  return createPortal(
+  const handleChestClose = useCallback(() => {
+    const r = deferredReward
+    setPendingChest(null)
+    setDeferredReward(null)
+    onClaimed?.(r!)
+    onClose()
+  }, [deferredReward, onClaimed, onClose])
+
+  return (
+    <>
+    <DailyLoginChestModal pendingChest={pendingChest} onClose={handleChestClose} />
+    {createPortal(
     <AnimatePresence>
       <motion.div
         className="fixed inset-0 z-50 flex items-center justify-center"
@@ -720,21 +761,28 @@ export function DailyLoginCalendar({ onClose, onClaimed }: DailyLoginCalendarPro
 
         {/* Panel */}
         <motion.div
-          className="relative z-10 w-[500px] max-h-[90vh] flex flex-col rounded-xl border border-white/[0.08] bg-[#0d0f12] shadow-2xl overflow-hidden"
+          className="relative z-10 w-[500px] max-h-[90vh] flex flex-col rounded-xl border border-white/[0.14] shadow-2xl overflow-hidden"
+          style={{ background: 'linear-gradient(160deg, #181c27 0%, #111420 100%)' }}
           initial={{ scale: 0.92, y: 20, opacity: 0 }}
           animate={{ scale: 1, y: 0, opacity: 1 }}
           exit={{ scale: 0.92, y: 20, opacity: 0 }}
           transition={{ type: 'spring', stiffness: 280, damping: 22 }}
         >
+          {/* Decorative top gradient strip */}
+          <div className="h-[2px] flex-shrink-0" style={{ background: 'linear-gradient(90deg, transparent 0%, #f97316 30%, #facc15 60%, transparent 100%)' }} />
 
           {/* Header */}
-          <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-white/[0.06]">
+          <div className="flex items-center justify-between px-5 pt-4 pb-3.5 border-b border-white/[0.07]">
             <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                style={{ background: 'linear-gradient(135deg, rgba(249,115,22,0.2) 0%, rgba(250,204,21,0.1) 100%)', border: '1px solid rgba(250,204,21,0.25)' }}>
+                <span className="text-lg leading-none">🎁</span>
+              </div>
               <div>
-                <h2 className="text-base font-bold text-white leading-tight">Daily Login Rewards</h2>
-                {totalClaimed >= 30 && (
-                  <p className="text-xs text-gray-500 mt-0.5">🏆 All 30 days completed!</p>
-                )}
+                <h2 className="text-sm font-bold text-white leading-tight tracking-wide">Daily Login Rewards</h2>
+                <p className="text-[10px] font-mono leading-tight mt-0.5" style={{ color: '#f97316cc' }}>
+                  {totalClaimed >= 30 ? '🏆 All 30 days completed!' : `${totalClaimed} / 30 days claimed`}
+                </p>
               </div>
             </div>
             <button
@@ -745,84 +793,124 @@ export function DailyLoginCalendar({ onClose, onClaimed }: DailyLoginCalendarPro
             </button>
           </div>
 
-          {/* Claim overlay — portal, rendered on top of everything */}
-          <AnimatePresence>
-          </AnimatePresence>
-
           {/* Fixed hero + progress — never scrolls */}
-          <div className="px-5 pt-3 pb-3 space-y-3 border-b border-white/[0.05]">
-            {/* Selected day hero — always visible, updates on cell click */}
+          <div className="px-5 pt-3.5 pb-3.5 border-b border-white/[0.08]" style={{ background: 'rgba(255,255,255,0.03)' }}>
+            {/* Selected day hero */}
             <AnimatePresence mode="wait">
               <RewardHeroCard key={selectedDay.day} day={selectedDay} />
             </AnimatePresence>
 
-            {/* Progress */}
-            <div>
-              <div className="flex justify-between text-[10px] text-gray-600 mb-1.5 font-mono">
-                <span>{totalClaimed} / 30 days claimed</span>
-                {totalClaimed < 30 && <span>{30 - totalClaimed} remaining</span>}
-              </div>
-              <div className="h-1.5 rounded-full bg-white/[0.05] overflow-hidden">
+            {/* Progress with milestone markers */}
+            <div className="mt-3">
+              <div className="relative h-2.5 rounded-full overflow-visible" style={{ background: 'rgba(255,255,255,0.09)' }}>
                 <motion.div
-                  className="h-full rounded-full"
+                  className="absolute inset-y-0 left-0 rounded-full"
                   style={{ background: 'linear-gradient(90deg, #f97316, #facc15)' }}
                   initial={{ width: 0 }}
                   animate={{ width: `${(totalClaimed / 30) * 100}%` }}
                   transition={{ duration: 0.7, ease: 'easeOut' }}
                 />
+                {/* Milestone ticks at 7, 14, 21, 30 */}
+                {[7, 14, 21, 30].map((m) => {
+                  const pct = (m / 30) * 100
+                  const reached = totalClaimed >= m
+                  return (
+                    <div key={m} className="absolute top-1/2 -translate-y-1/2 flex flex-col items-center" style={{ left: `${pct}%`, transform: 'translateX(-50%) translateY(-50%)' }}>
+                      <div className="w-2.5 h-2.5 rounded-full border-2 z-10"
+                        style={{ borderColor: reached ? '#facc15' : 'rgba(255,255,255,0.25)', background: reached ? '#facc15' : '#181c27' }} />
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="flex justify-between mt-1.5">
+                {([7, 14, 21, 30] as const).map((m, i) => (
+                  <span key={m} className="text-[8px] font-mono" style={{ color: totalClaimed >= m ? '#facc1599' : '#4b5563' }}>W{i + 1}</span>
+                ))}
               </div>
             </div>
           </div>
 
-          {/* Scrollable grid only */}
-          <div className="flex-1 overflow-y-auto px-5 py-4">
-            <div className="space-y-2.5">
-              {/* Calendar grid — grouped by week */}
-              {WEEK_GROUPS.map(({ label, start, end }) => (
-                <div key={label}>
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <span className="text-[9px] font-mono uppercase tracking-widest text-gray-700">{label}</span>
-                    <div className="flex-1 h-px bg-white/[0.04]" />
+          {/* Scrollable grid */}
+          <div className="flex-1 overflow-y-auto px-5 py-3.5" style={{ willChange: 'scroll-position' }}>
+            <div className="space-y-3">
+              {WEEK_GROUPS.map(({ label, start, end }) => {
+                const weekDone = days.slice(start, end).every(d => d.status === 'claimed')
+                return (
+                  <div key={label}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-[9px] font-bold font-mono uppercase tracking-widest px-1.5 py-0.5 rounded"
+                        style={{ color: weekDone ? '#4ade80cc' : '#FACC15aa', background: weekDone ? 'rgba(74,222,128,0.10)' : 'rgba(250,204,21,0.10)', border: `1px solid ${weekDone ? 'rgba(74,222,128,0.22)' : 'rgba(250,204,21,0.18)'}` }}>
+                        {label} {weekDone ? '✓' : `· Day ${start + 1}–${end}`}
+                      </span>
+                      <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.04)' }} />
+                    </div>
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {days.slice(start, end).map((d) => (
+                        <DayCell key={d.day} day={d} onClick={setSelectedDay} />
+                      ))}
+                    </div>
                   </div>
-                  <div className="grid grid-cols-5 gap-1.5">
-                    {days.slice(start, end).map((d) => (
-                      <DayCell key={d.day} day={d} onClick={setSelectedDay} />
-                    ))}
-                  </div>
-                </div>
-              ))}
+                )
+              })}
 
-              {/* Already claimed note */}
               {!claimable && totalClaimed < 30 && (
-                <p className="text-center text-xs text-gray-600 font-mono py-1">
-                  Come back tomorrow for Day {totalClaimed + 1}
-                </p>
+                <div className="text-center py-2">
+                  <p className="text-[10px] text-gray-500 font-mono">
+                    Come back tomorrow for Day {totalClaimed + 1}
+                  </p>
+                </div>
               )}
             </div>
           </div>
 
           {/* Footer — claim button */}
           {claimable && todayDay && (
-            <div className="px-5 pb-5 pt-3 border-t border-white/[0.06]">
-              <motion.button
-                onClick={handleClaim}
-                className="w-full py-3.5 rounded-xl text-base font-bold text-white relative overflow-hidden"
-                style={{ background: 'linear-gradient(135deg, #FACC15, #F97316)' }}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.97 }}
-                animate={{ boxShadow: ['0 0 0px #FACC1500', '0 0 18px #FACC1588', '0 0 0px #FACC1500'] }}
-                transition={{ boxShadow: { duration: 1.6, repeat: Infinity } }}
-              >
-                <span className="relative z-10">
+            <div className="px-5 pb-5 pt-3 border-t border-white/[0.07]" style={{ background: 'rgba(250,204,21,0.03)' }}>
+              <div className="relative">
+                {/* Glow layer — opacity only, no paint trigger */}
+                <motion.div
+                  className="absolute inset-0 rounded-xl pointer-events-none"
+                  style={{ boxShadow: '0 0 24px #FACC1560' }}
+                  animate={{ opacity: [0.4, 1, 0.4] }}
+                  transition={{ duration: 1.6, repeat: Infinity }}
+                />
+                <motion.button
+                  onClick={handleClaim}
+                  className="relative w-full py-3.5 rounded-xl text-sm font-bold text-[#0f0f0f] tracking-wide overflow-hidden"
+                  style={{ background: 'linear-gradient(135deg, #facc15 0%, #f97316 100%)' }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                >
                   ✦ Claim Day {todayDay.day} Reward
-                </span>
-              </motion.button>
+                </motion.button>
+              </div>
             </div>
           )}
         </motion.div>
       </motion.div>
     </AnimatePresence>,
     document.body,
+  )}
+    </>
+  )
+}
+
+// ── Daily Login Chest Modal ────────────────────────────────────────────────────
+
+function DailyLoginChestModal({ pendingChest, onClose }: {
+  pendingChest: { chestType: ChestType; itemId: string | null; goldDropped: number; bonusMaterials: BonusMaterial[] } | null
+  onClose: () => void
+}) {
+  const item = pendingChest?.itemId ? (LOOT_ITEMS.find((x) => x.id === pendingChest.itemId) ?? null) : null
+  return (
+    <ChestOpenModal
+      open={pendingChest !== null}
+      chestType={pendingChest?.chestType ?? null}
+      item={item}
+      goldDropped={pendingChest?.goldDropped}
+      bonusMaterials={pendingChest?.bonusMaterials}
+      onClose={onClose}
+    />
   )
 }
 

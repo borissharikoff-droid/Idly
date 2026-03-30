@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { fmt } from '../../lib/format'
 import { createPortal } from 'react-dom'
 import type { BonusMaterial, ChestType, LootItemDef } from '../../lib/loot'
 import { CHEST_DEFS, LOOT_ITEMS, getRarityTheme, getItemPerkDescription } from '../../lib/loot'
@@ -261,7 +262,7 @@ export function ChestOpenModal({
               {goldDropped > 0 && (
                 <div className="flex flex-col items-center gap-1 rounded-lg border border-amber-500/25 bg-amber-500/08 px-3 py-2">
                   <span className="text-xl">🪙</span>
-                  <span className="text-sm font-bold text-amber-400">+{goldDropped}</span>
+                  <span className="text-sm font-bold text-amber-400">+{fmt(goldDropped)}</span>
                   <span className="text-micro font-mono text-amber-600 uppercase tracking-widest">Gold</span>
                 </div>
               )}
@@ -663,7 +664,7 @@ export function ChestOpenModal({
                         >
                           <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 50% 35%, rgba(245,158,11,0.18) 0%, transparent 65%)' }} />
                           <span className="text-3xl relative">🪙</span>
-                          <span className="text-xl font-bold text-amber-400 tabular-nums relative">+{goldDropped}</span>
+                          <span className="text-xl font-bold text-amber-400 tabular-nums relative">+{fmt(goldDropped)}</span>
                           <span className="text-micro font-mono text-amber-500/60 uppercase tracking-widest relative">Gold</span>
                         </motion.div>
                       )}

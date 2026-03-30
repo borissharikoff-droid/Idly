@@ -168,6 +168,7 @@ export default function App() {
   useEffect(() => {
     useNavigationStore.getState().setCurrentTab(activeTab)
     clearEscapeStack()
+    mainScrollRef.current?.scrollTo({ top: 0, behavior: 'instant' })
   }, [activeTab])
   useEffect(() => { useAchievementStatsStore.getState().hydrate() }, [])
   const [showStreak, setShowStreak] = useState(false)
@@ -180,6 +181,7 @@ export default function App() {
   const lastHiddenActivityPushRef = useRef(0)
   const healthCheckDoneRef = useRef(false)
   const isBackgroundRef = useRef(false)
+  const mainScrollRef = useRef<HTMLElement>(null)
   const { user } = useAuthStore()
   const handleEscapeToHome = useCallback(() => {
     if (activeTab !== 'home') navigateTo('home')
@@ -468,6 +470,38 @@ export default function App() {
     return unsub
   }, [])
 
+  // Dev helpers for GIF recording scripts (dev only)
+  // window.__demoNav('farm')  — navigate to any tab
+  // window.__demoSession()    — trigger epic session complete modal
+  // window.__demoClear()      — dismiss session complete modal
+  useEffect(() => {
+    if (!import.meta.env.DEV) return
+    const w = window as unknown as Record<string, unknown>
+    w.__demoNav = (tab: string) => {
+      useNavigationStore.getState().navigateTo?.(tab as import('./App').TabId)
+    }
+    w.__demoSession = () => {
+      useSessionStore.setState({
+        showComplete: true,
+        status: 'idle',
+        lastSessionSummary: { durationFormatted: '01:23:47' },
+        skillXPGains: [
+          { skillId: 'developer',    xp: 4234, levelBefore: 41, levelAfter: 42, totalXpAfter: 582_000 },
+          { skillId: 'gamer',        xp: 2847, levelBefore: 27, levelAfter: 28, totalXpAfter: 232_000 },
+          { skillId: 'researcher',   xp:  956, levelBefore: 19, levelAfter: 19, totalXpAfter: 148_000 },
+          { skillId: 'communicator', xp: 1450, levelBefore: 14, levelAfter: 15, totalXpAfter:  68_000 },
+        ],
+        streakMultiplier: 2.5,
+        sessionSkillXPEarned: 9487,
+        newAchievements: [],
+        sessionRewards: [],
+      })
+    }
+    w.__demoClear = () => {
+      useSessionStore.getState().dismissComplete()
+    }
+  }, [])
+
   // Dev helper: call window.__devMaxStats() from DevTools console to max all local state
   useEffect(() => {
     if (!import.meta.env.DEV) return
@@ -513,7 +547,7 @@ export default function App() {
             </div>
           )}
           <PartyHUD />
-          <main className="flex-1 overflow-y-auto overflow-x-hidden isolate pb-[60px]">
+          <main ref={mainScrollRef} className="flex-1 overflow-y-auto overflow-x-hidden isolate pb-[60px]">
             <>
               {activeTab === 'home' && (
                 <motion.div key="home" className="h-full" variants={PAGE_SLIDE} initial="initial" animate="animate">

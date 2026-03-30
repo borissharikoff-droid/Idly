@@ -28,12 +28,8 @@ function getIconPath(): string {
   return path.join(process.resourcesPath, 'assets', 'icon.png')
 }
 
-function createTray() {
-  const icon = nativeImage.createFromPath(getIconPath())
-  tray = new Tray(icon.resize({ width: 16, height: 16 }))
-  tray.setToolTip('Grindly')
-
-  const contextMenu = Menu.buildFromTemplate([
+function buildAppMenu() {
+  return Menu.buildFromTemplate([
     {
       label: 'Show Grindly',
       click: () => {
@@ -52,14 +48,25 @@ function createTray() {
       },
     },
   ])
-  tray.setContextMenu(contextMenu)
+}
 
+function createTray() {
+  const icon = nativeImage.createFromPath(getIconPath())
+  tray = new Tray(icon.resize({ width: 16, height: 16 }))
+  tray.setToolTip('Grindly')
+  tray.setContextMenu(buildAppMenu())
   tray.on('click', () => {
     if (mainWindow) {
       mainWindow.show()
       mainWindow.focus()
     }
   })
+}
+
+function setupMacDock() {
+  if (process.platform !== 'darwin') return
+  const dockMenu = buildAppMenu()
+  app.dock?.setMenu(dockMenu)
 }
 
 function showNativeNotification(title: string, body: string) {
@@ -140,7 +147,9 @@ function createWindow() {
     if (!isDev && mainWindow) initAutoUpdater(mainWindow)
   })
   mainWindow.on('close', (e) => {
-    if (tray && !isQuitting) {
+    // On macOS: always hide to dock instead of closing (standard macOS behaviour)
+    // On Windows: hide to tray if tray is active
+    if (!isQuitting && (process.platform === 'darwin' || tray)) {
       e.preventDefault()
       mainWindow?.hide()
     }
@@ -166,6 +175,11 @@ function createWindow() {
 app.commandLine.appendSwitch('disable-gpu-shader-disk-cache')
 app.commandLine.appendSwitch('disable-gpu-cache')
 
+// Enable CDP for GIF recording scripts (dev only)
+if (process.env.NODE_ENV === 'development' || !app.isPackaged) {
+  app.commandLine.appendSwitch('remote-debugging-port', '9222')
+}
+
 app.on('second-instance', () => {
   if (mainWindow) {
     if (mainWindow.isMinimized()) mainWindow.restore()
@@ -180,6 +194,7 @@ app.whenReady().then(() => {
   registerIpcHandlers()
   createWindow()
   if (process.platform === 'win32') createTray()
+  setupMacDock()
   initDiscordRPC()
   log.info('Grindly ready')
 })

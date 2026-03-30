@@ -135,7 +135,7 @@ export function getRarityTheme(rarity: LootRarity | string) {
 }
 
 /** Item IDs that cannot be listed or shown on the marketplace */
-export const MARKETPLACE_BLOCKED_ITEMS: string[] = ['atk_potion', 'hp_potion', 'regen_potion', 'def_potion', 'death_insurance']
+export const MARKETPLACE_BLOCKED_ITEMS: string[] = ['atk_potion', 'hp_potion', 'regen_potion', 'def_potion', 'death_insurance', 'common_chest', 'rare_chest', 'epic_chest', 'legendary_chest']
 
 let _validIdCache: Set<string> | null = null
 /** Returns true if the item ID corresponds to a real in-game item (gear, seed, chest, material, etc.) */

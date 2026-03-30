@@ -306,6 +306,76 @@ function probePowerShell(): Promise<boolean> {
   })
 }
 
+function getMacTrackerPath(): string {
+  const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
+  return isDev
+    ? path.join(process.cwd(), 'dist', 'macos-tracker')
+    : path.join(process.resourcesPath, 'macos-tracker')
+}
+
+function startMacDetector(): void {
+  if (process.platform !== 'darwin') return
+  if (detectorProcess) return
+
+  const trackerBin = getMacTrackerPath()
+  if (!fs.existsSync(trackerBin)) {
+    log.error('[tracker] macOS tracker binary not found at:', trackerBin, '— run: npm run build:macos-tracker')
+    latestWinInfo = { appName: 'Grindly.TrackerError', title: 'macOS tracker not built — run: npm run build:macos-tracker', keys: 0, idleMs: 0, bgCategories: [] }
+    return
+  }
+  try { fs.chmodSync(trackerBin, 0o755) } catch { /* ignore */ }
+
+  log.info('[tracker] Starting macOS window detector')
+  hasReceivedWinLine = false
+  hasReceivedReady = false
+  detectorStderrLines = []
+
+  const child = spawn(trackerBin, [], {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    cwd: app.getPath('userData'),
+    env: { ...process.env },
+  })
+  detectorProcess = child
+
+  child.stdout?.on('data', (chunk: Buffer) => {
+    stdoutBuffer += chunk.toString('utf8')
+    const lines = stdoutBuffer.split(/\r?\n/)
+    stdoutBuffer = lines.pop() || ''
+    for (const line of lines) parseLine(line)
+  })
+  child.stderr?.on('data', (chunk: Buffer) => {
+    const msg = chunk.toString().trim()
+    if (msg) {
+      detectorStderrLines.push(msg)
+      log.warn('[tracker:stderr]', msg)
+    }
+  })
+  child.on('exit', (code, signal) => {
+    log.info('[tracker] macOS detector exited', { code, signal })
+    detectorProcess = null
+    stdoutBuffer = ''
+  })
+  child.on('error', (err) => {
+    log.error('[tracker] macOS detector error:', err)
+    detectorProcess = null
+  })
+
+  log.info('[tracker] macOS detector started', { pid: child.pid })
+
+  if (detectorRestartTimeout) {
+    clearTimeout(detectorRestartTimeout)
+    detectorRestartTimeout = null
+  }
+  detectorRestartTimeout = setTimeout(() => {
+    detectorRestartTimeout = null
+    if (hasReceivedWinLine || detectorRestartCount > 0) return
+    log.warn('[tracker] No data from macOS detector after 25s, restarting once')
+    detectorRestartCount++
+    stopWindowDetector()
+    startMacDetector()
+  }, 25_000)
+}
+
 function startWindowDetector(): void {
   if (process.platform !== 'win32') return
   if (detectorProcess) return
@@ -1058,8 +1128,12 @@ export function getTrackerApi() {
       pollInterval = setInterval(poll, POLL_INTERVAL_MS)
       poll() // run immediately so we show "Detecting..." then update when first WIN line arrives
       setTimeout(poll, 800) // and again after detector had time to output (script loop is 1.5s)
-      if (process.platform !== 'win32') return
       startAiRefinementLoop()
+      if (process.platform === 'darwin') {
+        startMacDetector()
+        return
+      }
+      if (process.platform !== 'win32') return
       probePowerShell().then((ok) => {
         if (ok) {
           startWindowDetector()

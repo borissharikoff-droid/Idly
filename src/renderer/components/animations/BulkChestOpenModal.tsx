@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import React, { useEffect, useState } from 'react'
+import { fmt } from '../../lib/format'
 
 function LoadingDots({ color }: { color: string }) {
   return (
@@ -248,7 +249,7 @@ export function BulkChestOpenModal({ open, chestType, result, onClose }: BulkChe
                 >
                   <span className="text-2xl">🪙</span>
                   <div className="text-left">
-                    <p className="text-lg font-bold text-amber-400 tabular-nums">+{result.totalGold}</p>
+                    <p className="text-lg font-bold text-amber-400 tabular-nums">+{fmt(result.totalGold)}</p>
                     <p className="text-micro font-mono text-amber-500/60 uppercase tracking-widest">Gold</p>
                   </div>
                 </motion.div>

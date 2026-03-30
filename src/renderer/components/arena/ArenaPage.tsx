@@ -8,7 +8,7 @@ import {
 const RaidsTab = lazy(() => import('./RaidsTab').then((m) => ({ default: m.RaidsTab })))
 const HallOfRaidsTab = lazy(() => import('./HallOfRaidsTab').then((m) => ({ default: m.HallOfRaidsTab })))
 import { getHotZoneId, hotZoneResetsInDays } from '../../lib/hotZone'
-import { LOOT_ITEMS, CHEST_DEFS, RARITY_COLORS, type ChestType, type BonusMaterial } from '../../lib/loot'
+import { LOOT_ITEMS, type ChestType, type BonusMaterial } from '../../lib/loot'
 import { computePlayerStats, type FoodLoadout, type FoodLoadoutSlot } from '../../lib/combat'
 import { FoodSelector } from '../shared/FoodSelector'
 import { useInventoryStore } from '../../stores/inventoryStore'
@@ -29,7 +29,6 @@ import { InventoryPage } from '../inventory/InventoryPage'
 import { playClickSound } from '../../lib/sounds'
 import { logFriendActivity } from '../../services/friendActivityService'
 import { useAuthStore } from '../../stores/authStore'
-import { useBountyStore } from '../../stores/bountyStore'
 import { useToastStore } from '../../stores/toastStore'
 import { useNavigationStore } from '../../stores/navigationStore'
 
@@ -717,9 +716,6 @@ export function ArenaPage() {
   const hotZoneId = useMemo(() => getHotZoneId(), [])
   const hotZoneDaysLeft = useMemo(() => hotZoneResetsInDays(), [])
   const hotZone = ZONES.find((z) => z.id === hotZoneId)
-  const bounties = useBountyStore((s) => s.bounties)
-  const claimBounty = useBountyStore((s) => s.claimBounty)
-
   // Restore auto-mode state on mount (survives tab switches)
   useEffect(() => {
     if (isAutoRunning && !autoAccRef.current) {
@@ -1336,51 +1332,6 @@ export function ArenaPage() {
           />
         ))}
       </div>
-
-      {/* ── Daily Bounties ── */}
-      {bounties.length > 0 && (
-        <div className="rounded-card border border-white/[0.10] bg-surface-2 p-3">
-          <p className="text-micro uppercase tracking-wider text-gray-400 font-mono mb-2">Daily Bounties</p>
-          <div className="space-y-2">
-            {bounties.map((b) => {
-              const done = b.progress >= b.targetCount
-              const typeIcon = b.type === 'craft' ? '⚒️' : b.type === 'farm' ? '🌱' : '🍳'
-              return (
-                <div key={b.id} className={`flex items-center gap-2.5 px-2.5 py-2 rounded border ${b.claimed ? 'border-white/[0.06] opacity-50' : done ? 'border-lime-500/40 bg-lime-500/8' : 'border-white/[0.08]'}`}>
-                  <span className="text-base shrink-0">{typeIcon}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-caption text-white font-medium leading-tight">{b.description}</p>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <div className="flex-1 h-1 rounded-full bg-white/[0.08] overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-[width] duration-300"
-                          style={{ width: `${Math.min(100, (b.progress / b.targetCount) * 100)}%`, backgroundColor: done ? '#84cc16' : '#6366f1' }}
-                        />
-                      </div>
-                      <span className="text-micro text-gray-400 font-mono shrink-0">{b.progress}/{b.targetCount}</span>
-                    </div>
-                    <p className="text-micro text-gray-500 font-mono mt-0.5">
-                      +{fmt(b.goldReward)} 🪙{b.chestReward && <> · <span style={{ color: RARITY_COLORS[CHEST_DEFS[b.chestReward as ChestType].rarity].color }}>{b.chestReward.replace('_chest', ' chest')}</span></>}
-                    </p>
-                  </div>
-                  {done && !b.claimed && (
-                    <button
-                      type="button"
-                      onClick={() => claimBounty(b.id)}
-                      className="shrink-0 px-2 py-1 rounded text-micro font-bold bg-lime-500/20 border border-lime-500/50 text-lime-400 hover:bg-lime-500/30 transition-colors"
-                    >
-                      Claim
-                    </button>
-                  )}
-                  {b.claimed && (
-                    <span className="shrink-0 text-micro text-gray-500 font-mono">✓</span>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
 
       <div className="text-center">
         <p className="text-micro text-gray-400 font-mono">

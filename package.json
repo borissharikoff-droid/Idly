@@ -1,6 +1,6 @@
 {
   "name": "grindly",
-  "version": "4.6.1",
+  "version": "4.7.0",
   "description": "Windows productivity tracker with session timer, activity monitoring, and gamification",
   "main": "dist/main/main/index.js",
   "scripts": {
@@ -11,6 +11,8 @@
     "build:electron": "tsc -p tsconfig.main.json && tsc -p tsconfig.preload.json",
     "clean:release": "node -e \"try{require('fs').rmSync('release/win-unpacked',{recursive:true,force:true});console.log('Cleaned release/win-unpacked')}catch(e){console.warn('Clean skipped:',e.message)}\"",
     "electron:build": "npm run build && npm run clean:release && electron-builder --config electron-builder.yml",
+    "electron:build:mac": "npm run build && npm run build:macos-tracker && electron-builder --config electron-builder.yml --mac",
+    "build:macos-tracker": "swiftc native/macos-tracker/main.swift -o dist/macos-tracker -O -framework Foundation -framework AppKit -framework ApplicationServices -framework IOKit",
     "test": "vitest run",
     "test:watch": "vitest",
     "push": "git push",

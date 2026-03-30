@@ -8,7 +8,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { ChestType } from '../lib/loot'
-import { useInventoryStore } from './inventoryStore'
 import { useGoldStore } from './goldStore'
 import { useAuthStore } from './authStore'
 
@@ -182,9 +181,6 @@ export const useWeeklyStore = create<WeeklyState>()(
           if (user) useGoldStore.getState().syncToSupabase(user.id)
         }
 
-        if (bounty.chestReward) {
-          useInventoryStore.getState().addChest(bounty.chestReward, 'bounty_reward', 100)
-        }
       },
     }),
     {

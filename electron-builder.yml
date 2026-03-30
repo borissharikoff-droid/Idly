@@ -22,6 +22,22 @@ nsis:
   perMachine: false
   allowToChangeInstallationDirectory: false
   artifactName: "Grindly-Setup-${version}.exe"
+mac:
+  icon: assets/icon.png
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  category: public.app-category.productivity
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  extraResources:
+    - from: dist/macos-tracker
+      to: macos-tracker
+dmg:
+  title: "Grindly ${version}"
+  artifactName: "Grindly-${version}.dmg"
 forceCodeSigning: false
 publish:
   provider: github
